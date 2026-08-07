@@ -6,6 +6,7 @@ from typing import Any
 
 from faststream import FastStream
 
+from gymact.contract import contract_document
 from gymact.models import ActuationIntent, MaterializationIntent
 from gymact.providers import MemoryProvider
 from gymact.runtime import GymAct
@@ -24,6 +25,8 @@ async def dispatch_stream_command(service: GymAct, command: dict[str, Any]) -> d
     operation = command.get("operation")
     if operation == "discover":
         return {"operation": operation, "providers": list(service.discover())}
+    if operation == "contract":
+        return {"operation": operation, "result": contract_document()}
     if operation == "create_episode":
         values: dict[str, Any] = {
             "provider": str(command.get("provider", "memory")),
@@ -36,10 +39,10 @@ async def dispatch_stream_command(service: GymAct, command: dict[str, Any]) -> d
         result = await service.materialize(MaterializationIntent.model_validate(values))
         return {"operation": operation, "result": result.model_dump(mode="json")}
     if operation == "capabilities":
-        values = service.capabilities(str(command["episode_id"]))
+        capabilities = service.capabilities(str(command["episode_id"]))
         return {
             "operation": operation,
-            "result": [item.model_dump(mode="json") for item in values],
+            "result": [item.model_dump(mode="json") for item in capabilities],
         }
     if operation == "observe":
         result = await service.observe(str(command["episode_id"]))
@@ -66,6 +69,15 @@ async def dispatch_stream_command(service: GymAct, command: dict[str, Any]) -> d
             str(command["episode_id"]), authority_ref=command.get("authority_ref")
         )
         return {"operation": operation, "result": result.model_dump(mode="json")}
+    if operation == "receipts":
+        receipts = await service.receipts(command.get("episode_id"))
+        return {
+            "operation": operation,
+            "result": [item.model_dump(mode="json") for item in receipts],
+        }
+    if operation == "provenance":
+        turtle = (await service.provenance()).serialize(format="turtle")
+        return {"operation": operation, "result": turtle}
     raise ValueError(f"unsupported stream operation: {operation}")
 
 
