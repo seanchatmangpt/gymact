@@ -115,6 +115,10 @@ from gymact.surfaces.fastmcp import create_mcp
 mcp = create_mcp(runtime)
 ```
 
+The FastMCP surface also exposes `probe_repo`, a read-only repository prober (README/
+pyproject/setup.py plus a truncated top-level listing). It has no shell/exec access -- actual
+command execution stays behind `actuate()`/authority, unaffected by this tool's presence.
+
 FastStream accepts an externally selected broker, so GymAct does not choose Kafka, NATS, RabbitMQ, Redis, or MQTT on behalf of the caller:
 
 ```python
@@ -148,6 +152,29 @@ Environment
 ```
 
 The bundled `MemoryProvider` is a deterministic executable reference gym. It exists to validate the generic contract, not to stand in for external benchmark execution.
+
+## Real gym providers
+
+Beyond `MemoryProvider`, `gymact.gyms` has three providers that each drive a genuinely real
+external collaborator -- no mocks anywhere in `src/` or `tests/`:
+
+- `cube_counter.CubeCounterProvider` -- an in-process CUBE reference task (`counter_cube`).
+- `cube_container_counter.CubeContainerCounterProvider` -- a real Docker container running
+  CUBE's `toy_benchmark` example.
+- `ggen_legacy.GgenLegacyVerifierProvider` -- a real subprocess of the compiled
+  `ggen-v26-8-1-verifier` binary against a real `~/ggen-legacy` checkout.
+
+Each claims a `gymact.standing.require_standing` standing (e.g. `"LOCAL_GYM:cube-counter"`):
+if its real collaborator is unavailable, the run fails loudly unless
+`GYMACT_ALLOW_DEGRADED_STANDINGS` explicitly permits degrading it -- a skip must be opted
+into, never a silent default.
+
+`gymact.gyms.discovered.GenericDiscoveredProvider` generalizes this further: one provider
+that runs an LLM-proposed, bounded subprocess recipe against an arbitrary checked-out repo,
+rather than a hand-written adapter per benchmark subject. `scripts/discover_and_actuate.py`
+is the end-to-end probe -> propose -> actuate -> OCEL driver; `scripts/ocel_standing.py`
+derives actuation standing purely from the resulting on-disk OCEL log (schema validation +
+`ConformanceChecker` replay + explicit ALIVE/solved check), never from script narration.
 
 ## Release admission
 
