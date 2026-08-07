@@ -13,7 +13,7 @@ Python-native surfaces compose mature libraries directly:
 - FastStream for broker-neutral event-driven commands;
 - RDFLib + pySHACL for semantic loading and real conformance checks.
 
-The Rust/WASM path is deliberately separate: `gymact export-profile` materializes the same admitted RDF/SHACL graph for ggen to manufacture Rust/WIT/WASM/static projections. Python composes; Rust manufactures.
+The Rust/WASM path is deliberately separate: `gymact export-profile` and `gymact export-contract` materialize the same admitted semantics for ggen to manufacture Rust/WIT/WASM/static projections. Python composes; Rust manufactures.
 
 ## Core laws
 
@@ -27,9 +27,29 @@ authority_ref != authority decision
 
 A capability is represented publicly as `sosa:Procedure`. GymAct's canonical Python `Capability` carries the procedure IRI, title, READ/DO consequence class, and a provider-private binding. Real SHACL validates the public semantic projection before an environment is admitted.
 
-Consequential environments are fail-closed. GymAct invokes an injected `AuthorityResolver` and proceeds only after an explicit positive decision. With no resolver configured, required authority is refused even when the caller provides an `authority_ref` string.
+Consequential environments are fail-closed. GymAct invokes an injected `AuthorityResolver` and proceeds only after an explicit positive decision. With no resolver configured, required authority is refused even when the caller provides an `authority_ref` string. Authority requirements are monotonic: request/config data may raise the required authority but cannot lower a provider-level requirement.
 
-Materialization, actuation, restore, and teardown all produce typed dispositions and receipts. Provider error text is hashed into `error_digest`; receipts retain bounded failure type rather than copying arbitrary provider output.
+## Consequence evidence
+
+Materialization, actuation, restore, and teardown are protected by write-ahead evidence:
+
+```text
+intent
+  ↓
+authority decision
+  ↓
+PREPARED BLAKE3 receipt
+  ↓
+provider consequence
+  ↓
+independent observation
+  ↓
+FINAL BLAKE3 receipt
+```
+
+This means a process failure after a consequential provider call cannot erase the fact that an admitted actuation was prepared. Receipts form an append-only BLAKE3 chain. GymAct includes both an in-memory ledger for bounded local/test environments and a durable SQLite WAL/FULL-synchronization ledger for persistent evidence.
+
+Provider exception text is never copied into receipts. The public evidence stores bounded reason codes, error type, and a digest. Runtime limits bound provider time, authority-decision time, payload bytes, and observed-state bytes.
 
 Idempotency is semantic rather than best-effort:
 
@@ -50,6 +70,7 @@ gymact validate-profile
 gymact demo
 gymact demo --authority
 gymact export-profile ./gymact-profile
+gymact export-contract ./gymact-contract.json
 ```
 
 Run the HTTP surface:
@@ -67,13 +88,15 @@ from gymact import (
     GymAct,
     MaterializationIntent,
     MemoryProvider,
+    SQLiteReceiptLedger,
 )
 
 AUTHORITY = "urn:example:authority"
 SET = "urn:gymact:memory:capability:set"
 
 runtime = GymAct(
-    authority_resolver=AllowListAuthorityResolver({AUTHORITY})
+    authority_resolver=AllowListAuthorityResolver({AUTHORITY}),
+    ledger=SQLiteReceiptLedger("gymact-receipts.sqlite3"),
 )
 runtime.register_provider(MemoryProvider())
 
@@ -95,6 +118,7 @@ result = await runtime.act(
     )
 )
 verification = await runtime.verify(episode.episode_id, {"healthy": True})
+assert await runtime.verify_evidence_chain()
 ```
 
 `AllowListAuthorityResolver` is a deterministic reference implementation for tests and isolated local gyms. It is explicitly not a substitute for BRCE or another production policy decision point.
@@ -108,12 +132,16 @@ from gymact.surfaces.fastapi import create_app
 app = create_app(runtime)
 ```
 
+The HTTP surface includes the compiler contract, capability discovery, observations, actions, verification, recovery, receipts, and a public PROV-O evidence projection.
+
 FastMCP:
 
 ```python
 from gymact.surfaces.fastmcp import create_mcp
 mcp = create_mcp(runtime)
 ```
+
+The MCP transport grants no authority; it submits the same semantic intents as every other surface.
 
 FastStream accepts an externally selected broker, so GymAct does not choose Kafka, NATS, RabbitMQ, Redis, or MQTT on behalf of the caller:
 
@@ -122,51 +150,51 @@ from gymact.surfaces.faststream import create_stream_app
 app = create_stream_app(broker, runtime)
 ```
 
-All surfaces use the same Pydantic intents/results and the same runtime. They do not independently reimplement GymAct semantics.
+All surfaces reuse the same Pydantic intents/results and the same runtime. They do not independently reimplement GymAct semantics.
 
 ## Semantic authority
 
 `src/gymact/ontology/profile.ttl` contains the application profile and controlled ABox identities. It deliberately defines **zero GymAct OWL/RDFS classes or RDF/OWL properties**. `urn:gymact:*` is reserved for profile resources, ABox identities, SKOS concepts, and SHACL shapes.
 
-`ProfileAuthority.validate()` runs real pySHACL plus a mechanical zero-custom-TBox gate. `ProfileAuthority.validate_data()` admits extension ABoxes. `ProfileAuthority.validate_capabilities()` projects canonical Pydantic capabilities into SOSA/DCTERMS RDF and validates them through the same SHACL shapes.
+Generic lifecycle operations are themselves public `sosa:Procedure` resources. `ProfileAuthority.validate()` runs real pySHACL plus a mechanical zero-custom-TBox gate. `ProfileAuthority.validate_data()` admits extension ABoxes. `ProfileAuthority.validate_capabilities()` projects canonical Pydantic capabilities into SOSA/DCTERMS RDF and validates them through the same SHACL shapes.
 
-## Runtime boundary
+## ggen / Rust Gall checkpoint
+
+`ggen/` is intentionally small. CI performs:
 
 ```text
-EnvironmentProvider
-      │
-      ├── materialization authority? ──► AuthorityResolver
-      │
-      ▼
-Environment
-      ├── capabilities() ──► sosa:Procedure profile validation
-      ├── observe()
-      ├── actuate(Capability, payload) ──► authority when consequential
-      ├── verify()
-      ├── checkpoint()/restore()
-      └── teardown()
+packaged profile
+  ↓ gymact export-profile
+ggen RDF project
+  ↓ ggen 26.8.6
+generated Rust procedure table
+  ↓ rustc --test
+executed Gall checkpoint
 ```
 
-The bundled `MemoryProvider` is a deterministic executable reference gym. It exists to validate the generic contract, not to stand in for external benchmark execution.
+This proves the Python package is not a semantic island without replacing Python-native FastAPI/FastMCP/Typer/FastStream composition with generated boilerplate.
 
 ## Release admission
 
-v26.8.7 is release-ready only when exact-head CI proves:
+v26.8.7 is releasable only when exact-head CI proves:
 
 - public profile + extension ABoxes parse and SHACL-conform;
 - no custom GymAct TBox leaks into profile, shapes, or extension data;
 - provider capabilities are validated as public `sosa:Procedure` resources;
-- materialization and actuation authority are fail-closed;
+- materialization and actuation authority are fail-closed and monotonic;
+- write-ahead and terminal receipts form a valid BLAKE3 chain;
+- durable SQLite evidence reopens and verifies;
 - idempotency and concurrent replay do not duplicate consequences;
-- provider failures are bounded and receipted;
+- provider time/size failures are bounded and receipted;
 - FastAPI executes a real reference episode;
 - FastMCP executes in-process through its real Client;
 - FastStream executes the broker-neutral lifecycle;
-- Typer validates/exports the installed semantic profile;
+- Typer validates/exports the installed semantic profile and compiler contract;
+- ggen manufactures and rustc executes a Rust projection from the same public profile;
 - Python 3.11/3.12/3.13 pass tests, coverage, lint, and format gates;
 - wheel/sdist metadata and clean-wheel profile resources pass;
 - strict docs build passes;
 - the production container builds, boots, and answers `/health`;
-- the resolved `uv.lock` is committed and subsequently checked rather than silently regenerated.
+- dependency closure is resolved into a checked `uv.lock`.
 
 External benchmark integrations retain their own execution standing. Importability is never promoted into scenario-execution standing.
