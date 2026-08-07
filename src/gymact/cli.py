@@ -11,6 +11,8 @@ import uvicorn
 
 from gymact import __version__
 from gymact.authority import AllowListAuthorityResolver
+from gymact.contract import build_contract
+from gymact.manufacture import export_manufacturing_bundle
 from gymact.models import ActuationIntent, MaterializationIntent
 from gymact.providers import MemoryProvider
 from gymact.runtime import GymAct
@@ -26,6 +28,12 @@ def version() -> None:
     typer.echo(__version__)
 
 
+@app.command()
+def contract() -> None:
+    """Print the self-digested runtime contract for independent consumers."""
+    typer.echo(json.dumps(build_contract().model_dump(mode="json"), sort_keys=True))
+
+
 @app.command("validate-profile")
 def validate_profile() -> None:
     """Run SHACL and zero-custom-TBox validation against the packaged profile."""
@@ -37,8 +45,15 @@ def validate_profile() -> None:
 
 @app.command("export-profile")
 def export_profile(directory: Path) -> None:
-    """Export the admitted RDF/SHACL profile for ggen or another compiler."""
+    """Export the admitted RDF/SHACL profile for direct semantic inspection."""
     paths = ProfileAuthority().export(directory)
+    typer.echo(json.dumps({key: str(value) for key, value in paths.items()}, sort_keys=True))
+
+
+@app.command("export-bundle")
+def export_bundle(directory: Path) -> None:
+    """Export RDF/SHACL plus RFC8785 runtime contract for ggen/Rust manufacture."""
+    paths = export_manufacturing_bundle(directory)
     typer.echo(json.dumps({key: str(value) for key, value in paths.items()}, sort_keys=True))
 
 
@@ -49,7 +64,9 @@ def demo(authority: bool = typer.Option(False, "--authority")) -> None:
     async def run() -> dict[str, object]:
         authority_ref = "urn:gymact:authority:demo"
         runtime = GymAct(
-            authority_resolver=AllowListAuthorityResolver({authority_ref}) if authority else None
+            authority_resolver=AllowListAuthorityResolver({authority_ref})
+            if authority
+            else None
         )
         runtime.register_provider(MemoryProvider(requires_authority=True))
         materialized = await runtime.materialize(
@@ -75,6 +92,7 @@ def demo(authority: bool = typer.Option(False, "--authority")) -> None:
             "materialization": materialized.model_dump(mode="json"),
             "actuation": actuation.model_dump(mode="json"),
             "verification": verification.model_dump(mode="json"),
+            "evidence_verified": runtime.verify_evidence_chain(),
         }
 
     typer.echo(json.dumps(anyio.run(run), sort_keys=True))

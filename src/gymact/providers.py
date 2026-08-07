@@ -38,7 +38,9 @@ class EnvironmentProvider(Protocol):
     name: str
     materialization_requires_authority: bool
 
-    async def materialize(self, *, scenario: str | None, config: dict[str, Any]) -> Environment: ...
+    async def materialize(
+        self, *, scenario: str | None, config: dict[str, Any]
+    ) -> Environment: ...
 
 
 MEMORY_CAPABILITIES = (
@@ -147,7 +149,8 @@ class MemoryProvider:
         initial = config.get("initial", {})
         if not isinstance(initial, dict):
             raise TypeError("config.initial must be an object")
-        configured = config.get("requires_authority", self.requires_authority)
+        configured = config.get("requires_authority", False)
         if not isinstance(configured, bool):
             raise TypeError("config.requires_authority must be a boolean")
-        return MemoryEnvironment(initial=initial, requires_authority=configured)
+        required = self.requires_authority or configured
+        return MemoryEnvironment(initial=initial, requires_authority=required)
