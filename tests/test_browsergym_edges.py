@@ -45,9 +45,9 @@ require_standing(
     ),
 )
 
-from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent
-from gymact.gyms.browsergym import BrowserGymEnvironment, BrowserGymProvider
-from gymact.models import ActuationIntent, Standing
+from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent  # noqa: E402
+from gymact.gyms.browsergym import BrowserGymEnvironment, BrowserGymProvider  # noqa: E402
+from gymact.models import ActuationIntent, Standing  # noqa: E402
 
 START_URL = "about:blank#start"
 AUTHORITY = "urn:test:browsergym-authority"
@@ -59,9 +59,9 @@ async def test_provider_rejects_invalid_configuration_before_browser_launch() ->
 
     with pytest.raises(ValueError, match="supports only scenario"):
         await provider.materialize(scenario="webarena", config={"start_url": START_URL})
-    with pytest.raises(TypeError, match="config.start_url"):
+    with pytest.raises(TypeError, match=r"config\.start_url"):
         await provider.materialize(scenario="openended", config={"start_url": ""})
-    with pytest.raises(TypeError, match="config.seed"):
+    with pytest.raises(TypeError, match=r"config\.seed"):
         await provider.materialize(
             scenario="openended", config={"start_url": START_URL, "seed": True}
         )
@@ -141,9 +141,7 @@ async def test_real_browsergym_restore_errors_are_receipted_without_navigation()
     assert invalid_checkpoint.error_digest is not None
     assert (await gym.observe(episode_id)).state["url"] == START_URL
 
-    invalid_url = await gym.restore(
-        episode_id, {"url": "not-a-url"}, authority_ref=AUTHORITY
-    )
+    invalid_url = await gym.restore(episode_id, {"url": "not-a-url"}, authority_ref=AUTHORITY)
     assert invalid_url.standing == Standing.BLOCKED
     assert invalid_url.reason == "PROVIDER_ERROR:RuntimeError"
     assert invalid_url.error_digest is not None
