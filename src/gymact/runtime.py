@@ -10,9 +10,12 @@ from uuid import uuid4
 
 import anyio
 
+from gymact.authority import AuthorityResolver, DenyAuthorityResolver
 from gymact.models import (
     ActuationIntent,
     ActuationResult,
+    AuthorityDecision,
+    AuthorityRequest,
     Episode,
     Observation,
     Operation,
@@ -45,10 +48,16 @@ class _IdempotencyRecord:
 class GymAct:
     """Reference orchestrator that keeps transport and benchmark semantics separate."""
 
-    def __init__(self, *, validate_profile: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        validate_profile: bool = True,
+        authority_resolver: AuthorityResolver | None = None,
+    ) -> None:
         self._providers: dict[str, EnvironmentProvider] = {}
         self._episodes: dict[str, _EpisodeState] = {}
         self._idempotency: dict[tuple[str, str], _IdempotencyRecord] = {}
+        self._authority = authority_resolver or DenyAuthorityResolver()
         self.profile = ProfileAuthority()
         if validate_profile:
             result = self.profile.validate()
@@ -97,6 +106,28 @@ class GymAct:
             state_digest=_digest(value),
         )
 
+    async def _authorize(
+        self,
+        state: _EpisodeState,
+        *,
+        operation: Operation,
+        affordance: str,
+        payload: dict[str, Any],
+        authority_ref: str | None,
+    ) -> AuthorityDecision:
+        if not state.environment.requires_authority:
+            return AuthorityDecision(admitted=True, reason="AUTHORITY_NOT_REQUIRED")
+        return await self._authority.authorize(
+            AuthorityRequest(
+                episode_id=state.episode.episode_id,
+                environment_id=state.environment.environment_id,
+                operation=operation,
+                affordance=affordance,
+                payload=payload,
+                authority_ref=authority_ref,
+            )
+        )
+
     async def observe(self, episode_id: str) -> Observation:
         """Observe current state without promoting it to verification."""
         state = self._state(episode_id)
@@ -133,7 +164,14 @@ class GymAct:
                 )
 
             before = await self._observe_unlocked(state)
-            if state.environment.requires_authority and not intent.authority_ref:
+            authority = await self._authorize(
+                state,
+                operation=intent.operation,
+                affordance=intent.affordance,
+                payload=intent.payload,
+                authority_ref=intent.authority_ref,
+            )
+            if not authority.admitted:
                 result = ActuationResult(
                     accepted=False,
                     standing=Standing.REFUSED,
@@ -143,10 +181,12 @@ class GymAct:
                         operation=intent.operation,
                         standing=Standing.REFUSED,
                         affordance=intent.affordance,
+                        authority_ref=intent.authority_ref,
+                        authority_evidence_ref=authority.evidence_ref,
                         idempotency_key=intent.idempotency_key,
                         pre_state_digest=before.state_digest,
                         post_state_digest=before.state_digest,
-                        reason="LIVE_AUTHORITY_REQUIRED",
+                        reason=authority.reason,
                     ),
                 )
                 self._idempotency[key] = _IdempotencyRecord(intent_digest, result)
@@ -169,6 +209,7 @@ class GymAct:
                         standing=Standing.BLOCKED,
                         affordance=intent.affordance,
                         authority_ref=intent.authority_ref,
+                        authority_evidence_ref=authority.evidence_ref,
                         idempotency_key=intent.idempotency_key,
                         pre_state_digest=before.state_digest,
                         post_state_digest=after.state_digest,
@@ -190,6 +231,7 @@ class GymAct:
                     standing=Standing.ALIVE,
                     affordance=intent.affordance,
                     authority_ref=intent.authority_ref,
+                    authority_evidence_ref=authority.evidence_ref,
                     idempotency_key=intent.idempotency_key,
                     pre_state_digest=before.state_digest,
                     post_state_digest=after.state_digest,
@@ -220,18 +262,27 @@ class GymAct:
     async def restore(
         self, episode_id: str, checkpoint: dict[str, Any], *, authority_ref: str | None = None
     ) -> Receipt:
-        """Restore a checkpoint, refusing consequential restore when authority is required."""
+        """Restore a checkpoint only after an explicit authority decision when required."""
         state = self._state(episode_id)
         async with state.lock:
             before = await self._observe_unlocked(state)
-            if state.environment.requires_authority and not authority_ref:
+            authority = await self._authorize(
+                state,
+                operation=Operation.RESTORE,
+                affordance="restore",
+                payload={"checkpoint_digest": _digest(checkpoint)},
+                authority_ref=authority_ref,
+            )
+            if not authority.admitted:
                 return Receipt(
                     episode_id=episode_id,
                     operation=Operation.RESTORE,
                     standing=Standing.REFUSED,
+                    authority_ref=authority_ref,
+                    authority_evidence_ref=authority.evidence_ref,
                     pre_state_digest=before.state_digest,
                     post_state_digest=before.state_digest,
-                    reason="LIVE_AUTHORITY_REQUIRED",
+                    reason=authority.reason,
                 )
             try:
                 await state.environment.restore(checkpoint)
@@ -246,6 +297,7 @@ class GymAct:
                     operation=Operation.RESTORE,
                     standing=Standing.BLOCKED,
                     authority_ref=authority_ref,
+                    authority_evidence_ref=authority.evidence_ref,
                     pre_state_digest=before.state_digest,
                     post_state_digest=after.state_digest,
                     reason=f"PROVIDER_ERROR:{type(exc).__name__}:{exc}",
@@ -255,24 +307,33 @@ class GymAct:
                 operation=Operation.RESTORE,
                 standing=Standing.ALIVE,
                 authority_ref=authority_ref,
+                authority_evidence_ref=authority.evidence_ref,
                 pre_state_digest=before.state_digest,
                 post_state_digest=after.state_digest,
             )
 
     async def teardown(self, episode_id: str, *, authority_ref: str | None = None) -> Receipt:
-        """Tear down an environment; authority is required when the provider declares it."""
+        """Tear down an environment only after an explicit authority decision when required."""
         state = self._state(episode_id)
         async with state.lock:
             before = await self._observe_unlocked(state)
-            if state.environment.requires_authority and not authority_ref:
+            authority = await self._authorize(
+                state,
+                operation=Operation.TEARDOWN,
+                affordance="teardown",
+                payload={},
+                authority_ref=authority_ref,
+            )
+            if not authority.admitted:
                 return Receipt(
                     episode_id=episode_id,
                     operation=Operation.TEARDOWN,
                     standing=Standing.REFUSED,
                     authority_ref=authority_ref,
+                    authority_evidence_ref=authority.evidence_ref,
                     pre_state_digest=before.state_digest,
                     post_state_digest=before.state_digest,
-                    reason="LIVE_AUTHORITY_REQUIRED",
+                    reason=authority.reason,
                 )
             try:
                 await state.environment.teardown()
@@ -282,6 +343,7 @@ class GymAct:
                     operation=Operation.TEARDOWN,
                     standing=Standing.BLOCKED,
                     authority_ref=authority_ref,
+                    authority_evidence_ref=authority.evidence_ref,
                     pre_state_digest=before.state_digest,
                     reason=f"PROVIDER_ERROR:{type(exc).__name__}:{exc}",
                 )
@@ -291,5 +353,6 @@ class GymAct:
                 operation=Operation.TEARDOWN,
                 standing=Standing.ALIVE,
                 authority_ref=authority_ref,
+                authority_evidence_ref=authority.evidence_ref,
                 pre_state_digest=before.state_digest,
             )

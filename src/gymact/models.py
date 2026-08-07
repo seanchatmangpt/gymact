@@ -62,6 +62,25 @@ class Observation(FrozenModel):
     state_digest: str
 
 
+class AuthorityRequest(FrozenModel):
+    """Question submitted to an external authority resolver before consequential DO."""
+
+    episode_id: str
+    environment_id: str
+    operation: Operation
+    affordance: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+    authority_ref: str | None = None
+
+
+class AuthorityDecision(FrozenModel):
+    """Authority resolver verdict; a reference alone never implies admission."""
+
+    admitted: bool
+    reason: str
+    evidence_ref: str | None = None
+
+
 class ActuationIntent(FrozenModel):
     """Requested actuation. Constructing it never grants authority."""
 
@@ -101,6 +120,7 @@ class Receipt(FrozenModel):
     standing: Standing
     affordance: str | None = None
     authority_ref: str | None = None
+    authority_evidence_ref: str | None = None
     idempotency_key: str | None = None
     pre_state_digest: str | None = None
     post_state_digest: str | None = None

@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from importlib.resources import as_file, files
+from pathlib import Path
+import shutil
 
 from pydantic import BaseModel, ConfigDict
 from pyshacl import validate as shacl_validate
-from rdflib import Graph, Namespace, OWL, RDF, RDFS
+from rdflib import Graph, OWL, RDF, RDFS
 
 GYMACT_INSTANCE_PREFIX = "urn:gymact:"
-PROF = Namespace("http://www.w3.org/ns/dx/prof/")
 
 
 class SemanticValidation(BaseModel):
@@ -23,7 +24,7 @@ class SemanticValidation(BaseModel):
 
 
 class ProfileAuthority:
-    """Load and validate the packaged GymAct PROF application profile."""
+    """Load, validate, and export the packaged GymAct PROF application profile."""
 
     profile_uri = "urn:gymact:profile:v26.8.7"
 
@@ -42,6 +43,18 @@ class ProfileAuthority:
 
     def shapes(self) -> Graph:
         return self._parse("profile.shacl.ttl")
+
+    def export(self, directory: str | Path) -> dict[str, Path]:
+        """Materialize package RDF resources for ggen or other external compilers."""
+        target = Path(directory)
+        target.mkdir(parents=True, exist_ok=True)
+        exported: dict[str, Path] = {}
+        for name in ("profile.ttl", "profile.shacl.ttl"):
+            destination = target / name
+            with as_file(self._resource(name)) as source:
+                shutil.copyfile(source, destination)
+            exported[name] = destination
+        return exported
 
     def validate(self) -> SemanticValidation:
         """Run real SHACL plus the zero-custom-TBox invariant."""

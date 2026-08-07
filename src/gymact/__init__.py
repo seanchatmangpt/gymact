@@ -1,8 +1,11 @@
 """GymAct public API."""
 
+from gymact.authority import AllowListAuthorityResolver, AuthorityResolver, DenyAuthorityResolver
 from gymact.models import (
     ActuationIntent,
     ActuationResult,
+    AuthorityDecision,
+    AuthorityRequest,
     Episode,
     Observation,
     Operation,
@@ -18,6 +21,11 @@ from gymact.semantic import ProfileAuthority, SemanticValidation
 __all__ = [
     "ActuationIntent",
     "ActuationResult",
+    "AllowListAuthorityResolver",
+    "AuthorityDecision",
+    "AuthorityRequest",
+    "AuthorityResolver",
+    "DenyAuthorityResolver",
     "Environment",
     "EnvironmentProvider",
     "Episode",

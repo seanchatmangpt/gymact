@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import anyio
 import typer
 import uvicorn
 
 from gymact import __version__
+from gymact.authority import AllowListAuthorityResolver
 from gymact.models import ActuationIntent
 from gymact.providers import MemoryProvider
 from gymact.runtime import GymAct
@@ -33,12 +35,24 @@ def validate_profile() -> None:
         raise typer.Exit(code=2)
 
 
+@app.command("export-profile")
+def export_profile(directory: Path) -> None:
+    """Export the admitted RDF/SHACL profile for ggen or another compiler."""
+    paths = ProfileAuthority().export(directory)
+    typer.echo(json.dumps({key: str(value) for key, value in paths.items()}, sort_keys=True))
+
+
 @app.command()
 def demo(authority: bool = typer.Option(False, "--authority")) -> None:
     """Execute a deterministic bounded world transition and independent verification."""
 
     async def run() -> dict[str, object]:
-        runtime = GymAct()
+        authority_ref = "urn:gymact:authority:demo"
+        runtime = GymAct(
+            authority_resolver=AllowListAuthorityResolver({authority_ref})
+            if authority
+            else None
+        )
         runtime.register_provider(MemoryProvider(requires_authority=True))
         episode = await runtime.create_episode(
             "memory", config={"initial": {"healthy": False, "attempts": 0}}
@@ -47,7 +61,7 @@ def demo(authority: bool = typer.Option(False, "--authority")) -> None:
             episode_id=episode.episode_id,
             affordance="set",
             payload={"key": "healthy", "value": True},
-            authority_ref="urn:gymact:authority:demo" if authority else None,
+            authority_ref=authority_ref if authority else None,
             idempotency_key="demo-set-healthy",
         )
         actuation = await runtime.act(intent)
