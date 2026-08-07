@@ -11,7 +11,7 @@ import uvicorn
 
 from gymact import __version__
 from gymact.authority import AllowListAuthorityResolver
-from gymact.models import ActuationIntent
+from gymact.models import ActuationIntent, MaterializationIntent
 from gymact.providers import MemoryProvider
 from gymact.runtime import GymAct
 from gymact.semantic import ProfileAuthority
@@ -54,12 +54,19 @@ def demo(authority: bool = typer.Option(False, "--authority")) -> None:
             else None
         )
         runtime.register_provider(MemoryProvider(requires_authority=True))
-        episode = await runtime.create_episode(
-            "memory", config={"initial": {"healthy": False, "attempts": 0}}
+        materialized = await runtime.materialize(
+            MaterializationIntent(
+                provider="memory",
+                config={"initial": {"healthy": False, "attempts": 0}},
+                idempotency_key="demo-materialize",
+            )
         )
+        if materialized.episode is None:
+            return {"materialization": materialized.model_dump(mode="json")}
+        episode = materialized.episode
         intent = ActuationIntent(
             episode_id=episode.episode_id,
-            affordance="set",
+            capability="urn:gymact:memory:capability:set",
             payload={"key": "healthy", "value": True},
             authority_ref=authority_ref if authority else None,
             idempotency_key="demo-set-healthy",
@@ -67,7 +74,7 @@ def demo(authority: bool = typer.Option(False, "--authority")) -> None:
         actuation = await runtime.act(intent)
         verification = await runtime.verify(episode.episode_id, {"healthy": authority})
         return {
-            "episode": episode.model_dump(mode="json"),
+            "materialization": materialized.model_dump(mode="json"),
             "actuation": actuation.model_dump(mode="json"),
             "verification": verification.model_dump(mode="json"),
         }

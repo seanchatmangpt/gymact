@@ -6,7 +6,7 @@ from typing import Any
 
 from fastmcp import FastMCP
 
-from gymact.models import ActuationIntent
+from gymact.models import ActuationIntent, MaterializationIntent
 from gymact.providers import MemoryProvider
 from gymact.runtime import GymAct
 
@@ -34,10 +34,25 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
         provider: str = "memory",
         scenario: str | None = None,
         config: dict[str, Any] | None = None,
+        authority_ref: str | None = None,
+        idempotency_key: str | None = None,
     ) -> dict[str, Any]:
-        """Materialize one bounded environment episode."""
-        result = await service.create_episode(provider, scenario=scenario, config=config or {})
+        """Materialize one bounded environment episode with a receipted disposition."""
+        values: dict[str, Any] = {
+            "provider": provider,
+            "scenario": scenario,
+            "config": config or {},
+            "authority_ref": authority_ref,
+        }
+        if idempotency_key is not None:
+            values["idempotency_key"] = idempotency_key
+        result = await service.materialize(MaterializationIntent.model_validate(values))
         return result.model_dump(mode="json")
+
+    @mcp.tool()
+    async def capabilities(episode_id: str) -> list[dict[str, Any]]:
+        """List admitted semantic capabilities for a materialized environment."""
+        return [item.model_dump(mode="json") for item in service.capabilities(episode_id)]
 
     @mcp.tool()
     async def observe(episode_id: str) -> dict[str, Any]:
@@ -47,15 +62,15 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
     @mcp.tool()
     async def act(
         episode_id: str,
-        affordance: str,
+        capability: str,
         payload: dict[str, Any] | None = None,
         authority_ref: str | None = None,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
-        """Submit an actuation intent; MCP transport itself grants no authority."""
+        """Submit a semantic actuation intent; MCP transport itself grants no authority."""
         values: dict[str, Any] = {
             "episode_id": episode_id,
-            "affordance": affordance,
+            "capability": capability,
             "payload": payload or {},
             "authority_ref": authority_ref,
         }
@@ -85,7 +100,7 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
 
     @mcp.tool()
     async def teardown(episode_id: str, authority_ref: str | None = None) -> dict[str, Any]:
-        """Tear down one environment episode."""
+        """Idempotently tear down one environment episode."""
         return (await service.teardown(episode_id, authority_ref=authority_ref)).model_dump(
             mode="json"
         )

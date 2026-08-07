@@ -2,32 +2,43 @@
 
 GymAct is a Python reference implementation of a **public-semantic execution profile for bounded benchmark and gym worlds**.
 
-It does not invent a competing benchmark ontology. The packaged semantic authority is a W3C `prof:Profile` composed from public vocabularies including PROV-O, P-PLAN, SOSA/SSN, WoT Thing Description, ODRL, SHACL, EARL, DQV, QUDT, DCAT, SKOS, OWL-Time, and Dublin Core Terms.
+The semantic authority is not a custom GymAct ontology. It is a W3C `prof:Profile` composed from public vocabularies including PROV-O, P-PLAN, SOSA/SSN, WoT Thing Description, ODRL, SHACL, EARL, DQV, QUDT, DCAT, SKOS, OWL-Time, and Dublin Core Terms.
 
 Python-native surfaces compose mature libraries directly:
 
-- Pydantic v2 for typed runtime models;
+- Pydantic v2 for canonical typed runtime models;
 - FastAPI for HTTP/OpenAPI;
 - FastMCP for agent-facing MCP tools;
 - Typer for the operator CLI;
-- FastStream as the event-broker application boundary;
-- RDFLib + pySHACL for semantic loading and conformance.
+- FastStream for broker-neutral event-driven commands;
+- RDFLib + pySHACL for semantic loading and real conformance checks.
 
-The Rust/WASM path is intentionally separate: ggen can consume the same admitted semantic graph to manufacture static Rust/WIT/WASM projections without forcing Python to reimplement its own ecosystem.
+The Rust/WASM path is deliberately separate: `gymact export-profile` materializes the same admitted RDF/SHACL graph for ggen to manufacture Rust/WIT/WASM/static projections. Python composes; Rust manufactures.
 
-## Invariants
-
-GymAct keeps these claims separate:
+## Core laws
 
 ```text
 request accepted != world changed != objective verified != benchmark scored
+
+semantic capability identity != provider-local binding
+
+authority_ref != authority decision
 ```
 
-A consequential operation is **fail-closed** when its environment requires authority. An `authority_ref` is only a reference; it does not grant permission. GymAct invokes an injected `AuthorityResolver` and proceeds only after an explicit positive decision. With no resolver configured, required authority is refused.
+A capability is represented publicly as `sosa:Procedure`. GymAct's canonical Python `Capability` carries the procedure IRI, title, READ/DO consequence class, and a provider-private binding. Real SHACL validates the public semantic projection before an environment is admitted.
 
-Idempotency is also semantic rather than best-effort: replaying the same intent/key returns the same result; reusing a key for a different intent is refused; concurrent identical requests are serialized per episode so they cannot double-actuate.
+Consequential environments are fail-closed. GymAct invokes an injected `AuthorityResolver` and proceeds only after an explicit positive decision. With no resolver configured, required authority is refused even when the caller provides an `authority_ref` string.
 
-Provider/tool failures are returned as typed, receipted `BLOCKED` results rather than disappearing behind unreceipted exceptions.
+Materialization, actuation, restore, and teardown all produce typed dispositions and receipts. Provider error text is hashed into `error_digest`; receipts retain bounded failure type rather than copying arbitrary provider output.
+
+Idempotency is semantic rather than best-effort:
+
+- same materialization key + same intent → same result;
+- same materialization key + different intent → `REFUSED:IDEMPOTENCY_KEY_CONFLICT`;
+- same actuation key + same intent → same result;
+- same actuation key + different intent → refusal;
+- concurrent identical actuation is serialized per episode and cannot double-actuate;
+- successful teardown is replayable as the same receipt.
 
 ## Quick start
 
@@ -38,6 +49,7 @@ gymact version
 gymact validate-profile
 gymact demo
 gymact demo --authority
+gymact export-profile ./gymact-profile
 ```
 
 Run the HTTP surface:
@@ -46,33 +58,53 @@ Run the HTTP surface:
 gymact serve --host 127.0.0.1 --port 8000
 ```
 
-Export the semantic authority for ggen/Rust or another external compiler:
-
-```bash
-gymact export-profile ./gymact-profile
-```
-
 Python:
 
 ```python
-from gymact import AllowListAuthorityResolver, GymAct, MemoryProvider
+from gymact import (
+    ActuationIntent,
+    AllowListAuthorityResolver,
+    GymAct,
+    MaterializationIntent,
+    MemoryProvider,
+)
+
+AUTHORITY = "urn:example:authority"
+SET = "urn:gymact:memory:capability:set"
 
 runtime = GymAct(
-    authority_resolver=AllowListAuthorityResolver({"urn:example:authority"})
+    authority_resolver=AllowListAuthorityResolver({AUTHORITY})
 )
-runtime.register_provider(MemoryProvider(requires_authority=True))
+runtime.register_provider(MemoryProvider())
+
+materialized = await runtime.materialize(
+    MaterializationIntent(
+        provider="memory",
+        config={"initial": {"healthy": False}, "requires_authority": True},
+    )
+)
+assert materialized.episode is not None
+
+episode = materialized.episode
+result = await runtime.act(
+    ActuationIntent(
+        episode_id=episode.episode_id,
+        capability=SET,
+        payload={"key": "healthy", "value": True},
+        authority_ref=AUTHORITY,
+    )
+)
+verification = await runtime.verify(episode.episode_id, {"healthy": True})
 ```
 
-`AllowListAuthorityResolver` is a bounded deterministic reference implementation for isolated gyms/tests. It is not a substitute for BRCE or another production policy decision point.
+`AllowListAuthorityResolver` is a deterministic reference implementation for tests and isolated local gyms. It is explicitly not a substitute for BRCE or another production policy decision point.
+
+## Surfaces
 
 FastAPI:
 
 ```python
-from gymact import GymAct, MemoryProvider
 from gymact.surfaces.fastapi import create_app
-
-runtime = GymAct()
-runtime.register_provider(MemoryProvider())
 app = create_app(runtime)
 ```
 
@@ -83,55 +115,58 @@ from gymact.surfaces.fastmcp import create_mcp
 mcp = create_mcp(runtime)
 ```
 
-FastStream accepts an existing broker so GymAct does not choose Kafka, NATS, RabbitMQ, Redis, or MQTT on behalf of the caller:
+FastStream accepts an externally selected broker, so GymAct does not choose Kafka, NATS, RabbitMQ, Redis, or MQTT on behalf of the caller:
 
 ```python
 from gymact.surfaces.faststream import create_stream_app
 app = create_stream_app(broker, runtime)
 ```
 
-The broker-neutral dispatcher implements the same core lifecycle operations (`discover`, `create_episode`, `observe`, `act`, `verify`, `checkpoint`, `restore`, `teardown`) before a broker family is selected.
+All surfaces use the same Pydantic intents/results and the same runtime. They do not independently reimplement GymAct semantics.
 
 ## Semantic authority
 
-`src/gymact/ontology/profile.ttl` contains GymAct's application profile and controlled ABox identities. It deliberately defines **zero GymAct OWL/RDFS classes or RDF/OWL properties**.
+`src/gymact/ontology/profile.ttl` contains the application profile and controlled ABox identities. It deliberately defines **zero GymAct OWL/RDFS classes or RDF/OWL properties**. `urn:gymact:*` is reserved for profile resources, ABox identities, SKOS concepts, and SHACL shapes.
 
-`ProfileAuthority.validate()` runs pySHACL and also enforces the zero-custom-TBox invariant mechanically. `ProfileAuthority.export()` materializes the exact packaged RDF and SHACL resources for an external compiler such as ggen.
+`ProfileAuthority.validate()` runs real pySHACL plus a mechanical zero-custom-TBox gate. `ProfileAuthority.validate_data()` admits extension ABoxes. `ProfileAuthority.validate_capabilities()` projects canonical Pydantic capabilities into SOSA/DCTERMS RDF and validates them through the same SHACL shapes.
 
-## Runtime model
-
-The reference runtime is intentionally small:
+## Runtime boundary
 
 ```text
-EnvironmentProvider -> Environment -> observations / actuations / verification
-                            ^
-                            |
-                         Episode
-
-consequential operation -> AuthorityResolver -> explicit decision -> Environment
+EnvironmentProvider
+      │
+      ├── materialization authority? ──► AuthorityResolver
+      │
+      ▼
+Environment
+      ├── capabilities() ──► sosa:Procedure profile validation
+      ├── observe()
+      ├── actuate(Capability, payload) ──► authority when consequential
+      ├── verify()
+      ├── checkpoint()/restore()
+      └── teardown()
 ```
 
-Providers are ordinary Python dependencies. A benchmark integration should map into this boundary rather than create another transport implementation.
+The bundled `MemoryProvider` is a deterministic executable reference gym. It exists to validate the generic contract, not to stand in for external benchmark execution.
 
-The bundled `MemoryProvider` is a deterministic executable reference gym used to validate authority refusal, admitted authority, idempotency, concurrent replay, state transitions, verification, checkpoint/restore, provider-failure receipts, HTTP, MCP, streaming dispatch, and CLI behavior.
+## Release admission
 
-## Standing
+v26.8.7 is release-ready only when exact-head CI proves:
 
-v26.8.7 is considered release-ready only when repository CI proves:
-
-- semantic profile parses and SHACL-conforms;
-- no custom GymAct TBox terms exist;
-- authority reference without an admitted resolver decision cannot actuate;
-- concurrent/idempotent replay does not duplicate actuation;
-- provider failures remain receipted and do not claim success;
-- observed consequence is independently verified;
+- public profile + extension ABoxes parse and SHACL-conform;
+- no custom GymAct TBox leaks into profile, shapes, or extension data;
+- provider capabilities are validated as public `sosa:Procedure` resources;
+- materialization and actuation authority are fail-closed;
+- idempotency and concurrent replay do not duplicate consequences;
+- provider failures are bounded and receipted;
 - FastAPI executes a real reference episode;
-- FastMCP executes in-process tools through its real Client;
-- FastStream's broker-neutral dispatcher executes the core lifecycle;
-- Typer profile export works from the installed wheel;
-- Python 3.11, 3.12, and 3.13 tests pass;
+- FastMCP executes in-process through its real Client;
+- FastStream executes the broker-neutral lifecycle;
+- Typer validates/exports the installed semantic profile;
+- Python 3.11/3.12/3.13 pass tests, coverage, lint, and format gates;
+- wheel/sdist metadata and clean-wheel profile resources pass;
 - strict docs build passes;
-- wheel/sdist build and metadata validation pass;
-- the resolved `uv.lock` is persisted and subsequently checked rather than regenerated silently.
+- the production container builds, boots, and answers `/health`;
+- the resolved `uv.lock` is committed and subsequently checked rather than silently regenerated.
 
-Gym-specific execution standing remains the responsibility of each integration and must not be inferred from importability.
+External benchmark integrations retain their own execution standing. Importability is never promoted into scenario-execution standing.

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException
 
-from gymact.models import ActuationIntent, CreateEpisodeRequest, RestoreRequest, VerifyRequest
+from gymact.models import ActuationIntent, MaterializationIntent, RestoreRequest, VerifyRequest
 from gymact.providers import MemoryProvider
 from gymact.runtime import GymAct
 
@@ -35,14 +35,16 @@ def create_app(runtime: GymAct | None = None) -> FastAPI:
         return {"providers": service.discover()}
 
     @app.post("/episodes")
-    async def create_episode(request: CreateEpisodeRequest) -> dict[str, object]:
+    async def materialize(intent: MaterializationIntent) -> dict[str, object]:
+        return (await service.materialize(intent)).model_dump(mode="json")
+
+    @app.get("/episodes/{episode_id}/capabilities")
+    async def capabilities(episode_id: str) -> dict[str, object]:
         try:
-            episode = await service.create_episode(
-                request.provider, scenario=request.scenario, config=request.config
-            )
+            values = service.capabilities(episode_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
-        return episode.model_dump(mode="json")
+        return {"capabilities": [item.model_dump(mode="json") for item in values]}
 
     @app.get("/episodes/{episode_id}/observations/latest")
     async def observe(episode_id: str) -> dict[str, object]:

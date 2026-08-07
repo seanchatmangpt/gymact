@@ -3,14 +3,23 @@
 from __future__ import annotations
 
 import shutil
+from collections.abc import Iterable
 from importlib.resources import as_file, files
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 from pyshacl import validate as shacl_validate
-from rdflib import Graph, OWL, RDF, RDFS
+from rdflib import Graph, Literal, Namespace, OWL, RDF, RDFS, URIRef
+from rdflib.namespace import DCTERMS
+
+from gymact.models import Capability, Consequence
 
 GYMACT_INSTANCE_PREFIX = "urn:gymact:"
+SOSA = Namespace("http://www.w3.org/ns/sosa/")
+CONSEQUENCE_IRI = {
+    Consequence.READ: URIRef("urn:gymact:consequence:read"),
+    Consequence.DO: URIRef("urn:gymact:consequence:do"),
+}
 
 
 class SemanticValidation(BaseModel):
@@ -64,6 +73,17 @@ class ProfileAuthority:
         return exported
 
     @staticmethod
+    def capability_graph(capabilities: Iterable[Capability]) -> Graph:
+        """Project canonical Python capability models into public SOSA/DCTERMS RDF."""
+        graph = Graph()
+        for capability in capabilities:
+            subject = URIRef(capability.iri)
+            graph.add((subject, RDF.type, SOSA.Procedure))
+            graph.add((subject, DCTERMS.title, Literal(capability.title)))
+            graph.add((subject, DCTERMS.type, CONSEQUENCE_IRI[capability.consequence]))
+        return graph
+
+    @staticmethod
     def _custom_tbox_terms(graph: Graph) -> tuple[str, ...]:
         tbox_types = (
             OWL.Class,
@@ -112,13 +132,12 @@ class ProfileAuthority:
         return self._validate_graph(self.graph())
 
     def validate_data(self, data_graph: Graph) -> SemanticValidation:
-        """Validate a gym/capability ABox together with the packaged profile ABox.
-
-        The caller's graph may define domain-specific instances and use external
-        ontologies. GymAct only refuses custom ``urn:gymact:`` TBox terms, preserving
-        the profile rule that GymAct itself does not grow a competing vocabulary.
-        """
+        """Validate a gym/capability ABox together with the packaged profile ABox."""
         combined = self.graph()
         for triple in data_graph:
             combined.add(triple)
         return self._validate_graph(combined)
+
+    def validate_capabilities(self, capabilities: Iterable[Capability]) -> SemanticValidation:
+        """Validate canonical provider capabilities through the same real SHACL profile."""
+        return self.validate_data(self.capability_graph(capabilities))

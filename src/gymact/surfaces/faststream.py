@@ -6,7 +6,7 @@ from typing import Any
 
 from faststream import FastStream
 
-from gymact.models import ActuationIntent
+from gymact.models import ActuationIntent, MaterializationIntent
 from gymact.providers import MemoryProvider
 from gymact.runtime import GymAct
 
@@ -25,12 +25,22 @@ async def dispatch_stream_command(service: GymAct, command: dict[str, Any]) -> d
     if operation == "discover":
         return {"operation": operation, "providers": list(service.discover())}
     if operation == "create_episode":
-        episode = await service.create_episode(
-            str(command.get("provider", "memory")),
-            scenario=command.get("scenario"),
-            config=command.get("config") or {},
-        )
-        return {"operation": operation, "result": episode.model_dump(mode="json")}
+        values: dict[str, Any] = {
+            "provider": str(command.get("provider", "memory")),
+            "scenario": command.get("scenario"),
+            "config": command.get("config") or {},
+            "authority_ref": command.get("authority_ref"),
+        }
+        if command.get("idempotency_key") is not None:
+            values["idempotency_key"] = command["idempotency_key"]
+        result = await service.materialize(MaterializationIntent.model_validate(values))
+        return {"operation": operation, "result": result.model_dump(mode="json")}
+    if operation == "capabilities":
+        values = service.capabilities(str(command["episode_id"]))
+        return {
+            "operation": operation,
+            "result": [item.model_dump(mode="json") for item in values],
+        }
     if operation == "observe":
         result = await service.observe(str(command["episode_id"]))
         return {"operation": operation, "result": result.model_dump(mode="json")}
@@ -82,11 +92,7 @@ def create_stream_app(
     command_channel: str = "gymact.commands",
     event_channel: str = "gymact.events",
 ) -> FastStream:
-    """Create a FastStream app and optionally bind a real broker.
-
-    Passing ``None`` is useful for construction/packaging smoke tests. A running
-    application still requires a concrete FastStream BrokerUsecase.
-    """
+    """Create a FastStream app and optionally bind a real externally chosen broker."""
     if broker is None:
         return FastStream()
     bind_stream_handlers(

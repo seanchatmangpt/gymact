@@ -5,6 +5,8 @@ import pytest
 from gymact import ActuationIntent, GymAct, MemoryProvider
 from gymact.surfaces.faststream import dispatch_stream_command
 
+SET_CAPABILITY = "urn:gymact:memory:capability:set"
+
 
 @pytest.mark.asyncio
 async def test_broker_neutral_stream_dispatch_covers_core_lifecycle() -> None:
@@ -20,9 +22,16 @@ async def test_broker_neutral_stream_dispatch_covers_core_lifecycle() -> None:
             "operation": "create_episode",
             "provider": "memory",
             "config": {"initial": {"value": 1}},
+            "idempotency_key": "stream-materialize",
         },
     )
-    episode_id = created["result"]["episode_id"]
+    assert created["result"]["accepted"] is True
+    episode_id = created["result"]["episode"]["episode_id"]
+
+    capabilities = await dispatch_stream_command(
+        runtime, {"operation": "capabilities", "episode_id": episode_id}
+    )
+    assert SET_CAPABILITY in {item["iri"] for item in capabilities["result"]}
 
     observed = await dispatch_stream_command(
         runtime, {"operation": "observe", "episode_id": episode_id}
@@ -31,7 +40,7 @@ async def test_broker_neutral_stream_dispatch_covers_core_lifecycle() -> None:
 
     intent = ActuationIntent(
         episode_id=episode_id,
-        affordance="set",
+        capability=SET_CAPABILITY,
         payload={"key": "value", "value": 2},
         idempotency_key="stream-set",
     )
@@ -58,7 +67,7 @@ async def test_broker_neutral_stream_dispatch_covers_core_lifecycle() -> None:
             "operation": "act",
             "intent": ActuationIntent(
                 episode_id=episode_id,
-                affordance="set",
+                capability=SET_CAPABILITY,
                 payload={"key": "value", "value": 3},
                 idempotency_key="stream-set-again",
             ).model_dump(mode="json"),

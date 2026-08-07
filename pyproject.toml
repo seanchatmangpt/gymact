@@ -1,5 +1,5 @@
 [build-system]
-requires = ["uv_build>=0.11.31,<0.12"]
+requires = ["uv_build>=0.11.32,<0.12"]
 build-backend = "uv_build"
 
 [project]
@@ -28,7 +28,6 @@ dependencies = [
   "faststream>=0.7.2,<0.8",
   "httpx>=0.28,<1",
   "pydantic>=2.13,<3",
-  "pydantic-settings>=2.7,<3",
   "pyshacl>=0.40,<1",
   "rdflib>=7.1,<8",
   "typer>=0.27,<1",
@@ -54,7 +53,7 @@ dev = [
   "mkdocstrings[python]>=0.30,<1",
   "pytest>=8.3,<9",
   "pytest-asyncio>=0.25,<2",
-  "ruff>=0.9,<1",
+  "ruff>=0.15,<1",
   "twine>=6,<7",
   "zensical>=0.0.51,<1",
 ]

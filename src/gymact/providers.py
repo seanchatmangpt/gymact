@@ -6,6 +6,8 @@ from copy import deepcopy
 from typing import Any, Protocol, runtime_checkable
 from uuid import uuid4
 
+from gymact.models import Capability, Consequence
+
 
 @runtime_checkable
 class Environment(Protocol):
@@ -14,9 +16,11 @@ class Environment(Protocol):
     environment_id: str
     requires_authority: bool
 
+    def capabilities(self) -> tuple[Capability, ...]: ...
+
     async def observe(self) -> dict[str, Any]: ...
 
-    async def actuate(self, affordance: str, payload: dict[str, Any]) -> dict[str, Any]: ...
+    async def actuate(self, capability: Capability, payload: dict[str, Any]) -> dict[str, Any]: ...
 
     async def verify(self, expected: dict[str, Any]) -> tuple[bool, dict[str, Any]]: ...
 
@@ -32,10 +36,33 @@ class EnvironmentProvider(Protocol):
     """Factory for materialized environment instances."""
 
     name: str
+    materialization_requires_authority: bool
 
     async def materialize(
         self, *, scenario: str | None, config: dict[str, Any]
     ) -> Environment: ...
+
+
+MEMORY_CAPABILITIES = (
+    Capability(
+        iri="urn:gymact:memory:capability:set",
+        title="Set a value in the bounded memory world",
+        consequence=Consequence.DO,
+        binding="set",
+    ),
+    Capability(
+        iri="urn:gymact:memory:capability:delete",
+        title="Delete a value from the bounded memory world",
+        consequence=Consequence.DO,
+        binding="delete",
+    ),
+    Capability(
+        iri="urn:gymact:memory:capability:increment",
+        title="Increment a numeric value in the bounded memory world",
+        consequence=Consequence.DO,
+        binding="increment",
+    ),
+)
 
 
 class MemoryEnvironment:
@@ -44,7 +71,7 @@ class MemoryEnvironment:
     def __init__(
         self, *, initial: dict[str, Any] | None = None, requires_authority: bool = False
     ) -> None:
-        self.environment_id = f"memory-{uuid4().hex}"
+        self.environment_id = f"urn:gymact:memory:environment:{uuid4().hex}"
         self.requires_authority = requires_authority
         self._state: dict[str, Any] = deepcopy(initial or {})
         self._closed = False
@@ -53,29 +80,40 @@ class MemoryEnvironment:
         if self._closed:
             raise RuntimeError("environment is torn down")
 
+    def capabilities(self) -> tuple[Capability, ...]:
+        self._ensure_open()
+        return MEMORY_CAPABILITIES
+
     async def observe(self) -> dict[str, Any]:
         self._ensure_open()
         return deepcopy(self._state)
 
-    async def actuate(self, affordance: str, payload: dict[str, Any]) -> dict[str, Any]:
+    async def actuate(self, capability: Capability, payload: dict[str, Any]) -> dict[str, Any]:
         self._ensure_open()
         before = deepcopy(self._state)
-        if affordance == "set":
+        binding = capability.binding
+        if binding == "set":
             key = str(payload["key"])
             self._state[key] = deepcopy(payload.get("value"))
-        elif affordance == "delete":
+        elif binding == "delete":
             key = str(payload["key"])
             self._state.pop(key, None)
-        elif affordance == "increment":
+        elif binding == "increment":
             key = str(payload["key"])
             amount = payload.get("amount", 1)
             current = self._state.get(key, 0)
-            if not isinstance(current, (int, float)) or not isinstance(amount, (int, float)):
-                raise TypeError("increment requires numeric current value and amount")
+            if not isinstance(current, (int, float)) or isinstance(current, bool):
+                raise TypeError("increment requires a numeric current value")
+            if not isinstance(amount, (int, float)) or isinstance(amount, bool):
+                raise TypeError("increment requires a numeric amount")
             self._state[key] = current + amount
         else:
-            raise ValueError(f"unsupported affordance: {affordance}")
-        return {"before": before, "after": deepcopy(self._state), "affordance": affordance}
+            raise ValueError(f"unsupported provider binding: {binding}")
+        return {
+            "before": before,
+            "after": deepcopy(self._state),
+            "capability": capability.iri,
+        }
 
     async def verify(self, expected: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
         self._ensure_open()
@@ -99,6 +137,7 @@ class MemoryProvider:
     """Reference provider that materializes isolated in-memory worlds."""
 
     name = "memory"
+    materialization_requires_authority = False
 
     def __init__(self, *, requires_authority: bool = False) -> None:
         self.requires_authority = requires_authority
@@ -110,5 +149,7 @@ class MemoryProvider:
         initial = config.get("initial", {})
         if not isinstance(initial, dict):
             raise TypeError("config.initial must be an object")
-        required = bool(config.get("requires_authority", self.requires_authority))
-        return MemoryEnvironment(initial=initial, requires_authority=required)
+        configured = config.get("requires_authority", self.requires_authority)
+        if not isinstance(configured, bool):
+            raise TypeError("config.requires_authority must be a boolean")
+        return MemoryEnvironment(initial=initial, requires_authority=configured)

@@ -1,9 +1,9 @@
-"""Typed runtime models for GymAct's Python reference implementation."""
+"""Canonical Pydantic runtime realization of GymAct's public semantic profile."""
 
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -19,6 +19,13 @@ class Standing(StrEnum):
     BUILD_BROKEN = "BUILD_BROKEN"
     UNSUPPORTED = "UNSUPPORTED"
     REFUSED = "REFUSED"
+
+
+class Consequence(StrEnum):
+    """Public-profile consequence classification for a capability."""
+
+    READ = "READ"
+    DO = "DO"
 
 
 class Operation(StrEnum):
@@ -38,6 +45,19 @@ class FrozenModel(BaseModel):
     """Strict immutable model base for receipts and externally visible values."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class Capability(FrozenModel):
+    """Python realization of a public ``sosa:Procedure`` capability.
+
+    ``iri`` is semantic identity. ``binding`` is provider-local execution data and
+    deliberately does not define the capability's meaning.
+    """
+
+    iri: str
+    title: str
+    consequence: Consequence
+    binding: str
 
 
 class Episode(FrozenModel):
@@ -62,9 +82,9 @@ class AuthorityRequest(FrozenModel):
     """Question submitted to an external authority resolver before consequential DO."""
 
     episode_id: str
-    environment_id: str
+    subject_ref: str
     operation: Operation
-    affordance: str
+    capability_ref: str
     payload: dict[str, Any] = Field(default_factory=dict)
     authority_ref: str | None = None
 
@@ -77,15 +97,26 @@ class AuthorityDecision(FrozenModel):
     evidence_ref: str | None = None
 
 
+class MaterializationIntent(FrozenModel):
+    """Request to create one bounded environment episode."""
+
+    provider: str = "memory"
+    scenario: str | None = None
+    config: dict[str, Any] = Field(default_factory=dict)
+    authority_ref: str | None = None
+    idempotency_key: str = Field(default_factory=lambda: uuid4().hex)
+    operation: Literal[Operation.MATERIALIZE] = Operation.MATERIALIZE
+
+
 class ActuationIntent(FrozenModel):
-    """Requested actuation. Constructing it never grants authority."""
+    """Requested consequential capability invocation. It never grants authority."""
 
     episode_id: str
-    affordance: str
+    capability: str
     payload: dict[str, Any] = Field(default_factory=dict)
     authority_ref: str | None = None
     idempotency_key: str = Field(default_factory=lambda: uuid4().hex)
-    operation: Operation = Operation.ACT
+    operation: Literal[Operation.ACT] = Operation.ACT
 
 
 class VerificationResult(FrozenModel):
@@ -108,20 +139,32 @@ class Score(FrozenModel):
 
 
 class Receipt(FrozenModel):
-    """Bounded causal evidence for one accepted or refused operation."""
+    """Bounded causal evidence for one accepted, blocked, or refused operation."""
 
     receipt_id: str = Field(default_factory=lambda: uuid4().hex)
     episode_id: str
     operation: Operation
     standing: Standing
-    affordance: str | None = None
+    subject_ref: str | None = None
+    capability_ref: str | None = None
     authority_ref: str | None = None
     authority_evidence_ref: str | None = None
     idempotency_key: str | None = None
     pre_state_digest: str | None = None
     post_state_digest: str | None = None
     verification_id: str | None = None
+    error_digest: str | None = None
     reason: str | None = None
+
+
+class MaterializationResult(FrozenModel):
+    """Disposition of environment materialization, including refused/blocked setup."""
+
+    accepted: bool
+    standing: Standing
+    episode: Episode | None = None
+    observation: Observation | None = None
+    receipt: Receipt
 
 
 class ActuationResult(FrozenModel):
@@ -132,15 +175,6 @@ class ActuationResult(FrozenModel):
     effect: dict[str, Any] | None = None
     observation: Observation | None = None
     receipt: Receipt
-
-
-class CreateEpisodeRequest(BaseModel):
-    """HTTP/MCP request for a bounded environment episode."""
-
-    model_config = ConfigDict(extra="forbid")
-    provider: str = "memory"
-    scenario: str | None = None
-    config: dict[str, Any] = Field(default_factory=dict)
 
 
 class VerifyRequest(BaseModel):

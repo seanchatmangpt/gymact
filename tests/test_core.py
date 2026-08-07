@@ -13,21 +13,51 @@ from typer.testing import CliRunner
 from gymact import (
     ActuationIntent,
     AllowListAuthorityResolver,
+    Capability,
+    Consequence,
     GymAct,
+    MaterializationIntent,
     MemoryProvider,
     ProfileAuthority,
     Standing,
 )
 from gymact.cli import app as cli_app
+from gymact.providers import MemoryEnvironment
 from gymact.surfaces.fastapi import create_app
 from gymact.surfaces.fastmcp import create_mcp
 from gymact.surfaces.faststream import bind_stream_handlers, create_stream_app
 
 AUTHORITY = "urn:test:authority"
+SET_CAPABILITY = "urn:gymact:memory:capability:set"
+DELETE_CAPABILITY = "urn:gymact:memory:capability:delete"
+INCREMENT_CAPABILITY = "urn:gymact:memory:capability:increment"
 
 
 def authorized_runtime() -> GymAct:
     return GymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
+
+
+async def materialize_memory(
+    runtime: GymAct,
+    *,
+    initial: dict[str, object] | None = None,
+    requires_authority: bool = False,
+    key: str = "materialize",
+):
+    result = await runtime.materialize(
+        MaterializationIntent(
+            provider="memory",
+            config={
+                "initial": initial or {},
+                "requires_authority": requires_authority,
+            },
+            idempotency_key=key,
+        )
+    )
+    assert result.accepted is True
+    assert result.episode is not None
+    assert result.observation is not None
+    return result
 
 
 def test_semantic_profile_is_public_ontology_only(tmp_path) -> None:
@@ -35,21 +65,141 @@ def test_semantic_profile_is_public_ontology_only(tmp_path) -> None:
     result = authority.validate()
     assert result.conforms, result.report_text
     assert result.custom_tbox_terms == ()
-    assert result.triple_count >= 40
+    assert result.triple_count >= 50
     exported = authority.export(tmp_path)
     assert set(exported) == {"profile.ttl", "profile.shacl.ttl"}
     assert all(path.exists() and path.stat().st_size > 0 for path in exported.values())
 
 
+def test_provider_registration_and_discovery() -> None:
+    runtime = GymAct()
+    runtime.register_provider(MemoryProvider())
+    assert runtime.discover() == ("memory",)
+    with pytest.raises(ValueError, match="provider already registered"):
+        runtime.register_provider(MemoryProvider())
+    with pytest.raises(TypeError, match="EnvironmentProvider"):
+        runtime.register_provider(object())  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_unknown_provider_materialization_is_typed_not_exception() -> None:
+    runtime = GymAct()
+    result = await runtime.materialize(
+        MaterializationIntent(provider="missing", idempotency_key="missing-provider")
+    )
+    assert result.accepted is False
+    assert result.standing == Standing.UNSUPPORTED
+    assert result.receipt.reason == "UNKNOWN_PROVIDER"
+
+
+@pytest.mark.asyncio
+async def test_materialization_is_idempotent_and_conflict_refused() -> None:
+    runtime = GymAct()
+    runtime.register_provider(MemoryProvider())
+    intent = MaterializationIntent(
+        provider="memory",
+        config={"initial": {"x": 1}},
+        idempotency_key="same-materialization",
+    )
+    first = await runtime.materialize(intent)
+    second = await runtime.materialize(intent)
+    assert first == second
+    conflicting = intent.model_copy(update={"config": {"initial": {"x": 2}}})
+    refused = await runtime.materialize(conflicting)
+    assert refused.standing == Standing.REFUSED
+    assert refused.receipt.reason == "IDEMPOTENCY_KEY_CONFLICT"
+
+
+class GuardedMaterializationProvider(MemoryProvider):
+    name = "guarded-memory"
+    materialization_requires_authority = True
+
+
+@pytest.mark.asyncio
+async def test_materialization_authority_is_fail_closed_then_admitted() -> None:
+    denied_runtime = GymAct()
+    denied_runtime.register_provider(GuardedMaterializationProvider())
+    denied = await denied_runtime.materialize(
+        MaterializationIntent(
+            provider="guarded-memory",
+            authority_ref=AUTHORITY,
+            idempotency_key="denied-materialize",
+        )
+    )
+    assert denied.standing == Standing.REFUSED
+    assert denied.receipt.reason == "AUTHORITY_NOT_ADMITTED"
+
+    allowed_runtime = authorized_runtime()
+    allowed_runtime.register_provider(GuardedMaterializationProvider())
+    allowed = await allowed_runtime.materialize(
+        MaterializationIntent(
+            provider="guarded-memory",
+            authority_ref=AUTHORITY,
+            idempotency_key="allowed-materialize",
+        )
+    )
+    assert allowed.standing == Standing.ALIVE
+    assert allowed.episode is not None
+    assert allowed.receipt.authority_evidence_ref is not None
+
+
+class BrokenMaterializationProvider(MemoryProvider):
+    name = "broken-materialization"
+
+    async def materialize(self, *, scenario, config):  # type: ignore[no-untyped-def]
+        del scenario, config
+        raise RuntimeError("secret provider detail must be hashed, not copied into receipt")
+
+
+@pytest.mark.asyncio
+async def test_materialization_provider_error_is_bounded_and_receipted() -> None:
+    runtime = GymAct()
+    runtime.register_provider(BrokenMaterializationProvider())
+    result = await runtime.materialize(
+        MaterializationIntent(
+            provider="broken-materialization",
+            idempotency_key="broken-materialization",
+        )
+    )
+    assert result.standing == Standing.BLOCKED
+    assert result.receipt.reason == "PROVIDER_ERROR:RuntimeError"
+    assert result.receipt.error_digest is not None
+    assert "secret provider detail" not in result.receipt.reason
+
+
+@pytest.mark.asyncio
+async def test_capabilities_are_semantic_identity_not_provider_binding() -> None:
+    runtime = GymAct()
+    runtime.register_provider(MemoryProvider())
+    materialized = await materialize_memory(runtime, key="capability-materialize")
+    assert materialized.episode is not None
+    capabilities = runtime.capabilities(materialized.episode.episode_id)
+    assert {item.iri for item in capabilities} == {
+        SET_CAPABILITY,
+        DELETE_CAPABILITY,
+        INCREMENT_CAPABILITY,
+    }
+    assert {item.binding for item in capabilities} == {"set", "delete", "increment"}
+    validation = runtime.profile.validate_capabilities(capabilities)
+    assert validation.conforms, validation.report_text
+
+
 @pytest.mark.asyncio
 async def test_authority_refusal_does_not_change_world() -> None:
     runtime = GymAct()
-    runtime.register_provider(MemoryProvider(requires_authority=True))
-    episode = await runtime.create_episode("memory", config={"initial": {"safe": False}})
+    runtime.register_provider(MemoryProvider())
+    materialized = await materialize_memory(
+        runtime,
+        initial={"safe": False},
+        requires_authority=True,
+        key="authority-refusal-materialize",
+    )
+    episode = materialized.episode
+    assert episode is not None
     result = await runtime.act(
         ActuationIntent(
             episode_id=episode.episode_id,
-            affordance="set",
+            capability=SET_CAPABILITY,
             payload={"key": "safe", "value": True},
             idempotency_key="refused-once",
         )
@@ -65,12 +215,19 @@ async def test_authority_refusal_does_not_change_world() -> None:
 @pytest.mark.asyncio
 async def test_reference_string_without_admission_is_not_authority() -> None:
     runtime = GymAct()
-    runtime.register_provider(MemoryProvider(requires_authority=True))
-    episode = await runtime.create_episode("memory", config={"initial": {"safe": False}})
+    runtime.register_provider(MemoryProvider())
+    materialized = await materialize_memory(
+        runtime,
+        initial={"safe": False},
+        requires_authority=True,
+        key="authority-string-materialize",
+    )
+    episode = materialized.episode
+    assert episode is not None
     result = await runtime.act(
         ActuationIntent(
             episode_id=episode.episode_id,
-            affordance="set",
+            capability=SET_CAPABILITY,
             payload={"key": "safe", "value": True},
             authority_ref=AUTHORITY,
             idempotency_key="unresolved-authority",
@@ -84,11 +241,18 @@ async def test_reference_string_without_admission_is_not_authority() -> None:
 @pytest.mark.asyncio
 async def test_authorized_actuation_is_idempotent_and_independently_verified() -> None:
     runtime = authorized_runtime()
-    runtime.register_provider(MemoryProvider(requires_authority=True))
-    episode = await runtime.create_episode("memory", config={"initial": {"count": 0}})
+    runtime.register_provider(MemoryProvider())
+    materialized = await materialize_memory(
+        runtime,
+        initial={"count": 0},
+        requires_authority=True,
+        key="authorized-materialize",
+    )
+    episode = materialized.episode
+    assert episode is not None
     intent = ActuationIntent(
         episode_id=episode.episode_id,
-        affordance="increment",
+        capability=INCREMENT_CAPABILITY,
         payload={"key": "count", "amount": 1},
         authority_ref=AUTHORITY,
         idempotency_key="increment-once",
@@ -105,13 +269,78 @@ async def test_authorized_actuation_is_idempotent_and_independently_verified() -
 
 
 @pytest.mark.asyncio
+async def test_unknown_capability_is_unsupported_without_provider_call() -> None:
+    runtime = GymAct()
+    runtime.register_provider(MemoryProvider())
+    materialized = await materialize_memory(runtime, initial={"x": 1}, key="unknown-cap")
+    episode = materialized.episode
+    assert episode is not None
+    result = await runtime.act(
+        ActuationIntent(
+            episode_id=episode.episode_id,
+            capability="urn:test:capability:missing",
+            idempotency_key="unknown-capability",
+        )
+    )
+    assert result.standing == Standing.UNSUPPORTED
+    assert result.receipt.reason == "UNKNOWN_CAPABILITY"
+    assert (await runtime.observe(episode.episode_id)).state == {"x": 1}
+
+
+class ReadCapabilityEnvironment(MemoryEnvironment):
+    def capabilities(self) -> tuple[Capability, ...]:
+        return (
+            Capability(
+                iri="urn:test:capability:read",
+                title="Read-only capability",
+                consequence=Consequence.READ,
+                binding="read",
+            ),
+        )
+
+
+class ReadCapabilityProvider(MemoryProvider):
+    name = "read-capability"
+
+    async def materialize(self, *, scenario, config):  # type: ignore[no-untyped-def]
+        del scenario, config
+        return ReadCapabilityEnvironment()
+
+
+@pytest.mark.asyncio
+async def test_read_capability_cannot_be_smuggled_through_actuation() -> None:
+    runtime = GymAct()
+    runtime.register_provider(ReadCapabilityProvider())
+    result = await runtime.materialize(
+        MaterializationIntent(provider="read-capability", idempotency_key="read-materialize")
+    )
+    assert result.episode is not None
+    actuation = await runtime.act(
+        ActuationIntent(
+            episode_id=result.episode.episode_id,
+            capability="urn:test:capability:read",
+            idempotency_key="read-as-actuation",
+        )
+    )
+    assert actuation.standing == Standing.REFUSED
+    assert actuation.receipt.reason == "READ_CAPABILITY_IS_NOT_ACTUATION"
+
+
+@pytest.mark.asyncio
 async def test_concurrent_same_intent_actuates_once() -> None:
     runtime = authorized_runtime()
-    runtime.register_provider(MemoryProvider(requires_authority=True))
-    episode = await runtime.create_episode("memory", config={"initial": {"count": 0}})
+    runtime.register_provider(MemoryProvider())
+    materialized = await materialize_memory(
+        runtime,
+        initial={"count": 0},
+        requires_authority=True,
+        key="concurrent-materialize",
+    )
+    episode = materialized.episode
+    assert episode is not None
     intent = ActuationIntent(
         episode_id=episode.episode_id,
-        affordance="increment",
+        capability=INCREMENT_CAPABILITY,
         payload={"key": "count", "amount": 1},
         authority_ref=AUTHORITY,
         idempotency_key="concurrent-increment",
@@ -134,10 +363,12 @@ async def test_concurrent_same_intent_actuates_once() -> None:
 async def test_idempotency_key_conflict_is_refused_without_second_actuation() -> None:
     runtime = GymAct()
     runtime.register_provider(MemoryProvider())
-    episode = await runtime.create_episode("memory", config={"initial": {"value": 0}})
+    materialized = await materialize_memory(runtime, initial={"value": 0}, key="conflict-mat")
+    episode = materialized.episode
+    assert episode is not None
     first = ActuationIntent(
         episode_id=episode.episode_id,
-        affordance="set",
+        capability=SET_CAPABILITY,
         payload={"key": "value", "value": 1},
         idempotency_key="same-key",
     )
@@ -150,33 +381,38 @@ async def test_idempotency_key_conflict_is_refused_without_second_actuation() ->
 
 
 @pytest.mark.asyncio
-async def test_provider_error_is_receipted_and_does_not_claim_success() -> None:
+async def test_provider_error_is_receipted_without_leaking_detail() -> None:
     runtime = GymAct()
     runtime.register_provider(MemoryProvider())
-    episode = await runtime.create_episode("memory", config={"initial": {"value": 1}})
+    materialized = await materialize_memory(runtime, initial={"value": "text"}, key="provider-error-mat")
+    episode = materialized.episode
+    assert episode is not None
     result = await runtime.act(
         ActuationIntent(
             episode_id=episode.episode_id,
-            affordance="does-not-exist",
-            idempotency_key="bad-affordance",
+            capability=INCREMENT_CAPABILITY,
+            payload={"key": "value", "amount": 1},
+            idempotency_key="bad-increment",
         )
     )
     assert result.accepted is False
     assert result.standing == Standing.BLOCKED
-    assert result.receipt.reason is not None
-    assert result.receipt.reason.startswith("PROVIDER_ERROR:ValueError:")
+    assert result.receipt.reason == "PROVIDER_ERROR:TypeError"
+    assert result.receipt.error_digest is not None
     assert result.receipt.pre_state_digest == result.receipt.post_state_digest
 
 
 @pytest.mark.asyncio
-async def test_memory_provider_delete_increment_verify_and_teardown() -> None:
+async def test_memory_delete_increment_verify_and_idempotent_teardown() -> None:
     runtime = GymAct()
     runtime.register_provider(MemoryProvider())
-    episode = await runtime.create_episode("memory", config={"initial": {"x": 1, "drop": 2}})
+    materialized = await materialize_memory(runtime, initial={"x": 1, "drop": 2}, key="lifecycle-mat")
+    episode = materialized.episode
+    assert episode is not None
     delete = await runtime.act(
         ActuationIntent(
             episode_id=episode.episode_id,
-            affordance="delete",
+            capability=DELETE_CAPABILITY,
             payload={"key": "drop"},
             idempotency_key="delete",
         )
@@ -185,7 +421,7 @@ async def test_memory_provider_delete_increment_verify_and_teardown() -> None:
     increment = await runtime.act(
         ActuationIntent(
             episode_id=episode.episode_id,
-            affordance="increment",
+            capability=INCREMENT_CAPABILITY,
             payload={"key": "x", "amount": 3},
             idempotency_key="increment",
         )
@@ -195,6 +431,7 @@ async def test_memory_provider_delete_increment_verify_and_teardown() -> None:
     assert (await runtime.verify(episode.episode_id, {"x": 99})).passed is False
     receipt = await runtime.teardown(episode.episode_id)
     assert receipt.standing == Standing.ALIVE
+    assert await runtime.teardown(episode.episode_id) == receipt
     with pytest.raises(KeyError, match="unknown episode"):
         await runtime.observe(episode.episode_id)
 
@@ -202,13 +439,20 @@ async def test_memory_provider_delete_increment_verify_and_teardown() -> None:
 @pytest.mark.asyncio
 async def test_checkpoint_restore_requires_admitted_authority() -> None:
     runtime = authorized_runtime()
-    runtime.register_provider(MemoryProvider(requires_authority=True))
-    episode = await runtime.create_episode("memory", config={"initial": {"value": 1}})
+    runtime.register_provider(MemoryProvider())
+    materialized = await materialize_memory(
+        runtime,
+        initial={"value": 1},
+        requires_authority=True,
+        key="restore-mat",
+    )
+    episode = materialized.episode
+    assert episode is not None
     checkpoint = await runtime.checkpoint(episode.episode_id)
     await runtime.act(
         ActuationIntent(
             episode_id=episode.episode_id,
-            affordance="set",
+            capability=SET_CAPABILITY,
             payload={"key": "value", "value": 2},
             authority_ref=AUTHORITY,
         )
@@ -229,17 +473,27 @@ def test_fastapi_surface_executes_real_episode_and_contract_routes() -> None:
     assert client.get("/profile").json()["conforms"] is True
     assert client.get("/providers").json() == {"providers": ["memory"]}
     response = client.post(
-        "/episodes", json={"provider": "memory", "config": {"initial": {"x": 1}}}
+        "/episodes",
+        json={
+            "provider": "memory",
+            "config": {"initial": {"x": 1}},
+            "idempotency_key": "api-materialize",
+            "operation": "materialize",
+        },
     )
     assert response.status_code == 200
-    episode_id = response.json()["episode_id"]
+    payload = response.json()
+    assert payload["accepted"] is True
+    episode_id = payload["episode"]["episode_id"]
+    capabilities = client.get(f"/episodes/{episode_id}/capabilities").json()["capabilities"]
+    assert SET_CAPABILITY in {item["iri"] for item in capabilities}
     assert client.get(f"/episodes/{episode_id}/observations/latest").json()["state"] == {"x": 1}
     checkpoint = client.get(f"/episodes/{episode_id}/checkpoint").json()["checkpoint"]
     action = client.post(
         f"/episodes/{episode_id}/actions",
         json={
             "episode_id": episode_id,
-            "affordance": "set",
+            "capability": SET_CAPABILITY,
             "payload": {"key": "x", "value": 2},
             "idempotency_key": "api-set",
             "operation": "act",
@@ -249,7 +503,7 @@ def test_fastapi_surface_executes_real_episode_and_contract_routes() -> None:
     assert action.json()["accepted"] is True
     mismatch = client.post(
         f"/episodes/{episode_id}/actions",
-        json={"episode_id": "wrong", "affordance": "set", "payload": {}},
+        json={"episode_id": "wrong", "capability": SET_CAPABILITY, "payload": {}},
     )
     assert mismatch.status_code == 409
     verification = client.post(f"/episodes/{episode_id}/verify", json={"expected": {"x": 2}})
@@ -260,7 +514,11 @@ def test_fastapi_surface_executes_real_episode_and_contract_routes() -> None:
     assert restored["standing"] == "ALIVE"
     assert client.delete(f"/episodes/{episode_id}").json()["standing"] == "ALIVE"
     assert client.get("/episodes/missing/observations/latest").status_code == 404
-    assert client.post("/episodes", json={"provider": "missing"}).status_code == 404
+    unsupported = client.post(
+        "/episodes",
+        json={"provider": "missing", "idempotency_key": "missing-api"},
+    ).json()
+    assert unsupported["standing"] == "UNSUPPORTED"
 
 
 @pytest.mark.asyncio
@@ -274,6 +532,7 @@ async def test_fastmcp_surface_executes_in_process() -> None:
         assert {tool.name for tool in tools} == {
             "discover",
             "create_episode",
+            "capabilities",
             "observe",
             "act",
             "verify",
@@ -282,20 +541,29 @@ async def test_fastmcp_surface_executes_in_process() -> None:
             "teardown",
         }
         created = await client.call_tool(
-            "create_episode", {"provider": "memory", "config": {"initial": {"x": 1}}}
+            "create_episode",
+            {
+                "provider": "memory",
+                "config": {"initial": {"x": 1}},
+                "idempotency_key": "mcp-materialize",
+            },
         )
-        episode_id = created.data["episode_id"]
+        episode_id = created.data["episode"]["episode_id"]
+        listed = await client.call_tool("capabilities", {"episode_id": episode_id})
+        assert SET_CAPABILITY in {item["iri"] for item in listed.data}
         action = await client.call_tool(
             "act",
             {
                 "episode_id": episode_id,
-                "affordance": "set",
+                "capability": SET_CAPABILITY,
                 "payload": {"key": "x", "value": 3},
                 "idempotency_key": "mcp-set",
             },
         )
         assert action.data["accepted"] is True
-        verified = await client.call_tool("verify", {"episode_id": episode_id, "expected": {"x": 3}})
+        verified = await client.call_tool(
+            "verify", {"episode_id": episode_id, "expected": {"x": 3}}
+        )
         assert verified.data["passed"] is True
 
 
