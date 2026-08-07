@@ -41,37 +41,19 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - uses: astral-sh/setup-uv@v6
       - name: Install
-        env:
-          PYTHON_VERSION: ${{ matrix.python-version }}
         run: |
           uv sync --all-extras --group dev
-          if [[ "$PYTHON_VERSION" != "3.13" ]]; then
-            uv pip install "browsergym-core @ git+https://github.com/ServiceNow/BrowserGym.git@9e779f087de9a65668b6974d11f9ce9816026e96#subdirectory=browsergym/core"
-            uv run playwright install chromium
-          else
-            echo 'BrowserGym pin uses playwright==1.44 -> greenlet==3.0.3, which is not CPython 3.13 compatible.'
-          fi
+          # [tool.uv] override-dependencies pins playwright>=1.47,<2 (see
+          # pyproject.toml), which resolves a prebuilt greenlet wheel on
+          # every supported Python (including 3.13) instead of
+          # browsergym-core==0.14.3's default playwright==1.44 ->
+          # greenlet==3.0.3 pin, which has no 3.13 wheel.
+          uv pip install "browsergym-core @ git+https://github.com/ServiceNow/BrowserGym.git@9e779f087de9a65668b6974d11f9ce9816026e96#subdirectory=browsergym/core"
+          uv run playwright install chromium
       - name: Admit semantic profile and BrowserGym capabilities
-        env:
-          PYTHON_VERSION: ${{ matrix.python-version }}
         run: |
           uv run gymact validate-profile
-          if [[ "$PYTHON_VERSION" != "3.13" ]]; then
-            uv run python -c 'from gymact.gyms.browsergym import BROWSERGYM_CAPABILITIES; from gymact.semantic import ProfileAuthority; r = ProfileAuthority().validate_capabilities(BROWSERGYM_CAPABILITIES); print(r.model_dump_json()); assert r.conforms, r.report_text'
-          fi
-      - name: Prove BrowserGym standing stays fail-real on Python 3.13
-        if: matrix.python-version == '3.13'
-        shell: bash
-        run: |
-          set -euo pipefail
-          set +e
-          uv run pytest --collect-only -q tests/test_browsergym_gym.py > /tmp/browsergym-standing.txt 2>&1
-          rc=$?
-          set -e
-          cat /tmp/browsergym-standing.txt
-          test "$rc" -ne 0
-          grep -q "LOCAL_GYM:browsergym-openended" /tmp/browsergym-standing.txt
-          grep -q "GYMACT_ALLOW_DEGRADED_STANDINGS" /tmp/browsergym-standing.txt
+          uv run python -c 'from gymact.gyms.browsergym import BROWSERGYM_CAPABILITIES; from gymact.semantic import ProfileAuthority; r = ProfileAuthority().validate_capabilities(BROWSERGYM_CAPABILITIES); print(r.model_dump_json()); assert r.conforms, r.report_text'
       - name: Enforce Chicago-style tests
         run: |
           if grep -RInE 'unittest\.mock|\bMock\b|\bpatch\b|monkeypatch' tests; then
@@ -80,15 +62,7 @@ jobs:
           fi
           echo 'mock-grep: zero matches'
       - name: Semantic, runtime, evidence, surface, and BrowserGym tests
-        env:
-          PYTHON_VERSION: ${{ matrix.python-version }}
-        run: |
-          if [[ "$PYTHON_VERSION" == "3.13" ]]; then
-            GYMACT_ALLOW_DEGRADED_STANDINGS=LOCAL_GYM:browsergym-openended \
-              uv run coverage run -m pytest -v
-          else
-            uv run coverage run -m pytest -v
-          fi
+        run: uv run coverage run -m pytest -v
       - name: Coverage
         run: uv run coverage report
       - name: Ruff
