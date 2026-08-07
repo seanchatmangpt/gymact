@@ -6,6 +6,8 @@ import importlib.util
 from importlib import metadata
 from pathlib import Path
 
+import pytest
+
 from gymact.standing import require_standing
 
 PINNED_BROWSERGYM_VERSION = "0.14.3"
@@ -86,6 +88,16 @@ def test_browsergym_capabilities_are_real_sosa_procedures_conforming_to_profile(
 
     assert result.conforms is True, result.report_text
     assert result.custom_tbox_terms == ()
+
+
+async def test_provider_refuses_network_materialization_before_browser_launch() -> None:
+    provider = BrowserGymProvider()
+
+    with pytest.raises(ValueError, match="LOCAL_START_URL_REQUIRED"):
+        await provider.materialize(
+            scenario="openended",
+            config={"start_url": "https://example.com", "seed": 0},
+        )
 
 
 async def test_real_browsergym_navigation_episode_is_receipted() -> None:
