@@ -12,6 +12,7 @@ import uvicorn
 from gymact import __version__
 from gymact.authority import AllowListAuthorityResolver
 from gymact.contract import build_contract
+from gymact.manufacture import export_manufacturing_bundle
 from gymact.models import ActuationIntent, MaterializationIntent
 from gymact.providers import MemoryProvider
 from gymact.runtime import GymAct
@@ -44,8 +45,15 @@ def validate_profile() -> None:
 
 @app.command("export-profile")
 def export_profile(directory: Path) -> None:
-    """Export the admitted RDF/SHACL profile for ggen or another compiler."""
+    """Export the admitted RDF/SHACL profile for direct semantic inspection."""
     paths = ProfileAuthority().export(directory)
+    typer.echo(json.dumps({key: str(value) for key, value in paths.items()}, sort_keys=True))
+
+
+@app.command("export-bundle")
+def export_bundle(directory: Path) -> None:
+    """Export RDF/SHACL plus RFC8785 runtime contract for ggen/Rust manufacture."""
+    paths = export_manufacturing_bundle(directory)
     typer.echo(json.dumps({key: str(value) for key, value in paths.items()}, sort_keys=True))
 
 
