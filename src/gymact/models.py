@@ -54,7 +54,7 @@ class CanonicalInputModel(FrozenModel):
     @model_validator(mode="after")
     def require_canonical_json(self) -> Self:
         try:
-            rfc8785.dumps(self.model_dump(mode="json"))
+            rfc8785.dumps(self.model_dump(mode="python"))
         except (rfc8785.CanonicalizationError, TypeError, ValueError) as exc:
             raise ValueError("INPUT_NOT_RFC8785_CANONICAL") from exc
         return self
