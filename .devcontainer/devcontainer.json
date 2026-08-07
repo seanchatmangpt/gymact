@@ -1,0 +1,73 @@
+{
+    "name": "gymact",
+    "dockerComposeFile": "../docker-compose.yml",
+    "service": "devcontainer",
+    "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}/",
+    "features": {
+        "ghcr.io/devcontainers-extra/features/apt-get-packages:1": {
+            "packages": "starship"
+        }
+    },
+    "overrideCommand": true,
+    "remoteUser": "user",
+    "postStartCommand": "sudo chown -R user:user /opt/ && uv sync --python ${localEnv:PYTHON_VERSION:3.13} --resolution ${localEnv:RESOLUTION_STRATEGY:highest} --all-extras && prek install",
+    "customizations": {
+        "jetbrains": {
+            "backend": "PyCharm",
+            "plugins": [
+                "com.github.copilot"
+            ]
+        },
+        "vscode": {
+            "extensions": [
+                "astral-sh.ty",
+                "charliermarsh.ruff",
+                "GitHub.copilot-chat",
+                "GitHub.vscode-github-actions",
+                "GitHub.vscode-pull-request-github",
+                "ms-azuretools.vscode-docker",
+                "ms-python.python",
+                "ms-toolsai.jupyter",
+                "tamasfe.even-better-toml"
+            ],
+            "settings": {
+                "chat.extensionUnification.enabled": true,
+                "editor.bracketPairColorization.enabled": true,
+                "editor.codeActionsOnSave": {
+                    "source.fixAll": "explicit",
+                    "source.organizeImports": "explicit"
+                },
+                "editor.formatOnSave": true,
+                "[python]": {
+                    "editor.defaultFormatter": "charliermarsh.ruff"
+                },
+                "[toml]": {
+                    "editor.formatOnSave": false
+                },
+                "editor.rulers": [
+                    100
+                ],
+                "files.autoSave": "onFocusChange",
+                "github.copilot.chat.codesearch.enabled": true,
+                "jupyter.kernels.excludePythonEnvironments": [
+                    "/usr/local/bin/python"
+                ],
+                "notebook.codeActionsOnSave": {
+                    "notebook.source.fixAll": "explicit",
+                    "notebook.source.organizeImports": "explicit"
+                },
+                "notebook.formatOnSave.enabled": true,
+                "python.defaultInterpreterPath": "/opt/venv/bin/python",
+                "python.languageServer": "None",
+                "python.terminal.activateEnvironment": false,
+                "python.testing.pytestEnabled": true,
+                "terminal.integrated.env.linux": {
+                    "GIT_EDITOR": "code --wait"
+                },
+                "terminal.integrated.env.mac": {
+                    "GIT_EDITOR": "code --wait"
+                }
+            }
+        }
+    }
+}

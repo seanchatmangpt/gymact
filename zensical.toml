@@ -1,0 +1,56 @@
+[project]
+site_name = "gymact"
+site_description = "Benchmark Gym Actuation"
+site_author = "Ken Lui"
+site_url = "https://seanchatmangpt.github.io/gymact"
+repo_url = "https://github.com/seanchatmangpt/gymact"
+repo_name = "seanchatmangpt/gymact"
+copyright = "&copy; 2026 Ken Lui"
+strict = true
+watch = ["src"]
+nav = [
+  { Home = "index.md" },
+  { Reference = "reference.md" },
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+toggle.icon = "lucide/sun-moon"
+toggle.name = "Switch to light mode"
+
+# Palette toggle for light mode
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+# Palette toggle for dark mode
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to system preference"
+
+[project.markdown_extensions.pymdownx.highlight]
+[project.markdown_extensions.pymdownx.superfences]
+
+[project.validation]
+omitted_files = "warn"
+absolute_links = "warn"
+unrecognized_links = "warn"
+anchors = "warn"
+
+[project.theme]
+features = [
+    "search.highlight"
+]
+[project.plugins.mkdocstrings.handlers.python]
+inventories = ["https://docs.python.org/3/objects.inv"]
+paths = ["src/gymact"]
+
+[project.plugins.mkdocstrings.handlers.python.options]
+docstring_style = "numpy"
+inherited_members = true
+show_source = true
+show_submodules = true
