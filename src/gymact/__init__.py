@@ -31,6 +31,7 @@ from gymact.providers import Environment, EnvironmentProvider, MemoryProvider
 from gymact.runtime import BoundaryBlocked, GymAct
 from gymact.scoring import BinaryVerificationScorer, Scorer, score_verification
 from gymact.semantic import ProfileAuthority, SemanticValidation
+from gymact.sqlite_ledger import SQLiteReceiptLedger
 
 __all__ = [
     "ActuationIntent",
@@ -62,6 +63,7 @@ __all__ = [
     "ReceiptLedger",
     "RuntimeContract",
     "RuntimeLimits",
+    "SQLiteReceiptLedger",
     "Score",
     "Scorer",
     "SemanticValidation",
