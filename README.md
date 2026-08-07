@@ -1,82 +1,172 @@
-[![Open in Dev Containers](https://img.shields.io/static/v1?label=Dev%20Containers&message=Open&color=blue&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTE3IDE2VjdsLTYgNU0yIDlWOGwxLTFoMWw0IDMgOC04aDFsNCAyIDEgMXYxNGwtMSAxLTQgMmgtMWwtOC04LTQgM0gzbC0xLTF2LTFsMy0zIi8+PC9zdmc+)](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/seanchatmangpt/gymact) [![Open in GitHub Codespaces](https://img.shields.io/static/v1?label=GitHub%20Codespaces&message=Open&color=blue&logo=github)](https://github.com/codespaces/new/seanchatmangpt/gymact) [![Documentation](https://img.shields.io/static/v1?label=Documentation&message=View&color=blue&logo=readme&logoColor=white)](https://seanchatmangpt.github.io/gymact)
+# GymAct v26.8.7
 
-# gymact
+GymAct is a Python reference implementation of a **public-semantic execution profile for bounded benchmark and gym worlds**.
 
-Benchmark Gym Actuation
+The semantic authority is not a custom GymAct ontology. It is a W3C `prof:Profile` composed from public vocabularies including PROV-O, P-PLAN, SOSA/SSN, WoT Thing Description, ODRL, SHACL, EARL, DQV, QUDT, DCAT, SKOS, OWL-Time, and Dublin Core Terms.
 
-## Installing
+Python-native surfaces compose mature libraries directly:
 
-To install this package, run:
+- Pydantic v2 for canonical typed runtime models;
+- FastAPI for HTTP/OpenAPI;
+- FastMCP for agent-facing MCP tools;
+- Typer for the operator CLI;
+- FastStream for broker-neutral event-driven commands;
+- RDFLib + pySHACL for semantic loading and real conformance checks.
 
-```sh
+The Rust/WASM path is deliberately separate: `gymact export-profile` materializes the same admitted RDF/SHACL graph for ggen to manufacture Rust/WIT/WASM/static projections. Python composes; Rust manufactures.
+
+## Core laws
+
+```text
+request accepted != world changed != objective verified != benchmark scored
+
+semantic capability identity != provider-local binding
+
+authority_ref != authority decision
+```
+
+A capability is represented publicly as `sosa:Procedure`. GymAct's canonical Python `Capability` carries the procedure IRI, title, READ/DO consequence class, and a provider-private binding. Real SHACL validates the public semantic projection before an environment is admitted.
+
+Consequential environments are fail-closed. GymAct invokes an injected `AuthorityResolver` and proceeds only after an explicit positive decision. With no resolver configured, required authority is refused even when the caller provides an `authority_ref` string.
+
+Materialization, actuation, restore, and teardown all produce typed dispositions and receipts. Provider error text is hashed into `error_digest`; receipts retain bounded failure type rather than copying arbitrary provider output.
+
+Idempotency is semantic rather than best-effort:
+
+- same materialization key + same intent → same result;
+- same materialization key + different intent → `REFUSED:IDEMPOTENCY_KEY_CONFLICT`;
+- same actuation key + same intent → same result;
+- same actuation key + different intent → refusal;
+- concurrent identical actuation is serialized per episode and cannot double-actuate;
+- successful teardown is replayable as the same receipt.
+
+## Quick start
+
+```bash
 pip install gymact
+
+gymact version
+gymact validate-profile
+gymact demo
+gymact demo --authority
+gymact export-profile ./gymact-profile
 ```
 
-## Using
+Run the HTTP surface:
 
-To view the CLI help information, run:
-
-```sh
-gymact --help
+```bash
+gymact serve --host 127.0.0.1 --port 8000
 ```
 
-## Contributing
+Python:
 
-<details>
-<summary>Prerequisites</summary>
+```python
+from gymact import (
+    ActuationIntent,
+    AllowListAuthorityResolver,
+    GymAct,
+    MaterializationIntent,
+    MemoryProvider,
+)
 
-1. [Generate an SSH key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent#generating-a-new-ssh-key) and [add the SSH key to your GitHub account](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account).
-1. Configure SSH to automatically load your SSH keys:
+AUTHORITY = "urn:example:authority"
+SET = "urn:gymact:memory:capability:set"
 
-    ```sh
-    cat << EOF >> ~/.ssh/config
-    
-    Host *
-      AddKeysToAgent yes
-      IgnoreUnknown UseKeychain
-      UseKeychain yes
-      ForwardAgent yes
-    EOF
-    ```
+runtime = GymAct(
+    authority_resolver=AllowListAuthorityResolver({AUTHORITY})
+)
+runtime.register_provider(MemoryProvider())
 
-1. [Install Docker Desktop](https://www.docker.com/get-started).
-1. [Install VS Code](https://code.visualstudio.com/) and [VS Code's Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers). Alternatively, install [PyCharm](https://www.jetbrains.com/pycharm/download/).
-1. _Optional:_ install a [Nerd Font](https://www.nerdfonts.com/font-downloads) such as [FiraCode Nerd Font](https://github.com/ryanoasis/nerd-fonts/tree/master/patched-fonts/FiraCode) and [configure VS Code](https://github.com/tonsky/FiraCode/wiki/VS-Code-Instructions) or [PyCharm](https://github.com/tonsky/FiraCode/wiki/Intellij-products-instructions) to use it.
+materialized = await runtime.materialize(
+    MaterializationIntent(
+        provider="memory",
+        config={"initial": {"healthy": False}, "requires_authority": True},
+    )
+)
+assert materialized.episode is not None
 
-</details>
+episode = materialized.episode
+result = await runtime.act(
+    ActuationIntent(
+        episode_id=episode.episode_id,
+        capability=SET,
+        payload={"key": "healthy", "value": True},
+        authority_ref=AUTHORITY,
+    )
+)
+verification = await runtime.verify(episode.episode_id, {"healthy": True})
+```
 
-<details open>
-<summary>Development environments</summary>
+`AllowListAuthorityResolver` is a deterministic reference implementation for tests and isolated local gyms. It is explicitly not a substitute for BRCE or another production policy decision point.
 
-The following development environments are supported:
+## Surfaces
 
-1. ⭐️ _GitHub Codespaces_: click on [Open in GitHub Codespaces](https://github.com/codespaces/new/seanchatmangpt/gymact) to start developing in your browser.
-1. ⭐️ _VS Code Dev Container (with container volume)_: click on [Open in Dev Containers](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/seanchatmangpt/gymact) to clone this repository in a container volume and create a Dev Container with VS Code.
-1. ⭐️ _uv_: clone this repository and run the following from root of the repository:
+FastAPI:
 
-    ```sh
-    # Create and install a virtual environment
-    uv sync --python 3.13 --all-extras
+```python
+from gymact.surfaces.fastapi import create_app
+app = create_app(runtime)
+```
 
-    # Activate the virtual environment
-    source .venv/bin/activate
+FastMCP:
 
-    # Install the pre-commit hooks
-    prek install
-    ```
+```python
+from gymact.surfaces.fastmcp import create_mcp
+mcp = create_mcp(runtime)
+```
 
-1. _VS Code Dev Container_: clone this repository, open it with VS Code, and run <kbd>Ctrl/⌘</kbd> + <kbd>⇧</kbd> + <kbd>P</kbd> → _Dev Containers: Reopen in Container_.
-1. _PyCharm Dev Container_: clone this repository, open it with PyCharm, [create a Dev Container with Mount Sources](https://www.jetbrains.com/help/pycharm/start-dev-container-inside-ide.html), and [configure an existing Python interpreter](https://www.jetbrains.com/help/pycharm/configuring-python-interpreter.html#widget) at `/opt/venv/bin/python`.
+FastStream accepts an externally selected broker, so GymAct does not choose Kafka, NATS, RabbitMQ, Redis, or MQTT on behalf of the caller:
 
-</details>
+```python
+from gymact.surfaces.faststream import create_stream_app
+app = create_stream_app(broker, runtime)
+```
 
-<details open>
-<summary>Developing</summary>
+All surfaces use the same Pydantic intents/results and the same runtime. They do not independently reimplement GymAct semantics.
 
-- This project follows the [Conventional Commits](https://www.conventionalcommits.org/) standard to automate [Semantic Versioning](https://semver.org/) and [Keep A Changelog](https://keepachangelog.com/) with [Commitizen](https://github.com/commitizen-tools/commitizen).
-- Run `poe` from within the development environment to print a list of [Poe the Poet](https://github.com/nat-n/poethepoet) tasks available to run on this project.
-- Run `uv add {package}` from within the development environment to install a run time dependency and add it to `pyproject.toml` and `uv.lock`. Add `--dev` to install a development dependency.
-- Run `uv sync --upgrade` from within the development environment to upgrade all dependencies to the latest versions allowed by `pyproject.toml`. Add `--only-dev` to upgrade the development dependencies only.
-- Run `cz bump` to bump the package's version, update the `CHANGELOG.md`, and create a git tag. Then push the changes and the git tag with `git push origin main --tags`.
+## Semantic authority
 
-</details>
+`src/gymact/ontology/profile.ttl` contains the application profile and controlled ABox identities. It deliberately defines **zero GymAct OWL/RDFS classes or RDF/OWL properties**. `urn:gymact:*` is reserved for profile resources, ABox identities, SKOS concepts, and SHACL shapes.
+
+`ProfileAuthority.validate()` runs real pySHACL plus a mechanical zero-custom-TBox gate. `ProfileAuthority.validate_data()` admits extension ABoxes. `ProfileAuthority.validate_capabilities()` projects canonical Pydantic capabilities into SOSA/DCTERMS RDF and validates them through the same SHACL shapes.
+
+## Runtime boundary
+
+```text
+EnvironmentProvider
+      │
+      ├── materialization authority? ──► AuthorityResolver
+      │
+      ▼
+Environment
+      ├── capabilities() ──► sosa:Procedure profile validation
+      ├── observe()
+      ├── actuate(Capability, payload) ──► authority when consequential
+      ├── verify()
+      ├── checkpoint()/restore()
+      └── teardown()
+```
+
+The bundled `MemoryProvider` is a deterministic executable reference gym. It exists to validate the generic contract, not to stand in for external benchmark execution.
+
+## Release admission
+
+v26.8.7 is release-ready only when exact-head CI proves:
+
+- public profile + extension ABoxes parse and SHACL-conform;
+- no custom GymAct TBox leaks into profile, shapes, or extension data;
+- provider capabilities are validated as public `sosa:Procedure` resources;
+- materialization and actuation authority are fail-closed;
+- idempotency and concurrent replay do not duplicate consequences;
+- provider failures are bounded and receipted;
+- FastAPI executes a real reference episode;
+- FastMCP executes in-process through its real Client;
+- FastStream executes the broker-neutral lifecycle;
+- Typer validates/exports the installed semantic profile;
+- Python 3.11/3.12/3.13 pass tests, coverage, lint, and format gates;
+- wheel/sdist metadata and clean-wheel profile resources pass;
+- strict docs build passes;
+- the production container builds, boots, and answers `/health`;
+- the resolved `uv.lock` is committed and subsequently checked rather than silently regenerated.
+
+External benchmark integrations retain their own execution standing. Importability is never promoted into scenario-execution standing.

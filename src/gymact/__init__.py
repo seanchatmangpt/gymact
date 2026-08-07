@@ -1,14 +1,52 @@
-"""gymact: benchmark gym actuation library."""
+"""GymAct public API."""
 
-from gymact.model import ActuationResult, Capability, Consequence, Intent, Standing
-from gymact.runtime import Environment, ReferenceEnvironment
+from gymact.authority import AllowListAuthorityResolver, AuthorityResolver, DenyAuthorityResolver
+from gymact.models import (
+    ActuationIntent,
+    ActuationResult,
+    AuthorityDecision,
+    AuthorityRequest,
+    Capability,
+    Consequence,
+    Episode,
+    MaterializationIntent,
+    MaterializationResult,
+    Observation,
+    Operation,
+    Receipt,
+    Score,
+    Standing,
+    VerificationResult,
+)
+from gymact.providers import Environment, EnvironmentProvider, MemoryProvider
+from gymact.runtime import GymAct
+from gymact.semantic import ProfileAuthority, SemanticValidation
 
 __all__ = [
+    "ActuationIntent",
     "ActuationResult",
+    "AllowListAuthorityResolver",
+    "AuthorityDecision",
+    "AuthorityRequest",
+    "AuthorityResolver",
     "Capability",
     "Consequence",
+    "DenyAuthorityResolver",
     "Environment",
-    "Intent",
-    "ReferenceEnvironment",
+    "EnvironmentProvider",
+    "Episode",
+    "GymAct",
+    "MaterializationIntent",
+    "MaterializationResult",
+    "MemoryProvider",
+    "Observation",
+    "Operation",
+    "ProfileAuthority",
+    "Receipt",
+    "Score",
+    "SemanticValidation",
     "Standing",
+    "VerificationResult",
 ]
+
+__version__ = "26.8.7"
