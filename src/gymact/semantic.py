@@ -20,6 +20,22 @@ CONSEQUENCE_IRI = {
     Consequence.READ: URIRef("urn:gymact:consequence:read"),
     Consequence.DO: URIRef("urn:gymact:consequence:do"),
 }
+PUBLIC_ONTOLOGIES = (
+    "http://www.w3.org/ns/dx/prof/",
+    "http://www.w3.org/ns/prov#",
+    "http://purl.org/net/p-plan#",
+    "http://www.w3.org/ns/sosa/",
+    "https://www.w3.org/2019/wot/td#",
+    "http://www.w3.org/ns/odrl/2/",
+    "http://www.w3.org/ns/shacl#",
+    "http://www.w3.org/ns/earl#",
+    "http://www.w3.org/ns/dqv#",
+    "http://qudt.org/schema/qudt/",
+    "http://www.w3.org/ns/dcat#",
+    "http://www.w3.org/2004/02/skos/core#",
+    "http://www.w3.org/2006/time#",
+    "http://purl.org/dc/terms/",
+)
 
 
 class SemanticValidation(BaseModel):
@@ -36,6 +52,7 @@ class ProfileAuthority:
     """Load, validate, and export the packaged GymAct PROF application profile."""
 
     profile_uri = "urn:gymact:profile:v26.8.7"
+    public_ontologies = PUBLIC_ONTOLOGIES
 
     @staticmethod
     def _resource(name: str):
@@ -74,7 +91,7 @@ class ProfileAuthority:
 
     @staticmethod
     def capability_graph(capabilities: Iterable[Capability]) -> Graph:
-        """Project canonical Python capability models into public SOSA/DCTERMS RDF."""
+        """Project canonical Python capabilities into public SOSA/DCTERMS RDF."""
         graph = Graph()
         for capability in capabilities:
             subject = URIRef(capability.iri)
@@ -107,7 +124,6 @@ class ProfileAuthority:
         for triple in shapes:
             bundle.add(triple)
         custom_tbox = self._custom_tbox_terms(bundle)
-
         conforms, _, report = shacl_validate(
             data,
             shacl_graph=shapes,
@@ -128,7 +144,7 @@ class ProfileAuthority:
         )
 
     def validate(self) -> SemanticValidation:
-        """Validate the packaged profile and the zero-custom-TBox invariant."""
+        """Validate the packaged profile and zero-custom-TBox invariant."""
         return self._validate_graph(self.graph())
 
     def validate_data(self, data_graph: Graph) -> SemanticValidation:
@@ -139,5 +155,5 @@ class ProfileAuthority:
         return self._validate_graph(combined)
 
     def validate_capabilities(self, capabilities: Iterable[Capability]) -> SemanticValidation:
-        """Validate canonical provider capabilities through the same real SHACL profile."""
+        """Validate provider capabilities through the same real SHACL profile."""
         return self.validate_data(self.capability_graph(capabilities))
