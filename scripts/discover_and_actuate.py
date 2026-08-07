@@ -26,13 +26,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-import fastmcp
+from gymact import GymAct, MaterializationIntent  # noqa: E402
+from gymact.gyms.discovered import GenericDiscoveredProvider  # noqa: E402
+from gymact.models import ActuationIntent  # noqa: E402
+from gymact.ocel import write_ocel_log  # noqa: E402
+from gymact.surfaces.fastmcp import create_mcp  # noqa: E402
 
-from gymact import GymAct, MaterializationIntent
-from gymact.gyms.discovered import GenericDiscoveredProvider
-from gymact.models import ActuationIntent
-from gymact.ocel import write_ocel_log
-from gymact.surfaces.fastmcp import create_mcp
+import fastmcp  # noqa: E402
 
 LLM_BASE_URL = "http://127.0.0.1:8080/v1"
 LLM_MODEL = "gemma-4-26b-a4b-it"
@@ -43,7 +43,7 @@ RECIPE_SYSTEM_PROMPT = (
     "a benchmark/gym repository is real and minimally runnable. You are NOT "
     "solving the benchmark's actual tasks -- you are proving the repository "
     "is importable/invocable. Prefer the fastest possible check: --help, "
-    '--version, `python -c "import <top_level_package>"`, or a documented '
+    "--version, `python -c \"import <top_level_package>\"`, or a documented "
     "quickstart/smoke command from the README if one exists and is fast "
     "(no training, no GPU, no network installs beyond what's already vendored, "
     "no long-running servers). Never propose destructive commands (rm, sudo, "
@@ -55,8 +55,8 @@ RECIPE_SYSTEM_PROMPT = (
     '{"command": ["<argv0>", "<arg1>", ...], "success_markers": ["<substring "'
     'that would appear in stdout on success, or empty list if unsure>"], '
     '"timeout_seconds": <number, 20-90, default 30 -- a cold Python interpreter '
-    "start plus first-import module resolution can genuinely take 10-15s on its "
-    "own, so do not propose less than 20 for any real import/subprocess check>, "
+    'start plus first-import module resolution can genuinely take 10-15s on its '
+    'own, so do not propose less than 20 for any real import/subprocess check>, '
     '"reasoning": "<one sentence>"}'
 )
 
