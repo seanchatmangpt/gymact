@@ -92,6 +92,8 @@
 
 ::: gymact.gyms.gymnasium_env.GymnasiumProvider
 
+::: gymact.gyms.kubernetes_reconciliation.KubernetesReconciliationProvider
+
 ::: gymact.contract.RuntimeContract
 
 ::: gymact.contract.build_contract

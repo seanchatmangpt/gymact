@@ -85,7 +85,7 @@ returns).
 
 ## Real gym providers
 
-Three real `EnvironmentProvider` implementations exist in `gymact.gyms`, each driving a
+Several real `EnvironmentProvider` implementations exist in `gymact.gyms`, each driving a
 genuinely real external collaborator (zero mocks anywhere in `src/` or `tests/`):
 
 | Provider | Real collaborator |
@@ -95,8 +95,9 @@ genuinely real external collaborator (zero mocks anywhere in `src/` or `tests/`)
 | `gyms.ggen_legacy.GgenLegacyVerifierProvider` | a real subprocess of the compiled `ggen-v26-8-1-verifier` binary against a real `~/ggen-legacy` checkout |
 | `gyms.discovered.GenericDiscoveredProvider` | a generic actuator: runs an LLM-proposed, bounded subprocess recipe (`command`/`cwd`/`timeout_seconds`/`success_markers`) against an arbitrary checked-out repo, instead of a hand-written adapter per benchmark subject |
 | `gyms.gymnasium_env.GymnasiumProvider` | a real, already-installed `gymnasium` package's `Env` (default `CartPole-v1`) -- no vendored agentgym, no subprocess |
+| `gyms.kubernetes_reconciliation.KubernetesReconciliationProvider` | a real local Kubernetes cluster (`kind`/`k3d`/colima `--kubernetes`) via real `kubectl` subprocess calls -- `verify()` polls real cluster-observed pod phase, not `kubectl apply`'s exit code |
 
-Each of the first three claims a `gymact.standing.require_standing` standing string (e.g.
+Each of these claims a `gymact.standing.require_standing` standing string (e.g.
 `"LOCAL_GYM:cube-counter"`). The real thing is the default: if the real collaborator is
 unavailable, the run fails loudly unless `GYMACT_ALLOW_DEGRADED_STANDINGS` explicitly lists
 that standing (or `"*"`) -- a skip must be opted into, never silently defaulted.
