@@ -17,7 +17,9 @@ dependencies = [
   "typer (>=0.15.1)",
   "pydantic (>=2.0.0)",
   "pydantic-settings (>=2.0.0)",
-  "httpx2 (>=2.0.0)",
+  "httpx (>=0.28.0)",
+  "rdflib (>=7.1.0)",
+  "pyshacl (>=0.30.0)",
 ]
 
 [project.scripts]  # https://docs.astral.sh/uv/concepts/projects/config/#command-line-interfaces
@@ -111,7 +113,7 @@ split-on-trailing-comma = false
 [tool.ruff.lint.pycodestyle]
 max-doc-length = 100
 
-[tool.ruff.lint.pydocstyle]  https://docs.astral.sh/ruff/settings/#lintpydocstyle
+[tool.ruff.lint.pydocstyle]  # https://docs.astral.sh/ruff/settings/#lintpydocstyle
 convention = ""
 
 [tool.ty.environment]

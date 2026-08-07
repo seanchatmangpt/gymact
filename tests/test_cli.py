@@ -7,9 +7,8 @@ from gymact.cli import app
 runner = CliRunner()
 
 
-def test_fire() -> None:
-    """Test that the fire command works as expected."""
-    name = "GLaDOS"
-    result = runner.invoke(app, ["--name", name])
+def test_validate_profile_conforms() -> None:
+    """The real bundled profile.ttl validates cleanly via the real CLI command."""
+    result = runner.invoke(app, [])
     assert result.exit_code == 0
-    assert name in result.stdout
+    assert "OK" in result.stdout
