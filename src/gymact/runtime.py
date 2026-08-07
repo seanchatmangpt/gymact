@@ -28,6 +28,7 @@ from gymact.models import (
     Standing,
     VerificationResult,
 )
+from gymact.ocel import receipts_to_ocel
 from gymact.providers import Environment, EnvironmentProvider
 from gymact.semantic import ProfileAuthority
 
@@ -75,6 +76,7 @@ class GymAct:
         self._materialization_idempotency: dict[str, _MaterializationRecord] = {}
         self._materialization_lock = anyio.Lock()
         self._teardown_receipts: dict[str, Receipt] = {}
+        self._receipts: dict[str, list[Receipt]] = {}
         self._authority = authority_resolver or DenyAuthorityResolver()
         self.profile = ProfileAuthority()
         if validate_profile:
@@ -93,6 +95,29 @@ class GymAct:
     def discover(self) -> tuple[str, ...]:
         """Return registered provider names without materializing a world."""
         return tuple(sorted(self._providers))
+
+    def _emit(self, episode_id: str, receipt: Receipt) -> Receipt:
+        """Single chokepoint every issued Receipt passes through.
+
+        Accumulates receipts per episode so a real, in-order OCEL event log
+        can be reconstructed later via `episode_ocel_log` -- callers no
+        longer need to collect Receipts by hand at each call site.
+        """
+        self._receipts.setdefault(episode_id, []).append(receipt)
+        return receipt
+
+    def episode_receipts(self, episode_id: str) -> list[Receipt]:
+        """Real, in-order Receipt trail accumulated for one episode so far."""
+        return list(self._receipts.get(episode_id, []))
+
+    def episode_ocel_log(self, episode_id: str) -> dict[str, Any]:
+        """Real OCEL 2.0 log for one episode, built from its accumulated Receipts.
+
+        Pure wiring over the existing `receipts_to_ocel` converter -- no new
+        OCEL logic here. Works after teardown too: `_receipts` is never
+        cleared when an episode is torn down (only `_episodes` is).
+        """
+        return receipts_to_ocel(self._receipts.get(episode_id, []))
 
     async def _authority_decision(
         self,
@@ -130,15 +155,18 @@ class GymAct:
                 return MaterializationResult(
                     accepted=False,
                     standing=Standing.REFUSED,
-                    receipt=Receipt(
-                        episode_id=prior_receipt.episode_id,
-                        operation=Operation.MATERIALIZE,
-                        standing=Standing.REFUSED,
-                        subject_ref=prior_receipt.subject_ref,
-                        capability_ref="urn:gymact:operation:materialize",
-                        authority_ref=intent.authority_ref,
-                        idempotency_key=intent.idempotency_key,
-                        reason="IDEMPOTENCY_KEY_CONFLICT",
+                    receipt=self._emit(
+                        prior_receipt.episode_id,
+                        Receipt(
+                            episode_id=prior_receipt.episode_id,
+                            operation=Operation.MATERIALIZE,
+                            standing=Standing.REFUSED,
+                            subject_ref=prior_receipt.subject_ref,
+                            capability_ref="urn:gymact:operation:materialize",
+                            authority_ref=intent.authority_ref,
+                            idempotency_key=intent.idempotency_key,
+                            reason="IDEMPOTENCY_KEY_CONFLICT",
+                        ),
                     ),
                 )
 
@@ -149,15 +177,18 @@ class GymAct:
                 result = MaterializationResult(
                     accepted=False,
                     standing=Standing.UNSUPPORTED,
-                    receipt=Receipt(
-                        episode_id=episode_id,
-                        operation=Operation.MATERIALIZE,
-                        standing=Standing.UNSUPPORTED,
-                        subject_ref=subject_ref,
-                        capability_ref="urn:gymact:operation:materialize",
-                        authority_ref=intent.authority_ref,
-                        idempotency_key=intent.idempotency_key,
-                        reason="UNKNOWN_PROVIDER",
+                    receipt=self._emit(
+                        episode_id,
+                        Receipt(
+                            episode_id=episode_id,
+                            operation=Operation.MATERIALIZE,
+                            standing=Standing.UNSUPPORTED,
+                            subject_ref=subject_ref,
+                            capability_ref="urn:gymact:operation:materialize",
+                            authority_ref=intent.authority_ref,
+                            idempotency_key=intent.idempotency_key,
+                            reason="UNKNOWN_PROVIDER",
+                        ),
                     ),
                 )
                 self._materialization_idempotency[intent.idempotency_key] = _MaterializationRecord(
@@ -178,16 +209,19 @@ class GymAct:
                 result = MaterializationResult(
                     accepted=False,
                     standing=Standing.REFUSED,
-                    receipt=Receipt(
-                        episode_id=episode_id,
-                        operation=Operation.MATERIALIZE,
-                        standing=Standing.REFUSED,
-                        subject_ref=subject_ref,
-                        capability_ref="urn:gymact:operation:materialize",
-                        authority_ref=intent.authority_ref,
-                        authority_evidence_ref=authority.evidence_ref,
-                        idempotency_key=intent.idempotency_key,
-                        reason=authority.reason,
+                    receipt=self._emit(
+                        episode_id,
+                        Receipt(
+                            episode_id=episode_id,
+                            operation=Operation.MATERIALIZE,
+                            standing=Standing.REFUSED,
+                            subject_ref=subject_ref,
+                            capability_ref="urn:gymact:operation:materialize",
+                            authority_ref=intent.authority_ref,
+                            authority_evidence_ref=authority.evidence_ref,
+                            idempotency_key=intent.idempotency_key,
+                            reason=authority.reason,
+                        ),
                     ),
                 )
                 self._materialization_idempotency[intent.idempotency_key] = _MaterializationRecord(
@@ -204,17 +238,20 @@ class GymAct:
                 result = MaterializationResult(
                     accepted=False,
                     standing=Standing.BLOCKED,
-                    receipt=Receipt(
-                        episode_id=episode_id,
-                        operation=Operation.MATERIALIZE,
-                        standing=Standing.BLOCKED,
-                        subject_ref=subject_ref,
-                        capability_ref="urn:gymact:operation:materialize",
-                        authority_ref=intent.authority_ref,
-                        authority_evidence_ref=authority.evidence_ref,
-                        idempotency_key=intent.idempotency_key,
-                        error_digest=_error_digest(exc),
-                        reason=f"PROVIDER_ERROR:{type(exc).__name__}",
+                    receipt=self._emit(
+                        episode_id,
+                        Receipt(
+                            episode_id=episode_id,
+                            operation=Operation.MATERIALIZE,
+                            standing=Standing.BLOCKED,
+                            subject_ref=subject_ref,
+                            capability_ref="urn:gymact:operation:materialize",
+                            authority_ref=intent.authority_ref,
+                            authority_evidence_ref=authority.evidence_ref,
+                            idempotency_key=intent.idempotency_key,
+                            error_digest=_error_digest(exc),
+                            reason=f"PROVIDER_ERROR:{type(exc).__name__}",
+                        ),
                     ),
                 )
                 self._materialization_idempotency[intent.idempotency_key] = _MaterializationRecord(
@@ -234,17 +271,20 @@ class GymAct:
                 result = MaterializationResult(
                     accepted=False,
                     standing=Standing.BLOCKED,
-                    receipt=Receipt(
-                        episode_id=episode_id,
-                        operation=Operation.MATERIALIZE,
-                        standing=Standing.BLOCKED,
-                        subject_ref=getattr(environment, "environment_id", subject_ref),
-                        capability_ref="urn:gymact:operation:materialize",
-                        authority_ref=intent.authority_ref,
-                        authority_evidence_ref=authority.evidence_ref,
-                        idempotency_key=intent.idempotency_key,
-                        error_digest=_error_digest(exc),
-                        reason="ENVIRONMENT_ADMISSION_FAILED",
+                    receipt=self._emit(
+                        episode_id,
+                        Receipt(
+                            episode_id=episode_id,
+                            operation=Operation.MATERIALIZE,
+                            standing=Standing.BLOCKED,
+                            subject_ref=getattr(environment, "environment_id", subject_ref),
+                            capability_ref="urn:gymact:operation:materialize",
+                            authority_ref=intent.authority_ref,
+                            authority_evidence_ref=authority.evidence_ref,
+                            idempotency_key=intent.idempotency_key,
+                            error_digest=_error_digest(exc),
+                            reason="ENVIRONMENT_ADMISSION_FAILED",
+                        ),
                     ),
                 )
                 self._materialization_idempotency[intent.idempotency_key] = _MaterializationRecord(
@@ -270,16 +310,19 @@ class GymAct:
                 standing=Standing.ALIVE,
                 episode=episode,
                 observation=observation,
-                receipt=Receipt(
-                    episode_id=episode_id,
-                    operation=Operation.MATERIALIZE,
-                    standing=Standing.ALIVE,
-                    subject_ref=environment.environment_id,
-                    capability_ref="urn:gymact:operation:materialize",
-                    authority_ref=intent.authority_ref,
-                    authority_evidence_ref=authority.evidence_ref,
-                    idempotency_key=intent.idempotency_key,
-                    post_state_digest=observation.state_digest,
+                receipt=self._emit(
+                    episode_id,
+                    Receipt(
+                        episode_id=episode_id,
+                        operation=Operation.MATERIALIZE,
+                        standing=Standing.ALIVE,
+                        subject_ref=environment.environment_id,
+                        capability_ref="urn:gymact:operation:materialize",
+                        authority_ref=intent.authority_ref,
+                        authority_evidence_ref=authority.evidence_ref,
+                        idempotency_key=intent.idempotency_key,
+                        post_state_digest=observation.state_digest,
+                    ),
                 ),
             )
             self._materialization_idempotency[intent.idempotency_key] = _MaterializationRecord(
@@ -347,17 +390,20 @@ class GymAct:
                     accepted=False,
                     standing=Standing.REFUSED,
                     observation=before,
-                    receipt=Receipt(
-                        episode_id=intent.episode_id,
-                        operation=Operation.ACT,
-                        standing=Standing.REFUSED,
-                        subject_ref=state.environment.environment_id,
-                        capability_ref=intent.capability,
-                        authority_ref=intent.authority_ref,
-                        idempotency_key=intent.idempotency_key,
-                        pre_state_digest=before.state_digest,
-                        post_state_digest=before.state_digest,
-                        reason="IDEMPOTENCY_KEY_CONFLICT",
+                    receipt=self._emit(
+                        intent.episode_id,
+                        Receipt(
+                            episode_id=intent.episode_id,
+                            operation=Operation.ACT,
+                            standing=Standing.REFUSED,
+                            subject_ref=state.environment.environment_id,
+                            capability_ref=intent.capability,
+                            authority_ref=intent.authority_ref,
+                            idempotency_key=intent.idempotency_key,
+                            pre_state_digest=before.state_digest,
+                            post_state_digest=before.state_digest,
+                            reason="IDEMPOTENCY_KEY_CONFLICT",
+                        ),
                     ),
                 )
 
@@ -369,17 +415,20 @@ class GymAct:
                     accepted=False,
                     standing=Standing.UNSUPPORTED,
                     observation=before,
-                    receipt=Receipt(
-                        episode_id=intent.episode_id,
-                        operation=Operation.ACT,
-                        standing=Standing.UNSUPPORTED,
-                        subject_ref=state.environment.environment_id,
-                        capability_ref=intent.capability,
-                        authority_ref=intent.authority_ref,
-                        idempotency_key=intent.idempotency_key,
-                        pre_state_digest=before.state_digest,
-                        post_state_digest=before.state_digest,
-                        reason="UNKNOWN_CAPABILITY",
+                    receipt=self._emit(
+                        intent.episode_id,
+                        Receipt(
+                            episode_id=intent.episode_id,
+                            operation=Operation.ACT,
+                            standing=Standing.UNSUPPORTED,
+                            subject_ref=state.environment.environment_id,
+                            capability_ref=intent.capability,
+                            authority_ref=intent.authority_ref,
+                            idempotency_key=intent.idempotency_key,
+                            pre_state_digest=before.state_digest,
+                            post_state_digest=before.state_digest,
+                            reason="UNKNOWN_CAPABILITY",
+                        ),
                     ),
                 )
                 self._actuation_idempotency[key] = _ActuationRecord(intent_digest, result)
@@ -389,17 +438,20 @@ class GymAct:
                     accepted=False,
                     standing=Standing.REFUSED,
                     observation=before,
-                    receipt=Receipt(
-                        episode_id=intent.episode_id,
-                        operation=Operation.ACT,
-                        standing=Standing.REFUSED,
-                        subject_ref=state.environment.environment_id,
-                        capability_ref=capability.iri,
-                        authority_ref=intent.authority_ref,
-                        idempotency_key=intent.idempotency_key,
-                        pre_state_digest=before.state_digest,
-                        post_state_digest=before.state_digest,
-                        reason="READ_CAPABILITY_IS_NOT_ACTUATION",
+                    receipt=self._emit(
+                        intent.episode_id,
+                        Receipt(
+                            episode_id=intent.episode_id,
+                            operation=Operation.ACT,
+                            standing=Standing.REFUSED,
+                            subject_ref=state.environment.environment_id,
+                            capability_ref=capability.iri,
+                            authority_ref=intent.authority_ref,
+                            idempotency_key=intent.idempotency_key,
+                            pre_state_digest=before.state_digest,
+                            post_state_digest=before.state_digest,
+                            reason="READ_CAPABILITY_IS_NOT_ACTUATION",
+                        ),
                     ),
                 )
                 self._actuation_idempotency[key] = _ActuationRecord(intent_digest, result)
@@ -419,18 +471,21 @@ class GymAct:
                     accepted=False,
                     standing=Standing.REFUSED,
                     observation=before,
-                    receipt=Receipt(
-                        episode_id=intent.episode_id,
-                        operation=Operation.ACT,
-                        standing=Standing.REFUSED,
-                        subject_ref=state.environment.environment_id,
-                        capability_ref=capability.iri,
-                        authority_ref=intent.authority_ref,
-                        authority_evidence_ref=authority.evidence_ref,
-                        idempotency_key=intent.idempotency_key,
-                        pre_state_digest=before.state_digest,
-                        post_state_digest=before.state_digest,
-                        reason=authority.reason,
+                    receipt=self._emit(
+                        intent.episode_id,
+                        Receipt(
+                            episode_id=intent.episode_id,
+                            operation=Operation.ACT,
+                            standing=Standing.REFUSED,
+                            subject_ref=state.environment.environment_id,
+                            capability_ref=capability.iri,
+                            authority_ref=intent.authority_ref,
+                            authority_evidence_ref=authority.evidence_ref,
+                            idempotency_key=intent.idempotency_key,
+                            pre_state_digest=before.state_digest,
+                            post_state_digest=before.state_digest,
+                            reason=authority.reason,
+                        ),
                     ),
                 )
                 self._actuation_idempotency[key] = _ActuationRecord(intent_digest, result)
@@ -447,19 +502,22 @@ class GymAct:
                     accepted=False,
                     standing=Standing.BLOCKED,
                     observation=after,
-                    receipt=Receipt(
-                        episode_id=intent.episode_id,
-                        operation=Operation.ACT,
-                        standing=Standing.BLOCKED,
-                        subject_ref=state.environment.environment_id,
-                        capability_ref=capability.iri,
-                        authority_ref=intent.authority_ref,
-                        authority_evidence_ref=authority.evidence_ref,
-                        idempotency_key=intent.idempotency_key,
-                        pre_state_digest=before.state_digest,
-                        post_state_digest=after.state_digest,
-                        error_digest=_error_digest(exc),
-                        reason=f"PROVIDER_ERROR:{type(exc).__name__}",
+                    receipt=self._emit(
+                        intent.episode_id,
+                        Receipt(
+                            episode_id=intent.episode_id,
+                            operation=Operation.ACT,
+                            standing=Standing.BLOCKED,
+                            subject_ref=state.environment.environment_id,
+                            capability_ref=capability.iri,
+                            authority_ref=intent.authority_ref,
+                            authority_evidence_ref=authority.evidence_ref,
+                            idempotency_key=intent.idempotency_key,
+                            pre_state_digest=before.state_digest,
+                            post_state_digest=after.state_digest,
+                            error_digest=_error_digest(exc),
+                            reason=f"PROVIDER_ERROR:{type(exc).__name__}",
+                        ),
                     ),
                 )
                 self._actuation_idempotency[key] = _ActuationRecord(intent_digest, result)
@@ -471,17 +529,20 @@ class GymAct:
                 standing=Standing.ALIVE,
                 effect=effect,
                 observation=after,
-                receipt=Receipt(
-                    episode_id=intent.episode_id,
-                    operation=Operation.ACT,
-                    standing=Standing.ALIVE,
-                    subject_ref=state.environment.environment_id,
-                    capability_ref=capability.iri,
-                    authority_ref=intent.authority_ref,
-                    authority_evidence_ref=authority.evidence_ref,
-                    idempotency_key=intent.idempotency_key,
-                    pre_state_digest=before.state_digest,
-                    post_state_digest=after.state_digest,
+                receipt=self._emit(
+                    intent.episode_id,
+                    Receipt(
+                        episode_id=intent.episode_id,
+                        operation=Operation.ACT,
+                        standing=Standing.ALIVE,
+                        subject_ref=state.environment.environment_id,
+                        capability_ref=capability.iri,
+                        authority_ref=intent.authority_ref,
+                        authority_evidence_ref=authority.evidence_ref,
+                        idempotency_key=intent.idempotency_key,
+                        pre_state_digest=before.state_digest,
+                        post_state_digest=after.state_digest,
+                    ),
                 ),
             )
             self._actuation_idempotency[key] = _ActuationRecord(intent_digest, result)
@@ -523,17 +584,20 @@ class GymAct:
                 authority_ref=authority_ref,
             )
             if not authority.admitted:
-                return Receipt(
-                    episode_id=episode_id,
-                    operation=Operation.RESTORE,
-                    standing=Standing.REFUSED,
-                    subject_ref=state.environment.environment_id,
-                    capability_ref="urn:gymact:operation:restore",
-                    authority_ref=authority_ref,
-                    authority_evidence_ref=authority.evidence_ref,
-                    pre_state_digest=before.state_digest,
-                    post_state_digest=before.state_digest,
-                    reason=authority.reason,
+                return self._emit(
+                    episode_id,
+                    Receipt(
+                        episode_id=episode_id,
+                        operation=Operation.RESTORE,
+                        standing=Standing.REFUSED,
+                        subject_ref=state.environment.environment_id,
+                        capability_ref="urn:gymact:operation:restore",
+                        authority_ref=authority_ref,
+                        authority_evidence_ref=authority.evidence_ref,
+                        pre_state_digest=before.state_digest,
+                        post_state_digest=before.state_digest,
+                        reason=authority.reason,
+                    ),
                 )
             try:
                 await state.environment.restore(checkpoint)
@@ -543,29 +607,35 @@ class GymAct:
                     after = await self._observe_unlocked(state)
                 except Exception:
                     after = before
-                return Receipt(
+                return self._emit(
+                    episode_id,
+                    Receipt(
+                        episode_id=episode_id,
+                        operation=Operation.RESTORE,
+                        standing=Standing.BLOCKED,
+                        subject_ref=state.environment.environment_id,
+                        capability_ref="urn:gymact:operation:restore",
+                        authority_ref=authority_ref,
+                        authority_evidence_ref=authority.evidence_ref,
+                        pre_state_digest=before.state_digest,
+                        post_state_digest=after.state_digest,
+                        error_digest=_error_digest(exc),
+                        reason=f"PROVIDER_ERROR:{type(exc).__name__}",
+                    ),
+                )
+            return self._emit(
+                episode_id,
+                Receipt(
                     episode_id=episode_id,
                     operation=Operation.RESTORE,
-                    standing=Standing.BLOCKED,
+                    standing=Standing.ALIVE,
                     subject_ref=state.environment.environment_id,
                     capability_ref="urn:gymact:operation:restore",
                     authority_ref=authority_ref,
                     authority_evidence_ref=authority.evidence_ref,
                     pre_state_digest=before.state_digest,
                     post_state_digest=after.state_digest,
-                    error_digest=_error_digest(exc),
-                    reason=f"PROVIDER_ERROR:{type(exc).__name__}",
-                )
-            return Receipt(
-                episode_id=episode_id,
-                operation=Operation.RESTORE,
-                standing=Standing.ALIVE,
-                subject_ref=state.environment.environment_id,
-                capability_ref="urn:gymact:operation:restore",
-                authority_ref=authority_ref,
-                authority_evidence_ref=authority.evidence_ref,
-                pre_state_digest=before.state_digest,
-                post_state_digest=after.state_digest,
+                ),
             )
 
     async def teardown(self, episode_id: str, *, authority_ref: str | None = None) -> Receipt:
@@ -586,42 +656,51 @@ class GymAct:
                 authority_ref=authority_ref,
             )
             if not authority.admitted:
-                return Receipt(
-                    episode_id=episode_id,
-                    operation=Operation.TEARDOWN,
-                    standing=Standing.REFUSED,
-                    subject_ref=state.environment.environment_id,
-                    capability_ref="urn:gymact:operation:teardown",
-                    authority_ref=authority_ref,
-                    authority_evidence_ref=authority.evidence_ref,
-                    pre_state_digest=before.state_digest,
-                    post_state_digest=before.state_digest,
-                    reason=authority.reason,
+                return self._emit(
+                    episode_id,
+                    Receipt(
+                        episode_id=episode_id,
+                        operation=Operation.TEARDOWN,
+                        standing=Standing.REFUSED,
+                        subject_ref=state.environment.environment_id,
+                        capability_ref="urn:gymact:operation:teardown",
+                        authority_ref=authority_ref,
+                        authority_evidence_ref=authority.evidence_ref,
+                        pre_state_digest=before.state_digest,
+                        post_state_digest=before.state_digest,
+                        reason=authority.reason,
+                    ),
                 )
             try:
                 await state.environment.teardown()
             except Exception as exc:
-                return Receipt(
+                return self._emit(
+                    episode_id,
+                    Receipt(
+                        episode_id=episode_id,
+                        operation=Operation.TEARDOWN,
+                        standing=Standing.BLOCKED,
+                        subject_ref=state.environment.environment_id,
+                        capability_ref="urn:gymact:operation:teardown",
+                        authority_ref=authority_ref,
+                        authority_evidence_ref=authority.evidence_ref,
+                        pre_state_digest=before.state_digest,
+                        error_digest=_error_digest(exc),
+                        reason=f"PROVIDER_ERROR:{type(exc).__name__}",
+                    ),
+                )
+            receipt = self._emit(
+                episode_id,
+                Receipt(
                     episode_id=episode_id,
                     operation=Operation.TEARDOWN,
-                    standing=Standing.BLOCKED,
+                    standing=Standing.ALIVE,
                     subject_ref=state.environment.environment_id,
                     capability_ref="urn:gymact:operation:teardown",
                     authority_ref=authority_ref,
                     authority_evidence_ref=authority.evidence_ref,
                     pre_state_digest=before.state_digest,
-                    error_digest=_error_digest(exc),
-                    reason=f"PROVIDER_ERROR:{type(exc).__name__}",
-                )
-            receipt = Receipt(
-                episode_id=episode_id,
-                operation=Operation.TEARDOWN,
-                standing=Standing.ALIVE,
-                subject_ref=state.environment.environment_id,
-                capability_ref="urn:gymact:operation:teardown",
-                authority_ref=authority_ref,
-                authority_evidence_ref=authority.evidence_ref,
-                pre_state_digest=before.state_digest,
+                ),
             )
             self._teardown_receipts[episode_id] = receipt
             del self._episodes[episode_id]
