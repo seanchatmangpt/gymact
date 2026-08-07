@@ -38,7 +38,6 @@ class EvidenceRecord(BaseModel):
     """One append-only, hash-chained receipt record."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
-
     sequence: int
     previous_digest: str | None
     receipt_digest: str
@@ -51,11 +50,8 @@ class ReceiptLedger(Protocol):
     """Minimal append-only receipt-ledger contract."""
 
     def append(self, receipt: Receipt) -> EvidenceRecord: ...
-
     def records(self) -> tuple[EvidenceRecord, ...]: ...
-
     def verify(self) -> bool: ...
-
     def find(self, receipt_id: str) -> EvidenceRecord | None: ...
 
 
@@ -71,11 +67,7 @@ class MemoryReceiptLedger:
         self._by_receipt: dict[str, EvidenceRecord] = {}
 
     @staticmethod
-    def _record_digest(
-        sequence: int,
-        previous_digest: str | None,
-        receipt_digest: str,
-    ) -> str:
+    def _record_digest(sequence: int, previous_digest: str | None, receipt_digest: str) -> str:
         return digest(
             {
                 "sequence": sequence,
@@ -90,7 +82,6 @@ class MemoryReceiptLedger:
             if prior.receipt != receipt:
                 raise ValueError("RECEIPT_ID_CONFLICT")
             return prior
-
         sequence = len(self._records)
         previous = self._records[-1].record_digest if self._records else None
         receipt_digest = digest(receipt.model_dump(mode="json"))
@@ -146,7 +137,6 @@ def evidence_graph(
         receipt_ref = URIRef(f"urn:gymact:receipt:{receipt.receipt_id}")
         activity_ref = URIRef(f"urn:gymact:activity:{receipt.receipt_id}")
         episode_ref = URIRef(f"urn:gymact:episode:{receipt.episode_id}")
-
         graph.add((receipt_ref, RDF.type, PROV.Entity))
         graph.add((activity_ref, RDF.type, PROV.Activity))
         graph.add((episode_ref, RDF.type, PROV.Activity))
@@ -158,7 +148,7 @@ def evidence_graph(
         if receipt.subject_ref:
             graph.add((activity_ref, PROV.used, URIRef(receipt.subject_ref)))
         if receipt.capability_ref:
-            graph.add((activity_ref, PROV.hadPlan, URIRef(receipt.capability_ref)))
+            graph.add((activity_ref, PROV.used, URIRef(receipt.capability_ref)))
         if receipt.authority_evidence_ref:
             graph.add((activity_ref, PROV.used, URIRef(receipt.authority_evidence_ref)))
 
