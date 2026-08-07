@@ -11,8 +11,8 @@ from gymact.standing import require_standing
 
 PINNED_BROWSERGYM_VERSION = "0.14.3"
 STANDING = "LOCAL_GYM:browsergym-openended"
-START_URL = "data:text/html,<title>start</title><h1>start</h1>"
-TARGET_URL = "data:text/html,<title>target</title><h1>target</h1>"
+START_URL = "about:blank#start"
+TARGET_URL = "about:blank#target"
 AUTHORITY = "urn:test:browsergym-authority"
 
 
@@ -54,18 +54,42 @@ require_standing(
     ),
 )
 
-from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent  # noqa: E402
+from gymact import (  # noqa: E402
+    AllowListAuthorityResolver,
+    AuthorityDecision,
+    AuthorityRequest,
+    DenyAuthorityResolver,
+    GymAct,
+    MaterializationIntent,
+)
 from gymact.gyms.browsergym import BROWSERGYM_CAPABILITIES, BrowserGymProvider  # noqa: E402
 from gymact.models import ActuationIntent, Operation, Standing  # noqa: E402
 from gymact.semantic import ProfileAuthority  # noqa: E402
 
 GOTO_CAPABILITY = "urn:gymact:browsergym:capability:goto"
+GO_BACK_CAPABILITY = "urn:gymact:browsergym:capability:go-back"
+GO_FORWARD_CAPABILITY = "urn:gymact:browsergym:capability:go-forward"
 
 
-def _config(*, requires_authority: bool = True) -> dict[str, object]:
+class _DenyActAllowCleanupResolver:
+    """Use the real deny resolver for work; separately admit bounded teardown."""
+
+    def __init__(self) -> None:
+        self._deny = DenyAuthorityResolver()
+
+    async def authorize(self, request: AuthorityRequest) -> AuthorityDecision:
+        if request.operation is Operation.TEARDOWN and request.authority_ref == AUTHORITY:
+            return AuthorityDecision(
+                admitted=True,
+                reason="TEST_CLEANUP_ADMITTED",
+                evidence_ref="urn:test:browsergym-cleanup-authority",
+            )
+        return await self._deny.authorize(request)
+
+
+def _config() -> dict[str, object]:
     config: dict[str, object] = {
         "start_url": START_URL,
-        "requires_authority": requires_authority,
         "seed": 0,
     }
     chromium = _system_chromium()
@@ -103,15 +127,36 @@ async def test_real_browsergym_navigation_episode_is_receipted() -> None:
     assert acted.receipt.operation == Operation.ACT
     assert acted.receipt.standing == Standing.ALIVE
 
-    verified = await gym.verify(episode_id, {"url": TARGET_URL, "title": "target"})
+    verified = await gym.verify(episode_id, {"url": TARGET_URL, "title": ""})
     assert verified.passed is True
-    teardown = await gym.teardown(episode_id)
+
+    backed = await gym.act(
+        ActuationIntent(
+            episode_id=episode_id,
+            capability=GO_BACK_CAPABILITY,
+            authority_ref=AUTHORITY,
+        )
+    )
+    assert backed.accepted is True
+    assert (await gym.observe(episode_id)).state["url"] == START_URL
+
+    forwarded = await gym.act(
+        ActuationIntent(
+            episode_id=episode_id,
+            capability=GO_FORWARD_CAPABILITY,
+            authority_ref=AUTHORITY,
+        )
+    )
+    assert forwarded.accepted is True
+    assert (await gym.observe(episode_id)).state["url"] == TARGET_URL
+
+    teardown = await gym.teardown(episode_id, authority_ref=AUTHORITY)
     assert teardown.operation == Operation.TEARDOWN
     assert teardown.standing == Standing.ALIVE
 
 
-async def test_authority_refusal_does_not_change_real_browser_state() -> None:
-    gym = GymAct()
+async def test_deny_authority_resolver_does_not_change_real_browser_state() -> None:
+    gym = GymAct(authority_resolver=_DenyActAllowCleanupResolver())
     gym.register_provider(BrowserGymProvider())
     materialized = await gym.materialize(
         MaterializationIntent(provider="browsergym", scenario="openended", config=_config())
@@ -135,7 +180,10 @@ async def test_authority_refusal_does_not_change_real_browser_state() -> None:
     assert before.state["url"] == START_URL
     assert after.state["url"] == START_URL
     assert refused.receipt.pre_state_digest == refused.receipt.post_state_digest
-    await gym.teardown(episode_id)
+
+    teardown = await gym.teardown(episode_id, authority_ref=AUTHORITY)
+    assert teardown.standing == Standing.ALIVE
+    assert teardown.authority_evidence_ref == "urn:test:browsergym-cleanup-authority"
 
 
 async def test_admitted_authority_changes_real_browser_state() -> None:
@@ -168,20 +216,32 @@ async def test_admitted_authority_changes_real_browser_state() -> None:
     assert admitted.accepted is True
     assert admitted.receipt.authority_evidence_ref is not None
     assert (await gym.observe(episode_id)).state["url"] == TARGET_URL
-    await gym.teardown(episode_id)
+    await gym.teardown(episode_id, authority_ref=AUTHORITY)
 
 
 async def test_browsergym_checkpoint_restore_is_bounded_to_active_url() -> None:
-    provider = BrowserGymProvider()
-    environment = await provider.materialize(scenario="openended", config=_config())
-    checkpoint = await environment.checkpoint()
-    goto = next(cap for cap in environment.capabilities() if cap.binding == "goto")
+    gym = GymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
+    gym.register_provider(BrowserGymProvider())
+    materialized = await gym.materialize(
+        MaterializationIntent(provider="browsergym", scenario="openended", config=_config())
+    )
+    episode_id = materialized.episode.episode_id
+    checkpoint = await gym.checkpoint(episode_id)
 
-    await environment.actuate(goto, {"url": TARGET_URL})
-    assert (await environment.observe())["url"] == TARGET_URL
+    acted = await gym.act(
+        ActuationIntent(
+            episode_id=episode_id,
+            capability=GOTO_CAPABILITY,
+            payload={"url": TARGET_URL},
+            authority_ref=AUTHORITY,
+        )
+    )
+    assert acted.accepted is True
+    assert (await gym.observe(episode_id)).state["url"] == TARGET_URL
 
-    await environment.restore(checkpoint)
-    restored = await environment.observe()
-    assert restored["url"] == START_URL
-    assert restored["title"] == "start"
-    await environment.teardown()
+    restored = await gym.restore(episode_id, checkpoint, authority_ref=AUTHORITY)
+    assert restored.standing == Standing.ALIVE
+    state = await gym.observe(episode_id)
+    assert state.state["url"] == START_URL
+    assert state.state["title"] == ""
+    await gym.teardown(episode_id, authority_ref=AUTHORITY)

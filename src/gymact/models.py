@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Any, Literal, Self
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+import rfc8785
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 def _utc_now_iso() -> str:
@@ -55,6 +56,18 @@ class FrozenModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
+class CanonicalInputModel(FrozenModel):
+    """Input model that must have one RFC8785 representation across runtimes."""
+
+    @model_validator(mode="after")
+    def require_canonical_json(self) -> Self:
+        try:
+            rfc8785.dumps(self.model_dump(mode="python"))
+        except (rfc8785.CanonicalizationError, TypeError, ValueError) as exc:
+            raise ValueError("INPUT_NOT_RFC8785_CANONICAL") from exc
+        return self
+
+
 class Capability(FrozenModel):
     """Python realization of a public ``sosa:Procedure`` capability.
 
@@ -86,7 +99,7 @@ class Observation(FrozenModel):
     state_digest: str
 
 
-class AuthorityRequest(FrozenModel):
+class AuthorityRequest(CanonicalInputModel):
     """Question submitted to an external authority resolver before consequential DO."""
 
     episode_id: str
@@ -105,7 +118,7 @@ class AuthorityDecision(FrozenModel):
     evidence_ref: str | None = None
 
 
-class MaterializationIntent(FrozenModel):
+class MaterializationIntent(CanonicalInputModel):
     """Request to create one bounded environment episode."""
 
     provider: str = "memory"
@@ -116,7 +129,7 @@ class MaterializationIntent(FrozenModel):
     operation: Literal[Operation.MATERIALIZE] = Operation.MATERIALIZE
 
 
-class ActuationIntent(FrozenModel):
+class ActuationIntent(CanonicalInputModel):
     """Requested consequential capability invocation. It never grants authority."""
 
     episode_id: str
@@ -186,15 +199,13 @@ class ActuationResult(FrozenModel):
     receipt: Receipt
 
 
-class VerifyRequest(BaseModel):
+class VerifyRequest(CanonicalInputModel):
     """Expected partial state for independent verification."""
 
-    model_config = ConfigDict(extra="forbid")
     expected: dict[str, Any]
 
 
-class RestoreRequest(BaseModel):
+class RestoreRequest(CanonicalInputModel):
     """Checkpoint payload for deterministic restore."""
 
-    model_config = ConfigDict(extra="forbid")
     checkpoint: dict[str, Any]

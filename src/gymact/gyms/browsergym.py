@@ -1,14 +1,14 @@
 """Real GymAct bridge to BrowserGym's local ``openended`` Chromium task.
 
 The ForwardBench corpus pins ServiceNow/BrowserGym at
-``9e779f087de9a65668b6974d11f9ce9816026e96``. At that revision,
+``9e779f087de9a65668b6974d11f9ce9816026e96``.  At that revision,
 ``browsergym-core`` is version 0.14.3 and exposes the Gymnasium
 ``browsergym/openended`` environment plus concrete high-level navigation
 procedures ``goto``, ``go_back``, and ``go_forward``.
 
-This adapter intentionally uses only local ``about:``/``data:`` task worlds in
-its reference tests. It therefore exercises the real BrowserGym package and a
-real Chromium process without claiming network, cloud, or Docker standing.
+This adapter intentionally uses only local ``about:`` task worlds in its
+reference tests.  It therefore exercises the real BrowserGym package and
+a real Chromium process without claiming network, cloud, or Docker standing.
 Checkpoint/restore is deliberately bounded to the active URL: BrowserGym does
 not expose a general browser snapshot primitive, so GymAct does not pretend to
 snapshot cookies, storage, history, or arbitrary page process state.
@@ -62,10 +62,9 @@ class BrowserGymEnvironment:
         start_url: str,
         seed: int = 0,
         chromium_executable: str | None = None,
-        requires_authority: bool = True,
     ) -> None:
         self.environment_id = f"urn:gymact:browsergym:environment:{uuid4().hex}"
-        self.requires_authority = requires_authority
+        self.requires_authority = True
         chromium_kwargs: dict[str, Any] = {}
         if chromium_executable is not None:
             chromium_kwargs["executable_path"] = chromium_executable
@@ -122,7 +121,7 @@ class BrowserGymEnvironment:
         self._ensure_open()
         before = self._state()
         action = self._action_source(capability.binding, payload)
-        observation, reward, terminated, truncated, info = self._env.step(action)
+        observation, reward, terminated, truncated, _info = self._env.step(action)
         self._observation = observation
         after = self._state()
         if after["last_action_error"]:
@@ -134,7 +133,6 @@ class BrowserGymEnvironment:
             "reward": float(reward),
             "terminated": bool(terminated),
             "truncated": bool(truncated),
-            "info": dict(info),
         }
 
     async def verify(self, expected: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
@@ -180,9 +178,6 @@ class BrowserGymProvider:
         seed = config.get("seed", 0)
         if not isinstance(seed, int) or isinstance(seed, bool):
             raise TypeError("config.seed must be an int")
-        requires_authority = config.get("requires_authority", True)
-        if not isinstance(requires_authority, bool):
-            raise TypeError("config.requires_authority must be a boolean")
         chromium_executable = config.get("chromium_executable")
         if chromium_executable is not None:
             if not isinstance(chromium_executable, str) or not chromium_executable:
@@ -193,5 +188,4 @@ class BrowserGymProvider:
             start_url=start_url,
             seed=seed,
             chromium_executable=chromium_executable,
-            requires_authority=requires_authority,
         )

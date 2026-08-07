@@ -2,7 +2,7 @@ name: v26.8.7 contract
 
 on:
   push:
-    branches: [main, release/v26.8.7]
+    branches: [main, release/v26.8.7, agent/v26.8.7-sota-hardening, agent/browsergym-openended-v26-8-7]
   pull_request:
 
 permissions:
@@ -56,7 +56,7 @@ jobs:
             exit 1
           fi
           echo 'mock-grep: zero matches'
-      - name: Semantic and runtime tests
+      - name: Semantic, runtime, evidence, surface, and BrowserGym tests
         run: uv run coverage run -m pytest -v
       - name: Coverage
         run: uv run coverage report
@@ -84,9 +84,25 @@ jobs:
           /tmp/gymact-wheel/bin/pip install dist/*.whl
           /tmp/gymact-wheel/bin/gymact version
           /tmp/gymact-wheel/bin/gymact validate-profile
+          /tmp/gymact-wheel/bin/gymact contract > /tmp/runtime-contract.json
           /tmp/gymact-wheel/bin/gymact export-profile /tmp/exported-profile
+          /tmp/gymact-wheel/bin/gymact export-bundle /tmp/manufacturing-bundle
           test -s /tmp/exported-profile/profile.ttl
           test -s /tmp/exported-profile/profile.shacl.ttl
+          test -s /tmp/manufacturing-bundle/profile.ttl
+          test -s /tmp/manufacturing-bundle/profile.shacl.ttl
+          test -s /tmp/manufacturing-bundle/runtime-contract.jcs.json
+          /tmp/gymact-wheel/bin/python - <<'PY'
+          import json
+          from pathlib import Path
+          from gymact import build_contract
+          from gymact.evidence import canonical_bytes
+
+          observed = json.loads(Path('/tmp/runtime-contract.json').read_text())
+          assert observed['contract_digest'] == build_contract().contract_digest
+          bundle = Path('/tmp/manufacturing-bundle/runtime-contract.jcs.json').read_bytes()
+          assert bundle == canonical_bytes(build_contract().model_dump(mode='json'))
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: gymact-v26.8.7-dist
@@ -116,10 +132,13 @@ jobs:
       - name: Probe CLI and HTTP health
         run: |
           docker run --rm gymact:26.8.7 version
+          docker run --rm gymact:26.8.7 contract | grep -q 'contract_digest'
           cid="$(docker run -d -p 127.0.0.1:8000:8000 gymact:26.8.7)"
           trap 'docker rm -f "$cid" >/dev/null 2>&1 || true' EXIT
           for attempt in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:8000/health | grep -q 'ALIVE'; then
+              curl -fsS http://127.0.0.1:8000/contract | grep -q 'RFC8785-JCS'
+              curl -fsS http://127.0.0.1:8000/evidence | grep -q 'verified'
               exit 0
             fi
             sleep 1
