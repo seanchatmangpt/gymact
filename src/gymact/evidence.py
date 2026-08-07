@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Iterable
 from typing import Protocol, runtime_checkable
 
+import rfc8785
 from blake3 import blake3
 from pydantic import BaseModel, ConfigDict
 from rdflib import BNode, Graph, Literal, Namespace, RDF, URIRef
@@ -19,18 +19,12 @@ SOSA = Namespace("http://www.w3.org/ns/sosa/")
 
 
 def canonical_bytes(value: object) -> bytes:
-    """Encode one value deterministically for hashing and size admission."""
-    return json.dumps(
-        value,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-        default=str,
-    ).encode("utf-8")
+    """Encode one value with RFC 8785 JSON Canonicalization Scheme."""
+    return rfc8785.dumps(value)
 
 
 def digest(value: object) -> str:
-    """Return a BLAKE3-256 hex digest over canonical JSON."""
+    """Return BLAKE3-256 over RFC 8785 canonical JSON."""
     return blake3(canonical_bytes(value)).hexdigest()
 
 
