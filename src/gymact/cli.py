@@ -11,6 +11,7 @@ import uvicorn
 
 from gymact import __version__
 from gymact.authority import AllowListAuthorityResolver
+from gymact.contract import contract_document
 from gymact.models import ActuationIntent, MaterializationIntent
 from gymact.providers import MemoryProvider
 from gymact.runtime import GymAct
@@ -40,6 +41,18 @@ def export_profile(directory: Path) -> None:
     """Export the admitted RDF/SHACL profile for ggen or another compiler."""
     paths = ProfileAuthority().export(directory)
     typer.echo(json.dumps({key: str(value) for key, value in paths.items()}, sort_keys=True))
+
+
+@app.command("export-contract")
+def export_contract(path: Path | None = None) -> None:
+    """Export the portable JSON-schema contract for ggen or another compiler."""
+    payload = json.dumps(contract_document(), indent=2, sort_keys=True) + "\n"
+    if path is None:
+        typer.echo(payload, nl=False)
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(payload, encoding="utf-8")
+    typer.echo(str(path))
 
 
 @app.command()
@@ -77,6 +90,7 @@ def demo(authority: bool = typer.Option(False, "--authority")) -> None:
             "materialization": materialized.model_dump(mode="json"),
             "actuation": actuation.model_dump(mode="json"),
             "verification": verification.model_dump(mode="json"),
+            "evidence_chain_valid": await runtime.verify_evidence_chain(),
         }
 
     typer.echo(json.dumps(anyio.run(run), sort_keys=True))
