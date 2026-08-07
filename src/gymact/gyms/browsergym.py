@@ -81,7 +81,8 @@ class BrowserGymEnvironment:
     def _state(self) -> dict[str, Any]:
         observation = self._observation
         active_index = observation["active_page_index"]
-        active_page_index = int(active_index.item() if hasattr(active_index, "item") else active_index)
+        scalar_index = active_index.item() if hasattr(active_index, "item") else active_index
+        active_page_index = int(scalar_index)
         titles = list(observation["open_pages_titles"])
         return {
             "url": str(observation["url"]),
