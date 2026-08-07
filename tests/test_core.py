@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from pathlib import Path
 
 import anyio
 import pytest
@@ -23,6 +24,7 @@ from gymact import (
     Standing,
 )
 from gymact.cli import app as cli_app
+from gymact.ocel import validate_ocel_log, write_ocel_log
 from gymact.providers import MemoryEnvironment
 from gymact.surfaces.fastapi import create_app
 from gymact.surfaces.fastmcp import create_mcp
@@ -445,6 +447,68 @@ async def test_memory_delete_increment_verify_and_idempotent_teardown() -> None:
 
 
 @pytest.mark.asyncio
+async def test_real_episode_produces_a_valid_ocel_log_and_writes_the_conformance_fixture() -> None:
+    """Van der Aalst item 1: instrument a real run as a real OCEL log.
+
+    Drives the exact same real lifecycle as
+    `test_memory_delete_increment_verify_and_idempotent_teardown` (materialize
+    -> act x2 -> verify -> teardown, real `MemoryProvider`, no mocks), then
+    asserts the runtime's own accumulated Receipt trail produces a real,
+    schema-valid OCEL 2.0 log via `episode_ocel_log` -- pure wiring over
+    `receipts_to_ocel`, nothing synthesized here.
+
+    Also writes the real resulting log to `tests/fixtures/real_episode.ocel.json`
+    via `write_ocel_log` (validates before writing, digests the exact bytes on
+    disk) -- this is the real, captured fixture the ggen-side conformance test
+    (`gymact_bridge_pack_e2e.rs` / a conformance sibling) discovers a DFG from
+    and checks fitness/precision against.
+    """
+    runtime = GymAct()
+    runtime.register_provider(MemoryProvider())
+    materialized = await materialize_memory(
+        runtime, initial={"x": 1, "drop": 2}, key="ocel-fixture-mat"
+    )
+    episode = materialized.episode
+    assert episode is not None
+    await runtime.act(
+        ActuationIntent(
+            episode_id=episode.episode_id,
+            capability=DELETE_CAPABILITY,
+            payload={"key": "drop"},
+            idempotency_key="ocel-delete",
+        )
+    )
+    await runtime.act(
+        ActuationIntent(
+            episode_id=episode.episode_id,
+            capability=INCREMENT_CAPABILITY,
+            payload={"key": "x", "amount": 3},
+            idempotency_key="ocel-increment",
+        )
+    )
+    await runtime.verify(episode.episode_id, {"x": 4})
+    await runtime.teardown(episode.episode_id)
+
+    receipts = runtime.episode_receipts(episode.episode_id)
+    # materialize, act (delete), act (increment), teardown all go through
+    # _emit; verify() does NOT (it returns a VerificationResult, not a
+    # Receipt -- there is no receipted "verify" event in the real runtime
+    # today). So the real, in-order operation sequence is exactly this:
+    assert [r.operation.value for r in receipts] == ["materialize", "act", "act", "teardown"]
+
+    log = runtime.episode_ocel_log(episode.episode_id)
+    validate_ocel_log(log)  # raises on any real schema violation
+    assert len(log["events"]) == len(receipts)
+    assert {e["type"] for e in log["events"]} == {"materialize", "act", "teardown"}
+
+    fixture_path = Path(__file__).parent / "fixtures" / "real_episode.ocel.json"
+    written_log, digest = write_ocel_log(fixture_path, receipts)
+    assert written_log == log
+    assert len(digest) == 64  # real sha256 hex digest, not a placeholder
+    assert fixture_path.is_file()
+
+
+@pytest.mark.asyncio
 async def test_checkpoint_restore_requires_admitted_authority() -> None:
     runtime = authorized_runtime()
     runtime.register_provider(MemoryProvider())
@@ -547,6 +611,7 @@ async def test_fastmcp_surface_executes_in_process() -> None:
             "checkpoint",
             "restore",
             "teardown",
+            "probe_repo",
         }
         created = await client.call_tool(
             "create_episode",

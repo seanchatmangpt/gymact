@@ -7,6 +7,11 @@ Scope note: `gymact.runtime.GymAct` already returns a `Receipt` (with a real
 introduce a parallel event-log representation -- it operates directly on the
 sequence of `Operation` values a caller has already collected from real
 `Receipt`s, keeping one source of truth for "what happened."
+
+This table covers 8 operations, not the 12 an earlier ontology-design pass
+described (no `configure`/`reset`/`start`/`score` here) -- see
+`gymact.models.Operation`'s docstring for why that's a deliberate Reduce,
+not a gap.
 """
 
 from __future__ import annotations
