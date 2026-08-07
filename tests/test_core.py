@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+import anyio
 import pytest
 from fastapi.testclient import TestClient
 from fastmcp import FastMCP
@@ -12,7 +13,7 @@ from gymact import ActuationIntent, GymAct, MemoryProvider, ProfileAuthority, St
 from gymact.cli import app as cli_app
 from gymact.surfaces.fastapi import create_app
 from gymact.surfaces.fastmcp import create_mcp
-from gymact.surfaces.faststream import create_stream_app
+from gymact.surfaces.faststream import bind_stream_handlers, create_stream_app
 
 
 def test_semantic_profile_is_public_ontology_only() -> None:
@@ -66,6 +67,70 @@ async def test_authorized_actuation_is_idempotent_and_independently_verified() -
 
 
 @pytest.mark.asyncio
+async def test_concurrent_same_intent_actuates_once() -> None:
+    runtime = GymAct()
+    runtime.register_provider(MemoryProvider(requires_authority=True))
+    episode = await runtime.create_episode("memory", config={"initial": {"count": 0}})
+    intent = ActuationIntent(
+        episode_id=episode.episode_id,
+        affordance="increment",
+        payload={"key": "count", "amount": 1},
+        authority_ref="urn:test:authority",
+        idempotency_key="concurrent-increment",
+    )
+    results = []
+
+    async def invoke() -> None:
+        results.append(await runtime.act(intent))
+
+    async with anyio.create_task_group() as group:
+        group.start_soon(invoke)
+        group.start_soon(invoke)
+
+    assert len(results) == 2
+    assert results[0] == results[1]
+    assert (await runtime.observe(episode.episode_id)).state == {"count": 1}
+
+
+@pytest.mark.asyncio
+async def test_idempotency_key_conflict_is_refused_without_second_actuation() -> None:
+    runtime = GymAct()
+    runtime.register_provider(MemoryProvider())
+    episode = await runtime.create_episode("memory", config={"initial": {"value": 0}})
+    first = ActuationIntent(
+        episode_id=episode.episode_id,
+        affordance="set",
+        payload={"key": "value", "value": 1},
+        idempotency_key="same-key",
+    )
+    conflicting = first.model_copy(update={"payload": {"key": "value", "value": 2}})
+    assert (await runtime.act(first)).accepted is True
+    refused = await runtime.act(conflicting)
+    assert refused.standing == Standing.REFUSED
+    assert refused.receipt.reason == "IDEMPOTENCY_KEY_CONFLICT"
+    assert (await runtime.observe(episode.episode_id)).state == {"value": 1}
+
+
+@pytest.mark.asyncio
+async def test_provider_error_is_receipted_and_does_not_claim_success() -> None:
+    runtime = GymAct()
+    runtime.register_provider(MemoryProvider())
+    episode = await runtime.create_episode("memory", config={"initial": {"value": 1}})
+    result = await runtime.act(
+        ActuationIntent(
+            episode_id=episode.episode_id,
+            affordance="does-not-exist",
+            idempotency_key="bad-affordance",
+        )
+    )
+    assert result.accepted is False
+    assert result.standing == Standing.BLOCKED
+    assert result.receipt.reason is not None
+    assert result.receipt.reason.startswith("PROVIDER_ERROR:ValueError:")
+    assert result.receipt.pre_state_digest == result.receipt.post_state_digest
+
+
+@pytest.mark.asyncio
 async def test_checkpoint_restore_requires_same_authority_boundary() -> None:
     runtime = GymAct()
     runtime.register_provider(MemoryProvider(requires_authority=True))
@@ -93,7 +158,9 @@ def test_fastapi_surface_executes_real_episode() -> None:
     runtime.register_provider(MemoryProvider())
     client = TestClient(create_app(runtime))
     assert client.get("/health").json()["status"] == "ALIVE"
-    response = client.post("/episodes", json={"provider": "memory", "config": {"initial": {"x": 1}}})
+    response = client.post(
+        "/episodes", json={"provider": "memory", "config": {"initial": {"x": 1}}}
+    )
     assert response.status_code == 200
     episode_id = response.json()["episode_id"]
     action = client.post(
@@ -134,9 +201,9 @@ class _FakeBroker:
 def test_faststream_surface_is_broker_agnostic() -> None:
     runtime = GymAct()
     runtime.register_provider(MemoryProvider())
+    assert isinstance(create_stream_app(None, runtime), FastStream)
     broker = _FakeBroker()
-    app = create_stream_app(broker, runtime)
-    assert isinstance(app, FastStream)
+    bind_stream_handlers(broker, runtime)
     assert broker.channels == ["sub:gymact.commands", "pub:gymact.events"]
 
 

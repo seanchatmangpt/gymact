@@ -19,14 +19,14 @@ def _runtime(runtime: GymAct | None) -> GymAct:
     return instance
 
 
-def create_stream_app(
+def bind_stream_handlers(
     broker: Any,
     runtime: GymAct | None = None,
     *,
     command_channel: str = "gymact.commands",
     event_channel: str = "gymact.events",
-) -> FastStream:
-    """Bind GymAct to any FastStream-compatible broker without choosing a broker family."""
+) -> None:
+    """Register GymAct handlers on any FastStream-compatible broker."""
     service = _runtime(runtime)
 
     @broker.subscriber(command_channel)
@@ -50,8 +50,31 @@ def create_stream_app(
             result = await service.act(intent)
             return {"operation": operation, "result": result.model_dump(mode="json")}
         if operation == "verify":
-            result = await service.verify(str(command["episode_id"]), command.get("expected") or {})
+            result = await service.verify(
+                str(command["episode_id"]), command.get("expected") or {}
+            )
             return {"operation": operation, "result": result.model_dump(mode="json")}
         raise ValueError(f"unsupported stream operation: {operation}")
 
+
+def create_stream_app(
+    broker: Any | None = None,
+    runtime: GymAct | None = None,
+    *,
+    command_channel: str = "gymact.commands",
+    event_channel: str = "gymact.events",
+) -> FastStream:
+    """Create a FastStream app and optionally bind a real broker.
+
+    Passing ``None`` is useful for construction/packaging smoke tests. A running
+    application still requires a concrete FastStream BrokerUsecase.
+    """
+    if broker is None:
+        return FastStream()
+    bind_stream_handlers(
+        broker,
+        runtime,
+        command_channel=command_channel,
+        event_channel=event_channel,
+    )
     return FastStream(broker)
