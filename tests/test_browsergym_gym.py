@@ -18,6 +18,8 @@ AUTHORITY = "urn:test:browsergym-authority"
 
 
 def _real_browsergym_available() -> bool:
+    if importlib.util.find_spec("browsergym") is None:
+        return False
     if importlib.util.find_spec("browsergym.core") is None:
         return False
     if importlib.util.find_spec("gymnasium") is None:
