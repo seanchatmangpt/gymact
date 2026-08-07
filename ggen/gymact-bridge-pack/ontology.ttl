@@ -1,0 +1,62 @@
+# gymact-bridge-pack: admitted facts for the ggen<->GymAct bridge.
+#
+# NOT a custom ontology. Every class/property used here is either (a) from
+# `ontology/profile.ttl`/`ontology/profile.shacl.ttl` -- real, relative
+# SYMLINKS to `src/gymact/ontology/profile.{ttl,shacl.ttl}` in this SAME
+# repo (not a copy, not vendored from elsewhere -- this pack was moved
+# here from a sibling `ggen` repo, where those two files started as a
+# drift-checked external copy; now that pack and profile share one repo,
+# the symlink makes drift structurally impossible instead of merely
+# detectable) -- or (b) a public term reused directly (dct:, sosa:),
+# following this repo's own prefix-reuse convention
+# (ggen-combinatorial-maximalism-pack/ontology.ttl, in the sibling `ggen`
+# repo, is the origin of that convention).
+#
+# HISTORY: an earlier version of this pack invented its own `gab:Operation`
+# rdfs:Class, `gab:consequenceClass` property, and locally-scoped
+# `gab:Read`/`gab:Do` SKOS individuals -- before the real `gymact` repo
+# existed. Once `~/gymact` shipped for real (v26.8.7), reading it directly
+# showed that vocabulary was pure invention: the real capability class is
+# `sosa:Procedure` (not `Operation`), and the real consequence-class IRIs
+# are `urn:gymact:consequence:read`/`urn:gymact:consequence:do` (not a
+# project-local `gab:` namespace). Real GymAct's own admission code
+# (`src/gymact/semantic.py`'s `ProfileAuthority._custom_tbox_terms()`)
+# mechanically REJECTS exactly the kind of custom-TBox individual the old
+# version of this file declared -- proven live by
+# `~/gymact/tests/test_semantic_capability.py::
+# test_extension_cannot_smuggle_custom_gymact_tbox`. This file is the
+# corrected version: it declares zero new rdfs:Class/owl:*Property terms,
+# only `sosa:Procedure` INSTANCES (data, not vocabulary) satisfying the
+# real `urn:gymact:shape:capability` SHACL shape.
+#
+# The 4 capabilities below are a deliberately small subset of the real 8
+# values GymAct's own `gymact.models.Operation` StrEnum defines (discover,
+# materialize, observe, act, verify, checkpoint, restore, teardown) --
+# proof-of-mechanism scope, not the full taxonomy. `dct:title` carries the
+# exact enum string so a real gymact consumer could recognize these as its
+# own operation names; `dct:type` is set per the real Operation semantics:
+# `act` is GymAct's one world-changing operation (-> consequence:do), the
+# other three are observation-only (-> consequence:read).
+
+@prefix dct:  <http://purl.org/dc/terms/> .
+@prefix sosa: <http://www.w3.org/ns/sosa/> .
+
+<urn:gymact:bridge:capability:discover>
+    a sosa:Procedure ;
+    dct:title "discover" ;
+    dct:type <urn:gymact:consequence:read> .
+
+<urn:gymact:bridge:capability:observe>
+    a sosa:Procedure ;
+    dct:title "observe" ;
+    dct:type <urn:gymact:consequence:read> .
+
+<urn:gymact:bridge:capability:act>
+    a sosa:Procedure ;
+    dct:title "act" ;
+    dct:type <urn:gymact:consequence:do> .
+
+<urn:gymact:bridge:capability:verify>
+    a sosa:Procedure ;
+    dct:title "verify" ;
+    dct:type <urn:gymact:consequence:read> .
