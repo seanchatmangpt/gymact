@@ -1,0 +1,32 @@
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix prof: <http://www.w3.org/ns/dx/prof/> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+
+<urn:gymact:shape:profile>
+    a sh:NodeShape ;
+    sh:targetClass prof:Profile ;
+    sh:property [
+        sh:path dct:title ;
+        sh:minCount 1 ;
+        sh:maxCount 1
+    ] ;
+    sh:property [
+        sh:path dct:description ;
+        sh:minCount 1
+    ] ;
+    sh:property [
+        sh:path prof:isProfileOf ;
+        sh:minCount 8
+    ] ;
+    sh:property [
+        sh:path prof:hasResource ;
+        sh:minCount 1
+    ] .
+
+<urn:gymact:shape:resource-descriptor>
+    a sh:NodeShape ;
+    sh:targetClass prof:ResourceDescriptor ;
+    sh:property [
+        sh:path dct:format ;
+        sh:minCount 1
+    ] .
