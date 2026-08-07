@@ -9,29 +9,45 @@ This closes the two gaps named earlier this session against `test_cube_counter.p
 variant (`count-to-3-with-decrement`) exposes a richer capability set
 (increment + decrement + get_value) than counter-cube's default.
 
-Skips (named, not silent) if either the optional `cube`/`docker` extras
-aren't installed or no Docker daemon is actually reachable -- never a fake
-container standing in for a real one.
+Per `gymact.standing.require_standing`, the real thing is the default: if
+either the optional `cube`/`docker` extras aren't installed or no Docker
+daemon is actually reachable, this module now FAILS unless the run
+explicitly sets `GYMACT_ALLOW_DEGRADED_STANDINGS` to include
+"LOCAL_GYM:cube-container-counter" (or "*") -- a skip here is something a
+run must opt into, never something it silently gets. Matches
+`test_cube_counter.py`'s and `test_ggen_legacy_gym.py`'s contract; this
+module previously used a plain `pytest.importorskip`/`pytest.mark.skipif`
+pair that degraded silently by default, inconsistent with its siblings.
 """
 
 from __future__ import annotations
 
-import pytest
+import importlib.util
 
-pytest.importorskip("counter_cube")
-docker = pytest.importorskip("docker")
+from gymact.standing import require_standing
+
+try:
+    import docker
+except ImportError:
+    docker = None  # type: ignore[assignment]
 
 
 def _docker_daemon_reachable() -> bool:
+    if docker is None:
+        return False
     try:
         return docker.from_env().ping()
     except Exception:
         return False
 
 
-pytestmark = pytest.mark.skipif(
-    not _docker_daemon_reachable(),
-    reason="no reachable Docker daemon (start colima: `colima start`)",
+require_standing(
+    "LOCAL_GYM:cube-container-counter",
+    available=importlib.util.find_spec("counter_cube") is not None
+    and docker is not None
+    and _docker_daemon_reachable(),
+    reason="optional 'cube'/'docker' extras not installed, or no reachable Docker daemon "
+    "(uv sync --extra cube --all-extras; start colima: `colima start`)",
 )
 
 from gymact import GymAct, MaterializationIntent  # noqa: E402
@@ -113,6 +129,40 @@ async def test_decrement_capability_is_real_and_actually_changes_container_state
     result = await gym.act(ActuationIntent(episode_id=episode_id, capability=DECREMENT))
     assert result.accepted is True
     assert result.observation.state["counter"] == 1
+
+    await gym.teardown(episode_id)
+
+
+async def test_checkpoint_restore_round_trips_the_real_container_state() -> None:
+    """Mirrors test_ggen_legacy_gym.py's checkpoint/restore round trip, but
+    against real container-backed counter state -- `checkpoint`/`restore`
+    existed on this provider before this session but had zero test
+    coverage."""
+    gym = GymAct()
+    gym.register_provider(CubeContainerCounterProvider())
+
+    materialization = await gym.materialize(
+        MaterializationIntent(provider="cube-container-counter", config={})
+    )
+    episode_id = materialization.episode.episode_id
+
+    await gym.act(ActuationIntent(episode_id=episode_id, capability=INCREMENT))
+    first = await gym.observe(episode_id)
+    assert first.state["counter"] == 1
+
+    checkpoint = await gym.checkpoint(episode_id)
+    assert checkpoint["counter"] == 1
+    assert len(checkpoint["history"]) == 1
+
+    await gym.act(ActuationIntent(episode_id=episode_id, capability=INCREMENT))
+    await gym.act(ActuationIntent(episode_id=episode_id, capability=INCREMENT))
+    assert (await gym.observe(episode_id)).state["counter"] == 3
+
+    restored = await gym.restore(episode_id, checkpoint)
+    assert restored.standing == Standing.ALIVE
+
+    observed_after_restore = await gym.observe(episode_id)
+    assert observed_after_restore.state == first.state
 
     await gym.teardown(episode_id)
 

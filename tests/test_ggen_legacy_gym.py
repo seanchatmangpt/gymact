@@ -12,7 +12,11 @@ run must opt into, never something it silently gets.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -25,6 +29,7 @@ from gymact import (
     Standing,
 )
 from gymact.gyms.ggen_legacy import GGEN_LEGACY_CAPABILITIES, GgenLegacyVerifierProvider
+from gymact.ocel import write_ocel_log
 from gymact.standing import require_standing
 
 AUTHORITY = "urn:test:ggen-legacy-authority"
@@ -34,6 +39,8 @@ VERIFY_CAPABILITY = "urn:gymact:ggen-legacy:capability:verify"
 GGEN_LEGACY_ROOT = Path(
     os.environ.get("GGEN_LEGACY_ROOT", str(Path.home() / "ggen-legacy"))
 ).resolve()
+
+WASM4PM_ROOT = Path(os.environ.get("WASM4PM_ROOT", str(Path.home() / "wasm4pm"))).resolve()
 
 require_standing(
     "LOCAL_CHECKOUT:ggen-legacy",
@@ -187,3 +194,112 @@ async def test_checkpoint_restore_round_trips_the_evidence() -> None:
     assert observed_after_restore.state == first.observation.state
 
     await runtime.teardown(episode.episode_id, authority_ref=AUTHORITY)
+
+
+@pytest.mark.asyncio
+async def test_ocel_export_is_independently_validated_by_wasm4pm(tmp_path) -> None:
+    """Drive the real ggen-legacy verifier lifecycle end to end, export the
+    real Receipt trail as an OCEL 2.0 log, and get an independent, real,
+    cross-language confirmation that the log is structurally valid by
+    running it through wasm4pm's own Rust `wpm` CLI (a completely separate
+    OCEL 2.0 parser from gymact's Python jsonschema validator) as a real
+    subprocess. This proves the harness runs end to end for real -- it does
+    not and should not launder ggen-legacy's own real standing (currently
+    BUILD_BROKEN / release_admitted=false) into a false pass; that standing
+    is recorded faithfully in the exported log, not overwritten.
+    """
+    require_standing(
+        "LOCAL_CHECKOUT:wasm4pm",
+        available=(WASM4PM_ROOT / "Cargo.toml").is_file() and shutil.which("cargo") is not None,
+        reason=f"no wasm4pm checkout with cargo available at {WASM4PM_ROOT}",
+    )
+
+    runtime = authorized_runtime()
+    materialized = await runtime.materialize(
+        MaterializationIntent(
+            provider="ggen-legacy",
+            config={"root": str(GGEN_LEGACY_ROOT)},
+            authority_ref=AUTHORITY,
+            idempotency_key="ocel-materialize",
+        )
+    )
+    episode = materialized.episode
+    assert episode is not None
+    receipts = [materialized.receipt]
+
+    observe_action = await runtime.act(
+        ActuationIntent(
+            episode_id=episode.episode_id,
+            capability=OBSERVE_CAPABILITY,
+            authority_ref=AUTHORITY,
+            idempotency_key="ocel-observe",
+        )
+    )
+    receipts.append(observe_action.receipt)
+
+    verify_action = await runtime.act(
+        ActuationIntent(
+            episode_id=episode.episode_id,
+            capability=VERIFY_CAPABILITY,
+            authority_ref=AUTHORITY,
+            idempotency_key="ocel-verify",
+        )
+    )
+    receipts.append(verify_action.receipt)
+
+    checkpoint = await runtime.checkpoint(episode.episode_id)
+    restored = await runtime.restore(episode.episode_id, checkpoint, authority_ref=AUTHORITY)
+    receipts.append(restored)
+
+    teardown_receipt = await runtime.teardown(episode.episode_id, authority_ref=AUTHORITY)
+    receipts.append(teardown_receipt)
+
+    # Real ggen-legacy standing is recorded faithfully, not asserted here as
+    # a pass/fail -- this test validates the log's structure, not the
+    # verifier's verdict on the repo.
+    assert verify_action.observation is not None
+    real_standing = verify_action.observation.state.get("standing")
+    assert real_standing in {member.value for member in Standing}
+
+    log_path = tmp_path / "ggen-legacy.ocel.json"
+    log, digest = write_ocel_log(log_path, receipts)
+    assert log_path.is_file()
+    on_disk_digest = hashlib.sha256(log_path.read_bytes()).hexdigest()
+    assert on_disk_digest == digest
+    assert len(log["events"]) == len(receipts)
+
+    # Minimal receipt envelope wasm4pm's `wpm receipt verify-ocel2` expects:
+    # algorithms[].{expected_path.expected_ocel2, observed_path.observed_ocel2}.
+    # Comparing the log against itself is a legitimate structural check here
+    # -- the point is confirming wasm4pm's independently implemented Rust
+    # OCEL 2.0 parser agrees the document is valid, not diffing two runs.
+    envelope_path = tmp_path / "envelope.json"
+    envelope_path.write_text(
+        json.dumps(
+            {
+                "algorithms": [
+                    {
+                        "expected_path": {"expected_ocel2": log},
+                        "observed_path": {"observed_ocel2": log},
+                    }
+                ]
+            }
+        )
+    )
+
+    # cwd (not --manifest-path) must be wasm4pm's own root so rustup picks up
+    # its pinned nightly toolchain file -- wasm4pm-compat requires nightly-only
+    # features (#![feature(generic_const_exprs)]) and fails to compile under
+    # whatever toolchain the caller's own cwd would otherwise resolve to.
+    result = subprocess.run(
+        ["cargo", "run", "--bin", "wpm", "--", "receipt", "verify-ocel2", str(envelope_path)],
+        cwd=str(WASM4PM_ROOT),
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
+    assert "PASS" in result.stdout, (
+        f"wasm4pm did not independently confirm OCEL validity "
+        f"(exit={result.returncode}):\nstdout={result.stdout}\nstderr={result.stderr}"
+    )
+    assert result.returncode == 0

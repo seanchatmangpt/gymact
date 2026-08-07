@@ -49,6 +49,8 @@ These are external Python dependencies, not ggen-produced reimplementations. Pro
 ## Runtime boundary
 
 ```text
+discover -- registry inspection; not part of an episode's own trajectory
+
 MaterializationIntent
        |
        v
@@ -67,7 +69,52 @@ Environment -- capabilities() -- real SHACL admission
        +-- teardown
 ```
 
+`gymact.models.Operation` names these as `discover, materialize, observe, act, verify,
+checkpoint, restore, teardown` -- 8 values, deliberately not the `configure`/`reset`/`start`/
+`score` some earlier design sketches described (see that enum's own docstring for the Reduce
+rationale: `materialize` already subsumes configure/reset/start for the current provider set,
+and `VerificationResult.passed` already serves as the pass/fail signal a separate `score`
+would add).
+
 Materialization and actuation have separate idempotency domains. A materialization failure never becomes an `Episode`; an admitted materialization returns an initial independent observation and receipt. Successful teardown is retained as a tombstone receipt so transport retries cannot cause a second teardown.
+
+`gymact.process.ConformanceChecker` replays a real episode's `Receipt.operation` sequence
+against `gymact.process.LIFECYCLE` -- a hand-checkable transition table over `Operation`, not
+a parallel event-log representation (it operates directly on `Receipt`s the runtime already
+returns).
+
+## Real gym providers
+
+Three real `EnvironmentProvider` implementations exist in `gymact.gyms`, each driving a
+genuinely real external collaborator (zero mocks anywhere in `src/` or `tests/`):
+
+| Provider | Real collaborator |
+|---|---|
+| `gyms.cube_counter.CubeCounterProvider` | an in-process CUBE reference task (`counter_cube` package) -- no Docker, no network, no subprocess |
+| `gyms.cube_container_counter.CubeContainerCounterProvider` | a real local Docker daemon provisioning a real container running CUBE's `toy_benchmark` example |
+| `gyms.ggen_legacy.GgenLegacyVerifierProvider` | a real subprocess of the compiled `ggen-v26-8-1-verifier` binary against a real `~/ggen-legacy` checkout |
+| `gyms.discovered.GenericDiscoveredProvider` | a generic actuator: runs an LLM-proposed, bounded subprocess recipe (`command`/`cwd`/`timeout_seconds`/`success_markers`) against an arbitrary checked-out repo, instead of a hand-written adapter per benchmark subject |
+| `gyms.gymnasium_env.GymnasiumProvider` | a real, already-installed `gymnasium` package's `Env` (default `CartPole-v1`) -- no vendored agentgym, no subprocess |
+
+Each of the first three claims a `gymact.standing.require_standing` standing string (e.g.
+`"LOCAL_GYM:cube-counter"`). The real thing is the default: if the real collaborator is
+unavailable, the run fails loudly unless `GYMACT_ALLOW_DEGRADED_STANDINGS` explicitly lists
+that standing (or `"*"`) -- a skip must be opted into, never silently defaulted.
+
+## OCEL 2.0 export
+
+`GymAct.episode_receipts()`/`GymAct.episode_ocel_log()` turn any episode's real receipt trail
+(every lifecycle call routes through the kernel's single `_record` chokepoint, which also
+feeds the tamper-evident receipt ledger) into an OCEL 2.0 log via `gymact.ocel.receipts_to_ocel`;
+`gymact.ocel.validate_ocel_log` checks it against the real vendored OCEL 2.0 JSON Schema.
+Exported logs have been independently cross-validated against a real `wpm receipt verify-ocel2`
+subprocess (see `~/wasm4pm`).
+
+The FastMCP surface additionally exposes a read-only `probe_repo` tool (README/pyproject/
+setup.py plus a truncated top-level listing) -- it never gains shell/exec access; actual
+command execution stays behind `actuate()`/authority.
+
+## Bounded consequence
 
 Every external boundary has a wall-clock limit. Inputs, observations and checkpoints have serialization-size limits. Timeout is `BLOCKED`: it is neither authorization denial nor proof that a remote system produced no effect.
 
