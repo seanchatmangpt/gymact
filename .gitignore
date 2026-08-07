@@ -1,4 +1,5 @@
 # Coverage.py
+.coverage
 htmlcov/
 reports/
 
@@ -73,4 +74,3 @@ uv.lock
 
 # Playground
 playground.py
-playground.ipynb
