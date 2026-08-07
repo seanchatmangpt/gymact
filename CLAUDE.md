@@ -63,3 +63,21 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+## 5. Project: GymAct
+
+GymAct is a semantic execution profile for bounded, benchmarkable worlds (gyms) — the
+actuation library AutoFDE and ForwardBench drive to discover, execute, and verify tasks
+against benchmark environments (CUBE, Harbor, Inspect, BrowserGym, cloud gyms, etc.).
+
+Full architecture doctrine lives in `.claude/rules/` — read the relevant file before
+touching semantic models, ontology, or cross-language projections:
+
+- `.claude/rules/ontology.md` — public-ontology-first modeling; no custom TBox
+- `.claude/rules/python-native.md` — Python side composes mature libraries; doesn't generate them
+- `.claude/rules/ggen-boundary.md` — where ggen/Rust manufacture applies vs. plain Python
+- `.claude/rules/actuation-authority.md` — zero unreceipted actuation invariant
+- `.claude/rules/explore-exploit.md` — lab vs. production repository boundary
+
+See also `~/.claude/rules/tools.md` and `~/.claude/rules/testing-chicago-style.md` (global,
+apply here too — no mocking of real collaborators by default).
