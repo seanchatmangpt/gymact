@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- OCEL 2.0 process-mining export off any episode's real receipt trail: `GymAct.episode_receipts()` and `GymAct.episode_ocel_log()`, backed by a new receipt-accumulation chokepoint (`_emit`) that every existing lifecycle call now routes through.
+- `probe_repo` FastMCP tool: a read-only repository prober (README/pyproject/setup.py plus a top-level listing, truncated) with no shell/exec access -- actual command execution stays behind `actuate()`/authority, unaffected by this addition.
+- `GenericDiscoveredProvider` (`gymact.gyms.discovered`): a generic `EnvironmentProvider` that runs an LLM-proposed, bounded subprocess recipe (`command`/`cwd`/`timeout_seconds`/`success_markers`) against an arbitrary checked-out repo, rather than a hand-written adapter per benchmark subject.
+- `scripts/discover_and_actuate.py`: an end-to-end probe -> propose -> actuate -> OCEL driver exercising the above.
+- `scripts/ocel_standing.py`: a strict standing-derivation script that computes actuation standing purely from on-disk OCEL logs (schema validation + `ConformanceChecker` replay + explicit ALIVE/solved check) -- never from script stdout or narration.
+- Real cross-validation: an episode's exported OCEL log is independently re-validated via a real `cargo run --bin wpm -- receipt verify-ocel2` subprocess against `~/wasm4pm` (`tests/test_ggen_legacy_gym.py::test_ocel_export_is_independently_validated_by_wasm4pm`), skipping cleanly via `require_standing` when no local wasm4pm checkout is present.
+
 ## 26.8.7 - 2026-08-07
 
 ### Added

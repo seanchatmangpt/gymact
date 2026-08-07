@@ -41,6 +41,7 @@ from gymact.models import (
     Standing,
     VerificationResult,
 )
+from gymact.ocel import receipts_to_ocel
 from gymact.providers import Environment, EnvironmentProvider
 from gymact.semantic import ProfileAuthority
 
@@ -91,6 +92,7 @@ class GymAct:
         self._materialization_idempotency: dict[str, _MaterializationRecord] = {}
         self._materialization_lock = anyio.Lock()
         self._teardown_receipts: dict[str, Receipt] = {}
+        self._receipts: dict[str, list[Receipt]] = {}
         self._authority = authority_resolver or DenyAuthorityResolver()
         self.limits = limits or RuntimeLimits()
         self.ledger = receipt_ledger or MemoryReceiptLedger()
@@ -135,7 +137,21 @@ class GymAct:
 
     def _record(self, receipt: Receipt) -> Receipt:
         self.ledger.append(receipt)
+        self._receipts.setdefault(receipt.episode_id, []).append(receipt)
         return receipt
+
+    def episode_receipts(self, episode_id: str) -> list[Receipt]:
+        """Real, in-order Receipt trail accumulated for one episode so far."""
+        return list(self._receipts.get(episode_id, []))
+
+    def episode_ocel_log(self, episode_id: str) -> dict[str, Any]:
+        """Real OCEL 2.0 log for one episode, built from its accumulated Receipts.
+
+        Pure wiring over the existing `receipts_to_ocel` converter -- no new
+        OCEL logic here. Works after teardown too: `_receipts` is never
+        cleared when an episode is torn down (only `_episodes` is).
+        """
+        return receipts_to_ocel(self._receipts.get(episode_id, []))
 
     def _materialization_result(
         self,

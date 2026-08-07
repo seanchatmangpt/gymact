@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Any
 
 from fastmcp import FastMCP
@@ -9,6 +11,8 @@ from fastmcp import FastMCP
 from gymact.models import ActuationIntent, MaterializationIntent
 from gymact.providers import MemoryProvider
 from gymact.runtime import GymAct
+
+_PROBE_MAX_CHARS = 4000
 
 
 def _runtime(runtime: GymAct | None) -> GymAct:
@@ -97,6 +101,50 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
         return (
             await service.restore(episode_id, checkpoint, authority_ref=authority_ref)
         ).model_dump(mode="json")
+
+    @mcp.tool()
+    async def probe_repo(subject_path: str) -> dict[str, Any]:
+        """Read-only probe of a real repository directory: README, pyproject/
+        setup.py (whichever exists), and top-level file listing, truncated.
+
+        This is the only new read surface an LLM-driven discovery loop gets --
+        no shell access, no arbitrary code execution granted here. What to do
+        with this information (propose a real command) is the caller's job;
+        actually running it goes through GymAct's own actuate()/authority
+        path like every other consequential operation.
+        """
+        root = Path(subject_path)
+        if not root.is_dir():
+            return {"exists": False, "subject_path": subject_path}
+
+        def _read(name: str) -> str | None:
+            path = root / name
+            if not path.is_file():
+                return None
+            try:
+                return path.read_text(errors="replace")[:_PROBE_MAX_CHARS]
+            except OSError:
+                return None
+
+        readme = None
+        for candidate in ("README.md", "README.rst", "README.txt", "README"):
+            readme = _read(candidate)
+            if readme is not None:
+                break
+
+        try:
+            top_level = sorted(os.listdir(root))[:100]
+        except OSError:
+            top_level = []
+
+        return {
+            "exists": True,
+            "subject_path": subject_path,
+            "readme": readme,
+            "pyproject_toml": _read("pyproject.toml"),
+            "setup_py": _read("setup.py"),
+            "top_level_files": top_level,
+        }
 
     @mcp.tool()
     async def teardown(episode_id: str, authority_ref: str | None = None) -> dict[str, Any]:

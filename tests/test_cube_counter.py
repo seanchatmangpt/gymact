@@ -108,6 +108,40 @@ async def test_real_counter_episode_replays_conformant_against_declared_lifecycl
     assert result.deviations == []
 
 
+async def test_checkpoint_restore_round_trips_the_real_counter_state() -> None:
+    """Mirrors test_ggen_legacy_gym.py's checkpoint/restore round trip, but
+    against real CUBE counter state instead of a real verifier binary's
+    JSON report -- neither `cube_counter.py` nor `cube_container_counter.py`
+    had any test coverage for their real `checkpoint`/`restore` methods
+    before this."""
+    gym_instance = GymAct()
+    gym_instance.register_provider(CubeCounterProvider())
+
+    materialization = await gym_instance.materialize(
+        MaterializationIntent(provider="cube-counter", config={"target": 3})
+    )
+    episode_id = materialization.episode.episode_id
+
+    await gym_instance.act(ActuationIntent(episode_id=episode_id, capability=INCREMENT_CAPABILITY))
+    first = await gym_instance.observe(episode_id)
+    assert first.state["counter"] == 1
+
+    checkpoint = await gym_instance.checkpoint(episode_id)
+    assert checkpoint == {"counter": 1}
+
+    await gym_instance.act(ActuationIntent(episode_id=episode_id, capability=INCREMENT_CAPABILITY))
+    await gym_instance.act(ActuationIntent(episode_id=episode_id, capability=INCREMENT_CAPABILITY))
+    assert (await gym_instance.observe(episode_id)).state["counter"] == 3
+
+    restored = await gym_instance.restore(episode_id, checkpoint)
+    assert restored.standing == Standing.ALIVE
+
+    observed_after_restore = await gym_instance.observe(episode_id)
+    assert observed_after_restore.state == first.state
+
+    await gym_instance.teardown(episode_id)
+
+
 async def test_acting_before_materialize_is_named_as_an_illegal_transition() -> None:
     # A synthetic, out-of-order operation trace (not collected from a real
     # episode) -- deliberately proving the checker discriminates, mirroring
