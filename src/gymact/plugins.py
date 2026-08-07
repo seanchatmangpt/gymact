@@ -43,22 +43,39 @@ def _provider_entry_points() -> tuple[EntryPoint, ...]:
     return tuple(entry_points(group=PROVIDER_ENTRYPOINT_GROUP))
 
 
-def discover_provider_plugins() -> tuple[ProviderPluginInfo, ...]:
-    """Return installed plugin metadata without importing plugin code."""
+def discover_provider_plugins(
+    entries: tuple[EntryPoint, ...] | None = None,
+) -> tuple[ProviderPluginInfo, ...]:
+    """Return installed plugin metadata without importing plugin code.
+
+    `entries` defaults to the real installed entry points; passing it
+    explicitly injects a real alternate entry-point source (e.g. a test's
+    own simple real implementation of the entry-point contract) without
+    patching this module's internals.
+    """
     return tuple(
         sorted(
             (
                 ProviderPluginInfo(name=entry.name, value=entry.value)
-                for entry in _provider_entry_points()
+                for entry in (entries if entries is not None else _provider_entry_points())
             ),
             key=lambda value: value.name,
         )
     )
 
 
-def load_provider_plugin(name: str) -> ProviderPluginLoad:
-    """Explicitly load one named provider plugin and validate its runtime protocol."""
-    matches = [entry for entry in _provider_entry_points() if entry.name == name]
+def load_provider_plugin(
+    name: str, entries: tuple[EntryPoint, ...] | None = None
+) -> ProviderPluginLoad:
+    """Explicitly load one named provider plugin and validate its runtime protocol.
+
+    See `discover_provider_plugins` for what `entries` overrides.
+    """
+    matches = [
+        entry
+        for entry in (entries if entries is not None else _provider_entry_points())
+        if entry.name == name
+    ]
     if not matches:
         return ProviderPluginLoad(name=name, standing=Standing.UNSUPPORTED)
     if len(matches) != 1:

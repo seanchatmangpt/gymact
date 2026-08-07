@@ -5,7 +5,13 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 from gymact.evidence import digest
-from gymact.models import ActuationIntent, MaterializationIntent, Operation, Receipt, VerificationResult
+from gymact.models import (
+    ActuationIntent,
+    MaterializationIntent,
+    Operation,
+    Receipt,
+    VerificationResult,
+)
 from gymact.semantic import ProfileAuthority
 
 PUBLIC_SEMANTICS = (

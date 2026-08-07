@@ -7,8 +7,10 @@ evidence, idempotency and independent verification.
 
 from __future__ import annotations
 
+import contextlib
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, TypeVar
+from typing import Any, TypeVar
 from uuid import uuid4
 
 import anyio
@@ -384,15 +386,15 @@ class GymAct:
                 )
                 self._ensure_state(initial_state)
             except Exception as exc:
-                try:
+                with contextlib.suppress(Exception):
                     await self._bounded(
                         self.limits.teardown_timeout_s,
                         "TEARDOWN_TIMEOUT",
                         environment.teardown,
                     )
-                except Exception:
-                    pass
-                reason = exc.code if isinstance(exc, BoundaryBlocked) else "ENVIRONMENT_ADMISSION_FAILED"
+                reason = (
+                    exc.code if isinstance(exc, BoundaryBlocked) else "ENVIRONMENT_ADMISSION_FAILED"
+                )
                 return self._materialization_result(
                     intent_digest=intent_digest,
                     key=intent.idempotency_key,

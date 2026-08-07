@@ -42,6 +42,7 @@ class SQLiteReceiptLedger:
         )
         self._connection.commit()
         if not self.verify():
+            self._connection.close()
             raise ValueError("EVIDENCE_CHAIN_INVALID")
 
     @staticmethod
@@ -89,7 +90,8 @@ class SQLiteReceiptLedger:
                     return prior
 
                 last = self._connection.execute(
-                    "SELECT sequence, record_digest FROM receipt_evidence ORDER BY sequence DESC LIMIT 1"
+                    "SELECT sequence, record_digest FROM receipt_evidence "
+                    "ORDER BY sequence DESC LIMIT 1"
                 ).fetchone()
                 sequence = 0 if last is None else int(last[0]) + 1
                 previous = None if last is None else str(last[1])
@@ -166,7 +168,7 @@ class SQLiteReceiptLedger:
             self._connection.commit()
             self._connection.close()
 
-    def __enter__(self) -> "SQLiteReceiptLedger":
+    def __enter__(self) -> SQLiteReceiptLedger:
         return self
 
     def __exit__(self, *args: object) -> None:

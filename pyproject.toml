@@ -28,6 +28,13 @@ dependencies = [
   "fastmcp>=3.4.1,<4",
   "faststream>=0.7.2,<0.8",
   "httpx>=0.28,<1",
+  "jsonschema>=4.23,<5",
+  # required for jsonschema's "date-time" format checker to actually run --
+  # without it, `format: "date-time"` in ocel20-schema.json silently passes
+  # anything, which is exactly the kind of unchecked claim this exists to
+  # prevent (verified: `'date-time' not in FormatChecker().checkers` before
+  # adding this).
+  "rfc3339-validator>=0.1.4,<1",
   "pydantic>=2.13,<3",
   "pyshacl>=0.40,<1",
   "rdflib>=7.1,<8",
@@ -38,6 +45,20 @@ dependencies = [
 
 [project.optional-dependencies]
 gyms = ["gymnasium>=1.0,<2", "pettingzoo>=1.24,<2"]
+# The first real gym bridge target: CUBE's own no-Docker reference benchmark
+# (examples/counter-cube), vendored read-only at
+# ~/autofde-lab/vendor/gyms/cube-standard (a lazy git submodule of that repo,
+# pinned per docs/papers/gym-lock.ttl). Optional because cube-standard requires
+# Python >=3.12 while gymact itself supports >=3.11; gated at import time via
+# `pytest.importorskip("cube")` in tests, never mocked when genuinely absent.
+cube = [
+  "cube-standard[docker]; python_version >= '3.12'",
+  "counter-cube; python_version >= '3.12'",
+]
+
+[tool.uv.sources]
+cube-standard = { path = "/Users/sac/autofde-lab/vendor/gyms/cube-standard", editable = true }
+counter-cube = { path = "/Users/sac/autofde-lab/vendor/gyms/cube-standard/examples/counter-cube", editable = true }
 
 [project.scripts]
 gymact = "gymact.cli:app"
@@ -70,7 +91,11 @@ fail_under = 85
 show_missing = true
 
 [tool.pytest.ini_options]
-addopts = "-q --strict-config --strict-markers"
+# -rs: always show skip reasons in the summary, even in -q mode -- a skip
+# must never be invisible. See src/gymact/standing.py for the companion
+# runtime contract (GYMACT_ALLOW_DEGRADED_STANDINGS) governing when a
+# missing real collaborator is allowed to become a skip at all.
+addopts = "-q -rs --strict-config --strict-markers"
 testpaths = ["tests"]
 asyncio_mode = "auto"
 filterwarnings = ["error", "ignore::DeprecationWarning"]

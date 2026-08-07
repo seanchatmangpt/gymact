@@ -45,16 +45,30 @@ def validate_profile() -> None:
 
 @app.command("export-profile")
 def export_profile(directory: Path) -> None:
-    """Export the admitted RDF/SHACL profile for direct semantic inspection."""
-    paths = ProfileAuthority().export(directory)
-    typer.echo(json.dumps({key: str(value) for key, value in paths.items()}, sort_keys=True))
+    """Export the admitted RDF/SHACL profile, with per-file digests, for
+    ggen or another compiler to consume and mechanically verify."""
+    authority = ProfileAuthority()
+    exported = authority.export(directory)
+    payload = {
+        "profile_uri": authority.profile_uri,
+        "files": {
+            name: {"path": str(resource.path), "sha256": resource.sha256}
+            for name, resource in exported.items()
+        },
+    }
+    typer.echo(json.dumps(payload, sort_keys=True))
 
 
 @app.command("export-bundle")
 def export_bundle(directory: Path) -> None:
-    """Export RDF/SHACL plus RFC8785 runtime contract for ggen/Rust manufacture."""
-    paths = export_manufacturing_bundle(directory)
-    typer.echo(json.dumps({key: str(value) for key, value in paths.items()}, sort_keys=True))
+    """Export RDF/SHACL plus RFC8785 runtime contract, with per-file digests,
+    for ggen/Rust manufacture to consume and mechanically verify."""
+    exported = export_manufacturing_bundle(directory)
+    payload = {
+        name: {"path": str(resource.path), "sha256": resource.sha256}
+        for name, resource in exported.items()
+    }
+    typer.echo(json.dumps(payload, sort_keys=True))
 
 
 @app.command()
@@ -64,9 +78,7 @@ def demo(authority: bool = typer.Option(False, "--authority")) -> None:
     async def run() -> dict[str, object]:
         authority_ref = "urn:gymact:authority:demo"
         runtime = GymAct(
-            authority_resolver=AllowListAuthorityResolver({authority_ref})
-            if authority
-            else None
+            authority_resolver=AllowListAuthorityResolver({authority_ref}) if authority else None
         )
         runtime.register_provider(MemoryProvider(requires_authority=True))
         materialized = await runtime.materialize(

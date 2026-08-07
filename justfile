@@ -59,6 +59,58 @@ docs:
     uv sync --group dev
     uv run zensical build --clean
 
+# ggen-bridge-check — NOT a CI job, NOT part of `all`: this repo has no
+# Rust toolchain and CI never sets one up (confirmed: none of
+# .github/workflows/*.yml touch rust/cargo/ggen). Requires a real `ggen`
+# binary on PATH (build one from the sibling `ggen` repo:
+# `cargo build --release -p ggen-cli` there, then add its target/release/
+# to PATH, or set GGEN_BIN to its exact path). Proves ggen/gymact-bridge-pack
+# actually generates from ontology/profile.{ttl,shacl.ttl} (real symlinks
+# into src/gymact/ontology/, not a copy) by running a real `ggen sync run`
+# against a scratch consumer project, the same way
+# ~/ggen/crates/ggen-engine/tests/gymact_bridge_pack_e2e.rs does from the
+# Rust side.
+ggen-bridge-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    GGEN_BIN="${GGEN_BIN:-ggen}"
+    if ! command -v "$GGEN_BIN" >/dev/null 2>&1; then
+        echo "ggen-bridge-check: no '$GGEN_BIN' binary on PATH." >&2
+        echo "  Build one from the sibling ggen repo (cargo build --release -p ggen-cli)" >&2
+        echo "  and either add target/release/ to PATH or set GGEN_BIN to its exact path." >&2
+        exit 2
+    fi
+    PACK_ROOT="$(pwd)/ggen/gymact-bridge-pack"
+    SCRATCH="$(mktemp -d)"
+    trap 'rm -rf "$SCRATCH"' EXIT
+    mkdir -p "$SCRATCH/consumer/templates" "$SCRATCH/consumer/shapes"
+    printf '' > "$SCRATCH/consumer/ontology.ttl"
+    cat > "$SCRATCH/consumer/ggen.toml" <<EOF
+    [project]
+    name = "consumer"
+
+    [ontology]
+    source = "ontology.ttl"
+
+    [packs]
+    gymact-bridge-pack = { path = "$PACK_ROOT" }
+
+    [templates]
+    dir = "templates"
+    EOF
+    cp "$PACK_ROOT/ontology/profile.shacl.ttl" "$SCRATCH/consumer/shapes/profile.shacl.ttl"
+    (cd "$SCRATCH/consumer" && "$GGEN_BIN" sync run)
+    for f in src/gymact_operation_catalog.rs src/gymact_mcp_tools.rs docs/gymact-bridge/reference.md tests/gymact_bridge_operation_catalog_proof.rs; do
+        test -s "$SCRATCH/consumer/$f" || { echo "ggen-bridge-check: expected generated file missing: $f" >&2; exit 1; }
+    done
+    echo "ggen-bridge-check: OK — all 4 expected files generated"
+
+# job: container — Build and probe production container
+#
+# One shebang script for the whole recipe: `just` only honors `#!/...` as the
+# recipe's first line — a shebang appearing mid-recipe is treated as a plain
+# comment, and every other line then runs as its own separate `bash -c`
+# invocation with no shared variables (bit us with `$cid` once already).
 container:
     #!/usr/bin/env bash
     set -euo pipefail

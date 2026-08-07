@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any, Literal, Self
 from uuid import uuid4
 
 import rfc8785
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+def _utc_now_iso() -> str:
+    """Real UTC timestamp, OCEL-2.0-compliant (`ocel:timestamp` requires
+    ISO 8601 date-time). Not a fixed/frozen clock -- every `Receipt` really
+    records when it was minted."""
+    return datetime.now(UTC).isoformat()
 
 
 class Standing(StrEnum):
@@ -155,6 +163,7 @@ class Receipt(FrozenModel):
     """Bounded causal evidence for one accepted, blocked, or refused operation."""
 
     receipt_id: str = Field(default_factory=lambda: uuid4().hex)
+    occurred_at: str = Field(default_factory=_utc_now_iso)
     episode_id: str
     operation: Operation
     standing: Standing

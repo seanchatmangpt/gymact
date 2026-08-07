@@ -27,8 +27,7 @@ def test_rfc8785_canonicalization_is_key_order_independent() -> None:
 
 def test_blake3_dependency_matches_known_empty_input_vector() -> None:
     assert blake3(b"").hexdigest() == (
-        "af1349b9f5f9a1a6a0404dea36dcc949"
-        "9bcb25c9adc112b7cc9a93cae41f3262"
+        "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262"
     )
 
 

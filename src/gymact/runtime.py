@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import rfc8785
 
-from gymact.kernel import BoundaryBlocked, GymAct as _KernelGymAct
+from gymact.kernel import BoundaryBlocked
+from gymact.kernel import GymAct as _KernelGymAct
 
 
 class GymAct(_KernelGymAct):

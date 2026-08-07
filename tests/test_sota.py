@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import anyio
 import pytest
-from rdflib import Namespace, RDF
+from rdflib import RDF, Namespace
 
 from gymact import (
     ActuationIntent,

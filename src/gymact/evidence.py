@@ -8,7 +8,7 @@ from typing import Protocol, runtime_checkable
 import rfc8785
 from blake3 import blake3
 from pydantic import BaseModel, ConfigDict
-from rdflib import BNode, Graph, Literal, Namespace, RDF, URIRef
+from rdflib import RDF, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import DCTERMS
 
 from gymact.models import Receipt, VerificationResult

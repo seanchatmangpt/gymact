@@ -38,9 +38,7 @@ class EnvironmentProvider(Protocol):
     name: str
     materialization_requires_authority: bool
 
-    async def materialize(
-        self, *, scenario: str | None, config: dict[str, Any]
-    ) -> Environment: ...
+    async def materialize(self, *, scenario: str | None, config: dict[str, Any]) -> Environment: ...
 
 
 MEMORY_CAPABILITIES = (
