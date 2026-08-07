@@ -11,6 +11,7 @@ watch = ["src"]
 nav = [
   { Home = "index.md" },
   { Architecture = "architecture.md" },
+  { Assurance = "assurance.md" },
   { Reference = "reference.md" },
 ]
 
