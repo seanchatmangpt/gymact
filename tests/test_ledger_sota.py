@@ -38,7 +38,7 @@ def test_memory_ledger_detects_captured_chain_mutation() -> None:
     ledger = MemoryReceiptLedger()
     ledger.append(_receipt())
     original = ledger.records()[0]
-    ledger._records[0] = original.model_copy(update={"record_digest": "f" * 64})  # noqa: SLF001
+    ledger._records[0] = original.model_copy(update={"record_digest": "f" * 64})
     assert ledger.verify() is False
 
 
@@ -63,9 +63,11 @@ def test_sqlite_ledger_refuses_tampered_database_on_reopen(tmp_path) -> None:
     ledger.close()
 
     connection = sqlite3.connect(path)
-    payload = json.loads(
-        connection.execute("SELECT receipt_json FROM receipt_evidence WHERE sequence = 0").fetchone()[0]
-    )
+    row = connection.execute(
+        "SELECT receipt_json FROM receipt_evidence WHERE sequence = 0"
+    ).fetchone()
+    assert row is not None
+    payload = json.loads(row[0])
     payload["reason"] = "tampered"
     connection.execute(
         "UPDATE receipt_evidence SET receipt_json = ? WHERE sequence = 0",
