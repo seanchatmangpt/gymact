@@ -1,65 +1,43 @@
-# CLAUDE.md
+# GymAct engineering law
 
-Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
+GymAct is a Python reference runtime for a public-semantic execution profile over bounded benchmark worlds.
 
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+## Semantic authority
 
-## 1. Think Before Coding
+- Do not add GymAct-owned OWL/RDFS classes or RDF/OWL properties merely for convenience.
+- Prefer PROF, PROV-O, P-PLAN, SOSA/SSN, WoT TD/TM, ODRL, SHACL, EARL, DQV, QUDT, DCAT, SKOS, OWL-Time, and DCTERMS.
+- `urn:gymact:*` is for profile resources, ABox identities, SKOS concepts, and SHACL shapes.
+- Before adding handwritten semantic machinery, prove the requirement cannot be represented as a public-ontology fact, constraint, profile, mapping, or projection.
 
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
+## Consequence law
 
-Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
+Never collapse these claims:
 
-## 2. Simplicity First
-
-**Minimum code that solves the problem. Nothing speculative.**
-
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
-
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
-
-## 3. Surgical Changes
-
-**Touch only what you must. Clean up only your own mess.**
-
-When editing existing code:
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
-
-When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
-
-The test: Every changed line should trace directly to the user's request.
-
-## 4. Goal-Driven Execution
-
-**Define success criteria. Loop until verified.**
-
-Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
-
-For multi-step tasks, state a brief plan:
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
+```text
+request accepted != world changed != objective verified != benchmark scored
 ```
 
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+- An `authority_ref` is not permission.
+- Required authority is fail-closed unless the injected `AuthorityResolver` explicitly admits the exact operation.
+- A transport must never grant authority by itself.
+- Provider failures must not disappear as successful or unreceipted consequential operations.
+- Idempotency-key reuse with a different intent is a refusal, not a replay.
 
----
+## Python vs Rust/ggen
 
-**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+Python composes mature Python libraries directly: Pydantic, FastAPI, FastMCP, Typer, FastStream, RDFLib, pySHACL, Gymnasium/PettingZoo where applicable.
+
+Do not generate Python boilerplate with ggen when the host ecosystem already derives the surface correctly from Python types. ggen is the bridge from the same admitted RDF graph into Rust/WIT/WASM/static manufacture and an independent equivalence checkpoint.
+
+## Evidence and standing
+
+Use `UNKNOWN`, `PARTIAL_ALIVE`, `ALIVE`, `BLOCKED`, `BUILD_BROKEN`, `UNSUPPORTED`, and typed `REFUSED` reasons. Importability is not scenario execution. A benchmark integration retains its own execution standing.
+
+Do not claim v26.8.7 release standing until exact-head CI has executed the semantic/runtime tests, Python matrix, package/wheel installation, docs build, lock validation, and container build required by the release contract.
+
+## Change discipline
+
+- Keep the generic kernel smaller than benchmark-specific integrations.
+- New benchmark families should normally become providers/profiles, not new transports.
+- Keep FastAPI, FastMCP, FastStream, and CLI semantics downstream of the same runtime.
+- Preserve the public semantic graph as the cross-language authority boundary.

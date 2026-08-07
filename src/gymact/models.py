@@ -22,17 +22,13 @@ class Standing(StrEnum):
 
 
 class Operation(StrEnum):
-    """Reference lifecycle operations derived from the semantic profile."""
+    """Operations the v26.8.7 generic runtime actually executes."""
 
     DISCOVER = "discover"
     MATERIALIZE = "materialize"
-    CONFIGURE = "configure"
-    RESET = "reset"
-    START = "start"
     OBSERVE = "observe"
     ACT = "act"
     VERIFY = "verify"
-    SCORE = "score"
     CHECKPOINT = "checkpoint"
     RESTORE = "restore"
     TEARDOWN = "teardown"
@@ -104,7 +100,7 @@ class VerificationResult(FrozenModel):
 
 
 class Score(FrozenModel):
-    """Benchmark-compatible metric value kept separate from verification."""
+    """Benchmark-native metric value; scoring remains distinct from verification."""
 
     metric: str
     value: float
