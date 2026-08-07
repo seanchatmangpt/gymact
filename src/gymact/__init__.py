@@ -1,6 +1,9 @@
 """GymAct public API."""
 
 from gymact.authority import AllowListAuthorityResolver, AuthorityResolver, DenyAuthorityResolver
+from gymact.contract import RuntimeContract, build_contract
+from gymact.evidence import EvidenceRecord, MemoryReceiptLedger, ReceiptLedger, evidence_graph
+from gymact.limits import RuntimeLimits
 from gymact.models import (
     ActuationIntent,
     ActuationResult,
@@ -18,8 +21,15 @@ from gymact.models import (
     Standing,
     VerificationResult,
 )
+from gymact.plugins import (
+    ProviderPluginInfo,
+    ProviderPluginLoad,
+    discover_provider_plugins,
+    load_provider_plugin,
+)
 from gymact.providers import Environment, EnvironmentProvider, MemoryProvider
-from gymact.runtime import GymAct
+from gymact.runtime import BoundaryBlocked, GymAct
+from gymact.scoring import BinaryVerificationScorer, Scorer, score_verification
 from gymact.semantic import ProfileAuthority, SemanticValidation
 
 __all__ = [
@@ -29,24 +39,39 @@ __all__ = [
     "AuthorityDecision",
     "AuthorityRequest",
     "AuthorityResolver",
+    "BinaryVerificationScorer",
+    "BoundaryBlocked",
     "Capability",
     "Consequence",
     "DenyAuthorityResolver",
     "Environment",
     "EnvironmentProvider",
     "Episode",
+    "EvidenceRecord",
     "GymAct",
     "MaterializationIntent",
     "MaterializationResult",
     "MemoryProvider",
+    "MemoryReceiptLedger",
     "Observation",
     "Operation",
     "ProfileAuthority",
+    "ProviderPluginInfo",
+    "ProviderPluginLoad",
     "Receipt",
+    "ReceiptLedger",
+    "RuntimeContract",
+    "RuntimeLimits",
     "Score",
+    "Scorer",
     "SemanticValidation",
     "Standing",
     "VerificationResult",
+    "build_contract",
+    "discover_provider_plugins",
+    "evidence_graph",
+    "load_provider_plugin",
+    "score_verification",
 ]
 
 __version__ = "26.8.7"
