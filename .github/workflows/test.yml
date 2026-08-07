@@ -9,6 +9,24 @@ permissions:
   contents: read
 
 jobs:
+  lock:
+    name: Resolve dependency lock
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v6
+      - name: Resolve and validate lock
+        run: |
+          uv lock
+          uv lock --check
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gymact-v26.8.7-lock
+          path: uv.lock
+
   test:
     name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
@@ -52,3 +70,24 @@ jobs:
           /tmp/gymact-wheel/bin/pip install dist/*.whl
           /tmp/gymact-wheel/bin/gymact version
           /tmp/gymact-wheel/bin/gymact validate-profile
+          /tmp/gymact-wheel/bin/gymact export-profile /tmp/exported-profile
+          test -s /tmp/exported-profile/profile.ttl
+          test -s /tmp/exported-profile/profile.shacl.ttl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gymact-v26.8.7-dist
+          path: dist/
+
+  docs:
+    name: Build documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v6
+      - name: Install project and docs dependencies
+        run: uv sync --group dev
+      - name: Build strict documentation
+        run: uv run zensical build --clean

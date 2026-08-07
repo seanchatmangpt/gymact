@@ -19,6 +19,46 @@ def _runtime(runtime: GymAct | None) -> GymAct:
     return instance
 
 
+async def dispatch_stream_command(service: GymAct, command: dict[str, Any]) -> dict[str, Any]:
+    """Execute one broker-neutral command against a GymAct runtime."""
+    operation = command.get("operation")
+    if operation == "discover":
+        return {"operation": operation, "providers": list(service.discover())}
+    if operation == "create_episode":
+        episode = await service.create_episode(
+            str(command.get("provider", "memory")),
+            scenario=command.get("scenario"),
+            config=command.get("config") or {},
+        )
+        return {"operation": operation, "result": episode.model_dump(mode="json")}
+    if operation == "observe":
+        result = await service.observe(str(command["episode_id"]))
+        return {"operation": operation, "result": result.model_dump(mode="json")}
+    if operation == "act":
+        intent = ActuationIntent.model_validate(command["intent"])
+        result = await service.act(intent)
+        return {"operation": operation, "result": result.model_dump(mode="json")}
+    if operation == "verify":
+        result = await service.verify(str(command["episode_id"]), command.get("expected") or {})
+        return {"operation": operation, "result": result.model_dump(mode="json")}
+    if operation == "checkpoint":
+        result = await service.checkpoint(str(command["episode_id"]))
+        return {"operation": operation, "result": {"checkpoint": result}}
+    if operation == "restore":
+        result = await service.restore(
+            str(command["episode_id"]),
+            command.get("checkpoint") or {},
+            authority_ref=command.get("authority_ref"),
+        )
+        return {"operation": operation, "result": result.model_dump(mode="json")}
+    if operation == "teardown":
+        result = await service.teardown(
+            str(command["episode_id"]), authority_ref=command.get("authority_ref")
+        )
+        return {"operation": operation, "result": result.model_dump(mode="json")}
+    raise ValueError(f"unsupported stream operation: {operation}")
+
+
 def bind_stream_handlers(
     broker: Any,
     runtime: GymAct | None = None,
@@ -32,29 +72,7 @@ def bind_stream_handlers(
     @broker.subscriber(command_channel)
     @broker.publisher(event_channel)
     async def handle(command: dict[str, Any]) -> dict[str, Any]:
-        operation = command.get("operation")
-        if operation == "discover":
-            return {"operation": operation, "providers": list(service.discover())}
-        if operation == "create_episode":
-            episode = await service.create_episode(
-                str(command.get("provider", "memory")),
-                scenario=command.get("scenario"),
-                config=command.get("config") or {},
-            )
-            return {"operation": operation, "result": episode.model_dump(mode="json")}
-        if operation == "observe":
-            result = await service.observe(str(command["episode_id"]))
-            return {"operation": operation, "result": result.model_dump(mode="json")}
-        if operation == "act":
-            intent = ActuationIntent.model_validate(command["intent"])
-            result = await service.act(intent)
-            return {"operation": operation, "result": result.model_dump(mode="json")}
-        if operation == "verify":
-            result = await service.verify(
-                str(command["episode_id"]), command.get("expected") or {}
-            )
-            return {"operation": operation, "result": result.model_dump(mode="json")}
-        raise ValueError(f"unsupported stream operation: {operation}")
+        return await dispatch_stream_command(service, command)
 
 
 def create_stream_app(
