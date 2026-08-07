@@ -13,13 +13,25 @@ Network navigation remains expressible through the authority-gated ``goto``
 DO capability. Checkpoint/restore is deliberately bounded to the active URL:
 BrowserGym does not expose a general browser snapshot primitive, so GymAct does
 not pretend to snapshot cookies, storage, history, or arbitrary page state.
+
+BrowserGym 0.14.3 uses Playwright's synchronous API. GymAct's environment
+contract is asynchronous, and Playwright explicitly refuses its sync API inside
+an active asyncio loop. BrowserGym also owns one process-global sync Playwright
+instance, so simply hopping arbitrary worker threads is invalid. All BrowserGym
+creation/reset/step/restore/close calls therefore execute on one dedicated,
+process-wide worker thread; GymAct awaits their real results without changing
+the semantic or authority boundary.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, TypeVar
 from urllib.parse import urlsplit
 from uuid import uuid4
+
+import anyio
 
 from gymact.models import Capability, Consequence
 
@@ -31,6 +43,16 @@ except ImportError as exc:  # pragma: no cover - fail-real standing is exercised
         "browsergym bridge requires browsergym-core==0.14.3 and gymnasium; "
         "install the real BrowserGym collaborator before using this provider"
     ) from exc
+
+T = TypeVar("T")
+_BROWSERGYM_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="gymact-browsergym")
+
+
+async def _browsergym_call(call: Callable[[], T]) -> T:
+    """Execute one BrowserGym sync call on its single Playwright-owning thread."""
+    future = _BROWSERGYM_EXECUTOR.submit(call)
+    return await anyio.to_thread.run_sync(future.result)
+
 
 BROWSERGYM_CAPABILITIES = (
     Capability(
@@ -60,28 +82,50 @@ class BrowserGymEnvironment:
     def __init__(self, *, start_url: str, seed: int = 0) -> None:
         self.environment_id = f"urn:gymact:browsergym:environment:{uuid4().hex}"
         self.requires_authority = True
-        self._env = gym.make(
+        self._start_url = start_url
+        self._seed = seed
+        self._env: Any | None = None
+        self._observation: dict[str, Any] | None = None
+        self._closed = False
+
+    def _initialize_sync(self) -> dict[str, Any]:
+        environment = gym.make(
             "browsergym/openended",
-            task_kwargs={"start_url": start_url, "goal": "Exercise bounded local navigation"},
+            task_kwargs={
+                "start_url": self._start_url,
+                "goal": "Exercise bounded local navigation",
+            },
             headless=True,
             wait_for_user_message=False,
             slow_mo=0,
             pre_observation_delay=0.0,
         )
-        observation, _info = self._env.reset(seed=seed)
-        self._observation = observation
-        self._closed = False
+        try:
+            observation, _info = environment.reset(seed=self._seed)
+        except Exception:
+            environment.close()
+            raise
+        self._env = environment
+        return observation
+
+    async def initialize(self) -> BrowserGymEnvironment:
+        self._observation = await _browsergym_call(self._initialize_sync)
+        return self
 
     def _ensure_open(self) -> None:
         if self._closed:
             raise RuntimeError("environment is torn down")
+        if self._env is None or self._observation is None:
+            raise RuntimeError("environment is not initialized")
 
     def capabilities(self) -> tuple[Capability, ...]:
         self._ensure_open()
         return BROWSERGYM_CAPABILITIES
 
     def _state(self) -> dict[str, Any]:
+        self._ensure_open()
         observation = self._observation
+        assert observation is not None
         active_index = observation["active_page_index"]
         scalar_index = active_index.item() if hasattr(active_index, "item") else active_index
         active_page_index = int(scalar_index)
@@ -95,7 +139,6 @@ class BrowserGymEnvironment:
         }
 
     async def observe(self) -> dict[str, Any]:
-        self._ensure_open()
         return self._state()
 
     def _action_source(self, binding: str, payload: dict[str, Any]) -> str:
@@ -110,11 +153,17 @@ class BrowserGymEnvironment:
             return "go_forward()"
         raise ValueError(f"unsupported BrowserGym binding: {binding}")
 
+    def _step_sync(self, action: str):
+        assert self._env is not None
+        return self._env.step(action)
+
     async def actuate(self, capability: Capability, payload: dict[str, Any]) -> dict[str, Any]:
         self._ensure_open()
         before = self._state()
         action = self._action_source(capability.binding, payload)
-        observation, reward, terminated, truncated, _info = self._env.step(action)
+        observation, reward, terminated, truncated, _info = await _browsergym_call(
+            lambda: self._step_sync(action)
+        )
         self._observation = observation
         after = self._state()
         if after["last_action_error"]:
@@ -129,13 +178,11 @@ class BrowserGymEnvironment:
         }
 
     async def verify(self, expected: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
-        self._ensure_open()
         observed = self._state()
         passed = all(observed.get(key) == value for key, value in expected.items())
         return passed, observed
 
     async def checkpoint(self) -> dict[str, Any]:
-        self._ensure_open()
         return {"url": self._state()["url"]}
 
     async def restore(self, checkpoint: dict[str, Any]) -> None:
@@ -143,14 +190,23 @@ class BrowserGymEnvironment:
         url = checkpoint.get("url")
         if not isinstance(url, str) or not url:
             raise TypeError("BrowserGym checkpoint.url must be a non-empty string")
-        observation, _reward, _terminated, _truncated, _info = self._env.step(f"goto({url!r})")
+        observation, _reward, _terminated, _truncated, _info = await _browsergym_call(
+            lambda: self._step_sync(f"goto({url!r})")
+        )
         self._observation = observation
-        if self._state()["last_action_error"]:
-            raise RuntimeError(f"BrowserGym restore failed: {self._state()['last_action_error']}")
+        state = self._state()
+        if state["last_action_error"]:
+            raise RuntimeError(f"BrowserGym restore failed: {state['last_action_error']}")
+
+    def _close_sync(self) -> None:
+        assert self._env is not None
+        self._env.close()
 
     async def teardown(self) -> None:
-        if not self._closed:
-            self._env.close()
+        if self._closed:
+            return
+        if self._env is not None:
+            await _browsergym_call(self._close_sync)
         self._closed = True
 
 
@@ -173,4 +229,5 @@ class BrowserGymProvider:
         seed = config.get("seed", 0)
         if not isinstance(seed, int) or isinstance(seed, bool):
             raise TypeError("config.seed must be an int")
-        return BrowserGymEnvironment(start_url=start_url, seed=seed)
+        environment = BrowserGymEnvironment(start_url=start_url, seed=seed)
+        return await environment.initialize()
