@@ -37,7 +37,20 @@ class Consequence(StrEnum):
 
 
 class Operation(StrEnum):
-    """Operations the v26.8.7 generic runtime actually executes."""
+    """Operations the v26.8.7 generic runtime actually executes.
+
+    Deliberately 8, not the earlier ontology work's full 12-operation model
+    (which also named `configure`, `reset`, `start`, `score`). A Reduce
+    decision, not an unfinished 12-op ambition: for the current provider set
+    (all three real gym providers -- CUBE counter, its container variant,
+    the ggen-legacy verifier -- are stateless-enough per episode) `configure`
+    /`reset`/`start` add no information beyond what `materialize` already
+    captures, so a separate operation for each would be pure ceremony. And
+    `score` would duplicate `VerificationResult.passed`, which every real
+    full-lifecycle test already treats as the pass/fail signal. Revisit only
+    if a future gym family genuinely needs configuration separate from
+    materialization, or a scalar score distinct from verification.
+    """
 
     DISCOVER = "discover"
     MATERIALIZE = "materialize"
