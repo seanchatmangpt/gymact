@@ -4,6 +4,7 @@ from gymact.authority import AllowListAuthorityResolver, AuthorityResolver, Deny
 from gymact.contract import RuntimeContract, build_contract
 from gymact.evidence import EvidenceRecord, MemoryReceiptLedger, ReceiptLedger, evidence_graph
 from gymact.limits import RuntimeLimits
+from gymact.manufacture import export_manufacturing_bundle
 from gymact.models import (
     ActuationIntent,
     ActuationResult,
@@ -72,6 +73,7 @@ __all__ = [
     "build_contract",
     "discover_provider_plugins",
     "evidence_graph",
+    "export_manufacturing_bundle",
     "load_provider_plugin",
     "score_verification",
 ]
