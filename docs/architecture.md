@@ -46,44 +46,87 @@ OpenAPI     MCP       CLI      brokers
 
 These are external Python dependencies, not ggen-produced reimplementations.
 
-## Runtime boundary
+## Consequence kernel
 
 ```text
-MaterializationIntent
-       |
-       v
-EnvironmentProvider -- authority when provider declares setup consequential
-       |
-       v
-Environment -- capabilities() -- real SHACL admission
-       |
-       +-- observe
-       +-- actuate(Capability, payload)
-       +-- verify
-       +-- checkpoint / restore
-       +-- teardown
+MaterializationIntent / ActuationIntent
+                 |
+                 v
+          authority resolver
+                 |
+                 v
+         PREPARED receipt
+                 |
+                 v
+      provider/environment DO
+                 |
+                 v
+      independent observation
+                 |
+                 v
+          FINAL receipt
 ```
 
-Materialization and actuation have separate idempotency domains. A materialization failure never becomes an `Episode`; an admitted materialization returns an initial independent observation and receipt. Successful teardown is retained as a tombstone receipt so transport retries cannot cause a second teardown.
+The PREPARED record is appended before the provider call. A crash after a provider side effect can therefore leave an unresolved preparation that reconciliation can discover instead of making the actuation invisible.
 
-## Consequence law
+Receipts are canonical-JSON BLAKE3 identities chained through `previous_receipt_digest`. The in-memory ledger is for bounded local/test worlds. `SQLiteReceiptLedger` provides durable append-only evidence using WAL, `synchronous=FULL`, and an immediate transaction for each append.
 
-```text
-accepted request
-      !=
-observed effect
-      !=
-verified objective
-      !=
-benchmark score
-```
-
-A provider acknowledgement cannot manufacture verification. A semantic capability with READ consequence cannot be smuggled through the actuation method.
+Raw provider/authority error output is not copied into receipts. GymAct stores bounded reason codes, exception type, and a digest. Provider and authority calls are time-bounded. Payload and state byte ceilings bound untrusted environment data.
 
 ## Authority
 
 `authority_ref` is only an identifier supplied with an intent. When the provider/environment declares authority required, GymAct sends the exact semantic operation to an injected `AuthorityResolver`. The default resolver denies. A positive decision may carry a separate evidence reference that is bound into the receipt.
 
+Authority requirements are monotonic:
+
+```text
+provider requires authority OR scenario/request raises authority
+                         ↓
+                  authority required
+```
+
+No request field can lower a provider-level authority requirement.
+
+## Semantic admission
+
+A materialized environment is not admitted merely because the provider returned an object. GymAct validates:
+
+1. the environment structurally satisfies the Environment protocol;
+2. its authority flag is typed;
+3. its semantic capabilities are canonical `Capability` values;
+4. those capabilities project to public SOSA/DCTERMS RDF;
+5. real pySHACL accepts that RDF against the packaged profile;
+6. the environment identity is an absolute IRI;
+7. an initial independent observation can be obtained within time/size bounds.
+
+Failure produces a typed BLOCKED materialization result and a terminal receipt; cleanup is attempted and cleanup failure is separately encoded in the reason code.
+
+## Verification and scoring
+
+```text
+provider acknowledgement
+        !=
+observed consequence
+        !=
+verification result
+        !=
+benchmark score
+```
+
+`verify()` emits a separate `VerificationResult` and a receipted execution verdict. EARL can project that result publicly. Scoring remains benchmark-native and does not promote transport success into benchmark success.
+
 ## Rust/WASM bridge
 
-The exact packaged RDF/SHACL profile can be exported for ggen. ggen may manufacture static Rust/WIT/WASM types, dispatch tables, predicates, authority gates, verifier bindings, and fixtures. The Python library remains the ecosystem-native reference implementation; the Rust implementation is an independent projection suitable for observational-equivalence tests.
+The exact packaged RDF/SHACL profile and JSON-schema contract can be exported for ggen. v26.8.7 includes a Gall checkpoint:
+
+```text
+Python package
+  ↓ export-profile
+public RDF
+  ↓ ggen 26.8.6
+Rust procedure table
+  ↓ rustc --test
+executed projection
+```
+
+The Python library remains the ecosystem-native reference implementation. Rust/WIT/WASM are independent projections suitable for observational-equivalence and dependency-closed deployment.
