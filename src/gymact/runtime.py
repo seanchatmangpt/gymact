@@ -1,9 +1,8 @@
-"""Small semantic runtime for bounded executable worlds."""
+"""Small, bounded semantic runtime for executable benchmark worlds."""
 
 from __future__ import annotations
 
-import hashlib
-import json
+import re
 from dataclasses import dataclass, field
 from typing import Any
 from uuid import uuid4
@@ -11,6 +10,14 @@ from uuid import uuid4
 import anyio
 
 from gymact.authority import AuthorityResolver, DenyAuthorityResolver
+from gymact.evidence import (
+    MemoryReceiptLedger,
+    ReceiptLedger,
+    canonical_json_bytes,
+    digest_json,
+    digest_text,
+    receipts_to_prov,
+)
 from gymact.models import (
     ActuationIntent,
     ActuationResult,
@@ -19,25 +26,29 @@ from gymact.models import (
     Capability,
     Consequence,
     Episode,
+    JsonObject,
     MaterializationIntent,
     MaterializationResult,
     Observation,
     Operation,
     Receipt,
+    ReceiptStage,
+    RuntimeLimits,
     Standing,
     VerificationResult,
 )
 from gymact.providers import Environment, EnvironmentProvider
 from gymact.semantic import ProfileAuthority
 
-
-def _digest(value: Any) -> str:
-    raw = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
-    return hashlib.sha256(raw).hexdigest()
+_PROVIDER_NAME = re.compile(r"^[A-Za-z0-9_.-]{1,256}$")
 
 
-def _error_digest(exc: Exception) -> str:
-    return _digest({"type": type(exc).__name__, "message": str(exc)})
+class GymActOperationError(RuntimeError):
+    """Typed non-consequential/runtime failure carrying evidence when available."""
+
+    def __init__(self, message: str, *, receipt: Receipt | None = None) -> None:
+        super().__init__(message)
+        self.receipt = receipt
 
 
 @dataclass
@@ -60,13 +71,15 @@ class _MaterializationRecord:
 
 
 class GymAct:
-    """Reference orchestrator that keeps semantic identity above provider bindings."""
+    """Reference orchestrator with fail-closed authority and receipted consequence."""
 
     def __init__(
         self,
         *,
         validate_profile: bool = True,
         authority_resolver: AuthorityResolver | None = None,
+        ledger: ReceiptLedger | None = None,
+        limits: RuntimeLimits | None = None,
     ) -> None:
         self._providers: dict[str, EnvironmentProvider] = {}
         self._episodes: dict[str, _EpisodeState] = {}
@@ -75,16 +88,30 @@ class GymAct:
         self._materialization_lock = anyio.Lock()
         self._teardown_receipts: dict[str, Receipt] = {}
         self._authority = authority_resolver or DenyAuthorityResolver()
+        self._ledger = ledger or MemoryReceiptLedger()
+        self.limits = limits or RuntimeLimits()
         self.profile = ProfileAuthority()
         if validate_profile:
             result = self.profile.validate()
             if not result.conforms:
                 raise RuntimeError(f"GymAct semantic profile invalid: {result.report_text}")
 
+    @property
+    def ledger(self) -> ReceiptLedger:
+        """Return the configured append-only evidence ledger."""
+        return self._ledger
+
+    async def _record(self, receipt: Receipt) -> Receipt:
+        return await self._ledger.append(receipt)
+
     def register_provider(self, provider: EnvironmentProvider) -> None:
-        """Register one provider by stable name; duplicate names are refused."""
+        """Register one structurally valid provider by stable name."""
         if not isinstance(provider, EnvironmentProvider):
             raise TypeError("provider does not satisfy EnvironmentProvider")
+        if not _PROVIDER_NAME.fullmatch(provider.name):
+            raise ValueError("provider name must match [A-Za-z0-9_.-]{1,256}")
+        if not isinstance(provider.materialization_requires_authority, bool):
+            raise TypeError("provider.materialization_requires_authority must be boolean")
         if provider.name in self._providers:
             raise ValueError(f"provider already registered: {provider.name}")
         self._providers[provider.name] = provider
@@ -92,6 +119,9 @@ class GymAct:
     def discover(self) -> tuple[str, ...]:
         """Return registered provider names without materializing a world."""
         return tuple(sorted(self._providers))
+
+    def _payload_within_limit(self, value: object) -> bool:
+        return len(canonical_json_bytes(value)) <= self.limits.max_payload_bytes
 
     async def _authority_decision(
         self,
@@ -101,63 +131,131 @@ class GymAct:
         subject_ref: str,
         operation: Operation,
         capability_ref: str,
-        payload: dict[str, Any],
+        payload: JsonObject,
         authority_ref: str | None,
     ) -> AuthorityDecision:
         if not required:
             return AuthorityDecision(admitted=True, reason="AUTHORITY_NOT_REQUIRED")
-        return await self._authority.authorize(
-            AuthorityRequest(
-                episode_id=episode_id,
-                subject_ref=subject_ref,
-                operation=operation,
-                capability_ref=capability_ref,
-                payload=payload,
-                authority_ref=authority_ref,
+        request = AuthorityRequest(
+            episode_id=episode_id,
+            subject_ref=subject_ref,
+            operation=operation,
+            capability_ref=capability_ref,
+            payload=payload,
+            authority_ref=authority_ref,
+        )
+        try:
+            with anyio.fail_after(self.limits.authority_timeout_s):
+                return await self._authority.authorize(request)
+        except TimeoutError:
+            return AuthorityDecision(
+                admitted=False,
+                reason="AUTHORITY_RESOLUTION_TIMEOUT",
+                error_type="TimeoutError",
+                error_digest=digest_text("authority-resolution-timeout"),
             )
+        except Exception as exc:  # external policy decision points are fail-closed
+            return AuthorityDecision(
+                admitted=False,
+                reason="AUTHORITY_RESOLVER_ERROR",
+                error_type=type(exc).__name__,
+                error_digest=digest_text(str(exc)),
+            )
+
+    async def _observe_environment(
+        self, environment: Environment, episode_id: str
+    ) -> Observation:
+        try:
+            with anyio.fail_after(self.limits.provider_timeout_s):
+                value = await environment.observe()
+        except TimeoutError as exc:
+            raise GymActOperationError("provider observation timed out") from exc
+        if not isinstance(value, dict):
+            raise GymActOperationError("provider observation must be a JSON object")
+        if len(canonical_json_bytes(value)) > self.limits.max_state_bytes:
+            raise GymActOperationError("observed state exceeds configured size limit")
+        return Observation(
+            episode_id=episode_id,
+            state=value,
+            state_digest=digest_json(value),
         )
 
+    async def _observe_unlocked(self, state: _EpisodeState) -> Observation:
+        return await self._observe_environment(state.environment, state.episode.episode_id)
+
+    async def _safe_post_observation(
+        self, state: _EpisodeState
+    ) -> tuple[Observation | None, str | None, str | None]:
+        try:
+            return await self._observe_unlocked(state), None, None
+        except Exception as exc:
+            return None, type(exc).__name__, digest_text(str(exc))
+
     async def materialize(self, intent: MaterializationIntent) -> MaterializationResult:
-        """Materialize one bounded world with authority, idempotency, and semantic gates."""
-        intent_digest = _digest(intent.model_dump(mode="json"))
+        """Materialize a bounded world with authority, replay, and write-ahead evidence."""
+        intent_digest = digest_json(intent.model_dump(mode="json"))
         async with self._materialization_lock:
             cached = self._materialization_idempotency.get(intent.idempotency_key)
             if cached is not None:
                 if cached.intent_digest == intent_digest:
                     return cached.result
-                prior_receipt = cached.result.receipt
-                return MaterializationResult(
-                    accepted=False,
-                    standing=Standing.REFUSED,
-                    receipt=Receipt(
-                        episode_id=prior_receipt.episode_id,
+                prior = cached.result.receipt
+                receipt = await self._record(
+                    Receipt(
+                        episode_id=prior.episode_id,
                         operation=Operation.MATERIALIZE,
                         standing=Standing.REFUSED,
-                        subject_ref=prior_receipt.subject_ref,
+                        subject_ref=prior.subject_ref,
                         capability_ref="urn:gymact:operation:materialize",
                         authority_ref=intent.authority_ref,
                         idempotency_key=intent.idempotency_key,
                         reason="IDEMPOTENCY_KEY_CONFLICT",
-                    ),
+                    )
+                )
+                return MaterializationResult(
+                    accepted=False, standing=Standing.REFUSED, receipt=receipt
                 )
 
             episode_id = uuid4().hex
             subject_ref = f"urn:gymact:provider:{intent.provider}"
+            capability_ref = "urn:gymact:operation:materialize"
+            if not self._payload_within_limit(intent.config):
+                receipt = await self._record(
+                    Receipt(
+                        episode_id=episode_id,
+                        operation=Operation.MATERIALIZE,
+                        standing=Standing.REFUSED,
+                        subject_ref=subject_ref,
+                        capability_ref=capability_ref,
+                        authority_ref=intent.authority_ref,
+                        idempotency_key=intent.idempotency_key,
+                        reason="PAYLOAD_LIMIT_EXCEEDED",
+                    )
+                )
+                result = MaterializationResult(
+                    accepted=False, standing=Standing.REFUSED, receipt=receipt
+                )
+                self._materialization_idempotency[intent.idempotency_key] = (
+                    _MaterializationRecord(intent_digest, result)
+                )
+                return result
+
             provider = self._providers.get(intent.provider)
             if provider is None:
-                result = MaterializationResult(
-                    accepted=False,
-                    standing=Standing.UNSUPPORTED,
-                    receipt=Receipt(
+                receipt = await self._record(
+                    Receipt(
                         episode_id=episode_id,
                         operation=Operation.MATERIALIZE,
                         standing=Standing.UNSUPPORTED,
                         subject_ref=subject_ref,
-                        capability_ref="urn:gymact:operation:materialize",
+                        capability_ref=capability_ref,
                         authority_ref=intent.authority_ref,
                         idempotency_key=intent.idempotency_key,
                         reason="UNKNOWN_PROVIDER",
-                    ),
+                    )
+                )
+                result = MaterializationResult(
+                    accepted=False, standing=Standing.UNSUPPORTED, receipt=receipt
                 )
                 self._materialization_idempotency[intent.idempotency_key] = (
                     _MaterializationRecord(intent_digest, result)
@@ -169,119 +267,183 @@ class GymAct:
                 episode_id=episode_id,
                 subject_ref=subject_ref,
                 operation=Operation.MATERIALIZE,
-                capability_ref="urn:gymact:operation:materialize",
+                capability_ref=capability_ref,
                 payload={"scenario": intent.scenario, "config": intent.config},
                 authority_ref=intent.authority_ref,
             )
             if not authority.admitted:
-                result = MaterializationResult(
-                    accepted=False,
-                    standing=Standing.REFUSED,
-                    receipt=Receipt(
+                receipt = await self._record(
+                    Receipt(
                         episode_id=episode_id,
                         operation=Operation.MATERIALIZE,
                         standing=Standing.REFUSED,
                         subject_ref=subject_ref,
-                        capability_ref="urn:gymact:operation:materialize",
+                        capability_ref=capability_ref,
                         authority_ref=intent.authority_ref,
                         authority_evidence_ref=authority.evidence_ref,
                         idempotency_key=intent.idempotency_key,
                         reason=authority.reason,
-                    ),
+                        error_type=authority.error_type,
+                        error_digest=authority.error_digest,
+                    )
+                )
+                result = MaterializationResult(
+                    accepted=False, standing=Standing.REFUSED, receipt=receipt
                 )
                 self._materialization_idempotency[intent.idempotency_key] = (
                     _MaterializationRecord(intent_digest, result)
                 )
                 return result
 
-            try:
-                environment = await provider.materialize(
-                    scenario=intent.scenario,
-                    config=intent.config,
+            prepared = await self._record(
+                Receipt(
+                    episode_id=episode_id,
+                    operation=Operation.MATERIALIZE,
+                    stage=ReceiptStage.PREPARED,
+                    standing=Standing.PARTIAL_ALIVE,
+                    subject_ref=subject_ref,
+                    capability_ref=capability_ref,
+                    authority_ref=intent.authority_ref,
+                    authority_evidence_ref=authority.evidence_ref,
+                    idempotency_key=intent.idempotency_key,
+                    reason="ACTUATION_PREPARED",
                 )
-            except Exception as exc:
-                result = MaterializationResult(
-                    accepted=False,
-                    standing=Standing.BLOCKED,
-                    receipt=Receipt(
+            )
+            try:
+                with anyio.fail_after(self.limits.provider_timeout_s):
+                    environment = await provider.materialize(
+                        scenario=intent.scenario,
+                        config=intent.config,
+                    )
+            except TimeoutError:
+                receipt = await self._record(
+                    Receipt(
                         episode_id=episode_id,
                         operation=Operation.MATERIALIZE,
                         standing=Standing.BLOCKED,
                         subject_ref=subject_ref,
-                        capability_ref="urn:gymact:operation:materialize",
+                        capability_ref=capability_ref,
                         authority_ref=intent.authority_ref,
                         authority_evidence_ref=authority.evidence_ref,
                         idempotency_key=intent.idempotency_key,
-                        error_digest=_error_digest(exc),
-                        reason=f"PROVIDER_ERROR:{type(exc).__name__}",
-                    ),
+                        prepared_receipt_digest=prepared.receipt_digest,
+                        reason="PROVIDER_TIMEOUT",
+                        error_type="TimeoutError",
+                        error_digest=digest_text("materialization-timeout"),
+                    )
+                )
+                result = MaterializationResult(
+                    accepted=False, standing=Standing.BLOCKED, receipt=receipt
+                )
+                self._materialization_idempotency[intent.idempotency_key] = (
+                    _MaterializationRecord(intent_digest, result)
+                )
+                return result
+            except Exception as exc:
+                receipt = await self._record(
+                    Receipt(
+                        episode_id=episode_id,
+                        operation=Operation.MATERIALIZE,
+                        standing=Standing.BLOCKED,
+                        subject_ref=subject_ref,
+                        capability_ref=capability_ref,
+                        authority_ref=intent.authority_ref,
+                        authority_evidence_ref=authority.evidence_ref,
+                        idempotency_key=intent.idempotency_key,
+                        prepared_receipt_digest=prepared.receipt_digest,
+                        reason="PROVIDER_ERROR",
+                        error_type=type(exc).__name__,
+                        error_digest=digest_text(str(exc)),
+                    )
+                )
+                result = MaterializationResult(
+                    accepted=False, standing=Standing.BLOCKED, receipt=receipt
                 )
                 self._materialization_idempotency[intent.idempotency_key] = (
                     _MaterializationRecord(intent_digest, result)
                 )
                 return result
 
+            cleanup_error: Exception | None = None
             try:
-                capabilities = environment.capabilities()
+                if not isinstance(environment, Environment):
+                    raise TypeError("materialized object does not satisfy Environment")
+                if not isinstance(environment.requires_authority, bool):
+                    raise TypeError("environment.requires_authority must be boolean")
+                capabilities = tuple(environment.capabilities())
+                if not all(isinstance(item, Capability) for item in capabilities):
+                    raise TypeError("environment capabilities must be Capability values")
                 validation = self.profile.validate_capabilities(capabilities)
                 if not validation.conforms:
                     raise ValueError("provider capabilities do not conform to GymAct profile")
-                initial_state = await environment.observe()
+                episode = Episode(
+                    episode_id=episode_id,
+                    provider=intent.provider,
+                    environment_id=environment.environment_id,
+                    scenario=intent.scenario,
+                )
+                observation = await self._observe_environment(environment, episode_id)
             except Exception as exc:
+                admission_error = exc
                 try:
-                    await environment.teardown()
-                except Exception:
-                    pass
-                result = MaterializationResult(
-                    accepted=False,
-                    standing=Standing.BLOCKED,
-                    receipt=Receipt(
+                    with anyio.fail_after(self.limits.provider_timeout_s):
+                        await environment.teardown()
+                except Exception as cleanup_exc:
+                    cleanup_error = cleanup_exc
+                reason = (
+                    "ENVIRONMENT_ADMISSION_FAILED_CLEANUP_BLOCKED"
+                    if cleanup_error is not None
+                    else "ENVIRONMENT_ADMISSION_FAILED"
+                )
+                detail = str(admission_error)
+                if cleanup_error is not None:
+                    detail += f"|cleanup:{type(cleanup_error).__name__}:{cleanup_error}"
+                receipt = await self._record(
+                    Receipt(
                         episode_id=episode_id,
                         operation=Operation.MATERIALIZE,
                         standing=Standing.BLOCKED,
                         subject_ref=getattr(environment, "environment_id", subject_ref),
-                        capability_ref="urn:gymact:operation:materialize",
+                        capability_ref=capability_ref,
                         authority_ref=intent.authority_ref,
                         authority_evidence_ref=authority.evidence_ref,
                         idempotency_key=intent.idempotency_key,
-                        error_digest=_error_digest(exc),
-                        reason="ENVIRONMENT_ADMISSION_FAILED",
-                    ),
+                        prepared_receipt_digest=prepared.receipt_digest,
+                        reason=reason,
+                        error_type=type(admission_error).__name__,
+                        error_digest=digest_text(detail),
+                    )
+                )
+                result = MaterializationResult(
+                    accepted=False, standing=Standing.BLOCKED, receipt=receipt
                 )
                 self._materialization_idempotency[intent.idempotency_key] = (
                     _MaterializationRecord(intent_digest, result)
                 )
                 return result
 
-            episode = Episode(
-                episode_id=episode_id,
-                provider=intent.provider,
-                environment_id=environment.environment_id,
-                scenario=intent.scenario,
-            )
-            state = _EpisodeState(episode, environment)
-            self._episodes[episode_id] = state
-            observation = Observation(
-                episode_id=episode_id,
-                state=initial_state,
-                state_digest=_digest(initial_state),
+            self._episodes[episode_id] = _EpisodeState(episode, environment)
+            receipt = await self._record(
+                Receipt(
+                    episode_id=episode_id,
+                    operation=Operation.MATERIALIZE,
+                    standing=Standing.ALIVE,
+                    subject_ref=environment.environment_id,
+                    capability_ref=capability_ref,
+                    authority_ref=intent.authority_ref,
+                    authority_evidence_ref=authority.evidence_ref,
+                    idempotency_key=intent.idempotency_key,
+                    post_state_digest=observation.state_digest,
+                    prepared_receipt_digest=prepared.receipt_digest,
+                    reason="MATERIALIZATION_OBSERVED",
+                )
             )
             result = MaterializationResult(
                 accepted=True,
                 standing=Standing.ALIVE,
                 episode=episode,
                 observation=observation,
-                receipt=Receipt(
-                    episode_id=episode_id,
-                    operation=Operation.MATERIALIZE,
-                    standing=Standing.ALIVE,
-                    subject_ref=environment.environment_id,
-                    capability_ref="urn:gymact:operation:materialize",
-                    authority_ref=intent.authority_ref,
-                    authority_evidence_ref=authority.evidence_ref,
-                    idempotency_key=intent.idempotency_key,
-                    post_state_digest=observation.state_digest,
-                ),
+                receipt=receipt,
             )
             self._materialization_idempotency[intent.idempotency_key] = (
                 _MaterializationRecord(intent_digest, result)
@@ -293,11 +455,11 @@ class GymAct:
         provider: str,
         *,
         scenario: str | None = None,
-        config: dict[str, Any] | None = None,
+        config: JsonObject | None = None,
         authority_ref: str | None = None,
         idempotency_key: str | None = None,
     ) -> MaterializationResult:
-        """Convenience wrapper around the fully receipted materialization operation."""
+        """Convenience wrapper around fully receipted materialization."""
         values: dict[str, Any] = {
             "provider": provider,
             "scenario": scenario,
@@ -314,17 +476,9 @@ class GymAct:
         except KeyError as exc:
             raise KeyError(f"unknown episode: {episode_id}") from exc
 
-    async def _observe_unlocked(self, state: _EpisodeState) -> Observation:
-        value = await state.environment.observe()
-        return Observation(
-            episode_id=state.episode.episode_id,
-            state=value,
-            state_digest=_digest(value),
-        )
-
     def capabilities(self, episode_id: str) -> tuple[Capability, ...]:
-        """Return the admitted semantic capabilities exposed by one environment."""
-        return self._state(episode_id).environment.capabilities()
+        """Return admitted semantic capabilities exposed by one environment."""
+        return tuple(self._state(episode_id).environment.capabilities())
 
     async def observe(self, episode_id: str) -> Observation:
         """Observe current state without promoting it to verification."""
@@ -336,7 +490,7 @@ class GymAct:
         """Attempt one semantic capability actuation with authority and replay gates."""
         state = self._state(intent.episode_id)
         key = (intent.episode_id, intent.idempotency_key)
-        intent_digest = _digest(intent.model_dump(mode="json"))
+        intent_digest = digest_json(intent.model_dump(mode="json"))
 
         async with state.lock:
             cached = self._actuation_idempotency.get(key)
@@ -344,11 +498,8 @@ class GymAct:
                 if cached.intent_digest == intent_digest:
                     return cached.result
                 before = await self._observe_unlocked(state)
-                return ActuationResult(
-                    accepted=False,
-                    standing=Standing.REFUSED,
-                    observation=before,
-                    receipt=Receipt(
+                receipt = await self._record(
+                    Receipt(
                         episode_id=intent.episode_id,
                         operation=Operation.ACT,
                         standing=Standing.REFUSED,
@@ -359,18 +510,47 @@ class GymAct:
                         pre_state_digest=before.state_digest,
                         post_state_digest=before.state_digest,
                         reason="IDEMPOTENCY_KEY_CONFLICT",
-                    ),
+                    )
+                )
+                return ActuationResult(
+                    accepted=False,
+                    standing=Standing.REFUSED,
+                    observation=before,
+                    receipt=receipt,
                 )
 
-            before = await self._observe_unlocked(state)
-            capabilities = {item.iri: item for item in state.environment.capabilities()}
-            capability = capabilities.get(intent.capability)
-            if capability is None:
+            if not self._payload_within_limit(intent.payload):
+                before = await self._observe_unlocked(state)
+                receipt = await self._record(
+                    Receipt(
+                        episode_id=intent.episode_id,
+                        operation=Operation.ACT,
+                        standing=Standing.REFUSED,
+                        subject_ref=state.environment.environment_id,
+                        capability_ref=intent.capability,
+                        authority_ref=intent.authority_ref,
+                        idempotency_key=intent.idempotency_key,
+                        pre_state_digest=before.state_digest,
+                        post_state_digest=before.state_digest,
+                        reason="PAYLOAD_LIMIT_EXCEEDED",
+                    )
+                )
                 result = ActuationResult(
                     accepted=False,
-                    standing=Standing.UNSUPPORTED,
+                    standing=Standing.REFUSED,
                     observation=before,
-                    receipt=Receipt(
+                    receipt=receipt,
+                )
+                self._actuation_idempotency[key] = _ActuationRecord(intent_digest, result)
+                return result
+
+            before = await self._observe_unlocked(state)
+            capability = {item.iri: item for item in state.environment.capabilities()}.get(
+                intent.capability
+            )
+            if capability is None:
+                receipt = await self._record(
+                    Receipt(
                         episode_id=intent.episode_id,
                         operation=Operation.ACT,
                         standing=Standing.UNSUPPORTED,
@@ -381,16 +561,19 @@ class GymAct:
                         pre_state_digest=before.state_digest,
                         post_state_digest=before.state_digest,
                         reason="UNKNOWN_CAPABILITY",
-                    ),
+                    )
+                )
+                result = ActuationResult(
+                    accepted=False,
+                    standing=Standing.UNSUPPORTED,
+                    observation=before,
+                    receipt=receipt,
                 )
                 self._actuation_idempotency[key] = _ActuationRecord(intent_digest, result)
                 return result
             if capability.consequence is not Consequence.DO:
-                result = ActuationResult(
-                    accepted=False,
-                    standing=Standing.REFUSED,
-                    observation=before,
-                    receipt=Receipt(
+                receipt = await self._record(
+                    Receipt(
                         episode_id=intent.episode_id,
                         operation=Operation.ACT,
                         standing=Standing.REFUSED,
@@ -401,7 +584,13 @@ class GymAct:
                         pre_state_digest=before.state_digest,
                         post_state_digest=before.state_digest,
                         reason="READ_CAPABILITY_IS_NOT_ACTUATION",
-                    ),
+                    )
+                )
+                result = ActuationResult(
+                    accepted=False,
+                    standing=Standing.REFUSED,
+                    observation=before,
+                    receipt=receipt,
                 )
                 self._actuation_idempotency[key] = _ActuationRecord(intent_digest, result)
                 return result
@@ -416,11 +605,8 @@ class GymAct:
                 authority_ref=intent.authority_ref,
             )
             if not authority.admitted:
-                result = ActuationResult(
-                    accepted=False,
-                    standing=Standing.REFUSED,
-                    observation=before,
-                    receipt=Receipt(
+                receipt = await self._record(
+                    Receipt(
                         episode_id=intent.episode_id,
                         operation=Operation.ACT,
                         standing=Standing.REFUSED,
@@ -432,23 +618,45 @@ class GymAct:
                         pre_state_digest=before.state_digest,
                         post_state_digest=before.state_digest,
                         reason=authority.reason,
-                    ),
+                        error_type=authority.error_type,
+                        error_digest=authority.error_digest,
+                    )
+                )
+                result = ActuationResult(
+                    accepted=False,
+                    standing=Standing.REFUSED,
+                    observation=before,
+                    receipt=receipt,
                 )
                 self._actuation_idempotency[key] = _ActuationRecord(intent_digest, result)
                 return result
 
+            prepared = await self._record(
+                Receipt(
+                    episode_id=intent.episode_id,
+                    operation=Operation.ACT,
+                    stage=ReceiptStage.PREPARED,
+                    standing=Standing.PARTIAL_ALIVE,
+                    subject_ref=state.environment.environment_id,
+                    capability_ref=capability.iri,
+                    authority_ref=intent.authority_ref,
+                    authority_evidence_ref=authority.evidence_ref,
+                    idempotency_key=intent.idempotency_key,
+                    pre_state_digest=before.state_digest,
+                    reason="ACTUATION_PREPARED",
+                )
+            )
             try:
-                effect = await state.environment.actuate(capability, intent.payload)
-            except Exception as exc:
-                try:
-                    after = await self._observe_unlocked(state)
-                except Exception:
-                    after = before
-                result = ActuationResult(
-                    accepted=False,
-                    standing=Standing.BLOCKED,
-                    observation=after,
-                    receipt=Receipt(
+                with anyio.fail_after(self.limits.provider_timeout_s):
+                    effect = await state.environment.actuate(capability, intent.payload)
+                if not isinstance(effect, dict):
+                    raise TypeError("provider effect must be a JSON object")
+                if len(canonical_json_bytes(effect)) > self.limits.max_state_bytes:
+                    raise ValueError("provider effect exceeds configured size limit")
+            except TimeoutError:
+                after, post_error_type, post_error_digest = await self._safe_post_observation(state)
+                receipt = await self._record(
+                    Receipt(
                         episode_id=intent.episode_id,
                         operation=Operation.ACT,
                         standing=Standing.BLOCKED,
@@ -458,21 +666,80 @@ class GymAct:
                         authority_evidence_ref=authority.evidence_ref,
                         idempotency_key=intent.idempotency_key,
                         pre_state_digest=before.state_digest,
-                        post_state_digest=after.state_digest,
-                        error_digest=_error_digest(exc),
-                        reason=f"PROVIDER_ERROR:{type(exc).__name__}",
-                    ),
+                        post_state_digest=after.state_digest if after else None,
+                        prepared_receipt_digest=prepared.receipt_digest,
+                        reason="PROVIDER_TIMEOUT",
+                        error_type=post_error_type or "TimeoutError",
+                        error_digest=post_error_digest or digest_text("actuation-timeout"),
+                    )
+                )
+                result = ActuationResult(
+                    accepted=False,
+                    standing=Standing.BLOCKED,
+                    observation=after,
+                    receipt=receipt,
+                )
+                self._actuation_idempotency[key] = _ActuationRecord(intent_digest, result)
+                return result
+            except Exception as exc:
+                after, _, _ = await self._safe_post_observation(state)
+                receipt = await self._record(
+                    Receipt(
+                        episode_id=intent.episode_id,
+                        operation=Operation.ACT,
+                        standing=Standing.BLOCKED,
+                        subject_ref=state.environment.environment_id,
+                        capability_ref=capability.iri,
+                        authority_ref=intent.authority_ref,
+                        authority_evidence_ref=authority.evidence_ref,
+                        idempotency_key=intent.idempotency_key,
+                        pre_state_digest=before.state_digest,
+                        post_state_digest=after.state_digest if after else None,
+                        prepared_receipt_digest=prepared.receipt_digest,
+                        reason="PROVIDER_ERROR",
+                        error_type=type(exc).__name__,
+                        error_digest=digest_text(str(exc)),
+                    )
+                )
+                result = ActuationResult(
+                    accepted=False,
+                    standing=Standing.BLOCKED,
+                    observation=after,
+                    receipt=receipt,
                 )
                 self._actuation_idempotency[key] = _ActuationRecord(intent_digest, result)
                 return result
 
-            after = await self._observe_unlocked(state)
-            result = ActuationResult(
-                accepted=True,
-                standing=Standing.ALIVE,
-                effect=effect,
-                observation=after,
-                receipt=Receipt(
+            after, post_error_type, post_error_digest = await self._safe_post_observation(state)
+            if after is None:
+                receipt = await self._record(
+                    Receipt(
+                        episode_id=intent.episode_id,
+                        operation=Operation.ACT,
+                        standing=Standing.BLOCKED,
+                        subject_ref=state.environment.environment_id,
+                        capability_ref=capability.iri,
+                        authority_ref=intent.authority_ref,
+                        authority_evidence_ref=authority.evidence_ref,
+                        idempotency_key=intent.idempotency_key,
+                        pre_state_digest=before.state_digest,
+                        prepared_receipt_digest=prepared.receipt_digest,
+                        reason="POST_ACTUATION_OBSERVATION_FAILED",
+                        error_type=post_error_type,
+                        error_digest=post_error_digest,
+                    )
+                )
+                result = ActuationResult(
+                    accepted=False,
+                    standing=Standing.BLOCKED,
+                    effect=effect,
+                    receipt=receipt,
+                )
+                self._actuation_idempotency[key] = _ActuationRecord(intent_digest, result)
+                return result
+
+            receipt = await self._record(
+                Receipt(
                     episode_id=intent.episode_id,
                     operation=Operation.ACT,
                     standing=Standing.ALIVE,
@@ -483,94 +750,201 @@ class GymAct:
                     idempotency_key=intent.idempotency_key,
                     pre_state_digest=before.state_digest,
                     post_state_digest=after.state_digest,
-                ),
+                    prepared_receipt_digest=prepared.receipt_digest,
+                    reason="CONSEQUENCE_OBSERVED",
+                )
+            )
+            result = ActuationResult(
+                accepted=True,
+                standing=Standing.ALIVE,
+                effect=effect,
+                observation=after,
+                receipt=receipt,
             )
             self._actuation_idempotency[key] = _ActuationRecord(intent_digest, result)
             return result
 
-    async def verify(self, episode_id: str, expected: dict[str, Any]) -> VerificationResult:
-        """Independently evaluate expected partial state against the environment."""
+    async def verify(self, episode_id: str, expected: JsonObject) -> VerificationResult:
+        """Run provider verification and record the independent verdict as evidence."""
         state = self._state(episode_id)
         async with state.lock:
-            passed, observed = await state.environment.verify(expected)
-            return VerificationResult(
+            try:
+                with anyio.fail_after(self.limits.provider_timeout_s):
+                    passed, observed = await state.environment.verify(expected)
+                if not isinstance(observed, dict):
+                    raise TypeError("verification observation must be a JSON object")
+                if len(canonical_json_bytes(observed)) > self.limits.max_state_bytes:
+                    raise GymActOperationError("verification state exceeds configured size limit")
+            except Exception as exc:
+                receipt = await self._record(
+                    Receipt(
+                        episode_id=episode_id,
+                        operation=Operation.VERIFY,
+                        standing=Standing.BLOCKED,
+                        subject_ref=state.environment.environment_id,
+                        capability_ref="urn:gymact:operation:verify",
+                        reason="VERIFICATION_EXECUTION_FAILED",
+                        error_type=type(exc).__name__,
+                        error_digest=digest_text(str(exc)),
+                    )
+                )
+                raise GymActOperationError("verification execution failed", receipt=receipt) from exc
+
+            result = VerificationResult(
                 episode_id=episode_id,
                 passed=passed,
                 expected=expected,
                 observed=observed,
-                state_digest=_digest(observed),
+                state_digest=digest_json(observed),
             )
+            receipt = await self._record(
+                Receipt(
+                    episode_id=episode_id,
+                    operation=Operation.VERIFY,
+                    standing=Standing.ALIVE,
+                    subject_ref=state.environment.environment_id,
+                    capability_ref="urn:gymact:operation:verify",
+                    post_state_digest=result.state_digest,
+                    verification_id=result.verification_id,
+                    reason="VERIFICATION_PASSED" if passed else "VERIFICATION_FAILED",
+                )
+            )
+            return result.model_copy(update={"receipt_id": receipt.receipt_id})
 
-    async def checkpoint(self, episode_id: str) -> dict[str, Any]:
-        """Return provider-defined recovery state."""
+    async def checkpoint(self, episode_id: str) -> JsonObject:
+        """Return bounded provider-defined recovery state."""
         state = self._state(episode_id)
         async with state.lock:
-            return await state.environment.checkpoint()
+            try:
+                with anyio.fail_after(self.limits.provider_timeout_s):
+                    checkpoint = await state.environment.checkpoint()
+            except TimeoutError as exc:
+                raise GymActOperationError("checkpoint timed out") from exc
+            if not isinstance(checkpoint, dict):
+                raise GymActOperationError("checkpoint must be a JSON object")
+            if len(canonical_json_bytes(checkpoint)) > self.limits.max_state_bytes:
+                raise GymActOperationError("checkpoint exceeds configured size limit")
+            return checkpoint
 
     async def restore(
-        self, episode_id: str, checkpoint: dict[str, Any], *, authority_ref: str | None = None
+        self, episode_id: str, checkpoint: JsonObject, *, authority_ref: str | None = None
     ) -> Receipt:
-        """Restore a checkpoint only after an explicit authority decision when required."""
+        """Restore a checkpoint with the same write-ahead authority/evidence law."""
         state = self._state(episode_id)
         async with state.lock:
             before = await self._observe_unlocked(state)
+            if not self._payload_within_limit(checkpoint):
+                return await self._record(
+                    Receipt(
+                        episode_id=episode_id,
+                        operation=Operation.RESTORE,
+                        standing=Standing.REFUSED,
+                        subject_ref=state.environment.environment_id,
+                        capability_ref="urn:gymact:operation:restore",
+                        authority_ref=authority_ref,
+                        pre_state_digest=before.state_digest,
+                        post_state_digest=before.state_digest,
+                        reason="PAYLOAD_LIMIT_EXCEEDED",
+                    )
+                )
             authority = await self._authority_decision(
                 required=state.environment.requires_authority,
                 episode_id=episode_id,
                 subject_ref=state.environment.environment_id,
                 operation=Operation.RESTORE,
                 capability_ref="urn:gymact:operation:restore",
-                payload={"checkpoint_digest": _digest(checkpoint)},
+                payload={"checkpoint_digest": digest_json(checkpoint)},
                 authority_ref=authority_ref,
             )
             if not authority.admitted:
-                return Receipt(
+                return await self._record(
+                    Receipt(
+                        episode_id=episode_id,
+                        operation=Operation.RESTORE,
+                        standing=Standing.REFUSED,
+                        subject_ref=state.environment.environment_id,
+                        capability_ref="urn:gymact:operation:restore",
+                        authority_ref=authority_ref,
+                        authority_evidence_ref=authority.evidence_ref,
+                        pre_state_digest=before.state_digest,
+                        post_state_digest=before.state_digest,
+                        reason=authority.reason,
+                        error_type=authority.error_type,
+                        error_digest=authority.error_digest,
+                    )
+                )
+            prepared = await self._record(
+                Receipt(
                     episode_id=episode_id,
                     operation=Operation.RESTORE,
-                    standing=Standing.REFUSED,
+                    stage=ReceiptStage.PREPARED,
+                    standing=Standing.PARTIAL_ALIVE,
                     subject_ref=state.environment.environment_id,
                     capability_ref="urn:gymact:operation:restore",
                     authority_ref=authority_ref,
                     authority_evidence_ref=authority.evidence_ref,
                     pre_state_digest=before.state_digest,
-                    post_state_digest=before.state_digest,
-                    reason=authority.reason,
+                    reason="ACTUATION_PREPARED",
                 )
+            )
             try:
-                await state.environment.restore(checkpoint)
-                after = await self._observe_unlocked(state)
+                with anyio.fail_after(self.limits.provider_timeout_s):
+                    await state.environment.restore(checkpoint)
             except Exception as exc:
-                try:
-                    after = await self._observe_unlocked(state)
-                except Exception:
-                    after = before
-                return Receipt(
+                after, _, _ = await self._safe_post_observation(state)
+                return await self._record(
+                    Receipt(
+                        episode_id=episode_id,
+                        operation=Operation.RESTORE,
+                        standing=Standing.BLOCKED,
+                        subject_ref=state.environment.environment_id,
+                        capability_ref="urn:gymact:operation:restore",
+                        authority_ref=authority_ref,
+                        authority_evidence_ref=authority.evidence_ref,
+                        pre_state_digest=before.state_digest,
+                        post_state_digest=after.state_digest if after else None,
+                        prepared_receipt_digest=prepared.receipt_digest,
+                        reason="PROVIDER_TIMEOUT" if isinstance(exc, TimeoutError) else "PROVIDER_ERROR",
+                        error_type=type(exc).__name__,
+                        error_digest=digest_text(str(exc)),
+                    )
+                )
+            after, error_type, error_digest = await self._safe_post_observation(state)
+            if after is None:
+                return await self._record(
+                    Receipt(
+                        episode_id=episode_id,
+                        operation=Operation.RESTORE,
+                        standing=Standing.BLOCKED,
+                        subject_ref=state.environment.environment_id,
+                        capability_ref="urn:gymact:operation:restore",
+                        authority_ref=authority_ref,
+                        authority_evidence_ref=authority.evidence_ref,
+                        pre_state_digest=before.state_digest,
+                        prepared_receipt_digest=prepared.receipt_digest,
+                        reason="POST_ACTUATION_OBSERVATION_FAILED",
+                        error_type=error_type,
+                        error_digest=error_digest,
+                    )
+                )
+            return await self._record(
+                Receipt(
                     episode_id=episode_id,
                     operation=Operation.RESTORE,
-                    standing=Standing.BLOCKED,
+                    standing=Standing.ALIVE,
                     subject_ref=state.environment.environment_id,
                     capability_ref="urn:gymact:operation:restore",
                     authority_ref=authority_ref,
                     authority_evidence_ref=authority.evidence_ref,
                     pre_state_digest=before.state_digest,
                     post_state_digest=after.state_digest,
-                    error_digest=_error_digest(exc),
-                    reason=f"PROVIDER_ERROR:{type(exc).__name__}",
+                    prepared_receipt_digest=prepared.receipt_digest,
+                    reason="CONSEQUENCE_OBSERVED",
                 )
-            return Receipt(
-                episode_id=episode_id,
-                operation=Operation.RESTORE,
-                standing=Standing.ALIVE,
-                subject_ref=state.environment.environment_id,
-                capability_ref="urn:gymact:operation:restore",
-                authority_ref=authority_ref,
-                authority_evidence_ref=authority.evidence_ref,
-                pre_state_digest=before.state_digest,
-                post_state_digest=after.state_digest,
             )
 
     async def teardown(self, episode_id: str, *, authority_ref: str | None = None) -> Receipt:
-        """Idempotently tear down an environment after authority admission when required."""
+        """Idempotently tear down a world after authority and a write-ahead receipt."""
         prior = self._teardown_receipts.get(episode_id)
         if prior is not None:
             return prior
@@ -587,43 +961,82 @@ class GymAct:
                 authority_ref=authority_ref,
             )
             if not authority.admitted:
-                return Receipt(
+                return await self._record(
+                    Receipt(
+                        episode_id=episode_id,
+                        operation=Operation.TEARDOWN,
+                        standing=Standing.REFUSED,
+                        subject_ref=state.environment.environment_id,
+                        capability_ref="urn:gymact:operation:teardown",
+                        authority_ref=authority_ref,
+                        authority_evidence_ref=authority.evidence_ref,
+                        pre_state_digest=before.state_digest,
+                        post_state_digest=before.state_digest,
+                        reason=authority.reason,
+                        error_type=authority.error_type,
+                        error_digest=authority.error_digest,
+                    )
+                )
+            prepared = await self._record(
+                Receipt(
                     episode_id=episode_id,
                     operation=Operation.TEARDOWN,
-                    standing=Standing.REFUSED,
+                    stage=ReceiptStage.PREPARED,
+                    standing=Standing.PARTIAL_ALIVE,
                     subject_ref=state.environment.environment_id,
                     capability_ref="urn:gymact:operation:teardown",
                     authority_ref=authority_ref,
                     authority_evidence_ref=authority.evidence_ref,
                     pre_state_digest=before.state_digest,
-                    post_state_digest=before.state_digest,
-                    reason=authority.reason,
+                    reason="ACTUATION_PREPARED",
                 )
+            )
             try:
-                await state.environment.teardown()
+                with anyio.fail_after(self.limits.provider_timeout_s):
+                    await state.environment.teardown()
             except Exception as exc:
-                return Receipt(
+                return await self._record(
+                    Receipt(
+                        episode_id=episode_id,
+                        operation=Operation.TEARDOWN,
+                        standing=Standing.BLOCKED,
+                        subject_ref=state.environment.environment_id,
+                        capability_ref="urn:gymact:operation:teardown",
+                        authority_ref=authority_ref,
+                        authority_evidence_ref=authority.evidence_ref,
+                        pre_state_digest=before.state_digest,
+                        prepared_receipt_digest=prepared.receipt_digest,
+                        reason="PROVIDER_TIMEOUT" if isinstance(exc, TimeoutError) else "PROVIDER_ERROR",
+                        error_type=type(exc).__name__,
+                        error_digest=digest_text(str(exc)),
+                    )
+                )
+            receipt = await self._record(
+                Receipt(
                     episode_id=episode_id,
                     operation=Operation.TEARDOWN,
-                    standing=Standing.BLOCKED,
+                    standing=Standing.ALIVE,
                     subject_ref=state.environment.environment_id,
                     capability_ref="urn:gymact:operation:teardown",
                     authority_ref=authority_ref,
                     authority_evidence_ref=authority.evidence_ref,
                     pre_state_digest=before.state_digest,
-                    error_digest=_error_digest(exc),
-                    reason=f"PROVIDER_ERROR:{type(exc).__name__}",
+                    prepared_receipt_digest=prepared.receipt_digest,
+                    reason="TEARDOWN_COMPLETED",
                 )
-            receipt = Receipt(
-                episode_id=episode_id,
-                operation=Operation.TEARDOWN,
-                standing=Standing.ALIVE,
-                subject_ref=state.environment.environment_id,
-                capability_ref="urn:gymact:operation:teardown",
-                authority_ref=authority_ref,
-                authority_evidence_ref=authority.evidence_ref,
-                pre_state_digest=before.state_digest,
             )
             self._teardown_receipts[episode_id] = receipt
             del self._episodes[episode_id]
             return receipt
+
+    async def receipts(self, episode_id: str | None = None) -> tuple[Receipt, ...]:
+        """Read the append-only receipt ledger."""
+        return await self._ledger.receipts(episode_id)
+
+    async def verify_evidence_chain(self) -> bool:
+        """Verify the complete configured BLAKE3 receipt chain."""
+        return await self._ledger.verify_chain()
+
+    async def provenance(self):
+        """Return a public PROV-O/SOSA graph over the current receipt ledger."""
+        return receipts_to_prov(await self._ledger.receipts())
