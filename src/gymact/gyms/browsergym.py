@@ -1,14 +1,14 @@
 """Real GymAct bridge to BrowserGym's local ``openended`` Chromium task.
 
 The ForwardBench corpus pins ServiceNow/BrowserGym at
-``9e779f087de9a65668b6974d11f9ce9816026e96``.  At that revision,
+``9e779f087de9a65668b6974d11f9ce9816026e96``. At that revision,
 ``browsergym-core`` is version 0.14.3 and exposes the Gymnasium
 ``browsergym/openended`` environment plus concrete high-level navigation
 procedures ``goto``, ``go_back``, and ``go_forward``.
 
 This adapter intentionally uses only local ``about:`` task worlds in its
-reference tests.  It therefore exercises the real BrowserGym package and
-a real Chromium process without claiming network, cloud, or Docker standing.
+reference tests. It therefore exercises the real BrowserGym package and a
+real Chromium process without claiming network, cloud, or Docker standing.
 Checkpoint/restore is deliberately bounded to the active URL: BrowserGym does
 not expose a general browser snapshot primitive, so GymAct does not pretend to
 snapshot cookies, storage, history, or arbitrary page process state.
@@ -16,7 +16,6 @@ snapshot cookies, storage, history, or arbitrary page process state.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -56,18 +55,9 @@ BROWSERGYM_CAPABILITIES = (
 class BrowserGymEnvironment:
     """One real ``browsergym/openended`` episode backed by Chromium."""
 
-    def __init__(
-        self,
-        *,
-        start_url: str,
-        seed: int = 0,
-        chromium_executable: str | None = None,
-    ) -> None:
+    def __init__(self, *, start_url: str, seed: int = 0) -> None:
         self.environment_id = f"urn:gymact:browsergym:environment:{uuid4().hex}"
         self.requires_authority = True
-        chromium_kwargs: dict[str, Any] = {}
-        if chromium_executable is not None:
-            chromium_kwargs["executable_path"] = chromium_executable
         self._env = gym.make(
             "browsergym/openended",
             task_kwargs={"start_url": start_url, "goal": "Exercise bounded local navigation"},
@@ -75,7 +65,6 @@ class BrowserGymEnvironment:
             wait_for_user_message=False,
             slow_mo=0,
             pre_observation_delay=0.0,
-            pw_chromium_kwargs=chromium_kwargs,
         )
         observation, _info = self._env.reset(seed=seed)
         self._observation = observation
@@ -91,7 +80,8 @@ class BrowserGymEnvironment:
 
     def _state(self) -> dict[str, Any]:
         observation = self._observation
-        active_page_index = int(observation["active_page_index"])
+        active_index = observation["active_page_index"]
+        active_page_index = int(active_index.item() if hasattr(active_index, "item") else active_index)
         titles = list(observation["open_pages_titles"])
         return {
             "url": str(observation["url"]),
@@ -178,14 +168,4 @@ class BrowserGymProvider:
         seed = config.get("seed", 0)
         if not isinstance(seed, int) or isinstance(seed, bool):
             raise TypeError("config.seed must be an int")
-        chromium_executable = config.get("chromium_executable")
-        if chromium_executable is not None:
-            if not isinstance(chromium_executable, str) or not chromium_executable:
-                raise TypeError("config.chromium_executable must be a non-empty string path")
-            if not Path(chromium_executable).is_file():
-                raise TypeError(f"config.chromium_executable is not a file: {chromium_executable}")
-        return BrowserGymEnvironment(
-            start_url=start_url,
-            seed=seed,
-            chromium_executable=chromium_executable,
-        )
+        return BrowserGymEnvironment(start_url=start_url, seed=seed)
