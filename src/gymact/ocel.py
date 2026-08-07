@@ -74,13 +74,9 @@ def receipts_to_ocel(receipts: list[Receipt]) -> dict[str, Any]:
 
         relationships = [{"objectId": receipt.episode_id, "qualifier": "episode"}]
         if receipt.subject_ref:
-            relationships.append(
-                {"objectId": receipt.subject_ref, "qualifier": "environment"}
-            )
+            relationships.append({"objectId": receipt.subject_ref, "qualifier": "environment"})
         if receipt.capability_ref:
-            relationships.append(
-                {"objectId": receipt.capability_ref, "qualifier": "capability"}
-            )
+            relationships.append({"objectId": receipt.capability_ref, "qualifier": "capability"})
 
         events.append(
             {

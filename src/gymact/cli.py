@@ -37,9 +37,18 @@ def validate_profile() -> None:
 
 @app.command("export-profile")
 def export_profile(directory: Path) -> None:
-    """Export the admitted RDF/SHACL profile for ggen or another compiler."""
-    paths = ProfileAuthority().export(directory)
-    typer.echo(json.dumps({key: str(value) for key, value in paths.items()}, sort_keys=True))
+    """Export the admitted RDF/SHACL profile, with per-file digests, for
+    ggen or another compiler to consume and mechanically verify."""
+    authority = ProfileAuthority()
+    exported = authority.export(directory)
+    payload = {
+        "profile_uri": authority.profile_uri,
+        "files": {
+            name: {"path": str(resource.path), "sha256": resource.sha256}
+            for name, resource in exported.items()
+        },
+    }
+    typer.echo(json.dumps(payload, sort_keys=True))
 
 
 @app.command()

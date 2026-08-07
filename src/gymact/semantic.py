@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import shutil
 from collections.abc import Iterable
 from importlib.resources import as_file, files
@@ -32,6 +33,19 @@ class SemanticValidation(BaseModel):
     report_text: str
 
 
+class ExportedResource(BaseModel):
+    """One exported profile file plus a real content digest.
+
+    The digest lets a downstream consumer (e.g. a vendored/symlinked copy in
+    another repo's ggen pack) mechanically verify what it received, instead
+    of relying on a human-written commit-hash comment.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    path: Path
+    sha256: str
+
+
 class ProfileAuthority:
     """Load, validate, and export the packaged GymAct PROF application profile."""
 
@@ -60,16 +74,18 @@ class ProfileAuthority:
             graph.add(triple)
         return graph
 
-    def export(self, directory: str | Path) -> dict[str, Path]:
-        """Materialize package RDF resources for ggen or other external compilers."""
+    def export(self, directory: str | Path) -> dict[str, ExportedResource]:
+        """Materialize package RDF resources, with a real digest, for ggen
+        or other external compilers to verify mechanically."""
         target = Path(directory)
         target.mkdir(parents=True, exist_ok=True)
-        exported: dict[str, Path] = {}
+        exported: dict[str, ExportedResource] = {}
         for name in ("profile.ttl", "profile.shacl.ttl"):
             destination = target / name
             with as_file(self._resource(name)) as source:
                 shutil.copyfile(source, destination)
-            exported[name] = destination
+            digest = hashlib.sha256(destination.read_bytes()).hexdigest()
+            exported[name] = ExportedResource(path=destination, sha256=digest)
         return exported
 
     @staticmethod

@@ -114,9 +114,7 @@ class CubeContainerCounterEnvironment:
         self._benchmark_cm = config.make(infra=LocalInfraConfig())
         self._benchmark = self._benchmark_cm.__enter__()
         task_configs = {c.task_id: c for c in config.get_task_configs()}
-        self._task = task_configs[_TASK_ID].make(
-            runtime_context=self._benchmark._runtime_context
-        )
+        self._task = task_configs[_TASK_ID].make(runtime_context=self._benchmark._runtime_context)
         # Real container provisioning + real in-container probe happens here.
         self._task.reset()
 

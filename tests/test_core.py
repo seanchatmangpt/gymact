@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 
 import anyio
@@ -68,7 +69,10 @@ def test_semantic_profile_is_public_ontology_only(tmp_path) -> None:
     assert result.triple_count >= 50
     exported = authority.export(tmp_path)
     assert set(exported) == {"profile.ttl", "profile.shacl.ttl"}
-    assert all(path.exists() and path.stat().st_size > 0 for path in exported.values())
+    for resource in exported.values():
+        assert resource.path.exists() and resource.path.stat().st_size > 0
+        real_digest = hashlib.sha256(resource.path.read_bytes()).hexdigest()
+        assert resource.sha256 == real_digest
 
 
 def test_provider_registration_and_discovery() -> None:
@@ -605,7 +609,14 @@ def test_typer_cli_version_profile_export_and_demo(tmp_path) -> None:
     assert payload["custom_tbox_terms"] == []
     exported = runner.invoke(cli_app, ["export-profile", str(tmp_path)])
     assert exported.exit_code == 0
-    assert (tmp_path / "profile.ttl").exists()
+    export_payload = json.loads(exported.stdout)
+    assert export_payload["profile_uri"] == ProfileAuthority.profile_uri
+    for name in ("profile.ttl", "profile.shacl.ttl"):
+        exported_path = tmp_path / name
+        assert exported_path.exists()
+        real_digest = hashlib.sha256(exported_path.read_bytes()).hexdigest()
+        assert export_payload["files"][name]["path"] == str(exported_path)
+        assert export_payload["files"][name]["sha256"] == real_digest
     denied = runner.invoke(cli_app, ["demo"])
     assert denied.exit_code == 0
     assert json.loads(denied.stdout)["actuation"]["standing"] == "REFUSED"

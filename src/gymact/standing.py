@@ -66,7 +66,7 @@ def require_standing(standing: str, *, available: bool, reason: str) -> None:
         message = (
             f"standing {standing!r} is not available in this run and "
             f"{_ENV_VAR} does not allow degrading it: {reason}\n"
-            f"Set {_ENV_VAR}={standing!r} (or \"*\") to explicitly accept "
+            f'Set {_ENV_VAR}={standing!r} (or "*") to explicitly accept '
             "a skip instead of this failure."
         )
         if pytest is not None:

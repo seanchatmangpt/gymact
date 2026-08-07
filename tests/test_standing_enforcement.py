@@ -22,7 +22,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-SCRATCH_TEST = '''
+SCRATCH_TEST = """
 from gymact.standing import require_standing
 
 
@@ -33,7 +33,7 @@ def test_claims_a_standing_that_is_never_available() -> None:
         reason="this standing is never real; it exists only to prove the contract",
     )
     assert False, "require_standing should have failed or skipped before this ran"
-'''
+"""
 
 
 def _run_pytest(tmp_path: Path, *, env_overrides: dict[str, str]) -> subprocess.CompletedProcess:

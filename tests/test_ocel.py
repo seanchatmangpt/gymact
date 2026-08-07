@@ -27,11 +27,11 @@ from jsonschema.exceptions import ValidationError
 
 pytest.importorskip("counter_cube")
 
-from gymact import GymAct, MaterializationIntent  # noqa: E402
-from gymact.gyms.cube_counter import CubeCounterProvider  # noqa: E402
-from gymact.models import ActuationIntent, Operation  # noqa: E402
-from gymact.ocel import receipts_to_ocel, validate_ocel_log, write_ocel_log  # noqa: E402
-from gymact.process import ConformanceChecker  # noqa: E402
+from gymact import GymAct, MaterializationIntent
+from gymact.gyms.cube_counter import CubeCounterProvider
+from gymact.models import ActuationIntent, Operation
+from gymact.ocel import receipts_to_ocel, validate_ocel_log, write_ocel_log
+from gymact.process import ConformanceChecker
 
 
 async def _run_real_counter_episode() -> list:
