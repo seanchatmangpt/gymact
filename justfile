@@ -14,13 +14,49 @@ lock:
     uv lock --check
 
 test version="":
-    uv sync --all-extras --group dev {{ if version != "" { "--python " + version } else { "" } }}
-    if [ -f "${AUTOFDE_LAB:-$HOME/autofde-lab}/vendor/gyms/browsergym/browsergym/core/pyproject.toml" ]; then uv pip install -e "${AUTOFDE_LAB:-$HOME/autofde-lab}/vendor/gyms/browsergym/browsergym/core"; else uv pip install "browsergym-core @ git+https://github.com/ServiceNow/BrowserGym.git@9e779f087de9a65668b6974d11f9ce9816026e96#subdirectory=browsergym/core"; fi
-    uv run playwright install chromium
+    #!/usr/bin/env bash
+    set -euo pipefail
+    requested="{{version}}"
+    if [[ -n "$requested" ]]; then
+      uv sync --all-extras --group dev --python "$requested"
+    else
+      uv sync --all-extras --group dev
+    fi
+    py_minor="$(uv run python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+    if [[ "$py_minor" != "3.13" ]]; then
+      if [[ -f "${AUTOFDE_LAB:-$HOME/autofde-lab}/vendor/gyms/browsergym/browsergym/core/pyproject.toml" ]]; then
+        uv pip install -e "${AUTOFDE_LAB:-$HOME/autofde-lab}/vendor/gyms/browsergym/browsergym/core"
+      else
+        uv pip install "browsergym-core @ git+https://github.com/ServiceNow/BrowserGym.git@9e779f087de9a65668b6974d11f9ce9816026e96#subdirectory=browsergym/core"
+      fi
+      uv run playwright install chromium
+    else
+      echo 'BrowserGym pin uses playwright==1.44 -> greenlet==3.0.3, which is not CPython 3.13 compatible.'
+    fi
     uv run gymact validate-profile
-    uv run python -c 'from gymact.gyms.browsergym import BROWSERGYM_CAPABILITIES; from gymact.semantic import ProfileAuthority; r = ProfileAuthority().validate_capabilities(BROWSERGYM_CAPABILITIES); print(r.model_dump_json()); assert r.conforms, r.report_text'
-    if grep -RInE 'unittest\.mock|\bMock\b|\bpatch\b|monkeypatch' tests; then echo 'mock-grep: forbidden test seam found' >&2; exit 1; else echo 'mock-grep: zero matches'; fi
-    uv run coverage run -m pytest -v
+    if [[ "$py_minor" != "3.13" ]]; then
+      uv run python -c 'from gymact.gyms.browsergym import BROWSERGYM_CAPABILITIES; from gymact.semantic import ProfileAuthority; r = ProfileAuthority().validate_capabilities(BROWSERGYM_CAPABILITIES); print(r.model_dump_json()); assert r.conforms, r.report_text'
+    else
+      set +e
+      uv run pytest --collect-only -q tests/test_browsergym_gym.py > /tmp/browsergym-standing.txt 2>&1
+      standing_rc=$?
+      set -e
+      cat /tmp/browsergym-standing.txt
+      test "$standing_rc" -ne 0
+      grep -q 'LOCAL_GYM:browsergym-openended' /tmp/browsergym-standing.txt
+      grep -q 'GYMACT_ALLOW_DEGRADED_STANDINGS' /tmp/browsergym-standing.txt
+    fi
+    if grep -RInE 'unittest\.mock|\bMock\b|\bpatch\b|monkeypatch' tests; then
+      echo 'mock-grep: forbidden test seam found' >&2
+      exit 1
+    else
+      echo 'mock-grep: zero matches'
+    fi
+    if [[ "$py_minor" == "3.13" ]]; then
+      GYMACT_ALLOW_DEGRADED_STANDINGS=LOCAL_GYM:browsergym-openended uv run coverage run -m pytest -v
+    else
+      uv run coverage run -m pytest -v
+    fi
     uv run coverage report
     uv run ruff check src tests
     uv run ruff format --check src tests
