@@ -6,6 +6,7 @@ from typing import Any
 
 from fastmcp import FastMCP
 
+from gymact.contract import contract_document
 from gymact.models import ActuationIntent, MaterializationIntent
 from gymact.providers import MemoryProvider
 from gymact.runtime import GymAct
@@ -28,6 +29,11 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
     async def discover() -> list[str]:
         """List registered environment providers."""
         return list(service.discover())
+
+    @mcp.tool()
+    async def contract() -> dict[str, Any]:
+        """Return the portable GymAct semantic/runtime contract."""
+        return contract_document()
 
     @mcp.tool()
     async def create_episode(
@@ -104,5 +110,15 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
         return (await service.teardown(episode_id, authority_ref=authority_ref)).model_dump(
             mode="json"
         )
+
+    @mcp.tool()
+    async def receipts(episode_id: str | None = None) -> list[dict[str, Any]]:
+        """Return tamper-evident receipts from the configured ledger."""
+        return [item.model_dump(mode="json") for item in await service.receipts(episode_id)]
+
+    @mcp.tool()
+    async def provenance() -> str:
+        """Return the current public PROV-O/SOSA evidence graph as Turtle."""
+        return (await service.provenance()).serialize(format="turtle")
 
     return mcp
