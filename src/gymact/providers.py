@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Any, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 from uuid import uuid4
 
-from gymact.models import Capability, Consequence
+from gymact.models import Capability, Consequence, JsonObject
 
 
 @runtime_checkable
@@ -18,15 +18,15 @@ class Environment(Protocol):
 
     def capabilities(self) -> tuple[Capability, ...]: ...
 
-    async def observe(self) -> dict[str, Any]: ...
+    async def observe(self) -> JsonObject: ...
 
-    async def actuate(self, capability: Capability, payload: dict[str, Any]) -> dict[str, Any]: ...
+    async def actuate(self, capability: Capability, payload: JsonObject) -> JsonObject: ...
 
-    async def verify(self, expected: dict[str, Any]) -> tuple[bool, dict[str, Any]]: ...
+    async def verify(self, expected: JsonObject) -> tuple[bool, JsonObject]: ...
 
-    async def checkpoint(self) -> dict[str, Any]: ...
+    async def checkpoint(self) -> JsonObject: ...
 
-    async def restore(self, checkpoint: dict[str, Any]) -> None: ...
+    async def restore(self, checkpoint: JsonObject) -> None: ...
 
     async def teardown(self) -> None: ...
 
@@ -38,9 +38,7 @@ class EnvironmentProvider(Protocol):
     name: str
     materialization_requires_authority: bool
 
-    async def materialize(
-        self, *, scenario: str | None, config: dict[str, Any]
-    ) -> Environment: ...
+    async def materialize(self, *, scenario: str | None, config: JsonObject) -> Environment: ...
 
 
 MEMORY_CAPABILITIES = (
@@ -69,11 +67,11 @@ class MemoryEnvironment:
     """Deterministic executable reference world used for contract validation."""
 
     def __init__(
-        self, *, initial: dict[str, Any] | None = None, requires_authority: bool = False
+        self, *, initial: JsonObject | None = None, requires_authority: bool = False
     ) -> None:
         self.environment_id = f"urn:gymact:memory:environment:{uuid4().hex}"
         self.requires_authority = requires_authority
-        self._state: dict[str, Any] = deepcopy(initial or {})
+        self._state: JsonObject = deepcopy(initial or {})
         self._closed = False
 
     def _ensure_open(self) -> None:
@@ -84,11 +82,11 @@ class MemoryEnvironment:
         self._ensure_open()
         return MEMORY_CAPABILITIES
 
-    async def observe(self) -> dict[str, Any]:
+    async def observe(self) -> JsonObject:
         self._ensure_open()
         return deepcopy(self._state)
 
-    async def actuate(self, capability: Capability, payload: dict[str, Any]) -> dict[str, Any]:
+    async def actuate(self, capability: Capability, payload: JsonObject) -> JsonObject:
         self._ensure_open()
         before = deepcopy(self._state)
         binding = capability.binding
@@ -115,17 +113,17 @@ class MemoryEnvironment:
             "capability": capability.iri,
         }
 
-    async def verify(self, expected: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+    async def verify(self, expected: JsonObject) -> tuple[bool, JsonObject]:
         self._ensure_open()
         observed = await self.observe()
         passed = all(observed.get(key) == value for key, value in expected.items())
         return passed, observed
 
-    async def checkpoint(self) -> dict[str, Any]:
+    async def checkpoint(self) -> JsonObject:
         self._ensure_open()
         return deepcopy(self._state)
 
-    async def restore(self, checkpoint: dict[str, Any]) -> None:
+    async def restore(self, checkpoint: JsonObject) -> None:
         self._ensure_open()
         self._state = deepcopy(checkpoint)
 
@@ -143,13 +141,19 @@ class MemoryProvider:
         self.requires_authority = requires_authority
 
     async def materialize(
-        self, *, scenario: str | None, config: dict[str, Any]
+        self, *, scenario: str | None, config: JsonObject
     ) -> MemoryEnvironment:
         del scenario
         initial = config.get("initial", {})
         if not isinstance(initial, dict):
             raise TypeError("config.initial must be an object")
-        configured = config.get("requires_authority", self.requires_authority)
-        if not isinstance(configured, bool):
+        requested = config.get("requires_authority", False)
+        if not isinstance(requested, bool):
             raise TypeError("config.requires_authority must be a boolean")
-        return MemoryEnvironment(initial=initial, requires_authority=configured)
+        # Monotonic authority: request data may raise the bar but never lower a
+        # provider-level requirement.
+        effective_requires_authority = self.requires_authority or requested
+        return MemoryEnvironment(
+            initial=initial,
+            requires_authority=effective_requires_authority,
+        )
