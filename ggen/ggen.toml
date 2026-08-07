@@ -1,0 +1,37 @@
+[project]
+name = "gymact-rust-bridge"
+version = "26.8.7"
+description = "Gall checkpoint: manufacture Rust from the GymAct public semantic profile"
+
+[ontology]
+source = "ontology/profile.ttl"
+base_iri = "urn:gymact:ggen:"
+
+[generation]
+output_dir = "."
+
+[[generation.rules]]
+name = "procedure-table"
+query = { file = "queries/procedures.rq" }
+template = { file = "templates/procedures.rs.tera" }
+output_file = "generated/procedures.rs"
+mode = "Overwrite"
+
+[validation]
+gates = []
+strict_mode = true
+
+[sync]
+enabled = true
+on_change = "manual"
+validate_after = true
+conflict_mode = "fail"
+
+[rdf]
+formats = ["turtle"]
+default_format = "turtle"
+strict_validation = false
+
+[templates]
+enable_caching = true
+auto_reload = true
