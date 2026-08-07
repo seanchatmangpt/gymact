@@ -90,6 +90,8 @@
 
 ::: gymact.gyms.discovered.GenericDiscoveredProvider
 
+::: gymact.gyms.gymnasium_env.GymnasiumProvider
+
 ::: gymact.contract.RuntimeContract
 
 ::: gymact.contract.build_contract
