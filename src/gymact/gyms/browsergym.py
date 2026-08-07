@@ -6,17 +6,19 @@ The ForwardBench corpus pins ServiceNow/BrowserGym at
 ``browsergym/openended`` environment plus concrete high-level navigation
 procedures ``goto``, ``go_back``, and ``go_forward``.
 
-This adapter intentionally uses only local ``about:`` task worlds in its
-reference tests. It therefore exercises the real BrowserGym package and a
+This adapter intentionally uses only local ``about:`` task worlds at
+materialization. It therefore exercises the real BrowserGym package and a
 real Chromium process without claiming network, cloud, or Docker standing.
-Checkpoint/restore is deliberately bounded to the active URL: BrowserGym does
-not expose a general browser snapshot primitive, so GymAct does not pretend to
-snapshot cookies, storage, history, or arbitrary page process state.
+Network navigation remains expressible through the authority-gated ``goto``
+DO capability. Checkpoint/restore is deliberately bounded to the active URL:
+BrowserGym does not expose a general browser snapshot primitive, so GymAct does
+not pretend to snapshot cookies, storage, history, or arbitrary page state.
 """
 
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlsplit
 from uuid import uuid4
 
 from gymact.models import Capability, Consequence
@@ -153,7 +155,7 @@ class BrowserGymEnvironment:
 
 
 class BrowserGymProvider:
-    """Materialize real local BrowserGym open-ended Chromium episodes."""
+    """Materialize bounded local BrowserGym open-ended Chromium episodes."""
 
     name = "browsergym"
     materialization_requires_authority = False
@@ -166,6 +168,8 @@ class BrowserGymProvider:
         start_url = config.get("start_url", "about:blank")
         if not isinstance(start_url, str) or not start_url:
             raise TypeError("config.start_url must be a non-empty string")
+        if urlsplit(start_url).scheme != "about":
+            raise ValueError("LOCAL_START_URL_REQUIRED: BrowserGym materialization requires about:")
         seed = config.get("seed", 0)
         if not isinstance(seed, int) or isinstance(seed, bool):
             raise TypeError("config.seed must be an int")
