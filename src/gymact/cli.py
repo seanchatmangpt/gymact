@@ -49,9 +49,7 @@ def demo(authority: bool = typer.Option(False, "--authority")) -> None:
     async def run() -> dict[str, object]:
         authority_ref = "urn:gymact:authority:demo"
         runtime = GymAct(
-            authority_resolver=AllowListAuthorityResolver({authority_ref})
-            if authority
-            else None
+            authority_resolver=AllowListAuthorityResolver({authority_ref}) if authority else None
         )
         runtime.register_provider(MemoryProvider(requires_authority=True))
         materialized = await runtime.materialize(

@@ -73,4 +73,5 @@ uv.lock
 
 # Playground
 playground.py
-playground.ipynb
+playground.ipynb.coverage
+dist/

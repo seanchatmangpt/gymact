@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 from dataclasses import dataclass, field
@@ -159,8 +160,8 @@ class GymAct:
                         reason="UNKNOWN_PROVIDER",
                     ),
                 )
-                self._materialization_idempotency[intent.idempotency_key] = (
-                    _MaterializationRecord(intent_digest, result)
+                self._materialization_idempotency[intent.idempotency_key] = _MaterializationRecord(
+                    intent_digest, result
                 )
                 return result
 
@@ -189,8 +190,8 @@ class GymAct:
                         reason=authority.reason,
                     ),
                 )
-                self._materialization_idempotency[intent.idempotency_key] = (
-                    _MaterializationRecord(intent_digest, result)
+                self._materialization_idempotency[intent.idempotency_key] = _MaterializationRecord(
+                    intent_digest, result
                 )
                 return result
 
@@ -216,8 +217,8 @@ class GymAct:
                         reason=f"PROVIDER_ERROR:{type(exc).__name__}",
                     ),
                 )
-                self._materialization_idempotency[intent.idempotency_key] = (
-                    _MaterializationRecord(intent_digest, result)
+                self._materialization_idempotency[intent.idempotency_key] = _MaterializationRecord(
+                    intent_digest, result
                 )
                 return result
 
@@ -228,10 +229,8 @@ class GymAct:
                     raise ValueError("provider capabilities do not conform to GymAct profile")
                 initial_state = await environment.observe()
             except Exception as exc:
-                try:
+                with contextlib.suppress(Exception):
                     await environment.teardown()
-                except Exception:
-                    pass
                 result = MaterializationResult(
                     accepted=False,
                     standing=Standing.BLOCKED,
@@ -248,8 +247,8 @@ class GymAct:
                         reason="ENVIRONMENT_ADMISSION_FAILED",
                     ),
                 )
-                self._materialization_idempotency[intent.idempotency_key] = (
-                    _MaterializationRecord(intent_digest, result)
+                self._materialization_idempotency[intent.idempotency_key] = _MaterializationRecord(
+                    intent_digest, result
                 )
                 return result
 
@@ -283,8 +282,8 @@ class GymAct:
                     post_state_digest=observation.state_digest,
                 ),
             )
-            self._materialization_idempotency[intent.idempotency_key] = (
-                _MaterializationRecord(intent_digest, result)
+            self._materialization_idempotency[intent.idempotency_key] = _MaterializationRecord(
+                intent_digest, result
             )
             return result
 

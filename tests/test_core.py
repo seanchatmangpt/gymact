@@ -384,7 +384,9 @@ async def test_idempotency_key_conflict_is_refused_without_second_actuation() ->
 async def test_provider_error_is_receipted_without_leaking_detail() -> None:
     runtime = GymAct()
     runtime.register_provider(MemoryProvider())
-    materialized = await materialize_memory(runtime, initial={"value": "text"}, key="provider-error-mat")
+    materialized = await materialize_memory(
+        runtime, initial={"value": "text"}, key="provider-error-mat"
+    )
     episode = materialized.episode
     assert episode is not None
     result = await runtime.act(
@@ -406,7 +408,9 @@ async def test_provider_error_is_receipted_without_leaking_detail() -> None:
 async def test_memory_delete_increment_verify_and_idempotent_teardown() -> None:
     runtime = GymAct()
     runtime.register_provider(MemoryProvider())
-    materialized = await materialize_memory(runtime, initial={"x": 1, "drop": 2}, key="lifecycle-mat")
+    materialized = await materialize_memory(
+        runtime, initial={"x": 1, "drop": 2}, key="lifecycle-mat"
+    )
     episode = materialized.episode
     assert episode is not None
     delete = await runtime.act(
