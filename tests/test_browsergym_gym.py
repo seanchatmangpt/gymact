@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import importlib.util
-import shutil
 from importlib import metadata
 from pathlib import Path
 
@@ -16,14 +15,6 @@ TARGET_URL = "about:blank#target"
 AUTHORITY = "urn:test:browsergym-authority"
 
 
-def _system_chromium() -> str | None:
-    for binary in ("chromium", "chromium-browser", "google-chrome", "google-chrome-stable"):
-        resolved = shutil.which(binary)
-        if resolved:
-            return resolved
-    return None
-
-
 def _real_browsergym_available() -> bool:
     if importlib.util.find_spec("browsergym.core") is None:
         return False
@@ -34,8 +25,6 @@ def _real_browsergym_available() -> bool:
             return False
     except metadata.PackageNotFoundError:
         return False
-    if _system_chromium() is not None:
-        return True
     try:
         from playwright.sync_api import sync_playwright
 
@@ -49,8 +38,9 @@ require_standing(
     STANDING,
     available=_real_browsergym_available(),
     reason=(
-        "real browsergym-core==0.14.3 plus an executable Chromium is required; "
-        "this standing is the no-network BrowserGym openended task, not a cloud/browser mock"
+        "real browsergym-core==0.14.3 plus Playwright-managed Chromium is required; "
+        "BrowserGym launches both task and chat browsers, so a system Chromium alone "
+        "does not establish this no-network LOCAL_GYM standing"
     ),
 )
 
@@ -88,14 +78,7 @@ class _DenyActAllowCleanupResolver:
 
 
 def _config() -> dict[str, object]:
-    config: dict[str, object] = {
-        "start_url": START_URL,
-        "seed": 0,
-    }
-    chromium = _system_chromium()
-    if chromium is not None:
-        config["chromium_executable"] = chromium
-    return config
+    return {"start_url": START_URL, "seed": 0}
 
 
 def test_browsergym_capabilities_are_real_sosa_procedures_conforming_to_profile() -> None:
