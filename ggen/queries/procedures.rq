@@ -1,0 +1,10 @@
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+PREFIX dct: <http://purl.org/dc/terms/>
+
+SELECT ?procedure ?title ?consequence
+WHERE {
+  ?procedure a sosa:Procedure ;
+    dct:title ?title ;
+    dct:type ?consequence .
+}
+ORDER BY ?procedure
