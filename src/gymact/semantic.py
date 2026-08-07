@@ -9,7 +9,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 from pyshacl import validate as shacl_validate
-from rdflib import Graph, Literal, Namespace, OWL, RDF, RDFS, URIRef
+from rdflib import OWL, RDF, RDFS, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import DCTERMS
 
 from gymact.models import Capability, Consequence
