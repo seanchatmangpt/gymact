@@ -67,13 +67,22 @@
     a skos:Concept ;
     skos:inScheme <urn:gymact:scheme:consequence> ;
     skos:prefLabel "READ" ;
-    skos:definition "Observation-only capability; represented by SOSA observation semantics and never itself a consequential DO." .
+    skos:definition "Observation-only capability; represented by public observation semantics and never itself a consequential DO." .
 
 <urn:gymact:consequence:do>
     a skos:Concept ;
     skos:inScheme <urn:gymact:scheme:consequence> ;
     skos:prefLabel "DO" ;
-    skos:definition "Consequential capability whose execution is represented by SOSA actuation semantics and requires an admitted external authority decision when the environment declares authority required." .
+    skos:definition "Consequential capability represented by public actuation semantics and requiring an admitted external authority decision when the environment declares authority required." .
+
+# Generic lifecycle operations are public SOSA Procedures, not GymAct classes.
+<urn:gymact:operation:discover> a sosa:Procedure ; dct:title "Discover providers" ; dct:type <urn:gymact:consequence:read> .
+<urn:gymact:operation:materialize> a sosa:Procedure ; dct:title "Materialize bounded environment" ; dct:type <urn:gymact:consequence:do> .
+<urn:gymact:operation:observe> a sosa:Procedure ; dct:title "Observe environment" ; dct:type <urn:gymact:consequence:read> .
+<urn:gymact:operation:verify> a sosa:Procedure ; dct:title "Verify objective" ; dct:type <urn:gymact:consequence:read> .
+<urn:gymact:operation:checkpoint> a sosa:Procedure ; dct:title "Checkpoint environment" ; dct:type <urn:gymact:consequence:read> .
+<urn:gymact:operation:restore> a sosa:Procedure ; dct:title "Restore environment" ; dct:type <urn:gymact:consequence:do> .
+<urn:gymact:operation:teardown> a sosa:Procedure ; dct:title "Teardown environment" ; dct:type <urn:gymact:consequence:do> .
 
 <urn:gymact:scheme:interaction>
     a skos:ConceptScheme ;
