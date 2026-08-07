@@ -195,6 +195,9 @@ external collaborator -- no mocks anywhere in `src/` or `tests/`:
   CUBE's `toy_benchmark` example.
 - `ggen_legacy.GgenLegacyVerifierProvider` -- a real subprocess of the compiled
   `ggen-v26-8-1-verifier` binary against a real `~/ggen-legacy` checkout.
+- `terraform_plan.TerraformPlanProvider` -- a real `terraform`/`tofu` subprocess running
+  `init -backend=false` and `plan` (never `apply`/`destroy`) against a real checked-out
+  Terraform configuration directory.
 
 Each claims a `gymact.standing.require_standing` standing (e.g. `"LOCAL_GYM:cube-counter"`):
 if its real collaborator is unavailable, the run fails loudly unless

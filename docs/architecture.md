@@ -95,6 +95,7 @@ genuinely real external collaborator (zero mocks anywhere in `src/` or `tests/`)
 | `gyms.ggen_legacy.GgenLegacyVerifierProvider` | a real subprocess of the compiled `ggen-v26-8-1-verifier` binary against a real `~/ggen-legacy` checkout |
 | `gyms.discovered.GenericDiscoveredProvider` | a generic actuator: runs an LLM-proposed, bounded subprocess recipe (`command`/`cwd`/`timeout_seconds`/`success_markers`) against an arbitrary checked-out repo, instead of a hand-written adapter per benchmark subject |
 | `gyms.gymnasium_env.GymnasiumProvider` | a real, already-installed `gymnasium` package's `Env` (default `CartPole-v1`) -- no vendored agentgym, no subprocess |
+| `gyms.terraform_plan.TerraformPlanProvider` | a real `terraform`/`tofu` subprocess running `init -backend=false` and `plan` against a real checked-out Terraform configuration directory -- structurally no `apply`/`destroy` path |
 
 Each of the first three claims a `gymact.standing.require_standing` standing string (e.g.
 `"LOCAL_GYM:cube-counter"`). The real thing is the default: if the real collaborator is
