@@ -14,9 +14,9 @@
 @prefix time: <http://www.w3.org/2006/time#> .
 
 <urn:gymact:profile:v26.8.7>
-    a prof:Profile ;
+    a prof:Profile, prov:Entity ;
     dct:title "GymAct v26.8.7 public-semantic execution profile" ;
-    dct:description "Application profile for bounded executable benchmark worlds. GymAct owns profile/ABox identities, not a competing custom ontology TBox." ;
+    dct:description "Application profile for bounded executable benchmark worlds. GymAct owns profile/ABox identities, SKOS concepts, and SHACL shapes, not a competing custom ontology TBox." ;
     dct:identifier "gymact-v26.8.7" ;
     dct:hasVersion "26.8.7" ;
     prof:isProfileOf prov:, pplan:, sosa:, td:, odrl:, sh:, earl:, dqv:, qudt:, dcat:, skos:, time: ;
@@ -58,6 +58,22 @@
 <urn:gymact:standing:build-broken> a skos:Concept ; skos:inScheme <urn:gymact:scheme:standing> ; skos:prefLabel "BUILD_BROKEN" .
 <urn:gymact:standing:unsupported> a skos:Concept ; skos:inScheme <urn:gymact:scheme:standing> ; skos:prefLabel "UNSUPPORTED" .
 <urn:gymact:standing:refused> a skos:Concept ; skos:inScheme <urn:gymact:scheme:standing> ; skos:prefLabel "REFUSED" .
+
+<urn:gymact:scheme:consequence>
+    a skos:ConceptScheme ;
+    dct:title "GymAct capability consequence classes" .
+
+<urn:gymact:consequence:read>
+    a skos:Concept ;
+    skos:inScheme <urn:gymact:scheme:consequence> ;
+    skos:prefLabel "READ" ;
+    skos:definition "Observation-only capability; represented by SOSA observation semantics and never itself a consequential DO." .
+
+<urn:gymact:consequence:do>
+    a skos:Concept ;
+    skos:inScheme <urn:gymact:scheme:consequence> ;
+    skos:prefLabel "DO" ;
+    skos:definition "Consequential capability whose execution is represented by SOSA actuation semantics and requires an admitted external authority decision when the environment declares authority required." .
 
 <urn:gymact:scheme:interaction>
     a skos:ConceptScheme ;

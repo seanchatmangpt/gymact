@@ -14,7 +14,7 @@ GYMACT_INSTANCE_PREFIX = "urn:gymact:"
 
 
 class SemanticValidation(BaseModel):
-    """Result of validating GymAct's packaged semantic authority."""
+    """Result of validating GymAct semantic data against its public profile."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
     conforms: bool
@@ -79,14 +79,17 @@ class ProfileAuthority:
         }
         return tuple(sorted(terms))
 
-    def validate(self) -> SemanticValidation:
-        """Run real SHACL plus the zero-custom-TBox invariant over the full bundle."""
-        profile = self.graph()
+    def _validate_graph(self, data: Graph) -> SemanticValidation:
         shapes = self.shapes()
-        custom_tbox = self._custom_tbox_terms(self.bundle())
+        bundle = Graph()
+        for triple in data:
+            bundle.add(triple)
+        for triple in shapes:
+            bundle.add(triple)
+        custom_tbox = self._custom_tbox_terms(bundle)
 
         conforms, _, report = shacl_validate(
-            profile,
+            data,
             shacl_graph=shapes,
             inference="rdfs",
             abort_on_first=False,
@@ -99,7 +102,23 @@ class ProfileAuthority:
             report_text += "\nCUSTOM_TBOX_REFUSED: " + ", ".join(custom_tbox)
         return SemanticValidation(
             conforms=effective,
-            triple_count=len(profile),
+            triple_count=len(data),
             custom_tbox_terms=custom_tbox,
             report_text=report_text,
         )
+
+    def validate(self) -> SemanticValidation:
+        """Validate the packaged profile and the zero-custom-TBox invariant."""
+        return self._validate_graph(self.graph())
+
+    def validate_data(self, data_graph: Graph) -> SemanticValidation:
+        """Validate a gym/capability ABox together with the packaged profile ABox.
+
+        The caller's graph may define domain-specific instances and use external
+        ontologies. GymAct only refuses custom ``urn:gymact:`` TBox terms, preserving
+        the profile rule that GymAct itself does not grow a competing vocabulary.
+        """
+        combined = self.graph()
+        for triple in data_graph:
+            combined.add(triple)
+        return self._validate_graph(combined)
