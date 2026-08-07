@@ -9,7 +9,7 @@ from pathlib import Path
 
 from gymact.standing import require_standing
 
-PINNED_BROWSERGYYM_VERSION = "0.14.3"
+PINNED_BROWSERGYM_VERSION = "0.14.3"
 STANDING = "LOCAL_GYM:browsergym-openended"
 START_URL = "data:text/html,<title>start</title><h1>start</h1>"
 TARGET_URL = "data:text/html,<title>target</title><h1>target</h1>"
@@ -30,7 +30,7 @@ def _real_browsergym_available() -> bool:
     if importlib.util.find_spec("gymnasium") is None:
         return False
     try:
-        if metadata.version("browsergym-core") != PINNED_BROWSERGYYM_VERSION:
+        if metadata.version("browsergym-core") != PINNED_BROWSERGYM_VERSION:
             return False
     except metadata.PackageNotFoundError:
         return False
