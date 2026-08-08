@@ -3,15 +3,32 @@
 configuration directory (e.g. `terragoat`) -- not simulated.
 
 HARD SAFETY CONSTRAINT, load-bearing for this whole module: this provider
-runs `terraform init`, `terraform validate`, and `terraform plan` only. It
-never runs `terraform apply` or `terraform destroy`, and no capability in
-`TERRAFORM_PLAN_CAPABILITIES` binds to either. This is enforced structurally
-(there is exactly one DO capability, `plan`, and `actuate()` has no dispatch
-branch that could reach `apply`/`destroy`), not by a runtime flag that could
-be flipped. A real cloud-provider auth failure surfaced by `terraform plan`
-(e.g. "No valid credential sources found") is a legitimate real outcome --
-`verify()` reports it via captured stdout/stderr and a non-zero-but-not-init
+runs `terraform init`, `terraform validate`, `terraform plan`, and
+`terraform graph` only. It never runs `terraform apply` or
+`terraform destroy`, and no capability in `TERRAFORM_PLAN_CAPABILITIES`
+binds to either. This is enforced structurally (there is exactly one
+capability, `plan` (DO), and `actuate()` has no dispatch branch that could
+reach `apply`/`destroy`), not by a runtime flag that could be flipped. A
+real cloud-provider auth failure surfaced by `terraform plan` (e.g. "No
+valid credential sources found") is a legitimate real outcome -- `verify()`
+reports it via captured stdout/stderr and a non-zero-but-not-init
 returncode signal, it is never suppressed or reclassified as success.
+
+`terraform graph` is strictly safer than `plan`: it is a pure static
+dependency-graph computation over the local HCL config, never contacts a
+provider, resolves no credentials, and makes no network/API calls -- so it
+succeeds even for a directory whose `plan` can never get past provider
+auth (confirmed real for terragoat's `terraform/alicloud`, whose provider
+block requires a real `auth_type`/credential that `plan` cannot supply
+without touching real cloud credentials this provider must never risk).
+`graph` is NOT exposed as an `act()`-dispatchable capability -- it has
+`Consequence.READ`, and `gymact.kernel.GymAct.act` structurally refuses any
+non-DO capability (`reason="READ_CAPABILITY_IS_NOT_ACTUATION"`). It is
+instead computed once, real, at materialize time (same trust tier as
+`init`: no cloud credentials touched) and surfaced through `observe()`'s
+`graph_*` state fields -- the independent evidence a caller should read to
+confirm which real resource addresses a directory declares when `plan`
+cannot reach that far.
 
 Matches `discovered.py`'s subprocess pattern: real `subprocess.run` calls
 against a real directory, with real captured stdout/stderr/returncode/timeout
@@ -61,6 +78,7 @@ from gymact.models import Capability, Consequence
 _MAX_CAPTURED_OUTPUT = 8000
 _DEFAULT_INIT_TIMEOUT_SECONDS = 300.0
 _DEFAULT_PLAN_TIMEOUT_SECONDS = 300.0
+_DEFAULT_GRAPH_TIMEOUT_SECONDS = 60.0
 
 
 def resolve_binary(preferred: str | None = None) -> str | None:
@@ -90,8 +108,8 @@ TERRAFORM_PLAN_CAPABILITIES = (
 
 class TerraformPlanEnvironment:
     """Wraps one real Terraform/OpenTofu configuration directory. Only
-    `init`, `validate`, and `plan` are ever invoked by this class -- there is
-    no code path here that can run `apply` or `destroy`."""
+    `init`, `validate`, `plan`, and `graph` are ever invoked by this class --
+    there is no code path here that can run `apply` or `destroy`."""
 
     def __init__(
         self,
@@ -100,6 +118,7 @@ class TerraformPlanEnvironment:
         working_dir: str,
         init_timeout_seconds: float,
         plan_timeout_seconds: float,
+        graph_timeout_seconds: float = _DEFAULT_GRAPH_TIMEOUT_SECONDS,
         requires_authority: bool = False,
     ) -> None:
         self.environment_id = f"urn:gymact:terraform-plan:environment:{uuid4().hex}"
@@ -108,6 +127,7 @@ class TerraformPlanEnvironment:
         self._working_dir = working_dir
         self._init_timeout = init_timeout_seconds
         self._plan_timeout = plan_timeout_seconds
+        self._graph_timeout = graph_timeout_seconds
         self._state: dict[str, Any] = {
             "binary": binary,
             "working_dir": working_dir,
@@ -120,6 +140,11 @@ class TerraformPlanEnvironment:
             "plan_stdout": "",
             "plan_stderr": "",
             "plan_timed_out": False,
+            "graph_attempted": False,
+            "graph_returncode": None,
+            "graph_stdout": "",
+            "graph_stderr": "",
+            "graph_timed_out": False,
         }
         self._closed = False
 
@@ -173,7 +198,45 @@ class TerraformPlanEnvironment:
             self._state["init_attempted"] = True
             self._state["init_returncode"] = None
             self._state["init_stderr"] = str(exc)
+        await self._materialize_real_graph()
         return dict(self._state)
+
+    async def _materialize_real_graph(self) -> None:
+        """Real `terraform graph` -- a pure static analysis over the local
+        HCL config, never contacting a provider or resolving credentials.
+        Run once at materialize time (same trust tier as `init`: no cloud
+        credentials touched) so its real, captured evidence is always
+        available via `observe()`. Not an `act()`-dispatchable capability:
+        the kernel structurally refuses any capability whose consequence is
+        not DO (`reason="READ_CAPABILITY_IS_NOT_ACTUATION"`,
+        `gymact.kernel.GymAct.act`) -- `graph` is a READ, so it belongs in
+        the observation surface, not the actuation surface. This is real,
+        deterministic evidence a caller needs precisely when `plan` cannot
+        get far enough to produce any (confirmed real: terragoat's
+        `terraform/alicloud` provider requires a real `auth_type`/credential
+        that `plan` refuses to fabricate)."""
+        try:
+            completed = self._run(["graph"], timeout=self._graph_timeout)
+            self._state["graph_attempted"] = True
+            self._state["graph_returncode"] = completed.returncode
+            self._state["graph_stdout"] = completed.stdout[-_MAX_CAPTURED_OUTPUT:]
+            self._state["graph_stderr"] = completed.stderr[-_MAX_CAPTURED_OUTPUT:]
+            self._state["graph_timed_out"] = False
+        except subprocess.TimeoutExpired as exc:
+            self._state["graph_attempted"] = True
+            self._state["graph_returncode"] = None
+            self._state["graph_stdout"] = (
+                (exc.stdout or "")[-_MAX_CAPTURED_OUTPUT:] if isinstance(exc.stdout, str) else ""
+            )
+            self._state["graph_stderr"] = (
+                (exc.stderr or "")[-_MAX_CAPTURED_OUTPUT:] if isinstance(exc.stderr, str) else ""
+            )
+            self._state["graph_timed_out"] = True
+        except OSError as exc:
+            self._state["graph_attempted"] = True
+            self._state["graph_returncode"] = None
+            self._state["graph_stderr"] = str(exc)
+            self._state["graph_timed_out"] = False
 
     async def actuate(self, capability: Capability, payload: dict[str, Any]) -> dict[str, Any]:
         del payload
@@ -181,7 +244,11 @@ class TerraformPlanEnvironment:
         if capability.binding != "plan":
             # There is deliberately no other branch here. In particular
             # there is no "apply" or "destroy" binding to dispatch to, even
-            # disabled -- see module docstring.
+            # disabled -- see module docstring. `graph` is likewise not
+            # dispatched here: it is a READ capability, computed once at
+            # materialize time (see `_materialize_real_graph`) and surfaced
+            # through `observe()`, since the kernel structurally refuses any
+            # non-DO capability passed to `act()`.
             raise ValueError(f"unsupported terraform-plan binding: {capability.binding}")
 
         before = dict(self._state)
@@ -290,9 +357,11 @@ class TerraformPlanProvider:
 
         init_timeout_seconds = config.get("init_timeout_seconds", _DEFAULT_INIT_TIMEOUT_SECONDS)
         plan_timeout_seconds = config.get("plan_timeout_seconds", _DEFAULT_PLAN_TIMEOUT_SECONDS)
+        graph_timeout_seconds = config.get("graph_timeout_seconds", _DEFAULT_GRAPH_TIMEOUT_SECONDS)
         for value, field_name in (
             (init_timeout_seconds, "init_timeout_seconds"),
             (plan_timeout_seconds, "plan_timeout_seconds"),
+            (graph_timeout_seconds, "graph_timeout_seconds"),
         ):
             if not isinstance(value, (int, float)) or isinstance(value, bool):
                 raise TypeError(f"config.{field_name} must be a number")
@@ -306,6 +375,7 @@ class TerraformPlanProvider:
             working_dir=working_dir,
             init_timeout_seconds=float(init_timeout_seconds),
             plan_timeout_seconds=float(plan_timeout_seconds),
+            graph_timeout_seconds=float(graph_timeout_seconds),
             requires_authority=requires_authority,
         )
         await environment.materialize_real_init()

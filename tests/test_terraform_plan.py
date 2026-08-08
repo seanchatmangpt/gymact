@@ -132,7 +132,7 @@ if not _PARSEABLE:
 
 from gymact import GymAct, MaterializationIntent  # noqa: E402
 from gymact.gyms.terraform_plan import TerraformPlanProvider  # noqa: E402
-from gymact.models import ActuationIntent, Operation  # noqa: E402
+from gymact.models import ActuationIntent, Consequence, Operation  # noqa: E402
 from gymact.ocel import receipts_to_ocel, validate_ocel_log, write_ocel_log  # noqa: E402
 from gymact.process import ConformanceChecker  # noqa: E402
 
@@ -215,7 +215,14 @@ async def test_plan_capability_runs_a_real_terraform_plan_and_captures_completio
 
 
 async def test_terraform_plan_provider_exposes_exactly_one_do_capability_named_plan() -> None:
-    """Structural proof there is no apply/destroy capability to call."""
+    """Structural proof there is no apply/destroy capability to call.
+
+    Two capabilities are exposed (`plan`, DO; `graph`, READ) -- the actual
+    safety invariant this test guards is narrower than "exactly one
+    capability total": no binding named `apply`/`destroy` exists, and
+    exactly one DO-consequence capability exists (`plan` itself; `graph`
+    is READ and can never mutate world state or consult a provider).
+    """
     gym = GymAct()
     gym.register_provider(TerraformPlanProvider())
     m = await gym.materialize(
@@ -227,12 +234,56 @@ async def test_terraform_plan_provider_exposes_exactly_one_do_capability_named_p
 
     env = gym._episodes[episode_id].environment
     capabilities = env.capabilities()
-    assert len(capabilities) == 1
-    assert capabilities[0].binding == "plan"
-    assert capabilities[0].iri == PLAN_CAPABILITY
+    do_capabilities = [c for c in capabilities if c.consequence == Consequence.DO]
+    assert len(do_capabilities) == 1
+    assert do_capabilities[0].binding == "plan"
+    assert do_capabilities[0].iri == PLAN_CAPABILITY
     bindings = {c.binding for c in capabilities}
     assert "apply" not in bindings
     assert "destroy" not in bindings
+
+    await gym.teardown(episode_id)
+
+
+async def test_terraform_graph_succeeds_where_plan_cannot_reach_provider_auth() -> None:
+    """`graph` is a pure static analysis over local HCL -- it never contacts
+    a provider, so it must succeed and enumerate real resource addresses
+    even against a directory whose provider config makes `plan` fail
+    before it can enumerate anything (real, deterministic case: terragoat's
+    `terraform/alicloud`, whose provider requires a real `auth_type` that
+    is absent in this environment on purpose -- no real cloud credentials
+    are ever supplied to this test suite).
+
+    `graph` is computed once, real, at materialize time -- not an
+    `act()`-dispatchable capability (it is READ, and the kernel structurally
+    refuses any non-DO capability passed to `act()`) -- so its evidence is
+    read directly via `gym.observe()`, no separate actuation call needed.
+    """
+    alicloud_dir = _TERRAGOAT_DIR / "terraform" / "alicloud"
+    if not alicloud_dir.is_dir() or not any(alicloud_dir.glob("*.tf")):
+        pytest.skip(f"{alicloud_dir} does not exist or has no .tf files")
+    if resolve_binary() is None:
+        pytest.skip("neither 'terraform' nor 'tofu' is on PATH")
+
+    gym = GymAct()
+    gym.register_provider(TerraformPlanProvider())
+    m = await gym.materialize(
+        MaterializationIntent(provider="terraform-plan", config={"working_dir": str(alicloud_dir)})
+    )
+    episode_id = m.episode.episode_id
+
+    observed = await gym.observe(episode_id)
+    assert observed.state["graph_attempted"] is True
+    assert observed.state["graph_returncode"] == 0
+    assert observed.state["graph_timed_out"] is False
+
+    graph_stdout = observed.state["graph_stdout"]
+    for resource in (
+        "alicloud_oss_bucket.bad_bucket",
+        "alicloud_actiontrail_trail.fail",
+        "alicloud_db_instance.seeme",
+    ):
+        assert resource in graph_stdout, graph_stdout
 
     await gym.teardown(episode_id)
 
