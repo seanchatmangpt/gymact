@@ -10,7 +10,7 @@ from fastmcp import FastMCP
 from gymact.brce import BRCEBroker, BrokerRequest
 from gymact.models import ActuationIntent, MaterializationIntent
 from gymact.providers import MemoryProvider
-from gymact.runtime import GymAct
+from gymact.runtime import GymAct, ProductionGymAct
 from gymact.transport import TransportKind, normalize_candidate
 
 _PROBE_MAX_CHARS = 4000
@@ -19,13 +19,13 @@ _PROBE_MAX_CHARS = 4000
 def _runtime(runtime: GymAct | None) -> GymAct:
     if runtime is not None:
         return runtime
-    instance = GymAct()
+    instance = ProductionGymAct()
     instance.register_provider(MemoryProvider())
     return instance
 
 
 def create_mcp(runtime: GymAct | None = None) -> FastMCP:
-    """Create generic GymAct MCP tools; benchmark identity remains data."""
+    """Create GymAct MCP tools; production defaults are BRCE-exclusive."""
     service = _runtime(runtime)
     broker = BRCEBroker(service)
     mcp = FastMCP("GymAct")
@@ -94,7 +94,7 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
         authority_ref: str | None = None,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
-        """Compatibility runtime port; production MCP callers use execute_admitted."""
+        """Compatibility port; ProductionGymAct returns a receipted BRCE refusal."""
         values: dict[str, Any] = {
             "episode_id": episode_id,
             "capability": capability,
