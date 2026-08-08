@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 
 from gymact.action_contract import ActionDefinition, ExecutionGrant, PreparedAction
 from gymact.evidence import digest
+from gymact.intelligence import CompileOutObservation, SelectionDecision
 from gymact.lab import ActionProjection, ForwardBenchSubject, ProblemSignature
 from gymact.models import (
     ActuationIntent,
@@ -13,6 +14,12 @@ from gymact.models import (
     Operation,
     Receipt,
     VerificationResult,
+)
+from gymact.provider_spi import (
+    ObservationRequest,
+    ProviderExecutionAttempt,
+    ProviderPreparation,
+    ProviderRollbackResult,
 )
 from gymact.semantic import ProfileAuthority
 
@@ -93,6 +100,12 @@ def build_contract(version: str = "26.8.7") -> RuntimeContract:
             "problem_signature": ProblemSignature.model_json_schema(),
             "action_projection": ActionProjection.model_json_schema(),
             "forwardbench_subject": ForwardBenchSubject.model_json_schema(),
+            "observation_request": ObservationRequest.model_json_schema(),
+            "provider_preparation": ProviderPreparation.model_json_schema(),
+            "provider_execution_attempt": ProviderExecutionAttempt.model_json_schema(),
+            "provider_rollback_result": ProviderRollbackResult.model_json_schema(),
+            "selection_decision": SelectionDecision.model_json_schema(),
+            "compile_out_observation": CompileOutObservation.model_json_schema(),
         },
     }
     return RuntimeContract(**payload, contract_digest=digest(payload))
