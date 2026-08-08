@@ -348,7 +348,10 @@ def demo(authority: bool = typer.Option(False, "--authority")) -> None:
         materialized = await runtime.materialize(
             MaterializationIntent(
                 provider="memory",
-                config={"initial": {"healthy": False, "attempts": 0}},
+                config={
+                    "initial": {"healthy": False, "attempts": 0},
+                    "requires_authority": True,
+                },
                 idempotency_key="demo-materialize",
             )
         )

@@ -55,6 +55,16 @@ SOLVE_SAMPLE = "urn:gymact:inspect-evals:capability:solve_sample"
 # cleanup gap in inspect_ai 0.3.252, not a blanket warnings suppression.
 pytestmark = pytest.mark.filterwarnings("ignore::pytest.PytestUnraisableExceptionWarning")
 
+# `filterwarnings` above only silences a PytestUnraisableExceptionWarning raised
+# while *this* module's own tests are running -- pytest's unraisable-exception
+# hook attributes a GC-time warning to whichever test happens to be executing
+# when Python's collector actually reclaims the leaked object, which for this
+# object is nondeterministic and was observed landing on a later, unrelated
+# module (test_ocel.py) purely from suite ordering. A bare gc.collect() at this
+# module's own teardown does not reliably force reclamation either (verified:
+# still reproduces after adding one). See test_ocel.py's matching, cross-
+# referenced suppression for the other half of this scoped workaround.
+
 
 async def _run_real_inspect_episode(*, custom_outputs: list[str]) -> list:
     gym = GymAct()
