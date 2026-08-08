@@ -22,6 +22,7 @@ class ReplayExpectation(FrozenModel):
     policy_revision: str | None = None
     principal: str | None = None
     possibility_graph_digest: str | None = None
+    possibility_exploration_digest: str | None = None
     possibility_path_id: str | None = None
     possibility_morphism_id: str | None = None
     selection_digest: str | None = None
@@ -49,6 +50,7 @@ _LEGACY_OPTIONAL_IDENTITY_FIELDS = (
 )
 _DCM_STRICT_IDENTITY_FIELDS = (
     "possibility_graph_digest",
+    "possibility_exploration_digest",
     "possibility_path_id",
     "possibility_morphism_id",
     "selection_digest",
