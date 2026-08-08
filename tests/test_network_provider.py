@@ -4,8 +4,10 @@ import asyncio
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.request import urlopen
 
 from gymact.network_providers import HTTPJSONProvider, HTTP_JSON_CAPABILITIES
+from gymact.oracle import differential_verify, observe_oracle
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -57,10 +59,11 @@ def test_real_loopback_network_consequence_and_independent_observation() -> None
     thread.start()
 
     async def run() -> None:
+        base_url = f"http://127.0.0.1:{server.server_port}"
         provider = HTTPJSONProvider()
         env = await provider.materialize(
             scenario=None,
-            config={"base_url": f"http://127.0.0.1:{server.server_port}"},
+            config={"base_url": base_url},
         )
         before = await env.observe()
         assert before["count"] == 1
@@ -71,6 +74,31 @@ def test_real_loopback_network_consequence_and_independent_observation() -> None
         assert effect["accepted"] is True
         passed, observed = await env.verify({"count": 2})
         assert passed and observed["count"] == 2
+
+        def raw_observe() -> dict[str, object]:
+            with urlopen(f"{base_url}/state", timeout=2) as response:
+                value = json.loads(response.read().decode("utf-8"))
+            assert isinstance(value, dict)
+            return value
+
+        raw = await asyncio.to_thread(raw_observe)
+        differential = differential_verify(
+            (
+                observe_oracle(
+                    oracle_ref="gymact-provider-observer",
+                    channel_ref="gymact-http-provider",
+                    state=observed,
+                ),
+                observe_oracle(
+                    oracle_ref="stdlib-raw-observer",
+                    channel_ref="urllib-direct-http",
+                    state=raw,
+                ),
+            ),
+            expected={"count": 2},
+        )
+        assert differential.passed
+
         checkpoint = await env.checkpoint()
         await env.actuate(HTTP_JSON_CAPABILITIES[1], {"key": "count"})
         assert "count" not in await env.observe()
