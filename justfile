@@ -14,8 +14,35 @@ lock:
     uv lock --check
 
 test version="":
-    uv sync --all-extras --group dev {{ if version != "" { "--python " + version } else { "" } }}
-    uv run coverage run -m pytest
+    #!/usr/bin/env bash
+    set -euo pipefail
+    requested="{{version}}"
+    if [[ -n "$requested" ]]; then
+      uv sync --all-extras --group dev --python "$requested"
+    else
+      uv sync --all-extras --group dev
+    fi
+    py_minor="$(uv run python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+    # uv's [tool.uv] override-dependencies pins playwright>=1.47,<2 (see
+    # pyproject.toml), which resolves a prebuilt greenlet wheel on every
+    # supported Python (including 3.13) instead of the browsergym-core==0.14.3
+    # default pin (playwright==1.44 -> greenlet==3.0.3, no 3.13 wheel). So
+    # BrowserGym installs and runs identically across the whole matrix now.
+    if [[ -f "${AUTOFDE_LAB:-$HOME/autofde-lab}/vendor/gyms/browsergym/browsergym/core/pyproject.toml" ]]; then
+      uv pip install -e "${AUTOFDE_LAB:-$HOME/autofde-lab}/vendor/gyms/browsergym/browsergym/core"
+    else
+      uv pip install "browsergym-core @ git+https://github.com/ServiceNow/BrowserGym.git@9e779f087de9a65668b6974d11f9ce9816026e96#subdirectory=browsergym/core"
+    fi
+    uv run playwright install chromium
+    uv run gymact validate-profile
+    uv run python -c 'from gymact.gyms.browsergym import BROWSERGYM_CAPABILITIES; from gymact.semantic import ProfileAuthority; r = ProfileAuthority().validate_capabilities(BROWSERGYM_CAPABILITIES); print(r.model_dump_json()); assert r.conforms, r.report_text'
+    if grep -RInE 'unittest\.mock|\bMock\b|\bpatch\b|monkeypatch' tests; then
+      echo 'mock-grep: forbidden test seam found' >&2
+      exit 1
+    else
+      echo 'mock-grep: zero matches'
+    fi
+    uv run coverage run -m pytest -v
     uv run coverage report
     uv run ruff check src tests
     uv run ruff format --check src tests

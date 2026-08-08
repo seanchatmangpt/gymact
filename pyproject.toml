@@ -56,6 +56,13 @@ cube = [
   "counter-cube; python_version >= '3.12'",
 ]
 
+[tool.uv]
+# browsergym-core==0.14.3 hard-pins playwright==1.44, which pins
+# greenlet==3.0.3 -- greenlet 3.0.3 has no prebuilt wheel for CPython 3.13
+# and fails to compile from sdist there. Overriding to a newer playwright
+# resolves greenlet>=3.5 (prebuilt wheel), which installs cleanly on 3.13.
+override-dependencies = ["playwright>=1.47,<2"]
+
 [tool.uv.sources]
 cube-standard = { path = "/Users/sac/autofde-lab/vendor/gyms/cube-standard", editable = true }
 counter-cube = { path = "/Users/sac/autofde-lab/vendor/gyms/cube-standard/examples/counter-cube", editable = true }

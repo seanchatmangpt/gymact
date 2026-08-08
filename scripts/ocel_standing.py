@@ -27,11 +27,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from jsonschema.exceptions import ValidationError  # noqa: E402
+from jsonschema.exceptions import ValidationError
 
-from gymact.models import Operation  # noqa: E402
-from gymact.ocel import validate_ocel_log  # noqa: E402
-from gymact.process import ConformanceChecker  # noqa: E402
+from gymact.models import Operation
+from gymact.ocel import validate_ocel_log
+from gymact.process import ConformanceChecker
 
 
 def _derive_one(log_path: Path) -> dict:

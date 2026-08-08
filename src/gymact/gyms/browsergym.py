@@ -1,0 +1,233 @@
+"""Real GymAct bridge to BrowserGym's local ``openended`` Chromium task.
+
+The ForwardBench corpus pins ServiceNow/BrowserGym at
+``9e779f087de9a65668b6974d11f9ce9816026e96``. At that revision,
+``browsergym-core`` is version 0.14.3 and exposes the Gymnasium
+``browsergym/openended`` environment plus concrete high-level navigation
+procedures ``goto``, ``go_back``, and ``go_forward``.
+
+This adapter intentionally uses only local ``about:`` task worlds at
+materialization. It therefore exercises the real BrowserGym package and a
+real Chromium process without claiming network, cloud, or Docker standing.
+Network navigation remains expressible through the authority-gated ``goto``
+DO capability. Checkpoint/restore is deliberately bounded to the active URL:
+BrowserGym does not expose a general browser snapshot primitive, so GymAct does
+not pretend to snapshot cookies, storage, history, or arbitrary page state.
+
+BrowserGym 0.14.3 uses Playwright's synchronous API. GymAct's environment
+contract is asynchronous, and Playwright explicitly refuses its sync API inside
+an active asyncio loop. BrowserGym also owns one process-global sync Playwright
+instance, so simply hopping arbitrary worker threads is invalid. All BrowserGym
+creation/reset/step/restore/close calls therefore execute on one dedicated,
+process-wide worker thread; GymAct awaits their real results without changing
+the semantic or authority boundary.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, TypeVar
+from urllib.parse import urlsplit
+from uuid import uuid4
+
+import anyio
+
+from gymact.models import Capability, Consequence
+
+try:
+    import browsergym.core  # noqa: F401  # registers browsergym/openended
+    import gymnasium as gym
+except ImportError as exc:  # pragma: no cover - fail-real standing is exercised in tests
+    raise ImportError(
+        "browsergym bridge requires browsergym-core==0.14.3 and gymnasium; "
+        "install the real BrowserGym collaborator before using this provider"
+    ) from exc
+
+T = TypeVar("T")
+_BROWSERGYM_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="gymact-browsergym")
+
+
+async def _browsergym_call(call: Callable[[], T]) -> T:
+    """Execute one BrowserGym sync call on its single Playwright-owning thread."""
+    future = _BROWSERGYM_EXECUTOR.submit(call)
+    return await anyio.to_thread.run_sync(future.result)
+
+
+BROWSERGYM_CAPABILITIES = (
+    Capability(
+        iri="urn:gymact:browsergym:capability:goto",
+        title="Navigate the active BrowserGym page to a URL using BrowserGym goto",
+        consequence=Consequence.DO,
+        binding="goto",
+    ),
+    Capability(
+        iri="urn:gymact:browsergym:capability:go-back",
+        title="Navigate the active BrowserGym page backward using BrowserGym go_back",
+        consequence=Consequence.DO,
+        binding="go_back",
+    ),
+    Capability(
+        iri="urn:gymact:browsergym:capability:go-forward",
+        title="Navigate the active BrowserGym page forward using BrowserGym go_forward",
+        consequence=Consequence.DO,
+        binding="go_forward",
+    ),
+)
+
+
+class BrowserGymEnvironment:
+    """One real ``browsergym/openended`` episode backed by Chromium."""
+
+    def __init__(self, *, start_url: str, seed: int = 0) -> None:
+        self.environment_id = f"urn:gymact:browsergym:environment:{uuid4().hex}"
+        self.requires_authority = True
+        self._start_url = start_url
+        self._seed = seed
+        self._env: Any | None = None
+        self._observation: dict[str, Any] | None = None
+        self._closed = False
+
+    def _initialize_sync(self) -> dict[str, Any]:
+        environment = gym.make(
+            "browsergym/openended",
+            task_kwargs={
+                "start_url": self._start_url,
+                "goal": "Exercise bounded local navigation",
+            },
+            headless=True,
+            wait_for_user_message=False,
+            slow_mo=0,
+            pre_observation_delay=0.0,
+        )
+        try:
+            observation, _info = environment.reset(seed=self._seed)
+        except Exception:
+            environment.close()
+            raise
+        self._env = environment
+        return observation
+
+    async def initialize(self) -> BrowserGymEnvironment:
+        self._observation = await _browsergym_call(self._initialize_sync)
+        return self
+
+    def _ensure_open(self) -> None:
+        if self._closed:
+            raise RuntimeError("environment is torn down")
+        if self._env is None or self._observation is None:
+            raise RuntimeError("environment is not initialized")
+
+    def capabilities(self) -> tuple[Capability, ...]:
+        self._ensure_open()
+        return BROWSERGYM_CAPABILITIES
+
+    def _state(self) -> dict[str, Any]:
+        self._ensure_open()
+        observation = self._observation
+        assert observation is not None
+        active_index = observation["active_page_index"]
+        scalar_index = active_index.item() if hasattr(active_index, "item") else active_index
+        active_page_index = int(scalar_index)
+        titles = list(observation["open_pages_titles"])
+        return {
+            "url": str(observation["url"]),
+            "title": str(titles[active_page_index]) if titles else "",
+            "open_page_count": len(observation["open_pages_urls"]),
+            "last_action": str(observation["last_action"]),
+            "last_action_error": str(observation["last_action_error"]),
+        }
+
+    async def observe(self) -> dict[str, Any]:
+        return self._state()
+
+    def _action_source(self, binding: str, payload: dict[str, Any]) -> str:
+        if binding == "goto":
+            url = payload.get("url")
+            if not isinstance(url, str) or not url:
+                raise TypeError("goto requires payload.url as a non-empty string")
+            return f"goto({url!r})"
+        if binding == "go_back":
+            return "go_back()"
+        if binding == "go_forward":
+            return "go_forward()"
+        raise ValueError(f"unsupported BrowserGym binding: {binding}")
+
+    def _step_sync(self, action: str):
+        assert self._env is not None
+        return self._env.step(action)
+
+    async def actuate(self, capability: Capability, payload: dict[str, Any]) -> dict[str, Any]:
+        self._ensure_open()
+        before = self._state()
+        action = self._action_source(capability.binding, payload)
+        observation, reward, terminated, truncated, _info = await _browsergym_call(
+            lambda: self._step_sync(action)
+        )
+        self._observation = observation
+        after = self._state()
+        if after["last_action_error"]:
+            raise RuntimeError(f"BrowserGym action failed: {after['last_action_error']}")
+        return {
+            "before": before,
+            "after": after,
+            "action": action,
+            "reward": float(reward),
+            "terminated": bool(terminated),
+            "truncated": bool(truncated),
+        }
+
+    async def verify(self, expected: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+        observed = self._state()
+        passed = all(observed.get(key) == value for key, value in expected.items())
+        return passed, observed
+
+    async def checkpoint(self) -> dict[str, Any]:
+        return {"url": self._state()["url"]}
+
+    async def restore(self, checkpoint: dict[str, Any]) -> None:
+        self._ensure_open()
+        url = checkpoint.get("url")
+        if not isinstance(url, str) or not url:
+            raise TypeError("BrowserGym checkpoint.url must be a non-empty string")
+        observation, _reward, _terminated, _truncated, _info = await _browsergym_call(
+            lambda: self._step_sync(f"goto({url!r})")
+        )
+        self._observation = observation
+        state = self._state()
+        if state["last_action_error"]:
+            raise RuntimeError(f"BrowserGym restore failed: {state['last_action_error']}")
+
+    def _close_sync(self) -> None:
+        assert self._env is not None
+        self._env.close()
+
+    async def teardown(self) -> None:
+        if self._closed:
+            return
+        if self._env is not None:
+            await _browsergym_call(self._close_sync)
+        self._closed = True
+
+
+class BrowserGymProvider:
+    """Materialize bounded local BrowserGym open-ended Chromium episodes."""
+
+    name = "browsergym"
+    materialization_requires_authority = False
+
+    async def materialize(
+        self, *, scenario: str | None, config: dict[str, Any]
+    ) -> BrowserGymEnvironment:
+        if scenario not in (None, "openended"):
+            raise ValueError("BrowserGymProvider currently supports only scenario='openended'")
+        start_url = config.get("start_url", "about:blank")
+        if not isinstance(start_url, str) or not start_url:
+            raise TypeError("config.start_url must be a non-empty string")
+        if urlsplit(start_url).scheme != "about":
+            raise ValueError("LOCAL_START_URL_REQUIRED: BrowserGym materialization requires about:")
+        seed = config.get("seed", 0)
+        if not isinstance(seed, int) or isinstance(seed, bool):
+            raise TypeError("config.seed must be an int")
+        environment = BrowserGymEnvironment(start_url=start_url, seed=seed)
+        return await environment.initialize()
