@@ -9,14 +9,14 @@ from gymact.brce import BRCEBroker, BrokerRequest
 from gymact.contract import build_contract
 from gymact.models import ActuationIntent, MaterializationIntent, RestoreRequest, VerifyRequest
 from gymact.providers import MemoryProvider
-from gymact.runtime import BoundaryBlocked, GymAct
+from gymact.runtime import BoundaryBlocked, GymAct, ProductionGymAct
 from gymact.transport import TransportKind, normalize_candidate
 
 
 def _runtime(runtime: GymAct | None) -> GymAct:
     if runtime is not None:
         return runtime
-    instance = GymAct()
+    instance = ProductionGymAct()
     instance.register_provider(MemoryProvider())
     return instance
 
@@ -26,7 +26,7 @@ def _boundary_error(exc: BoundaryBlocked) -> HTTPException:
 
 
 def create_app(runtime: GymAct | None = None) -> FastAPI:
-    """Create an HTTP/OpenAPI projection without changing GymAct semantics."""
+    """Create an HTTP/OpenAPI projection; production defaults are BRCE-exclusive."""
     service = _runtime(runtime)
     broker = BRCEBroker(service)
     contract = build_contract()
@@ -112,7 +112,7 @@ def create_app(runtime: GymAct | None = None) -> FastAPI:
 
     @app.post("/episodes/{episode_id}/actions", deprecated=True)
     async def act(episode_id: str, intent: ActuationIntent) -> dict[str, object]:
-        """Compatibility runtime port. Production callers should use /actions/admitted."""
+        """Compatibility port; ProductionGymAct returns a receipted BRCE refusal."""
         if intent.episode_id != episode_id:
             raise HTTPException(status_code=409, detail="episode_id path/body mismatch")
         try:
