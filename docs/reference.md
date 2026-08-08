@@ -94,6 +94,8 @@
 
 ::: gymact.gyms.mcp_client_session.McpClientSessionProvider
 
+::: gymact.gyms.kubernetes_reconciliation.KubernetesReconciliationProvider
+
 ::: gymact.contract.RuntimeContract
 
 ::: gymact.contract.build_contract

@@ -187,7 +187,7 @@ This is the dependency-neutral handoff to ggen/Rust/WIT/WASM.
 
 ## Real gym providers
 
-Beyond `MemoryProvider`, `gymact.gyms` has providers that each drive a genuinely real
+Beyond `MemoryProvider`, `gymact.gyms` has several providers that each drive a genuinely real
 external collaborator -- no mocks anywhere in `src/` or `tests/`:
 
 - `cube_counter.CubeCounterProvider` -- an in-process CUBE reference task (`counter_cube`).
@@ -195,11 +195,14 @@ external collaborator -- no mocks anywhere in `src/` or `tests/`:
   CUBE's `toy_benchmark` example.
 - `ggen_legacy.GgenLegacyVerifierProvider` -- a real subprocess of the compiled
   `ggen-v26-8-1-verifier` binary against a real `~/ggen-legacy` checkout.
-- `gymnasium_env.GymnasiumProvider` -- a real, already-installed `gymnasium` `Env`
+- `gymnasium_env.GymnasiumProvider` -- a real, already-installed `gymnasium` package's `Env`
   (default `CartPole-v1`).
 - `mcp_client_session.McpClientSessionProvider` -- a real `fastmcp.Client` session against
   a real subject `FastMCP` server (defaults to `gymact.surfaces.fastmcp.create_mcp()`),
   driven only through `list_tools()`/`call_tool()`.
+- `kubernetes_reconciliation.KubernetesReconciliationProvider` -- a real local Kubernetes
+  cluster (`kind`/`k3d`/colima `--kubernetes`) via real `kubectl` subprocess calls; `verify()`
+  polls real cluster-observed pod phase rather than trusting `kubectl apply`'s exit code.
 
 Each claims a `gymact.standing.require_standing` standing (e.g. `"LOCAL_GYM:cube-counter"`):
 if its real collaborator is unavailable, the run fails loudly unless
