@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from pydantic import ValidationError
 
@@ -17,6 +19,7 @@ from gymact.action_contract import (
     VerificationKind,
     VerificationStrategy,
     admit_execution,
+    admit_retry,
     construct_prepared_action,
 )
 from gymact.models import Standing
@@ -44,6 +47,36 @@ def base_action(**updates: object) -> ActionDefinition:
     }
     data.update(updates)
     return ActionDefinition.model_validate(data)
+
+
+def admitted_fixture() -> tuple[ActionDefinition, SubjectRef, object, ExecutionGrant]:
+    action = base_action(input_schema={"type": "object", "required": ["value"]})
+    subject = SubjectRef(
+        semantic_id="urn:subject:1",
+        provider_ref="resource-1",
+        revision="abc",
+    )
+    prepared = construct_prepared_action(
+        action,
+        episode_id="episode-1",
+        subject=subject,
+        payload={"value": 1},
+        admission_digest="digest-1",
+        idempotency_key="key-1",
+    )
+    grant = ExecutionGrant(
+        principal="urn:principal:test",
+        action_ref=action.semantic_id,
+        subject=subject,
+        capability_ref=action.capability_ref,
+        authority_ref="urn:authority:test",
+        policy_revision="policy-1",
+        admitted_observation_ref="urn:observation:1",
+        intended_effects=action.expected_effects,
+        scope_refs=(subject.semantic_id,),
+        nonce="nonce-1",
+    )
+    return action, subject, prepared, grant
 
 
 def test_unknown_action_is_structurally_valid() -> None:
@@ -97,31 +130,7 @@ def test_uncertain_reconciliation_cannot_smuggle_retry() -> None:
 
 
 def test_construct_and_admit_preserve_revision_identity() -> None:
-    action = base_action(input_schema={"type": "object", "required": ["value"]})
-    subject = SubjectRef(
-        semantic_id="urn:subject:1",
-        provider_ref="resource-1",
-        revision="abc",
-    )
-    prepared = construct_prepared_action(
-        action,
-        episode_id="episode-1",
-        subject=subject,
-        payload={"value": 1},
-        admission_digest="digest-1",
-        idempotency_key="key-1",
-    )
-    grant = ExecutionGrant(
-        principal="urn:principal:test",
-        action_ref=action.semantic_id,
-        subject=subject,
-        capability_ref=action.capability_ref,
-        authority_ref="urn:authority:test",
-        policy_revision="policy-1",
-        admitted_observation_ref="urn:observation:1",
-        intended_effects=action.expected_effects,
-        nonce="nonce-1",
-    )
+    action, _, prepared, grant = admitted_fixture()
     assert admit_execution(action, prepared, grant, current_revision="abc").admitted is True
     stale = admit_execution(action, prepared, grant, current_revision="def")
     assert stale.admitted is False
@@ -140,3 +149,41 @@ def test_construct_rejects_input_schema_mismatch() -> None:
             admission_digest="digest-1",
             idempotency_key="key-1",
         )
+
+
+def test_execution_grant_expiry_and_scope_fail_closed() -> None:
+    action, _, prepared, grant = admitted_fixture()
+    now = datetime.now(UTC)
+    expired = grant.model_copy(update={"expires_at": now - timedelta(seconds=1)})
+    assert admit_execution(action, prepared, expired, now=now).reason == "POLICY_REFUSED"
+
+    wrong_scope = grant.model_copy(
+        update={
+            "expires_at": now + timedelta(minutes=5),
+            "scope_refs": ("urn:subject:other",),
+        }
+    )
+    decision = admit_execution(action, prepared, wrong_scope, now=now)
+    assert decision.admitted is False
+    assert decision.reason == "AUTHORITY_REFUSED"
+
+
+def test_retry_requires_no_effect_and_safe_idempotency() -> None:
+    no_effect = ReconciliationResult(
+        disposition=ReconciliationDisposition.NO_EFFECT,
+        standing=Standing.REFUSED,
+        observed_state_digest="state-a",
+        verification_ref="verify-1",
+        reason="NO_EFFECT",
+    )
+    unsafe = admit_retry(base_action(), no_effect)
+    assert unsafe.retry_admitted is False
+    assert unsafe.reason == "UNSAFE_RETRY_REFUSED"
+
+    safe = admit_retry(
+        base_action(idempotency=IdempotencyClass.IDEMPOTENT),
+        no_effect,
+    )
+    assert safe.retry_admitted is True
+    assert safe.disposition is ReconciliationDisposition.RETRY_ADMITTED
+    assert safe.standing is Standing.CANDIDATE
