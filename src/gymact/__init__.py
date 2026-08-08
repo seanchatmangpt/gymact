@@ -23,6 +23,7 @@ from gymact.action_contract import (
     construct_prepared_action,
 )
 from gymact.authority import AllowListAuthorityResolver, AuthorityResolver, DenyAuthorityResolver
+from gymact.brce import BRCEBroker, BrokerRequest
 from gymact.contract import RuntimeContract, build_contract
 from gymact.crown_runtime import (
     ReconciledTransition,
@@ -32,6 +33,21 @@ from gymact.crown_runtime import (
     reconcile_uncertain,
 )
 from gymact.evidence import EvidenceRecord, MemoryReceiptLedger, ReceiptLedger, evidence_graph
+from gymact.experiments import (
+    AntiAgentPoint,
+    AntiAgentReport,
+    CompileOutReport,
+    FaultInjector,
+    FaultKind,
+    FaultPlan,
+    IntelligenceRun,
+    SelfPlayCase,
+    SelfPlayReport,
+    TransitionEconomics,
+    anti_agent_benchmark,
+    evaluate_compile_out,
+    run_self_play,
+)
 from gymact.intelligence import (
     CognitionEpisode,
     CompilationCandidate,
@@ -85,6 +101,18 @@ from gymact.models import (
     Standing,
     VerificationResult,
 )
+from gymact.network_providers import HTTPJSONProvider
+from gymact.physical import (
+    ControllerMode,
+    EdgeControllerArtifact,
+    PhysicalAdmission,
+    PhysicalCommand,
+    PhysicalDomain,
+    PhysicalProviderProfile,
+    RiskClass,
+    SafetyEnvelope,
+    admit_physical_command,
+)
 from gymact.plugins import (
     ProviderPluginInfo,
     ProviderPluginLoad,
@@ -99,11 +127,29 @@ from gymact.provider_spi import (
     ProviderRollbackResult,
 )
 from gymact.providers import Environment, EnvironmentProvider, MemoryProvider
+from gymact.registry import (
+    builtin_capabilities,
+    builtin_provider_names,
+    create_builtin_provider,
+    describe_builtin_provider,
+)
+from gymact.replay import (
+    ReplayExpectation,
+    ReplayMode,
+    ReplayReport,
+    replay_ledger,
+)
 from gymact.requirements import CrownSummary, crown_summary, load_crown_requirements
 from gymact.runtime import BoundaryBlocked, GymAct
 from gymact.scoring import BinaryVerificationScorer, Scorer, score_verification
 from gymact.semantic import ProfileAuthority, SemanticValidation
 from gymact.sqlite_ledger import SQLiteReceiptLedger
+from gymact.transport import (
+    CandidateIntentEnvelope,
+    TransportKind,
+    normalize_candidate,
+    protocol_equivalent,
+)
 
 __all__ = [
     "ActionDefinition",
@@ -112,25 +158,33 @@ __all__ = [
     "ActuationResult",
     "AdmissionResult",
     "AllowListAuthorityResolver",
+    "AntiAgentPoint",
+    "AntiAgentReport",
     "AuthorityDecision",
     "AuthorityRequest",
     "AuthorityRequirement",
     "AuthorityResolver",
+    "BRCEBroker",
     "BinaryVerificationScorer",
     "BoundaryBlocked",
+    "BrokerRequest",
+    "CandidateIntentEnvelope",
     "Capability",
     "CapabilityCache",
     "CapabilityCacheEntry",
     "CognitionEpisode",
     "CompilationCandidate",
     "CompileOutObservation",
+    "CompileOutReport",
     "Consequence",
+    "ControllerMode",
     "CostPoint",
     "CrossoverResult",
     "CrownProvider",
     "CrownSummary",
     "DenyAuthorityResolver",
     "DifferentialVerdict",
+    "EdgeControllerArtifact",
     "EdgeControllerManifest",
     "EmpiricalProviderIndex",
     "Environment",
@@ -139,12 +193,17 @@ __all__ = [
     "EvidenceRecord",
     "ExecutionGrant",
     "ExpectedEffect",
+    "FaultInjector",
+    "FaultKind",
+    "FaultPlan",
     "FilesystemProvider",
     "ForwardBenchSubject",
     "GitProvider",
     "GymAct",
+    "HTTPJSONProvider",
     "IdempotencyClass",
     "IntelligenceRegime",
+    "IntelligenceRun",
     "MaterializationIntent",
     "MaterializationResult",
     "MemoryProvider",
@@ -153,6 +212,10 @@ __all__ = [
     "ObservationConfidence",
     "ObservationRequest",
     "Operation",
+    "PhysicalAdmission",
+    "PhysicalCommand",
+    "PhysicalDomain",
+    "PhysicalProviderProfile",
     "PreparedAction",
     "ProblemSignature",
     "ProfileAuthority",
@@ -172,34 +235,50 @@ __all__ = [
     "ReconciliationDisposition",
     "ReconciliationResult",
     "RefusalCode",
+    "ReplayExpectation",
+    "ReplayMode",
+    "ReplayReport",
     "ReversalClass",
+    "RiskClass",
     "RuntimeContract",
     "RuntimeLimits",
     "SQLiteProvider",
     "SQLiteReceiptLedger",
+    "SafetyEnvelope",
     "Score",
     "Scorer",
     "SelectionDecision",
+    "SelfPlayCase",
     "SelfPlayKind",
+    "SelfPlayReport",
     "SelfPlayScenario",
     "SemanticValidation",
     "Standing",
     "SubjectRef",
+    "TransitionEconomics",
     "TransitionMetrics",
+    "TransportKind",
     "VCTObservation",
     "VerificationKind",
     "VerificationResult",
     "VerificationStrategy",
     "VerifiedTransition",
     "admit_execution",
+    "admit_physical_command",
     "admit_retry",
+    "anti_agent_benchmark",
     "build_contract",
+    "builtin_capabilities",
+    "builtin_provider_names",
     "construct_prepared_action",
+    "create_builtin_provider",
     "crown_summary",
+    "describe_builtin_provider",
     "detect_compilation_candidate",
     "differential_verdict",
     "discover_provider_plugins",
     "evidence_graph",
+    "evaluate_compile_out",
     "execute_admitted",
     "execute_verified",
     "export_manufacturing_bundle",
@@ -207,10 +286,14 @@ __all__ = [
     "load_crown_requirements",
     "load_provider_plugin",
     "manufacture_self_play",
+    "normalize_candidate",
     "pareto_frontier",
     "project_action",
+    "protocol_equivalent",
     "reconcile_uncertain",
+    "replay_ledger",
     "route_intelligence",
+    "run_self_play",
     "score_verification",
 ]
 
