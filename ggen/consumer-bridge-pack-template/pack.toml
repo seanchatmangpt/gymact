@@ -1,0 +1,4 @@
+[pack]
+name = "gymact-consumer-bridge-pack-template"
+version = "0.1.0"
+description = "Copy-and-customize ggen pack template for an external system (e.g. autofde-lab) that registers itself as a GymAct EnvironmentProvider and wants a manufactured Rust/MCP/reference-doc projection of its own capability surface. NOT gymact's own ggen/gymact-bridge-pack (that one proves the ggen<->GymAct mechanism using GymAct's own 4 built-in operations; this one is a blank-ontology template for YOUR system's operations). See README.md in this directory before use: shapes/profile.shacl.ttl must be fetched via `gymact export-profile`, never hand-copied, since it lives in a separate repo from wherever this pack is copied to and cannot be symlinked across repos."

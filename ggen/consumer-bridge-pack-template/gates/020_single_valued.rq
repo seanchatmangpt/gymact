@@ -1,0 +1,13 @@
+# MESSAGE: every sosa:Procedure property is single-valued, matching the
+# real GymAct urn:gymact:shape:capability shape's sh:maxCount 1 on both
+# dct:title and dct:type (any row = a subject carrying two distinct values
+# for ?p).
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+PREFIX dct: <http://purl.org/dc/terms/>
+SELECT ?s ?p WHERE {
+  ?s a sosa:Procedure .
+  VALUES ?p { dct:title dct:type }
+  ?s ?p ?v1 , ?v2 .
+  FILTER(?v1 != ?v2)
+}
+ORDER BY ?s ?p

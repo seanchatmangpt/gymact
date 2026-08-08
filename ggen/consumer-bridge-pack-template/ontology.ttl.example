@@ -1,0 +1,39 @@
+# EXAMPLE ontology.ttl for a GymAct consumer's own capability facts.
+#
+# Rename this file to `ontology.ttl` after editing. It declares ZERO new
+# RDF vocabulary (no new rdfs:Class, no new owl:*Property) -- only
+# `sosa:Procedure` INSTANCES (data, not vocabulary), matching GymAct's own
+# `.claude/rules/ontology.md` rule ("Public Vocabularies First, No Custom
+# TBox") and satisfying the real GymAct SHACL shape
+# `urn:gymact:shape:capability` (fetched via `gymact export-profile`, see
+# this pack's README -- never hand-invent your own shape).
+#
+# Each individual below corresponds to one capability your
+# `EnvironmentProvider`/`Environment` implementation actually exposes to
+# GymAct (see docs/integrations/ in the gymact repo for how a provider is
+# registered via the `gymact.providers` entry-point group). Do not declare
+# a capability here that your provider does not really implement --
+# per GymAct's consequence law, `request accepted != world changed !=
+# objective verified`, and this ontology.ttl is a real, checkable claim
+# about what your provider does, not aspirational documentation.
+
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix sosa: <http://www.w3.org/ns/sosa/> .
+
+# Replace `example-system` below with your own system's slug throughout
+# this file (e.g. `autofde-lab`), and replace the two example capabilities
+# with your provider's real ones. `dct:title` becomes the generated
+# operation `id` (and, prefixed with your MCP tool namespace, the
+# generated MCP tool name); `dct:type` MUST be one of the two real GymAct
+# consequence-class IRIs below -- any other value is refused by the real
+# SHACL shape at sync time, before any file is generated.
+
+<urn:example-system:capability:list-something>
+    a sosa:Procedure ;
+    dct:title "list-something" ;
+    dct:type <urn:gymact:consequence:read> .
+
+<urn:example-system:capability:do-something>
+    a sosa:Procedure ;
+    dct:title "do-something" ;
+    dct:type <urn:gymact:consequence:do> .
