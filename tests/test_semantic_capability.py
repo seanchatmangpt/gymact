@@ -1,8 +1,17 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
 from rdflib import Graph
 
 from gymact.semantic import ProfileAuthority
+
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_PACK_ONTOLOGIES = (
+    _REPO_ROOT / "ggen" / "gymact-bridge-pack" / "ontology.ttl",
+    _REPO_ROOT / "ggen" / "multicloud-gym-pack" / "ontology.ttl",
+)
 
 
 def _graph(turtle: str) -> Graph:
@@ -72,3 +81,17 @@ def test_extension_cannot_smuggle_custom_gymact_tbox() -> None:
     assert result.conforms is False
     assert result.custom_tbox_terms == ("urn:gymact:BadCustomClass",)
     assert "CUSTOM_TBOX_REFUSED" in result.report_text
+
+
+@pytest.mark.parametrize("ontology_path", _PACK_ONTOLOGIES, ids=lambda p: p.parent.name)
+def test_ggen_pack_ontology_declares_zero_custom_tbox(ontology_path: Path) -> None:
+    """Every ggen pack ontology.ttl must be pure ABox against urn:gymact: -- zero
+    owl:Class/owl:*Property/rdfs:Class/rdf:Property individuals under the
+    urn:gymact: prefix, checked with the same real admission logic that guards
+    the packaged profile.ttl (test_extension_cannot_smuggle_custom_gymact_tbox
+    above), not a separate/weaker check. Neither pack ontology is loaded by
+    ProfileAuthority itself (which is hardcoded to gymact's own packaged
+    profile), so nothing previously exercised this invariant against them."""
+    graph = Graph()
+    graph.parse(ontology_path, format="turtle")
+    assert ProfileAuthority._custom_tbox_terms(graph) == ()

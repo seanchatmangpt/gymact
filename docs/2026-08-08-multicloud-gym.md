@@ -2,6 +2,17 @@
 
 Version: 26.8.8 (unreleased-since-tag head). Last updated 2026-08-08.
 
+> **Update (2026-08-08, later same-day pass):** the "ggen packaging: not functional"
+> finding in the Independent re-verification section below is now HISTORICAL, not
+> current standing. `ggen/multicloud-gym-pack/pack.toml` and its four
+> `templates/*.tmpl` files were added after that finding was recorded, and the
+> ontology's public-vocabulary grounding was separately expanded to maximal coverage
+> (SKOS provider/service-domain/resource-kind taxonomy, OWL-Time authority-windows,
+> `org:OrganizationalUnit` containment). Both are re-verified for real in the
+> "Second grounding pass" section near the end of this document — the original
+> re-verification text is left unmodified above as the historical record of what was
+> true at the time it was written, per this repo's fix-forward discipline.
+
 ## What this is
 
 A new GymAct provider, `MulticloudProvider`/`MulticloudEnvironment`
@@ -147,6 +158,99 @@ The ggen packaging story for this gym is also unresolved: `ggen/multicloud-gym-p
 currently has no `pack.toml` and an empty `templates/` directory, so `ggen sync run`
 fails at pack-loading before any template generation — a `BLOCKED` standing, distinct
 from and not implied by the passing pytest suite.
+
+## Second grounding pass (2026-08-08, this session)
+
+Expanded `ggen/multicloud-gym-pack/ontology.ttl` from the 4-vocabulary grounding above
+to maximal public-vocabulary coverage, per `.claude/rules/ontology.md`'s "search first,
+document rejections, no custom TBox" discipline. Additions, all INSTANCES of existing
+public classes/properties, no new `rdfs:Class`/`owl:*Property`:
+
+| Addition | What | Where |
+|---|---|---|
+| SKOS provider taxonomy | `skos:ConceptScheme` + 3 `skos:Concept`s (AWS/Azure/GCP) | new `urn:gymact:multicloud:scheme:provider` |
+| SKOS service-domain taxonomy | `skos:ConceptScheme` + 3 `skos:Concept`s (IAM/Storage/Compute) | new `urn:gymact:multicloud:scheme:service-domain` |
+| Capability classification | every one of the 20 capability nodes multi-typed `skos:Concept`, `skos:broader` into one provider + one service-domain concept | all 20 nodes |
+| OWL-Time authority-window | `time:Interval` instance linked via `dct:temporal` | only the 3 `odrl:Permission` ops: `aws.iam.attach_role_policy`, `azure.authorization.create_role_assignment`, `gcp.iam.add_iam_policy_binding` |
+| `org:OrganizationalUnit` containment | 3 instances (AWS Account / Azure Subscription / GCP Project), each also `skos:Concept` in a new resource-kind scheme, `skos:broader` to the matching provider concept | new `urn:gymact:multicloud:scheme:resource-kind` |
+
+Rejected, each with a documented reason in `ontology.ttl`'s own header (not silently
+omitted):
+
+- **DQV** — checked `MulticloudEnvironment.verify()` directly: it does a plain
+  `observed.get(key) == value` dict-equality diff against a caller-supplied `expected`
+  mapping. That is a real state-based verification decision, but it computes no
+  independent quality measurement (no freshness timestamp, no completeness ratio) for a
+  `dqv:QualityMeasurement` to attach to. Not added.
+- **QUDT** — no payload field across any `_aws_*`/`_azure_*`/`_gcp_*` handler is a
+  quantity-with-unit; every field is an opaque identifier/name string. Not added.
+- **GeoSPARQL** — the only location-shaped values (`zone`, `_AWS_REGION`) are opaque
+  region/zone identifier strings; nothing in the provider constructs or compares
+  geometry. Not added.
+- **DPV** — no payload field anywhere is personal data about a natural person;
+  `principal_id`/`member` are IAM principal identifiers, not PII. Not added.
+- **SPDX** — this gym's domain is cloud IAM/storage/compute capabilities, not software
+  packages, files, or licenses. Not added.
+- **FOAF** — no named-individual-person concept exists in this gym; the two
+  identity-creating operations are machine/service identities, already covered by
+  `org:Role` (AWS) or left deliberately ungrounded (GCP, pre-existing gap). Not added.
+
+### Real verification, this pass
+
+Real rdflib parse (20 `sosa:Procedure` nodes preserved, 187 triples total after
+expansion):
+
+```
+triples 187
+procedures 20
+```
+
+Real SPARQL gates (unchanged gate files, run directly via rdflib against the expanded
+file):
+
+```
+ggen/multicloud-gym-pack/gates/010_required.rq violations: 0
+ggen/multicloud-gym-pack/gates/020_single_valued.rq violations: 0
+```
+
+Real pytest, unchanged 14/14:
+
+```
+tests/test_multicloud.py ..............                                  [100%]
+============================== 14 passed in 0.41s ==============================
+```
+
+Real `ggen sync run` against `multicloud-gym-pack` (`ggen` 26.8.6 on PATH, scratch
+consumer project built the same way `just ggen-bridge-check` builds one for
+`gymact-bridge-pack`, `ggen.toml` pointing `[packs] multicloud-gym-pack = { path = ... }`
+at this pack, `shapes/profile.shacl.ttl` copied from the pack's own real symlink) —
+unlike the earlier re-verification pass, `pack.toml` and `templates/*.tmpl` now exist,
+so the run reaches generation and succeeds, exit 0:
+
+```json
+{
+  "written": [
+    "docs/multicloud-gym/reference.md",
+    "src/gymact_multicloud_mcp_tools.rs",
+    "src/gymact_multicloud_operation_catalog.rs",
+    "tests/gymact_multicloud_operation_catalog_proof.rs"
+  ],
+  "skipped": []
+}
+```
+
+The generated `src/gymact_multicloud_operation_catalog.rs` was inspected directly:
+`/// All 20 admitted operations, ordered by \`id\`.` followed by 20 real
+`Operation { id: "...", consequence_class: "..." }` entries — the SPARQL query the
+`operation_catalog.rs.tmpl` template runs only selects `dct:title`/`dct:type` per
+`sosa:Procedure`, so it is unaffected by the new SKOS/OWL-Time/org additions and
+correctly still emits all 20 capabilities with their original titles/consequence
+classes. `docs/multicloud-gym/reference.md` (56 lines), `src/gymact_multicloud_mcp_tools.rs`
+(77 lines), and `tests/gymact_multicloud_operation_catalog_proof.rs` (126 lines) were all
+written with non-trivial real content (not empty stubs).
+
+This supersedes the "ggen packaging: not functional" finding above: as of this pass,
+the ggen bridge for `multicloud-gym-pack` is real and reproducible, not `BLOCKED`.
 
 ## Relevant paths
 
