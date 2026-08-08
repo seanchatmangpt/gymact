@@ -49,6 +49,11 @@ def gym() -> GymAct:
 
 
 async def _run_real_counter_episode(gym: GymAct) -> tuple[list, list[Operation]]:
+    # cube_counter.py's requires_authority now defaults to True (a real DO
+    # capability against real CUBE task state must not run unauthorized) --
+    # this helper explicitly admits AUTHORITY on every act() so real
+    # actuation still succeeds, matching the pattern the three authority
+    # tests below already established for this same provider.
     receipts = []
 
     materialization = await gym.materialize(
@@ -66,6 +71,7 @@ async def _run_real_counter_episode(gym: GymAct) -> tuple[list, list[Operation]]
             ActuationIntent(
                 episode_id=episode_id,
                 capability=INCREMENT_CAPABILITY,
+                authority_ref=AUTHORITY,
             )
         )
         assert result.accepted is True
@@ -74,14 +80,14 @@ async def _run_real_counter_episode(gym: GymAct) -> tuple[list, list[Operation]]
     verification = await gym.verify(episode_id, {"counter": 3, "solved": True})
     assert verification.passed is True
 
-    teardown_receipt = await gym.teardown(episode_id)
+    teardown_receipt = await gym.teardown(episode_id, authority_ref=AUTHORITY)
     receipts.append(teardown_receipt)
 
     return receipts, [r.operation for r in receipts]
 
 
 async def test_real_counter_episode_reaches_target_and_is_receipted() -> None:
-    gym_instance = GymAct()
+    gym_instance = GymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
     gym_instance.register_provider(CubeCounterProvider())
 
     receipts, operations = await _run_real_counter_episode(gym_instance)
@@ -97,7 +103,7 @@ async def test_real_counter_episode_reaches_target_and_is_receipted() -> None:
 
 
 async def test_real_counter_episode_replays_conformant_against_declared_lifecycle() -> None:
-    gym_instance = GymAct()
+    gym_instance = GymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
     gym_instance.register_provider(CubeCounterProvider())
 
     _receipts, operations = await _run_real_counter_episode(gym_instance)
@@ -114,7 +120,7 @@ async def test_checkpoint_restore_round_trips_the_real_counter_state() -> None:
     JSON report -- neither `cube_counter.py` nor `cube_container_counter.py`
     had any test coverage for their real `checkpoint`/`restore` methods
     before this."""
-    gym_instance = GymAct()
+    gym_instance = GymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
     gym_instance.register_provider(CubeCounterProvider())
 
     materialization = await gym_instance.materialize(
@@ -122,18 +128,30 @@ async def test_checkpoint_restore_round_trips_the_real_counter_state() -> None:
     )
     episode_id = materialization.episode.episode_id
 
-    await gym_instance.act(ActuationIntent(episode_id=episode_id, capability=INCREMENT_CAPABILITY))
+    await gym_instance.act(
+        ActuationIntent(
+            episode_id=episode_id, capability=INCREMENT_CAPABILITY, authority_ref=AUTHORITY
+        )
+    )
     first = await gym_instance.observe(episode_id)
     assert first.state["counter"] == 1
 
     checkpoint = await gym_instance.checkpoint(episode_id)
     assert checkpoint == {"counter": 1}
 
-    await gym_instance.act(ActuationIntent(episode_id=episode_id, capability=INCREMENT_CAPABILITY))
-    await gym_instance.act(ActuationIntent(episode_id=episode_id, capability=INCREMENT_CAPABILITY))
+    await gym_instance.act(
+        ActuationIntent(
+            episode_id=episode_id, capability=INCREMENT_CAPABILITY, authority_ref=AUTHORITY
+        )
+    )
+    await gym_instance.act(
+        ActuationIntent(
+            episode_id=episode_id, capability=INCREMENT_CAPABILITY, authority_ref=AUTHORITY
+        )
+    )
     assert (await gym_instance.observe(episode_id)).state["counter"] == 3
 
-    restored = await gym_instance.restore(episode_id, checkpoint)
+    restored = await gym_instance.restore(episode_id, checkpoint, authority_ref=AUTHORITY)
     assert restored.standing == Standing.ALIVE
 
     observed_after_restore = await gym_instance.observe(episode_id)

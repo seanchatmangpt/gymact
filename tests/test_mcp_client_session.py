@@ -28,7 +28,7 @@ require_standing(
     reason="the 'fastmcp' package is not importable in this environment",
 )
 
-from gymact import GymAct, MaterializationIntent  # noqa: E402
+from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent  # noqa: E402
 from gymact.gyms.mcp_client_session import McpClientSessionProvider  # noqa: E402
 from gymact.models import ActuationIntent, Operation, Standing  # noqa: E402
 from gymact.ocel import receipts_to_ocel, validate_ocel_log  # noqa: E402
@@ -36,11 +36,20 @@ from gymact.process import ConformanceChecker  # noqa: E402
 
 LIST_TOOLS = "urn:gymact:mcp-client-session:capability:list_tools"
 CALL_TOOL = "urn:gymact:mcp-client-session:capability:call_tool"
+# mcp_client_session.py's requires_authority now defaults to True (a real DO
+# capability invoking a real subject MCP tool must not run unauthorized) --
+# every act()-driving test below explicitly admits AUTHORITY.
+AUTHORITY = "urn:test:mcp-client-session-authority"
+
+
+def _authorized_gym() -> GymAct:
+    gym = GymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
+    gym.register_provider(McpClientSessionProvider())
+    return gym
 
 
 async def _run_real_mcp_session_episode() -> list:
-    gym = GymAct()
-    gym.register_provider(McpClientSessionProvider())
+    gym = _authorized_gym()
     receipts = []
 
     materialization = await gym.materialize(
@@ -59,10 +68,16 @@ async def _run_real_mcp_session_episode() -> list:
     await gym.observe(episode_id)
 
     receipts.append(
-        (await gym.act(ActuationIntent(episode_id=episode_id, capability=CALL_TOOL))).receipt
+        (
+            await gym.act(
+                ActuationIntent(
+                    episode_id=episode_id, capability=CALL_TOOL, authority_ref=AUTHORITY
+                )
+            )
+        ).receipt
     )
 
-    receipts.append(await gym.teardown(episode_id))
+    receipts.append(await gym.teardown(episode_id, authority_ref=AUTHORITY))
     return receipts
 
 
@@ -88,8 +103,7 @@ async def test_real_materialize_opens_a_real_fastmcp_client_session() -> None:
 
 
 async def test_call_tool_capability_really_invokes_the_subject_servers_discover_tool() -> None:
-    gym = GymAct()
-    gym.register_provider(McpClientSessionProvider())
+    gym = _authorized_gym()
 
     materialization = await gym.materialize(
         MaterializationIntent(
@@ -99,7 +113,9 @@ async def test_call_tool_capability_really_invokes_the_subject_servers_discover_
     )
     episode_id = materialization.episode.episode_id
 
-    result = await gym.act(ActuationIntent(episode_id=episode_id, capability=CALL_TOOL))
+    result = await gym.act(
+        ActuationIntent(episode_id=episode_id, capability=CALL_TOOL, authority_ref=AUTHORITY)
+    )
     assert result.accepted is True
     # The subject server's real `discover()` tool returns its registered
     # provider names as a JSON text block -- assert the real content came
@@ -108,7 +124,7 @@ async def test_call_tool_capability_really_invokes_the_subject_servers_discover_
     assert result_text
     assert any("memory" in str(block) for block in result_text)
 
-    await gym.teardown(episode_id)
+    await gym.teardown(episode_id, authority_ref=AUTHORITY)
 
 
 async def test_list_tools_capability_observes_a_stable_real_tool_catalog() -> None:

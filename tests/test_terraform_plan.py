@@ -130,21 +130,30 @@ if not _PARSEABLE:
         allow_module_level=True,
     )
 
-from gymact import GymAct, MaterializationIntent  # noqa: E402
+from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent  # noqa: E402
 from gymact.gyms.terraform_plan import TerraformPlanProvider  # noqa: E402
 from gymact.models import ActuationIntent, Consequence, Operation  # noqa: E402
 from gymact.ocel import receipts_to_ocel, validate_ocel_log, write_ocel_log  # noqa: E402
 from gymact.process import ConformanceChecker  # noqa: E402
 
 PLAN_CAPABILITY = "urn:gymact:terraform-plan:capability:plan"
+# terraform_plan.py's requires_authority now defaults to True (a real
+# terraform plan invocation must not run unauthorized) -- every act()-driving
+# test below explicitly admits AUTHORITY.
+AUTHORITY = "urn:test:terraform-plan-authority"
+
+
+def _authorized_gym() -> GymAct:
+    gym = GymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
+    gym.register_provider(TerraformPlanProvider())
+    return gym
 
 
 async def _run_real_terraform_episode() -> list:
     """One real episode: materialize (real `init`) -> act (real `plan`) ->
     teardown. There is no `apply`/`destroy` step anywhere in this
     trajectory."""
-    gym = GymAct()
-    gym.register_provider(TerraformPlanProvider())
+    gym = _authorized_gym()
     receipts = []
 
     materialization = await gym.materialize(
@@ -156,11 +165,13 @@ async def _run_real_terraform_episode() -> list:
     receipts.append(materialization.receipt)
     episode_id = materialization.episode.episode_id
 
-    result = await gym.act(ActuationIntent(episode_id=episode_id, capability=PLAN_CAPABILITY))
+    result = await gym.act(
+        ActuationIntent(episode_id=episode_id, capability=PLAN_CAPABILITY, authority_ref=AUTHORITY)
+    )
     assert result.accepted is True
     receipts.append(result.receipt)
 
-    receipts.append(await gym.teardown(episode_id))
+    receipts.append(await gym.teardown(episode_id, authority_ref=AUTHORITY))
     return receipts
 
 
@@ -186,8 +197,7 @@ async def test_materialize_runs_a_real_terraform_init_against_terragoat() -> Non
 
 
 async def test_plan_capability_runs_a_real_terraform_plan_and_captures_completion() -> None:
-    gym = GymAct()
-    gym.register_provider(TerraformPlanProvider())
+    gym = _authorized_gym()
     m = await gym.materialize(
         MaterializationIntent(
             provider="terraform-plan", config={"working_dir": str(_TERRAGOAT_TARGET_DIR)}
@@ -195,7 +205,9 @@ async def test_plan_capability_runs_a_real_terraform_plan_and_captures_completio
     )
     episode_id = m.episode.episode_id
 
-    result = await gym.act(ActuationIntent(episode_id=episode_id, capability=PLAN_CAPABILITY))
+    result = await gym.act(
+        ActuationIntent(episode_id=episode_id, capability=PLAN_CAPABILITY, authority_ref=AUTHORITY)
+    )
     assert result.accepted is True
 
     after = result.effect["after"]
@@ -211,7 +223,7 @@ async def test_plan_capability_runs_a_real_terraform_plan_and_captures_completio
     verification = await gym.verify(episode_id, {})
     assert verification.passed is True
 
-    await gym.teardown(episode_id)
+    await gym.teardown(episode_id, authority_ref=AUTHORITY)
 
 
 async def test_terraform_plan_provider_exposes_exactly_one_do_capability_named_plan() -> None:
@@ -418,8 +430,7 @@ async def test_real_terraform_plan_timeout_is_captured_not_swallowed() -> None:
     """A real, unrealistically short timeout against a real `terraform plan`
     invocation reliably trips `subprocess.TimeoutExpired` -- exercises the
     real timeout-handling branch without mocking `subprocess`."""
-    gym = GymAct()
-    gym.register_provider(TerraformPlanProvider())
+    gym = _authorized_gym()
     m = await gym.materialize(
         MaterializationIntent(
             provider="terraform-plan",
@@ -431,13 +442,15 @@ async def test_real_terraform_plan_timeout_is_captured_not_swallowed() -> None:
     )
     episode_id = m.episode.episode_id
 
-    result = await gym.act(ActuationIntent(episode_id=episode_id, capability=PLAN_CAPABILITY))
+    result = await gym.act(
+        ActuationIntent(episode_id=episode_id, capability=PLAN_CAPABILITY, authority_ref=AUTHORITY)
+    )
     after = result.effect["after"]
     assert after["plan_attempted"] is True
     assert after["plan_timed_out"] is True
     assert after["plan_returncode"] is None
 
-    await gym.teardown(episode_id)
+    await gym.teardown(episode_id, authority_ref=AUTHORITY)
 
 
 async def test_real_init_against_a_nonexistent_binary_path_surfaces_an_oserror() -> None:

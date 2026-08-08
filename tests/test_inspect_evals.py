@@ -32,7 +32,7 @@ require_standing(
     reason="the 'inspect_ai' package is not importable in this environment",
 )
 
-from gymact import GymAct, MaterializationIntent  # noqa: E402
+from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent  # noqa: E402
 from gymact.gyms.inspect_evals import (  # noqa: E402
     INSPECT_SOLVE_SAMPLE_CAPABILITY,
     InspectEvalsProvider,
@@ -42,6 +42,16 @@ from gymact.ocel import receipts_to_ocel, validate_ocel_log  # noqa: E402
 from gymact.process import ConformanceChecker  # noqa: E402
 
 SOLVE_SAMPLE = "urn:gymact:inspect-evals:capability:solve_sample"
+# inspect_evals.py's requires_authority now defaults to True (a real DO
+# capability running a real inspect_ai eval must not run unauthorized) --
+# every gym-driven test below explicitly admits AUTHORITY.
+AUTHORITY = "urn:test:inspect-evals-authority"
+
+
+def _authorized_gym() -> GymAct:
+    gym = GymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
+    gym.register_provider(InspectEvalsProvider())
+    return gym
 
 # inspect_ai's own internal anyio.MemoryObjectReceiveStream (allocated deep
 # inside inspect_ai._eval.eval_async's own transcript/display plumbing, not
@@ -67,8 +77,7 @@ pytestmark = pytest.mark.filterwarnings("ignore::pytest.PytestUnraisableExceptio
 
 
 async def _run_real_inspect_episode(*, custom_outputs: list[str]) -> list:
-    gym = GymAct()
-    gym.register_provider(InspectEvalsProvider())
+    gym = _authorized_gym()
     receipts = []
 
     materialization = await gym.materialize(
@@ -88,10 +97,16 @@ async def _run_real_inspect_episode(*, custom_outputs: list[str]) -> list:
     episode_id = materialization.episode.episode_id
 
     receipts.append(
-        (await gym.act(ActuationIntent(episode_id=episode_id, capability=SOLVE_SAMPLE))).receipt
+        (
+            await gym.act(
+                ActuationIntent(
+                    episode_id=episode_id, capability=SOLVE_SAMPLE, authority_ref=AUTHORITY
+                )
+            )
+        ).receipt
     )
 
-    receipts.append(await gym.teardown(episode_id))
+    receipts.append(await gym.teardown(episode_id, authority_ref=AUTHORITY))
     return receipts
 
 
@@ -119,8 +134,7 @@ async def test_solve_sample_capability_really_runs_inspect_eval_and_scores_corre
     Inspect's real match() scorer really compares it against the real
     target "4" -- this is a real CORRECT verdict from Inspect's own scoring
     code, not a fabricated pass."""
-    gym = GymAct()
-    gym.register_provider(InspectEvalsProvider())
+    gym = _authorized_gym()
 
     materialization = await gym.materialize(
         MaterializationIntent(
@@ -136,7 +150,9 @@ async def test_solve_sample_capability_really_runs_inspect_eval_and_scores_corre
     )
     episode_id = materialization.episode.episode_id
 
-    result = await gym.act(ActuationIntent(episode_id=episode_id, capability=SOLVE_SAMPLE))
+    result = await gym.act(
+        ActuationIntent(episode_id=episode_id, capability=SOLVE_SAMPLE, authority_ref=AUTHORITY)
+    )
     assert result.accepted is True
     after = result.effect["after"]
     assert after["attempted"] is True
@@ -144,15 +160,14 @@ async def test_solve_sample_capability_really_runs_inspect_eval_and_scores_corre
     assert after["solved"] is True
     assert after["score_answer"] == "4"
 
-    await gym.teardown(episode_id)
+    await gym.teardown(episode_id, authority_ref=AUTHORITY)
 
 
 async def test_solve_sample_capability_really_scores_incorrect_when_the_model_is_wrong() -> None:
     """The negative case: Inspect's real match() scorer really marks a wrong
     completion INCORRECT -- proves this provider surfaces Inspect's genuine
     verdict rather than always reporting success."""
-    gym = GymAct()
-    gym.register_provider(InspectEvalsProvider())
+    gym = _authorized_gym()
 
     materialization = await gym.materialize(
         MaterializationIntent(
@@ -168,14 +183,16 @@ async def test_solve_sample_capability_really_scores_incorrect_when_the_model_is
     )
     episode_id = materialization.episode.episode_id
 
-    result = await gym.act(ActuationIntent(episode_id=episode_id, capability=SOLVE_SAMPLE))
+    result = await gym.act(
+        ActuationIntent(episode_id=episode_id, capability=SOLVE_SAMPLE, authority_ref=AUTHORITY)
+    )
     assert result.accepted is True
     after = result.effect["after"]
     assert after["attempted"] is True
     assert after["solved"] is False
     assert after["score_value"] == "I"
 
-    await gym.teardown(episode_id)
+    await gym.teardown(episode_id, authority_ref=AUTHORITY)
 
 
 async def test_capabilities_exposes_the_real_solve_sample_do_capability() -> None:

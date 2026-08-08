@@ -315,7 +315,7 @@ class KubernetesReconciliationProvider:
         kubeconfig_context = config.get("kubeconfig_context")
         if kubeconfig_context is not None and not isinstance(kubeconfig_context, str):
             raise TypeError("config.kubeconfig_context must be a string or None")
-        requires_authority = config.get("requires_authority", False)
+        requires_authority = config.get("requires_authority", True)
         if not isinstance(requires_authority, bool):
             raise TypeError("config.requires_authority must be a boolean")
         verify_timeout_seconds = config.get(
