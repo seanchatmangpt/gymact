@@ -6,6 +6,7 @@ from typing import Iterable
 from pydantic import Field
 
 from gymact.combinatorial import Combination, ObjectiveVector
+from gymact.evidence import ReceiptLedger
 from gymact.models import FrozenModel, Standing
 
 
@@ -56,13 +57,38 @@ def empirical_pareto(
     )
 
 
-class EmpiricalPossibilityIndex:
-    """Retrieval index that cannot rank combinations absent from current applicability."""
+def _receipt_id(reference: str) -> str:
+    prefix = "urn:gymact:receipt:"
+    return reference[len(prefix) :] if reference.startswith(prefix) else reference
 
-    def __init__(self) -> None:
+
+class EmpiricalPossibilityIndex:
+    """Receipt-admitted retrieval index; applicability is still filtered before ranking."""
+
+    def __init__(self, ledger: ReceiptLedger) -> None:
+        self._ledger = ledger
         self._records: list[EmpiricalCombinationRecord] = []
 
+    def _admit_record(self, value: EmpiricalCombinationRecord) -> None:
+        if not self._ledger.verify():
+            raise ValueError("EMPIRICAL_INDEX_EVIDENCE_CHAIN_INVALID")
+        receipts = []
+        for reference in value.receipt_refs:
+            record = self._ledger.find(_receipt_id(reference))
+            if record is None:
+                raise ValueError("EMPIRICAL_INDEX_RECEIPT_MISSING")
+            receipts.append(record.receipt)
+        if not any(receipt.standing is value.standing for receipt in receipts):
+            raise ValueError("EMPIRICAL_INDEX_STANDING_NOT_WITNESSED")
+        if value.standing in {Standing.ALIVE, Standing.ADOPTED}:
+            if not any(receipt.verified is True for receipt in receipts):
+                raise ValueError("EMPIRICAL_INDEX_VERIFIED_CONSEQUENCE_REQUIRED")
+        if value.standing is Standing.ADOPTED:
+            raise ValueError("EMPIRICAL_INDEX_CANNOT_MANUFACTURE_ADOPTED")
+
     def record(self, value: EmpiricalCombinationRecord) -> None:
+        """Admit only observations whose receipt references resolve in the ledger."""
+        self._admit_record(value)
         self._records.append(value)
 
     def query(
@@ -75,7 +101,7 @@ class EmpiricalPossibilityIndex:
         environment: str | None = None,
         hardware: str | None = None,
     ) -> tuple[EmpiricalCombinationRecord, ...]:
-        """Filter by current lawful applicability before any Pareto comparison."""
+        """Filter current lawful applicability before any Pareto comparison."""
         eligible = set(eligible_combination_ids)
         if not eligible:
             return ()
@@ -86,7 +112,7 @@ class EmpiricalPossibilityIndex:
             and item.structural_key == structural_key
             and item.objective == objective
             and item.combination.combination_id in eligible
-            and item.standing in {Standing.ALIVE, Standing.ADOPTED}
+            and item.standing is Standing.ALIVE
             and (environment is None or item.environment == environment)
             and (hardware is None or item.hardware == hardware)
         )
