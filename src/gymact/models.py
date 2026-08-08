@@ -19,15 +19,26 @@ def _utc_now_iso() -> str:
 
 
 class Standing(StrEnum):
-    """Evidence-aware standing for a runtime result."""
+    """Evidence-aware standing for a runtime result.
+
+    The positive ladder is UNKNOWN < CANDIDATE < STRUCTURAL < PARTIAL_ALIVE <
+    ALIVE < ADOPTED. The remaining values are orthogonal dispositions and do
+    not imply a position on that ladder.
+    """
 
     UNKNOWN = "UNKNOWN"
+    CANDIDATE = "CANDIDATE"
+    STRUCTURAL = "STRUCTURAL"
     PARTIAL_ALIVE = "PARTIAL_ALIVE"
     ALIVE = "ALIVE"
+    ADOPTED = "ADOPTED"
     BLOCKED = "BLOCKED"
     BUILD_BROKEN = "BUILD_BROKEN"
     UNSUPPORTED = "UNSUPPORTED"
+    REQUIRES_CONFIGURATION = "REQUIRES_CONFIGURATION"
     REFUSED = "REFUSED"
+    UNCERTAIN = "UNCERTAIN"
+    STALE = "STALE"
 
 
 class Consequence(StrEnum):
