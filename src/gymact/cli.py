@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
+import shutil
 from pathlib import Path
 
 import anyio
@@ -15,6 +17,7 @@ from gymact.contract import build_contract
 from gymact.manufacture import export_manufacturing_bundle
 from gymact.models import ActuationIntent, MaterializationIntent
 from gymact.providers import MemoryProvider
+from gymact.requirements import crown_summary, load_crown_requirements
 from gymact.runtime import GymAct
 from gymact.semantic import ProfileAuthority
 from gymact.surfaces.fastapi import create_app
@@ -32,6 +35,44 @@ def version() -> None:
 def contract() -> None:
     """Print the self-digested runtime contract for independent consumers."""
     typer.echo(json.dumps(build_contract().model_dump(mode="json"), sort_keys=True))
+
+
+@app.command("crown-status")
+def crown_status() -> None:
+    """Print the machine-checkable Crown build queue and current GALL blockers."""
+    typer.echo(json.dumps(crown_summary().as_dict(), sort_keys=True))
+
+
+@app.command("requirements")
+def requirements_inventory() -> None:
+    """Print the canonical P0/P1/P2 requirements and CP0-CP16 inventory."""
+    typer.echo(json.dumps(load_crown_requirements(), sort_keys=True))
+
+
+@app.command("providers")
+def providers() -> None:
+    """List the built-in real/reference provider families available to GymAct."""
+    typer.echo(
+        json.dumps(
+            {
+                "builtins": ["filesystem", "git", "memory", "sqlite"],
+                "note": "Plugin providers remain discoverable through gymact.plugins.",
+            },
+            sort_keys=True,
+        )
+    )
+
+
+@app.command("doctor")
+def doctor() -> None:
+    """Report local execution prerequisites without upgrading their standing."""
+    modules = ("blake3", "fastapi", "fastmcp", "faststream", "pyshacl", "rfc8785")
+    payload = {
+        "git": shutil.which("git") is not None,
+        "modules": {name: importlib.util.find_spec(name) is not None for name in modules},
+        "crown": crown_summary().as_dict(),
+    }
+    typer.echo(json.dumps(payload, sort_keys=True))
 
 
 @app.command("validate-profile")
