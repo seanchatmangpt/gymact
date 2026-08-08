@@ -32,6 +32,15 @@ from gymact.crown_runtime import (
     reconcile_uncertain,
 )
 from gymact.evidence import EvidenceRecord, MemoryReceiptLedger, ReceiptLedger, evidence_graph
+from gymact.intelligence import (
+    CognitionEpisode,
+    CompilationCandidate,
+    CompileOutObservation,
+    IntelligenceRegime,
+    SelectionDecision,
+    detect_compilation_candidate,
+    route_intelligence,
+)
 from gymact.lab import (
     ActionProjection,
     CapabilityCache,
@@ -82,6 +91,13 @@ from gymact.plugins import (
     discover_provider_plugins,
     load_provider_plugin,
 )
+from gymact.provider_spi import (
+    CrownProvider,
+    ObservationRequest,
+    ProviderExecutionAttempt,
+    ProviderPreparation,
+    ProviderRollbackResult,
+)
 from gymact.providers import Environment, EnvironmentProvider, MemoryProvider
 from gymact.requirements import CrownSummary, crown_summary, load_crown_requirements
 from gymact.runtime import BoundaryBlocked, GymAct
@@ -105,9 +121,13 @@ __all__ = [
     "Capability",
     "CapabilityCache",
     "CapabilityCacheEntry",
+    "CognitionEpisode",
+    "CompilationCandidate",
+    "CompileOutObservation",
     "Consequence",
     "CostPoint",
     "CrossoverResult",
+    "CrownProvider",
     "CrownSummary",
     "DenyAuthorityResolver",
     "DifferentialVerdict",
@@ -124,23 +144,28 @@ __all__ = [
     "GitProvider",
     "GymAct",
     "IdempotencyClass",
+    "IntelligenceRegime",
     "MaterializationIntent",
     "MaterializationResult",
     "MemoryProvider",
     "MemoryReceiptLedger",
     "Observation",
     "ObservationConfidence",
+    "ObservationRequest",
     "Operation",
     "PreparedAction",
     "ProblemSignature",
     "ProfileAuthority",
     "ProjectionKind",
     "ProviderBenchmarkRecord",
+    "ProviderExecutionAttempt",
     "ProviderFamily",
     "ProviderHealth",
     "ProviderMetadata",
     "ProviderPluginInfo",
     "ProviderPluginLoad",
+    "ProviderPreparation",
+    "ProviderRollbackResult",
     "Receipt",
     "ReceiptLedger",
     "ReconciledTransition",
@@ -154,6 +179,7 @@ __all__ = [
     "SQLiteReceiptLedger",
     "Score",
     "Scorer",
+    "SelectionDecision",
     "SelfPlayKind",
     "SelfPlayScenario",
     "SemanticValidation",
@@ -170,6 +196,7 @@ __all__ = [
     "build_contract",
     "construct_prepared_action",
     "crown_summary",
+    "detect_compilation_candidate",
     "differential_verdict",
     "discover_provider_plugins",
     "evidence_graph",
@@ -183,6 +210,7 @@ __all__ = [
     "pareto_frontier",
     "project_action",
     "reconcile_uncertain",
+    "route_intelligence",
     "score_verification",
 ]
 
