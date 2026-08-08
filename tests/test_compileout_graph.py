@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from gymact.action_contract import ReversalClass
 from gymact.combinatorial import (
     AdmissionContext,
     DecisionPhase,
@@ -9,13 +10,13 @@ from gymact.combinatorial import (
     PossibilityMorphism,
     PossibilityObject,
     PossibilityObjectKind,
-    explore_maximal_reversible,
 )
 from gymact.compileout_graph import (
     GraphRecipeIdentity,
     admit_graph_recipe,
     compile_graph_recipe,
 )
+from gymact.maximal import explore_combinatorial_maximum
 from gymact.models import Standing
 
 
@@ -45,6 +46,7 @@ def graph() -> PossibilityGraph:
                 target_id="plan",
                 kind=MorphismKind.PLAN,
                 phase=DecisionPhase.CONSTRUCT,
+                reversal=ReversalClass.REVERSIBLE,
             ),
             PossibilityMorphism(
                 morphism_id="do",
@@ -52,6 +54,7 @@ def graph() -> PossibilityGraph:
                 target_id="effect",
                 kind=MorphismKind.ACTUATE,
                 phase=DecisionPhase.DO,
+                reversal=ReversalClass.IRREVERSIBLE,
                 requirements=MorphismRequirements(execution_grant_required=True),
             ),
         ),
@@ -60,7 +63,7 @@ def graph() -> PossibilityGraph:
 
 def test_hot_recipe_reuses_graph_route_not_authority() -> None:
     topology = graph()
-    exploration = explore_maximal_reversible(topology, start_ids=("o",))
+    exploration = explore_combinatorial_maximum(topology, start_ids=("o",))
     path = next(item for item in exploration.paths if item.object_ids[-1] == "plan")
     identity = GraphRecipeIdentity(
         problem_identity="problem-1",
@@ -88,7 +91,7 @@ def test_hot_recipe_reuses_graph_route_not_authority() -> None:
 
 def test_hot_recipe_invalidates_on_graph_or_route_drift() -> None:
     topology = graph()
-    exploration = explore_maximal_reversible(topology, start_ids=("o",))
+    exploration = explore_combinatorial_maximum(topology, start_ids=("o",))
     path = next(item for item in exploration.paths if item.object_ids[-1] == "plan")
     identity = GraphRecipeIdentity(
         problem_identity="problem-1",
@@ -118,7 +121,7 @@ def test_hot_recipe_invalidates_on_graph_or_route_drift() -> None:
             semantic_ref="urn:extra",
         )
     )
-    changed_exploration = explore_maximal_reversible(changed, start_ids=("o",))
+    changed_exploration = explore_combinatorial_maximum(changed, start_ids=("o",))
     stale_graph = admit_graph_recipe(recipe, identity, changed_exploration)
     assert stale_graph.standing is Standing.STALE
     assert stale_graph.reason == "COMPILED_GRAPH_RECIPE_GRAPH_DRIFT"
@@ -126,7 +129,7 @@ def test_hot_recipe_invalidates_on_graph_or_route_drift() -> None:
 
 def test_hot_recipe_does_not_require_do_to_be_authority_admitted_during_compilation() -> None:
     topology = graph()
-    exploration = explore_maximal_reversible(
+    exploration = explore_combinatorial_maximum(
         topology,
         start_ids=("o",),
         context=AdmissionContext(),
