@@ -209,6 +209,11 @@ external collaborator -- no mocks anywhere in `src/` or `tests/`:
 - `terraform_docker_apply.TerraformDockerApplyProvider` -- a real `terraform`/`tofu` binary
   running `apply`/`destroy` against a hand-authored, checked-in local-only Docker config
   (`gyms/fixtures/terraform_docker`), against colima's real local Docker daemon.
+- `inspect_evals.InspectEvalsProvider` -- a real, installed `inspect-ai` package (UK AISI's
+  Inspect framework) running a real `inspect_ai.Task`/`eval_async()` pass scored by Inspect's
+  own real `match()` scorer, backed by Inspect's real first-party `mockllm` model provider so
+  no paid API key is required for a deterministic pass; `config.model` may instead name a
+  real paid provider a caller has credentials for.
 
 Each claims a `gymact.standing.require_standing` standing (e.g. `"LOCAL_GYM:cube-counter"`):
 if its real collaborator is unavailable, the run fails loudly unless
