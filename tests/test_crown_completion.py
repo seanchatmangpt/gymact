@@ -36,17 +36,21 @@ def test_cli_exposes_complete_canonical_surface() -> None:
     assert required <= commands
 
 
-def test_openapi_exposes_candidate_and_brce_production_do() -> None:
+def test_openapi_makes_dcm_selected_cut_the_canonical_production_do() -> None:
     runtime = GymAct()
     runtime.register_provider(MemoryProvider())
     client = TestClient(create_app(runtime))
     schema = client.get("/openapi.json").json()
     paths = schema["paths"]
     assert "/candidates" in paths
+    assert "/possibilities/explore" in paths
+    selected = "/episodes/{episode_id}/actions/selected"
     admitted = "/episodes/{episode_id}/actions/admitted"
-    assert admitted in paths
-    assert paths[admitted]["post"].get("deprecated", False) is False
-    assert paths["/episodes/{episode_id}/actions"]["post"]["deprecated"] is True
+    legacy = "/episodes/{episode_id}/actions"
+    assert selected in paths
+    assert paths[selected]["post"].get("deprecated", False) is False
+    assert paths[admitted]["post"]["deprecated"] is True
+    assert paths[legacy]["post"]["deprecated"] is True
 
 
 def test_contract_contains_crown_completion_schemas() -> None:
@@ -63,6 +67,10 @@ def test_contract_contains_crown_completion_schemas() -> None:
         "compiled_recipe",
         "decision_key",
         "differential_verification",
+        "possibility_graph",
+        "exploration_result",
+        "irreversible_selection",
+        "combinatorial_broker_request",
     ):
         assert key in contract.schemas
 
