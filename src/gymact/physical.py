@@ -72,27 +72,19 @@ def admit_physical_command(
     """Admit a candidate physical command. This function has no actuator handle."""
     if command.domain is not envelope.domain:
         return PhysicalAdmission(
-            admitted=False,
-            standing=Standing.REFUSED,
-            reason="DOMAIN_REFUSED",
+            admitted=False, standing=Standing.REFUSED, reason="DOMAIN_REFUSED"
         )
     if command.operation not in envelope.allowed_operations:
         return PhysicalAdmission(
-            admitted=False,
-            standing=Standing.REFUSED,
-            reason="CAPABILITY_REFUSED",
+            admitted=False, standing=Standing.REFUSED, reason="CAPABILITY_REFUSED"
         )
     if command.requested_duration_s > envelope.max_duration_s:
         return PhysicalAdmission(
-            admitted=False,
-            standing=Standing.REFUSED,
-            reason="SAFETY_BOUND_REFUSED",
+            admitted=False, standing=Standing.REFUSED, reason="SAFETY_BOUND_REFUSED"
         )
     if not command.authority_ref:
         return PhysicalAdmission(
-            admitted=False,
-            standing=Standing.REFUSED,
-            reason="AUTHORITY_REFUSED",
+            admitted=False, standing=Standing.REFUSED, reason="AUTHORITY_REFUSED"
         )
     if (
         command.risk is RiskClass.IRREVERSIBLE
@@ -100,9 +92,7 @@ def admit_physical_command(
         and not command.human_approval_ref
     ):
         return PhysicalAdmission(
-            admitted=False,
-            standing=Standing.REFUSED,
-            reason="HUMAN_APPROVAL_REQUIRED",
+            admitted=False, standing=Standing.REFUSED, reason="HUMAN_APPROVAL_REQUIRED"
         )
     return PhysicalAdmission(
         admitted=True,
