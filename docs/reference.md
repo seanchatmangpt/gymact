@@ -100,6 +100,8 @@
 
 ::: gymact.gyms.terraform_docker_apply.TerraformDockerApplyProvider
 
+::: gymact.gyms.vendor_benchmarks.VendorBenchmarkProvider
+
 ::: gymact.contract.RuntimeContract
 
 ::: gymact.contract.build_contract

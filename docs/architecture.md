@@ -99,6 +99,7 @@ genuinely real external collaborator (zero mocks anywhere in `src/` or `tests/`)
 | `gyms.kubernetes_reconciliation.KubernetesReconciliationProvider` | a real local Kubernetes cluster (`kind`/`k3d`/colima `--kubernetes`) via real `kubectl` subprocess calls -- `verify()` polls real cluster-observed pod phase, not `kubectl apply`'s exit code |
 | `gyms.terraform_plan.TerraformPlanProvider` | a real `terraform`/`tofu` subprocess running `init -backend=false` and `plan` against a real checked-out Terraform configuration directory -- structurally no `apply`/`destroy` path |
 | `gyms.terraform_docker_apply.TerraformDockerApplyProvider` | a real local `terraform`/`tofu` binary running `apply`/`destroy` against a hand-authored, checked-in Terraform config (`gyms/fixtures/terraform_docker/main.tf`) that provisions exactly one pinned `docker_image`/`docker_container` on colima's real local Docker daemon -- no cloud provider, no cloud credentials |
+| `gyms.vendor_benchmarks.VendorBenchmarkProvider` | one provider per AutoFDE Lab `docs/papers/gym-lock.ttl`-pinned vendor checkout (52 exact-pinned benchmark repos) -- materializes only when the real checkout's Git HEAD equals the pinned revision, executes native commands as a real cwd-bound subprocess with no shell, and re-checks the pin both before and after execution |
 
 Each of these claims a `gymact.standing.require_standing` standing string (e.g.
 `"LOCAL_GYM:cube-counter"`). The real thing is the default: if the real collaborator is

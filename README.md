@@ -209,6 +209,10 @@ external collaborator -- no mocks anywhere in `src/` or `tests/`:
 - `terraform_docker_apply.TerraformDockerApplyProvider` -- a real `terraform`/`tofu` binary
   running `apply`/`destroy` against a hand-authored, checked-in local-only Docker config
   (`gyms/fixtures/terraform_docker`), against colima's real local Docker daemon.
+- `vendor_benchmarks.VendorBenchmarkProvider` -- one provider per AutoFDE Lab
+  `docs/papers/gym-lock.ttl`-pinned vendor checkout (52 exact-pinned benchmark repos);
+  materializes only when the real checkout's Git HEAD equals the pinned revision, and
+  re-checks the pin both before and after running a real cwd-bound, no-shell subprocess.
 
 Each claims a `gymact.standing.require_standing` standing (e.g. `"LOCAL_GYM:cube-counter"`):
 if its real collaborator is unavailable, the run fails loudly unless
