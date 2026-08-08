@@ -7,10 +7,11 @@ provider, parameterization, effector, verifier and controller combinations.
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Self
 
 from pydantic import Field, model_validator
 
+from gymact.action_contract import ReversalClass
 from gymact.combinatorial import (
     DecisionPhase,
     Factor,
@@ -42,12 +43,15 @@ class EcologyDimension(FrozenModel):
     object_kind: PossibilityObjectKind
     morphism_kind: MorphismKind = MorphismKind.REALIZE
     phase: DecisionPhase = DecisionPhase.SELECT
+    reversal: ReversalClass = ReversalClass.REVERSIBLE
     alternatives: tuple[EcologyAlternative, ...] = Field(min_length=1)
 
     @model_validator(mode="after")
-    def dimension_is_reversible_space(self):
+    def dimension_is_reversible_space(self) -> Self:
         if self.phase is DecisionPhase.DO:
             raise ValueError("ECOLOGY_DIMENSION_CANNOT_BE_DO")
+        if self.reversal is not ReversalClass.REVERSIBLE:
+            raise ValueError("ECOLOGY_DIMENSION_MUST_BE_PROVEN_REVERSIBLE")
         ids = [item.alternative_id for item in self.alternatives]
         if len(ids) != len(set(ids)):
             raise ValueError("DUPLICATE_ECOLOGY_ALTERNATIVE_ID")
@@ -58,6 +62,7 @@ class IrreversibleOption(FrozenModel):
     option_id: str = Field(min_length=1)
     target: PossibilityObject
     morphism_kind: MorphismKind = MorphismKind.ACTUATE
+    reversal: ReversalClass = ReversalClass.IRREVERSIBLE
     standing: Standing = Standing.CANDIDATE
     evidence_refs: tuple[str, ...] = ()
     requirements: MorphismRequirements = Field(
@@ -66,9 +71,11 @@ class IrreversibleOption(FrozenModel):
     objectives: ObjectiveVector = Field(default_factory=ObjectiveVector)
 
     @model_validator(mode="after")
-    def irreversible_option_requires_grant(self):
+    def irreversible_option_requires_grant(self) -> Self:
         if not self.requirements.execution_grant_required:
             raise ValueError("IRREVERSIBLE_OPTION_REQUIRES_EXECUTION_GRANT")
+        if self.reversal is ReversalClass.REVERSIBLE:
+            raise ValueError("IRREVERSIBLE_OPTION_CANNOT_DECLARE_REVERSIBLE")
         return self
 
 
@@ -133,6 +140,7 @@ def manufacture_ecology(
                         target_id=object_id,
                         kind=dimension.morphism_kind,
                         phase=dimension.phase,
+                        reversal=dimension.reversal,
                         requirements=alternative.requirements,
                         objectives=alternative.objectives,
                         standing=alternative.standing,
@@ -158,6 +166,7 @@ def manufacture_ecology(
                     target_id=option.target.object_id,
                     kind=option.morphism_kind,
                     phase=DecisionPhase.DO,
+                    reversal=option.reversal,
                     requirements=option.requirements,
                     objectives=option.objectives,
                     standing=option.standing,
