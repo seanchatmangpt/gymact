@@ -196,7 +196,9 @@ class CompileOutReport(FrozenModel):
 
 def evaluate_compile_out(cold: IntelligenceRun, hot: IntelligenceRun) -> CompileOutReport:
     authority_preserved = cold.authority_policy_ref == hot.authority_policy_ref
-    verification_preserved = cold.verifier_ref == hot.verifier_ref and cold.verified and hot.verified
+    verification_preserved = (
+        cold.verifier_ref == hot.verifier_ref and cold.verified and hot.verified
+    )
     compiled = (
         cold.model_tokens > 0
         and hot.model_tokens == 0
