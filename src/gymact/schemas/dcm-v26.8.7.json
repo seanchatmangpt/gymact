@@ -1,0 +1,132 @@
+{
+  "spec_version": "26.8.7",
+  "name": "Design for Combinatorial Maximum",
+  "requirements": [
+    {
+      "id": "DCM-001",
+      "law": "PUBLIC_GRAPH_CANONICAL",
+      "requirement": "The public RDF possibility graph is canonical; Python models are lossless runtime projections.",
+      "implementation": ["src/gymact/combinatorial.py", "src/gymact/combinatorial_rdf.py"],
+      "standing": "STRUCTURAL"
+    },
+    {
+      "id": "DCM-002",
+      "law": "PRESERVE_BEFORE_SELECT",
+      "requirement": "Manufacture the bounded lawful possibility ecology before irreversible selection.",
+      "implementation": ["src/gymact/ecology.py", "src/gymact/combinatorial.py"],
+      "standing": "STRUCTURAL"
+    },
+    {
+      "id": "DCM-003",
+      "law": "PROVEN_REVERSIBILITY_ONLY",
+      "requirement": "Only morphisms proven REVERSIBLE may enter canonical reversible closure.",
+      "implementation": ["src/gymact/maximal.py"],
+      "standing": "STRUCTURAL"
+    },
+    {
+      "id": "DCM-004",
+      "law": "FAILED_EDGE_IS_TOPOLOGY",
+      "requirement": "Blocked, refused, stale and unsupported edges remain evidenced without invalidating siblings.",
+      "implementation": ["src/gymact/combinatorial.py", "src/gymact/maximal.py"],
+      "standing": "STRUCTURAL"
+    },
+    {
+      "id": "DCM-005",
+      "law": "EXPLICIT_BOUNDS",
+      "requirement": "All combinatorial bounds and truncation are explicit evidence; silent pruning is forbidden.",
+      "implementation": ["src/gymact/combinatorial.py", "src/gymact/maximal.py"],
+      "standing": "STRUCTURAL"
+    },
+    {
+      "id": "DCM-006",
+      "law": "STRUCTURAL_SCAN_FIRST",
+      "requirement": "Cheap topology extraction precedes semantic ranking and open-ended interpretation.",
+      "implementation": ["src/gymact/structural_scan.py"],
+      "standing": "STRUCTURAL"
+    },
+    {
+      "id": "DCM-007",
+      "law": "APPLICABILITY_BEFORE_RANKING",
+      "requirement": "The empirical index cannot rank a combination absent from the current eligible set.",
+      "implementation": ["src/gymact/possibility_index.py"],
+      "standing": "STRUCTURAL"
+    },
+    {
+      "id": "DCM-008",
+      "law": "PARETO_NOT_SINGLE_BEST",
+      "requirement": "Selection exposes non-dominated alternatives and does not assume a universal best planner/provider.",
+      "implementation": ["src/gymact/combinatorial.py", "src/gymact/possibility_index.py"],
+      "standing": "STRUCTURAL"
+    },
+    {
+      "id": "DCM-009",
+      "law": "POWERLESS_GRAPH",
+      "requirement": "Possibility graph, queries, planners and compiled routes cannot carry live execution authority.",
+      "implementation": ["src/gymact/combinatorial.py", "src/gymact/compileout_graph.py"],
+      "standing": "STRUCTURAL"
+    },
+    {
+      "id": "DCM-010",
+      "law": "DO_IS_FRONTIER",
+      "requirement": "Exploration never traverses DO; DO is an explicit irreversible frontier.",
+      "implementation": ["src/gymact/maximal.py"],
+      "standing": "STRUCTURAL"
+    },
+    {
+      "id": "DCM-011",
+      "law": "EXPLICIT_IRREVERSIBLE_CUT",
+      "requirement": "A content-bound graph/path/morphism cut must exist before canonical BRCE execution.",
+      "implementation": ["src/gymact/cut.py", "src/gymact/dcm_runtime.py"],
+      "standing": "STRUCTURAL"
+    },
+    {
+      "id": "DCM-012",
+      "law": "CUT_BOUND_RECEIPT",
+      "requirement": "Consequential receipts bind graph, path, DO morphism, selection basis and parent receipt lineage.",
+      "implementation": ["src/gymact/models.py", "src/gymact/cut.py", "src/gymact/evidence.py"],
+      "standing": "STRUCTURAL"
+    },
+    {
+      "id": "DCM-013",
+      "law": "DECISION_REPLAY",
+      "requirement": "Replay detects missing or changed graph/path/morphism/selection identities.",
+      "implementation": ["src/gymact/replay.py"],
+      "standing": "STRUCTURAL"
+    },
+    {
+      "id": "DCM-014",
+      "law": "GRAPH_ROUTE_COMPILE_OUT",
+      "requirement": "Cognition compiles into a re-admitted graph route, not cached authority or a privileged candidate.",
+      "implementation": ["src/gymact/compileout_graph.py"],
+      "standing": "STRUCTURAL"
+    },
+    {
+      "id": "DCM-015",
+      "law": "COMPOSITION_LAWS",
+      "requirement": "Path identity, lawful endpoint composition and associativity are mechanically encoded.",
+      "implementation": ["src/gymact/algebra.py"],
+      "standing": "STRUCTURAL"
+    },
+    {
+      "id": "DCM-016",
+      "law": "ACTION_IS_GRAPH_PROJECTION",
+      "requirement": "ActionDefinition projects into the possibility graph and does not remain a competing canonical decision model.",
+      "implementation": ["src/gymact/action_graph.py"],
+      "standing": "STRUCTURAL"
+    },
+    {
+      "id": "DCM-017",
+      "law": "PROTOCOL_CAUSAL_EQUIVALENCE",
+      "requirement": "REST, MCP and event transports expose powerless exploration and cut-bound canonical DO semantics.",
+      "implementation": ["src/gymact/surfaces/fastapi.py", "src/gymact/surfaces/fastmcp.py", "src/gymact/surfaces/faststream.py"],
+      "standing": "STRUCTURAL"
+    },
+    {
+      "id": "DCM-018",
+      "law": "CROWN_REQUIRES_WITNESSED_DCM",
+      "requirement": "DCM implementation cannot receive ALIVE until public graph admission, maximal closure, cut, real consequence, verification, cut-bound receipt and replay execute against an exact real subject.",
+      "implementation": ["tests/test_combinatorial_receipt.py", "tests/test_dcm_decision_court.py"],
+      "standing": "UNKNOWN"
+    }
+  ]
+}
