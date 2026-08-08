@@ -6,7 +6,9 @@ selection basis. It still cannot actuate; it manufactures a receiptable BRCE req
 """
 from __future__ import annotations
 
-from pydantic import Field
+from typing import Any, Self
+
+from pydantic import Field, model_validator
 
 from gymact.action_contract import (
     ActionDefinition,
@@ -14,12 +16,8 @@ from gymact.action_contract import (
     PreparedAction,
     admit_execution,
 )
-from gymact.brce import BrokerRequest
-from gymact.combinatorial import (
-    DecisionPhase,
-    ExplorationResult,
-    PossibilityGraph,
-)
+from gymact.brce import BRCEBroker, BrokerRequest, BrokerRuntime
+from gymact.combinatorial import DecisionPhase, ExplorationResult, PossibilityGraph
 from gymact.evidence import digest
 from gymact.models import FrozenModel
 
@@ -44,8 +42,40 @@ class IrreversibleSelection(FrozenModel):
 
 
 class CombinatorialBrokerRequest(FrozenModel):
+    """A BRCE request whose irreversible selection is content-bound to the request."""
+
     selection: IrreversibleSelection
     broker_request: BrokerRequest
+
+    @model_validator(mode="after")
+    def require_exact_cut_binding(self) -> Self:
+        request = self.broker_request
+        selection = self.selection
+        if not selection.verify_digest():
+            raise ValueError("IRREVERSIBLE_SELECTION_DIGEST_MISMATCH")
+        if selection.action_ref != request.action.semantic_id:
+            raise ValueError("IRREVERSIBLE_SELECTION_ACTION_DRIFT")
+        if selection.capability_ref != request.action.capability_ref:
+            raise ValueError("IRREVERSIBLE_SELECTION_CAPABILITY_DRIFT")
+        if selection.subject_ref != request.prepared.subject.semantic_id:
+            raise ValueError("IRREVERSIBLE_SELECTION_SUBJECT_DRIFT")
+        prepared_digest = digest(request.prepared.model_dump(mode="json"))
+        if selection.prepared_digest != prepared_digest:
+            raise ValueError("IRREVERSIBLE_SELECTION_PREPARED_DRIFT")
+        grant_digest = digest(request.grant.model_dump(mode="json"))
+        if selection.grant_digest != grant_digest:
+            raise ValueError("IRREVERSIBLE_SELECTION_GRANT_DRIFT")
+        return self
+
+
+class CombinatorialBRCEBroker:
+    """Canonical production broker: maximal closure cut is mandatory before DO."""
+
+    def __init__(self, runtime: BrokerRuntime) -> None:
+        self._broker = BRCEBroker(runtime)
+
+    async def execute(self, request: CombinatorialBrokerRequest) -> Any:
+        return await self._broker.execute(request.broker_request)
 
 
 def select_irreversible_cut(
@@ -115,18 +145,6 @@ def manufacture_broker_request(
     expected: dict[str, object] | None = None,
 ) -> CombinatorialBrokerRequest:
     """Manufacture the BRCE request and re-check every identity bound by the cut."""
-    if not selection.verify_digest():
-        raise ValueError("IRREVERSIBLE_SELECTION_DIGEST_MISMATCH")
-    if selection.action_ref != action.semantic_id:
-        raise ValueError("IRREVERSIBLE_SELECTION_ACTION_DRIFT")
-    if selection.capability_ref != action.capability_ref:
-        raise ValueError("IRREVERSIBLE_SELECTION_CAPABILITY_DRIFT")
-    if selection.subject_ref != prepared.subject.semantic_id:
-        raise ValueError("IRREVERSIBLE_SELECTION_SUBJECT_DRIFT")
-    if selection.prepared_digest != digest(prepared.model_dump(mode="json")):
-        raise ValueError("IRREVERSIBLE_SELECTION_PREPARED_DRIFT")
-    if selection.grant_digest != digest(grant.model_dump(mode="json")):
-        raise ValueError("IRREVERSIBLE_SELECTION_GRANT_DRIFT")
     request = BrokerRequest(
         action=action,
         prepared=prepared,
