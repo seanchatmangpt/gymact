@@ -87,15 +87,28 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
         request. ``request`` is deprecated BRCE compatibility. Legacy fields cannot
         mutate the default ProductionGymAct runtime.
         """
-        supplied = sum(
-            value is not None
-            for value in (candidate, court, selected, request)
-        )
-        legacy_supplied = episode_id is not None or capability is not None
-        if supplied + int(legacy_supplied) != 1:
+        structured_modes = [
+            name
+            for name, value in (
+                ("candidate", candidate),
+                ("court", court),
+                ("selected", selected),
+                ("request", request),
+            )
+            if value is not None
+        ]
+        if len(structured_modes) > 1:
             raise ValueError("ACT_REQUIRES_EXACTLY_ONE_MODE")
+        if structured_modes and capability is not None:
+            raise ValueError("STRUCTURED_ACT_CANNOT_MIX_LEGACY_CAPABILITY")
+        if structured_modes and any(
+            value is not None for value in (payload, authority_ref, idempotency_key)
+        ):
+            raise ValueError("STRUCTURED_ACT_CANNOT_MIX_LEGACY_FIELDS")
 
         if candidate is not None:
+            if episode_id is not None:
+                raise ValueError("CONSTRUCT_MODE_DOES_NOT_ACCEPT_EPISODE_ID")
             envelope = normalize_candidate(TransportKind.MCP, candidate)
             return {
                 "mode": "CONSTRUCT",
@@ -104,6 +117,8 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
             }
 
         if court is not None:
+            if episode_id is not None:
+                raise ValueError("MAXIMAL_CLOSURE_MODE_DOES_NOT_ACCEPT_EPISODE_ID")
             court_request = DecisionCourtRequest.model_validate(court)
             result = decision_court.admit_request(court_request)
             return {"mode": "MAXIMAL_CLOSURE", "court": result.model_dump(mode="json")}
@@ -118,6 +133,8 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
 
         if request is not None:
             broker_request = BrokerRequest.model_validate(request)
+            if episode_id is not None and broker_request.prepared.episode_id != episode_id:
+                raise ValueError("EPISODE_ID_PATH_BODY_MISMATCH")
             transition = await compatibility_broker.execute(broker_request)
             return {
                 "mode": "COMPATIBILITY_DO",
