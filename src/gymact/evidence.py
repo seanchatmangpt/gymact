@@ -50,11 +50,7 @@ class ReceiptLedger(Protocol):
 
 
 class MemoryReceiptLedger:
-    """Deterministic in-memory BLAKE3 chain used by the reference runtime.
-
-    Production deployments can inject a durable implementation without changing
-    GymAct semantics. Re-appending the same receipt id is idempotent.
-    """
+    """Deterministic in-memory BLAKE3 chain used by the reference runtime."""
 
     def __init__(self) -> None:
         self._records: list[EvidenceRecord] = []
@@ -120,6 +116,9 @@ def _project_combinatorial_selection(graph: Graph, receipt_ref: URIRef, receipt:
         return
     selection_ref = URIRef(f"urn:gymact:selection:{receipt.selection_digest}")
     graph_ref = URIRef(f"urn:gymact:possibility-graph:{receipt.possibility_graph_digest}")
+    exploration_ref = URIRef(
+        f"urn:gymact:possibility-exploration:{receipt.possibility_exploration_digest}"
+    )
     path_ref = URIRef(f"urn:gymact:possibility-path:{receipt.possibility_path_id}")
     morphism_ref = URIRef(
         f"urn:gymact:possibility-morphism:{digest(receipt.possibility_morphism_id)}"
@@ -128,12 +127,22 @@ def _project_combinatorial_selection(graph: Graph, receipt_ref: URIRef, receipt:
     graph.add((selection_ref, DCTERMS.identifier, Literal(receipt.selection_digest)))
     graph.add((graph_ref, RDF.type, PROV.Entity))
     graph.add((graph_ref, DCTERMS.identifier, Literal(receipt.possibility_graph_digest)))
+    graph.add((exploration_ref, RDF.type, PROV.Entity))
+    graph.add(
+        (
+            exploration_ref,
+            DCTERMS.identifier,
+            Literal(receipt.possibility_exploration_digest),
+        )
+    )
+    graph.add((exploration_ref, PROV.wasDerivedFrom, graph_ref))
     graph.add((path_ref, RDF.type, PROV.Entity))
     graph.add((path_ref, DCTERMS.identifier, Literal(receipt.possibility_path_id)))
     graph.add((morphism_ref, RDF.type, PROV.Entity))
     graph.add((morphism_ref, DCTERMS.identifier, Literal(receipt.possibility_morphism_id)))
     graph.add((receipt_ref, PROV.wasDerivedFrom, selection_ref))
     graph.add((selection_ref, DCTERMS.references, graph_ref))
+    graph.add((selection_ref, DCTERMS.references, exploration_ref))
     graph.add((selection_ref, DCTERMS.references, path_ref))
     graph.add((selection_ref, DCTERMS.references, morphism_ref))
     for basis_ref in receipt.selection_basis_refs:
