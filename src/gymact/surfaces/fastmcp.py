@@ -1,5 +1,4 @@
 """FastMCP surface over GymAct's semantic runtime."""
-
 from __future__ import annotations
 
 import os
@@ -8,9 +7,11 @@ from typing import Any
 
 from fastmcp import FastMCP
 
+from gymact.brce import BRCEBroker, BrokerRequest
 from gymact.models import ActuationIntent, MaterializationIntent
 from gymact.providers import MemoryProvider
 from gymact.runtime import GymAct
+from gymact.transport import TransportKind, normalize_candidate
 
 _PROBE_MAX_CHARS = 4000
 
@@ -26,12 +27,22 @@ def _runtime(runtime: GymAct | None) -> GymAct:
 def create_mcp(runtime: GymAct | None = None) -> FastMCP:
     """Create generic GymAct MCP tools; benchmark identity remains data."""
     service = _runtime(runtime)
+    broker = BRCEBroker(service)
     mcp = FastMCP("GymAct")
 
     @mcp.tool()
     async def discover() -> list[str]:
         """List registered environment providers."""
         return list(service.discover())
+
+    @mcp.tool()
+    async def prepare_candidate(candidate: dict[str, Any]) -> dict[str, Any]:
+        """CONSTRUCT a powerless MCP candidate; the transport cannot grant authority."""
+        envelope = normalize_candidate(TransportKind.MCP, candidate)
+        return {
+            "semantic_key": envelope.semantic_key(),
+            "prepared": envelope.prepared().model_dump(mode="json"),
+        }
 
     @mcp.tool()
     async def create_episode(
@@ -64,6 +75,18 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
         return (await service.observe(episode_id)).model_dump(mode="json")
 
     @mcp.tool()
+    async def execute_admitted(
+        episode_id: str,
+        request: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Production DO through BRCE with explicit ActionDefinition and ExecutionGrant."""
+        broker_request = BrokerRequest.model_validate(request)
+        if broker_request.prepared.episode_id != episode_id:
+            raise ValueError("EPISODE_ID_PATH_BODY_MISMATCH")
+        transition = await broker.execute(broker_request)
+        return transition.model_dump(mode="json")
+
+    @mcp.tool()
     async def act(
         episode_id: str,
         capability: str,
@@ -71,7 +94,7 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
         authority_ref: str | None = None,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
-        """Submit a semantic actuation intent; MCP transport itself grants no authority."""
+        """Compatibility runtime port; production MCP callers use execute_admitted."""
         values: dict[str, Any] = {
             "episode_id": episode_id,
             "capability": capability,
@@ -95,7 +118,9 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
 
     @mcp.tool()
     async def restore(
-        episode_id: str, checkpoint: dict[str, Any], authority_ref: str | None = None
+        episode_id: str,
+        checkpoint: dict[str, Any],
+        authority_ref: str | None = None,
     ) -> dict[str, Any]:
         """Restore checkpoint state under the same authority rules as actuation."""
         return (
@@ -104,14 +129,10 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
 
     @mcp.tool()
     async def probe_repo(subject_path: str) -> dict[str, Any]:
-        """Read-only probe of a real repository directory: README, pyproject/
-        setup.py (whichever exists), and top-level file listing, truncated.
+        """Read-only bounded probe of a repository directory for discovery.
 
-        This is the only new read surface an LLM-driven discovery loop gets --
-        no shell access, no arbitrary code execution granted here. What to do
-        with this information (propose a real command) is the caller's job;
-        actually running it goes through GymAct's own actuate()/authority
-        path like every other consequential operation.
+        This surface grants no shell or arbitrary code execution. Any proposed
+        consequence still traverses GymAct's authority and BRCE boundaries.
         """
         root = Path(subject_path)
         if not root.is_dir():
