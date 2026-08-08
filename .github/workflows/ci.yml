@@ -1,0 +1,163 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Python ${{ matrix.python }} semantic/runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    env:
+      GYMACT_ALLOW_DEGRADED_STANDINGS: "1"
+    steps:
+      - name: Checkout exact subject
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Admit exact head and one-workflow topology
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          count="$(find .github/workflows -maxdepth 1 -type f \( -name '*.yml' -o -name '*.yaml' \) | wc -l | tr -d ' ')"
+          test "$count" -eq 1
+          printf 'subject_sha=%s workflow_count=%s\n' "$EXPECTED_SHA" "$count"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Lock admission
+        run: uv lock --check
+
+      - name: Install core plus real gym collaborators
+        run: uv sync --frozen --no-default-groups --group dev --extra gyms --python ${{ matrix.python }}
+
+      - name: Install real BrowserGym subject and Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv pip install "browsergym-core @ git+https://github.com/ServiceNow/BrowserGym.git@9e779f087de9a65668b6974d11f9ce9816026e96#subdirectory=browsergym/core"
+          uv run playwright install chromium
+
+      - name: Semantic profile admission
+        run: uv run gymact validate-profile
+
+      - name: Refuse mock seams
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RInE 'unittest\.mock|\bMock\b|\bpatch\b|monkeypatch' tests; then
+            echo 'REFUSED:MOCK_ACCEPTANCE_BOUNDARY' >&2
+            exit 1
+          fi
+
+      - name: Runtime and evidence tests
+        run: uv run coverage run -m pytest -v
+
+      - name: Coverage
+        run: uv run coverage report
+
+      - name: Ruff
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run ruff check src tests
+          uv run ruff format --check src tests
+
+  artifact:
+    name: wheel/docs/container consequence
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      GYMACT_ALLOW_DEGRADED_STANDINGS: "1"
+    steps:
+      - name: Checkout exact subject
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+      - name: Install build/docs dependencies
+        run: uv sync --frozen --no-default-groups --group dev --python 3.13
+      - name: Build and independently install wheel
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf dist /tmp/gymact-wheel /tmp/exported-profile /tmp/manufacturing-bundle
+          uv build
+          uvx twine check dist/*
+          python -m venv /tmp/gymact-wheel
+          /tmp/gymact-wheel/bin/pip install -q dist/*.whl
+          /tmp/gymact-wheel/bin/gymact version
+          /tmp/gymact-wheel/bin/gymact validate-profile
+          /tmp/gymact-wheel/bin/gymact contract > /tmp/runtime-contract.json
+          /tmp/gymact-wheel/bin/gymact export-profile /tmp/exported-profile
+          /tmp/gymact-wheel/bin/gymact export-bundle /tmp/manufacturing-bundle
+          test -s /tmp/exported-profile/profile.ttl
+          test -s /tmp/exported-profile/profile.shacl.ttl
+          test -s /tmp/manufacturing-bundle/profile.ttl
+          test -s /tmp/manufacturing-bundle/profile.shacl.ttl
+          test -s /tmp/manufacturing-bundle/runtime-contract.jcs.json
+      - name: Build documentation
+        run: uv run zensical build --clean
+      - name: Build and probe production container
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --target production -t gymact:ci .
+          docker run --rm gymact:ci version
+          docker run --rm gymact:ci contract | grep -q 'contract_digest'
+          cid="$(docker run -d -p 127.0.0.1:8000:8000 gymact:ci)"
+          trap 'docker rm -f "$cid" >/dev/null 2>&1 || true' EXIT
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/health | grep -q 'ALIVE'; then
+              curl -fsS http://127.0.0.1:8000/contract | grep -q 'RFC8785-JCS'
+              curl -fsS http://127.0.0.1:8000/evidence | grep -q 'verified'
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs "$cid"
+          exit 1
+      - name: Emit verification receipt
+        shell: bash
+        env:
+          SUBJECT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/ci
+          cat > artifacts/ci/receipt.json <<JSON
+          {"repository":"${GITHUB_REPOSITORY}","subject_sha":"${SUBJECT_SHA}","workflow":"${GITHUB_WORKFLOW}","run_id":"${GITHUB_RUN_ID}","standing":"ALIVE","workflow_count":1,"boundaries":["python-3.11","python-3.12","python-3.13","semantic-profile","ocel-runtime-tests","wheel-install","docs","container"]}
+          JSON
+          cat artifacts/ci/receipt.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ci-receipt-${{ github.run_id }}
+          path: artifacts/ci/receipt.json
+          if-no-files-found: error
+          retention-days: 14
