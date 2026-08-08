@@ -1,15 +1,17 @@
 """Machine-checkable Crown requirements and GALL checkpoint inventory."""
-
 from __future__ import annotations
 
 import json
 from collections import Counter
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
 RequirementStatus = Literal["SATISFIED", "PARTIAL", "MISSING", "BLOCKED"]
-SCHEMA_PATH = Path(__file__).with_name("schemas") / "crown-v26.8.7.json"
+SCHEMA_DIR = Path(__file__).with_name("schemas")
+SCHEMA_PATH = SCHEMA_DIR / "crown-v26.8.7.json"
+EVIDENCE_PATH = SCHEMA_DIR / "crown-evidence-v26.8.7.json"
 
 
 class RequirementsError(ValueError):
@@ -38,9 +40,47 @@ class CrownSummary:
         }
 
 
-def load_crown_requirements(path: Path | None = None) -> dict[str, Any]:
+def _merge_evidence(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
+    merged = deepcopy(base)
+    if overlay.get("spec_version") not in {None, merged.get("spec_version")}:
+        raise RequirementsError("EVIDENCE_SPEC_VERSION_MISMATCH")
+    statuses = set(merged.get("statuses", ()))
+    for section in ("requirements", "gall_checkpoints"):
+        patches = overlay.get(section, {})
+        if not isinstance(patches, dict):
+            raise RequirementsError(f"INVALID_EVIDENCE_SECTION:{section}")
+        for item_id, patch in patches.items():
+            if item_id not in merged[section]:
+                raise RequirementsError(f"UNKNOWN_EVIDENCE_TARGET:{section}:{item_id}")
+            status = patch.get("status")
+            if status is not None:
+                if status not in statuses:
+                    raise RequirementsError(f"INVALID_EVIDENCE_STATUS:{item_id}")
+                merged[section][item_id]["status"] = status
+            evidence = patch.get("evidence", [])
+            if not isinstance(evidence, list):
+                raise RequirementsError(f"INVALID_EVIDENCE_LIST:{item_id}")
+            current = list(merged[section][item_id].get("evidence", []))
+            merged[section][item_id]["evidence"] = list(dict.fromkeys([*current, *evidence]))
+    merged["evidence_context"] = overlay.get("evidence_context", {})
+    return merged
+
+
+def load_crown_requirements(
+    path: Path | None = None,
+    *,
+    evidence_path: Path | None = None,
+) -> dict[str, Any]:
     target = path or SCHEMA_PATH
     data = json.loads(target.read_text(encoding="utf-8"))
+    if path is None:
+        overlay_target = evidence_path or EVIDENCE_PATH
+        if overlay_target.exists():
+            overlay = json.loads(overlay_target.read_text(encoding="utf-8"))
+            data = _merge_evidence(data, overlay)
+    elif evidence_path is not None:
+        overlay = json.loads(evidence_path.read_text(encoding="utf-8"))
+        data = _merge_evidence(data, overlay)
     validate_crown_requirements(data)
     return data
 
