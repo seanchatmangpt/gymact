@@ -7,6 +7,8 @@ from gymact.kernel import BoundaryBlocked
 from gymact.kernel import GymAct as _KernelGymAct
 from gymact.models import ActuationIntent, ActuationResult, Operation, Receipt, Standing
 
+_PRODUCTION_BRCE_SEAL = object()
+
 
 class GymAct(_KernelGymAct):
     """Reference kernel with RFC8785 failures promoted to typed boundary standing."""
@@ -35,8 +37,8 @@ class ProductionGymAct(GymAct):
 
     ``GymAct`` remains the compatibility/reference kernel for existing integrations and
     conformance tests. Production surfaces should instantiate this class. A direct call
-    to ``act`` is a typed, receipted refusal; ``BRCEBroker`` alone receives the private
-    ``_act_from_brce`` port after an identity-bound ExecutionGrant has been admitted.
+    to ``act`` is a typed, receipted refusal; ``BRCEBroker`` alone receives the sealed
+    private DO port after an identity-bound ExecutionGrant has been admitted.
     """
 
     async def act(self, intent: ActuationIntent) -> ActuationResult:
@@ -66,8 +68,39 @@ class ProductionGymAct(GymAct):
                 receipt=receipt,
             )
 
-    async def _act_from_brce(self, intent: ActuationIntent) -> ActuationResult:
-        """Private DO port consumed only by BRCE after grant admission."""
+    async def _act_from_brce(
+        self,
+        intent: ActuationIntent,
+        *,
+        seal: object,
+    ) -> ActuationResult:
+        """Sealed DO port consumed by BRCE only after execution-grant admission."""
+        if seal is not _PRODUCTION_BRCE_SEAL:
+            state = self._state(intent.episode_id)
+            async with state.lock:
+                before = await self._observe_unlocked(state)
+                receipt = Receipt(
+                    episode_id=intent.episode_id,
+                    operation=Operation.ACT,
+                    standing=Standing.REFUSED,
+                    subject_ref=state.environment.environment_id,
+                    capability_ref=intent.capability,
+                    authority_ref=intent.authority_ref,
+                    idempotency_key=intent.idempotency_key,
+                    pre_state_digest=before.state_digest,
+                    post_state_digest=before.state_digest,
+                    acknowledgement_status="NOT_ATTEMPTED",
+                    world_changed=False,
+                    verified=False,
+                    reason="BRCE_EXECUTION_SEAL_REFUSED",
+                )
+                self._record(receipt)
+                return ActuationResult(
+                    accepted=False,
+                    standing=Standing.REFUSED,
+                    observation=before,
+                    receipt=receipt,
+                )
         return await super().act(intent)
 
 
