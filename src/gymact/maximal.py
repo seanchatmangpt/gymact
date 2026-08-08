@@ -37,6 +37,14 @@ def _within_bounds(path: PossibilityPath, bounds: ExplorationBounds) -> bool:
     return all(limit is None or observed <= limit for observed, limit in checks)
 
 
+def _reversibility_fence(reversal: ReversalClass) -> str:
+    return {
+        ReversalClass.COMPENSATABLE: "COMPENSATION_IS_NOT_REVERSIBILITY",
+        ReversalClass.IRREVERSIBLE: "IRREVERSIBLE_EDGE_REQUIRES_CUT",
+        ReversalClass.UNKNOWN: "REVERSIBILITY_NOT_ADMITTED",
+    }[reversal]
+
+
 def explore_combinatorial_maximum(
     graph: PossibilityGraph,
     *,
@@ -46,13 +54,8 @@ def explore_combinatorial_maximum(
 ) -> ExplorationResult:
     """Compute bounded maximal *proven-reversible* closure and explicit DO frontier.
 
-    Laws:
-    - a failed edge is retained as an evaluation, never deleted from the graph;
-    - only REVERSIBLE non-DO edges are traversed;
-    - COMPENSATABLE is not equivalent to REVERSIBLE and is fenced;
-    - UNKNOWN reversibility is fenced;
-    - DO edges are never traversed and always form the irreversible frontier;
-    - every truncation is explicit evidence.
+    Every considered edge/path receives one final traversal disposition. A failed or
+    fenced edge remains graph topology but cannot enter the reversible closure.
     """
     ctx = context or AdmissionContext()
     limits = bounds or ExplorationBounds()
@@ -75,37 +78,33 @@ def explore_combinatorial_maximum(
             continue
 
         for edge in outgoing:
-            evaluation = evaluate_morphism(edge, ctx)
-            evaluations.append(evaluation)
+            admission = evaluate_morphism(edge, ctx)
 
             if edge.phase is DecisionPhase.DO:
+                evaluations.append(admission)
                 frontier.append(
                     IrreversibleFrontierEdge(
                         path_id=path.path_id,
                         morphism_id=edge.morphism_id,
                         target_id=edge.target_id,
-                        standing=evaluation.standing,
-                        admitted=evaluation.admitted,
-                        reason=evaluation.reason,
+                        standing=admission.standing,
+                        admitted=admission.admitted,
+                        reason=admission.reason,
                     )
                 )
                 continue
 
-            if not evaluation.admitted:
+            if not admission.admitted:
+                evaluations.append(admission)
                 continue
 
             if edge.reversal is not ReversalClass.REVERSIBLE:
-                reason = {
-                    ReversalClass.COMPENSATABLE: "COMPENSATION_IS_NOT_REVERSIBILITY",
-                    ReversalClass.IRREVERSIBLE: "IRREVERSIBLE_EDGE_REQUIRES_CUT",
-                    ReversalClass.UNKNOWN: "REVERSIBILITY_NOT_ADMITTED",
-                }[edge.reversal]
                 evaluations.append(
                     MorphismEvaluation(
                         morphism_id=edge.morphism_id,
                         standing=Standing.BLOCKED,
                         admitted=False,
-                        reason=reason,
+                        reason=_reversibility_fence(edge.reversal),
                     )
                 )
                 continue
@@ -125,6 +124,8 @@ def explore_combinatorial_maximum(
                     )
                 )
                 continue
+
+            evaluations.append(admission)
             if len(emitted) >= limits.max_paths:
                 truncation_reasons.add("MAX_PATHS")
                 stack.clear()
