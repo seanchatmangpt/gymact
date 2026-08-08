@@ -19,7 +19,7 @@ from gymact.action_contract import (
 from gymact.brce import BRCEBroker, BrokerRequest, BrokerRuntime
 from gymact.combinatorial import DecisionPhase, ExplorationResult, PossibilityGraph
 from gymact.evidence import digest
-from gymact.models import FrozenModel
+from gymact.models import FrozenModel, Receipt
 
 
 class IrreversibleSelection(FrozenModel):
@@ -72,10 +72,37 @@ class CombinatorialBRCEBroker:
     """Canonical production broker: maximal closure cut is mandatory before DO."""
 
     def __init__(self, runtime: BrokerRuntime) -> None:
+        self._runtime = runtime
         self._broker = BRCEBroker(runtime)
 
     async def execute(self, request: CombinatorialBrokerRequest) -> Any:
-        return await self._broker.execute(request.broker_request)
+        transition = await self._broker.execute(request.broker_request)
+        source = transition.receipt
+        values = source.model_dump(
+            mode="python",
+            exclude={
+                "receipt_id",
+                "occurred_at",
+                "parent_receipt_ids",
+                "possibility_graph_digest",
+                "possibility_path_id",
+                "possibility_morphism_id",
+                "selection_digest",
+                "selection_basis_refs",
+            },
+        )
+        selection = request.selection
+        receipt = Receipt(
+            **values,
+            possibility_graph_digest=selection.graph_digest,
+            possibility_path_id=selection.path_id,
+            possibility_morphism_id=selection.morphism_id,
+            selection_digest=selection.selection_digest,
+            selection_basis_refs=selection.basis_refs,
+            parent_receipt_ids=(*source.parent_receipt_ids, source.receipt_id),
+        )
+        self._runtime._record(receipt)
+        return transition.model_copy(update={"receipt": receipt})
 
 
 def select_irreversible_cut(
