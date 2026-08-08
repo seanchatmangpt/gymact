@@ -6,6 +6,7 @@ from gymact.action_contract import (
     ActionDefinition,
     ExecutionGrant,
     ExpectedEffect,
+    ReversalClass,
     SubjectRef,
     VerificationKind,
     VerificationStrategy,
@@ -21,13 +22,13 @@ from gymact.combinatorial import (
     PossibilityMorphism,
     PossibilityObject,
     PossibilityObjectKind,
-    explore_maximal_reversible,
 )
 from gymact.cut import (
     CombinatorialBRCEBroker,
     manufacture_broker_request,
     select_irreversible_cut,
 )
+from gymact.maximal import explore_combinatorial_maximum
 from gymact.models import MaterializationIntent, Standing
 from gymact.providers import MemoryProvider
 from gymact.runtime import ProductionGymAct
@@ -50,7 +51,9 @@ async def test_real_consequence_receipt_binds_graph_path_and_irreversible_cut() 
         )
     )
     assert materialized.episode is not None
+    assert materialized.observation is not None
     episode = materialized.episode
+    observation = materialized.observation
 
     effect = ExpectedEffect(predicate="state", parameters={"x": 2})
     action = ActionDefinition(
@@ -65,6 +68,7 @@ async def test_real_consequence_receipt_binds_graph_path_and_irreversible_cut() 
             observer_ref="urn:observer:memory",
             expected={"x": 2},
         ),
+        reversal=ReversalClass.IRREVERSIBLE,
     )
     subject = SubjectRef(
         semantic_id="urn:subject:memory",
@@ -75,7 +79,7 @@ async def test_real_consequence_receipt_binds_graph_path_and_irreversible_cut() 
         episode_id=episode.episode_id,
         subject=subject,
         payload={"key": "x", "value": 2},
-        admission_digest=materialized.observation.state_digest,
+        admission_digest=observation.state_digest,
         idempotency_key="dcm-set-x",
     )
     grant = ExecutionGrant(
@@ -85,7 +89,7 @@ async def test_real_consequence_receipt_binds_graph_path_and_irreversible_cut() 
         capability_ref=CAPABILITY,
         authority_ref=AUTHORITY,
         policy_revision="policy-1",
-        admitted_observation_ref=materialized.observation.state_digest,
+        admitted_observation_ref=observation.state_digest,
         intended_effects=(effect,),
         nonce="dcm-nonce",
     )
@@ -114,6 +118,7 @@ async def test_real_consequence_receipt_binds_graph_path_and_irreversible_cut() 
                 target_id="plan",
                 kind=MorphismKind.PLAN,
                 phase=DecisionPhase.CONSTRUCT,
+                reversal=ReversalClass.REVERSIBLE,
             ),
             PossibilityMorphism(
                 morphism_id="actuate-set-x",
@@ -121,11 +126,12 @@ async def test_real_consequence_receipt_binds_graph_path_and_irreversible_cut() 
                 target_id="verified-effect",
                 kind=MorphismKind.ACTUATE,
                 phase=DecisionPhase.DO,
+                reversal=ReversalClass.IRREVERSIBLE,
                 requirements=MorphismRequirements(execution_grant_required=True),
             ),
         ),
     )
-    exploration = explore_maximal_reversible(
+    exploration = explore_combinatorial_maximum(
         graph,
         start_ids=("o-star",),
         context=AdmissionContext(execution_grant_ref="urn:grant:admitted"),
