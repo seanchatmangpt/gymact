@@ -97,6 +97,7 @@ genuinely real external collaborator (zero mocks anywhere in `src/` or `tests/`)
 | `gyms.gymnasium_env.GymnasiumProvider` | a real, already-installed `gymnasium` package's `Env` (default `CartPole-v1`) -- no vendored agentgym, no subprocess |
 | `gyms.mcp_client_session.McpClientSessionProvider` | a real `fastmcp.Client` session against a real subject `FastMCP` server (defaults to `gymact.surfaces.fastmcp.create_mcp()`), driven only through `list_tools()`/`call_tool()` -- no simulated tool catalog or canned result |
 | `gyms.kubernetes_reconciliation.KubernetesReconciliationProvider` | a real local Kubernetes cluster (`kind`/`k3d`/colima `--kubernetes`) via real `kubectl` subprocess calls -- `verify()` polls real cluster-observed pod phase, not `kubectl apply`'s exit code |
+| `gyms.terraform_plan.TerraformPlanProvider` | a real `terraform`/`tofu` subprocess running `init -backend=false` and `plan` against a real checked-out Terraform configuration directory -- structurally no `apply`/`destroy` path |
 
 Each of these claims a `gymact.standing.require_standing` standing string (e.g.
 `"LOCAL_GYM:cube-counter"`). The real thing is the default: if the real collaborator is

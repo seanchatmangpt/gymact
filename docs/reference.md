@@ -96,6 +96,8 @@
 
 ::: gymact.gyms.kubernetes_reconciliation.KubernetesReconciliationProvider
 
+::: gymact.gyms.terraform_plan.TerraformPlanProvider
+
 ::: gymact.contract.RuntimeContract
 
 ::: gymact.contract.build_contract

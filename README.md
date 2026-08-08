@@ -203,6 +203,9 @@ external collaborator -- no mocks anywhere in `src/` or `tests/`:
 - `kubernetes_reconciliation.KubernetesReconciliationProvider` -- a real local Kubernetes
   cluster (`kind`/`k3d`/colima `--kubernetes`) via real `kubectl` subprocess calls; `verify()`
   polls real cluster-observed pod phase rather than trusting `kubectl apply`'s exit code.
+- `terraform_plan.TerraformPlanProvider` -- a real `terraform`/`tofu` subprocess running
+  `init -backend=false` and `plan` (never `apply`/`destroy`) against a real checked-out
+  Terraform configuration directory.
 
 Each claims a `gymact.standing.require_standing` standing (e.g. `"LOCAL_GYM:cube-counter"`):
 if its real collaborator is unavailable, the run fails loudly unless
