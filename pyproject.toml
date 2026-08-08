@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "gymact"
-version = "26.8.7"
+version = "26.8.8"
 description = "Public-semantic execution profile for bounded benchmark and gym worlds"
 readme = "README.md"
 authors = [{ name = "Sean Chatman" }]
@@ -88,6 +88,15 @@ dev = [
   "twine>=6,<7",
   "zensical>=0.0.51,<1",
 ]
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "26.8.8"
+version_scheme = "pep440"
+version_provider = "pep621"
+update_changelog_on_bump = true
+major_version_zero = false
+tag_format = "v$version"
 
 [tool.coverage.run]
 branch = true

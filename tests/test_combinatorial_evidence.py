@@ -15,6 +15,7 @@ def test_public_prov_graph_contains_selection_graph_path_and_morphism_lineage() 
         operation=Operation.VERIFY,
         standing=Standing.ALIVE,
         possibility_graph_digest="graph-digest",
+        possibility_exploration_digest="exploration-digest",
         possibility_path_id="path-id",
         possibility_morphism_id="do-id",
         selection_digest="selection-digest",

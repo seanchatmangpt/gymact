@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## 26.8.8 - 2026-08-08
 
 ### Added
 
@@ -14,6 +14,10 @@
 - `McpClientSessionProvider` (`gymact.gyms.mcp_client_session`): a real `fastmcp.Client` session against a real subject MCP server (client-of-a-subject, distinct from GymAct's own existing MCP server-side surface).
 - `TerraformPlanProvider` (`gymact.gyms.terraform_plan`): a real `terraform`/`tofu` `init -backend=false` + `plan` provider with exactly one DO capability (`plan`) and structurally no `apply`/`destroy` capability.
 - `TerraformDockerApplyProvider` (`gymact.gyms.terraform_docker_apply`): a real `apply`/`destroy`-capable Terraform provider, safely scoped to a hand-authored, checked-in config targeting only colima's local Docker daemon (`kreuzwerker/docker` provider) -- never a cloud provider.
+- `VendorBenchmarkProvider` (`gymact.gyms.vendor_benchmarks`): exact-pinned-revision admission and safe native-subprocess execution against any of the 52 vendored ForwardBench benchmark checkouts, refusing on revision mismatch or command-escape rather than silently degrading.
+- `InspectEvalsProvider` (`gymact.gyms.inspect_evals`): a real `inspect_ai` `eval_async()` gym.
+- `tests/test_ocel_standing.py`: per-gym standing asserted directly against real OCEL 2.0 state (real schema validation, real `ConformanceChecker` replay, real `solved=True` evidence read off a real `act` event's own attributes) -- never a hardcoded expected value or a summarizing script's packaged verdict. Codified as policy in `.claude/rules/ocel-standing.md`: a gym's pytest suite passing is a claim about `request accepted`, not `objective verified`.
+- `docs/integrations/consumer-setup.md` and `ggen/consumer-bridge-pack-template/`: the integration guide and a copy-and-customize ggen pack for an external system (e.g. `autofde-lab`) registering its own `EnvironmentProvider` and declaring its own capability ontology, verified end-to-end with a real `ggen sync run` against a real `gymact export-profile` export (both the happy-path generation and the SHACL-gate refusal path).
 
 ## 26.8.7 - 2026-08-07
 
