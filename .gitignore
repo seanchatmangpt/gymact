@@ -77,3 +77,7 @@ uv.lock
 
 # Playground
 playground.py
+
+# Claude Code worktree/scheduler scratch state -- never part of a real commit
+.claude/worktrees/
+.claude/scheduled_tasks.lock
