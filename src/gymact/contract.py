@@ -1,11 +1,19 @@
 """Portable semantic/runtime contract for cross-language manufacture."""
-
 from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 
 from gymact.action_contract import ActionDefinition, ExecutionGrant, PreparedAction
+from gymact.brce import BrokerRequest
 from gymact.evidence import digest
+from gymact.experiments import (
+    AntiAgentPoint,
+    CompileOutReport,
+    FaultPlan,
+    IntelligenceRun,
+    SelfPlayReport,
+    TransitionEconomics,
+)
 from gymact.intelligence import CompileOutObservation, SelectionDecision
 from gymact.lab import ActionProjection, ForwardBenchSubject, ProblemSignature
 from gymact.models import (
@@ -15,13 +23,21 @@ from gymact.models import (
     Receipt,
     VerificationResult,
 )
+from gymact.physical import (
+    EdgeControllerArtifact,
+    PhysicalCommand,
+    PhysicalProviderProfile,
+    SafetyEnvelope,
+)
 from gymact.provider_spi import (
     ObservationRequest,
     ProviderExecutionAttempt,
     ProviderPreparation,
     ProviderRollbackResult,
 )
+from gymact.replay import ReplayExpectation, ReplayReport
 from gymact.semantic import ProfileAuthority
+from gymact.transport import CandidateIntentEnvelope
 
 PUBLIC_SEMANTICS = (
     "http://www.w3.org/ns/dx/prof/",
@@ -73,11 +89,13 @@ def build_contract(version: str = "26.8.7") -> RuntimeContract:
         "surfaces": (
             "python",
             "pydantic",
+            "brce",
             "fastapi",
             "openapi",
             "fastmcp",
             "typer",
             "faststream",
+            "http-json",
             "rdf",
             "json-ld",
             "ocel",
@@ -87,6 +105,9 @@ def build_contract(version: str = "26.8.7") -> RuntimeContract:
             "powl-v2",
             "bpmn",
             "a2a",
+            "robotics-profile",
+            "industrial-ot-profile",
+            "edge-controller-profile",
         ),
         "public_semantics": PUBLIC_SEMANTICS,
         "schemas": {
@@ -97,6 +118,8 @@ def build_contract(version: str = "26.8.7") -> RuntimeContract:
             "action_definition": ActionDefinition.model_json_schema(),
             "prepared_action": PreparedAction.model_json_schema(),
             "execution_grant": ExecutionGrant.model_json_schema(),
+            "broker_request": BrokerRequest.model_json_schema(),
+            "candidate_intent_envelope": CandidateIntentEnvelope.model_json_schema(),
             "problem_signature": ProblemSignature.model_json_schema(),
             "action_projection": ActionProjection.model_json_schema(),
             "forwardbench_subject": ForwardBenchSubject.model_json_schema(),
@@ -106,6 +129,18 @@ def build_contract(version: str = "26.8.7") -> RuntimeContract:
             "provider_rollback_result": ProviderRollbackResult.model_json_schema(),
             "selection_decision": SelectionDecision.model_json_schema(),
             "compile_out_observation": CompileOutObservation.model_json_schema(),
+            "replay_expectation": ReplayExpectation.model_json_schema(),
+            "replay_report": ReplayReport.model_json_schema(),
+            "safety_envelope": SafetyEnvelope.model_json_schema(),
+            "physical_command": PhysicalCommand.model_json_schema(),
+            "physical_provider_profile": PhysicalProviderProfile.model_json_schema(),
+            "edge_controller_artifact": EdgeControllerArtifact.model_json_schema(),
+            "fault_plan": FaultPlan.model_json_schema(),
+            "self_play_report": SelfPlayReport.model_json_schema(),
+            "transition_economics": TransitionEconomics.model_json_schema(),
+            "anti_agent_point": AntiAgentPoint.model_json_schema(),
+            "intelligence_run": IntelligenceRun.model_json_schema(),
+            "compile_out_report": CompileOutReport.model_json_schema(),
         },
     }
     return RuntimeContract(**payload, contract_digest=digest(payload))
