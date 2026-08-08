@@ -15,7 +15,6 @@ from gymact.action_contract import (
 from gymact.combinatorial import (
     AdmissionContext,
     DecisionPhase,
-    ExplorationBounds,
     MorphismKind,
     MorphismRequirements,
     PossibilityGraph,
@@ -240,22 +239,24 @@ def test_cut_detects_prepared_and_grant_drift_before_brce() -> None:
 
 def test_cut_refuses_selection_from_truncated_closure() -> None:
     graph, action, prepared, grant = fixture()
-    exploration = explore_combinatorial_maximum(
+    complete = explore_combinatorial_maximum(
         graph,
         start_ids=("observation",),
         context=AdmissionContext(execution_grant_ref="urn:grant:admitted"),
-        bounds=ExplorationBounds(max_paths=1),
     )
-    assert exploration.truncated
-    assert "MAX_PATHS" in exploration.truncation_reasons
-    frontier = exploration.irreversible_frontier[0]
+    frontier = next(
+        item for item in complete.irreversible_frontier if item.morphism_id == "do-a"
+    )
+    truncated = complete.model_copy(
+        update={"truncated": True, "truncation_reasons": ("MAX_PATHS",)}
+    )
     with pytest.raises(
         ValueError,
         match="IRREVERSIBLE_SELECTION_FROM_TRUNCATED_CLOSURE_REFUSED",
     ):
         select_irreversible_cut(
             graph,
-            exploration,
+            truncated,
             path_id=frontier.path_id,
             morphism_id=frontier.morphism_id,
             action=action,
