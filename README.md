@@ -206,6 +206,9 @@ external collaborator -- no mocks anywhere in `src/` or `tests/`:
 - `terraform_plan.TerraformPlanProvider` -- a real `terraform`/`tofu` subprocess running
   `init -backend=false` and `plan` (never `apply`/`destroy`) against a real checked-out
   Terraform configuration directory.
+- `terraform_docker_apply.TerraformDockerApplyProvider` -- a real `terraform`/`tofu` binary
+  running `apply`/`destroy` against a hand-authored, checked-in local-only Docker config
+  (`gyms/fixtures/terraform_docker`), against colima's real local Docker daemon.
 
 Each claims a `gymact.standing.require_standing` standing (e.g. `"LOCAL_GYM:cube-counter"`):
 if its real collaborator is unavailable, the run fails loudly unless
