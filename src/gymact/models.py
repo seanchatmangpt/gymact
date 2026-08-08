@@ -12,19 +12,12 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 def _utc_now_iso() -> str:
-    """Real UTC timestamp, OCEL-2.0-compliant (`ocel:timestamp` requires
-    ISO 8601 date-time). Not a fixed/frozen clock -- every `Receipt` really
-    records when it was minted."""
+    """Return the real UTC timestamp when a receipt is minted."""
     return datetime.now(UTC).isoformat()
 
 
 class Standing(StrEnum):
-    """Evidence-aware standing for a runtime result.
-
-    The positive ladder is UNKNOWN < CANDIDATE < STRUCTURAL < PARTIAL_ALIVE <
-    ALIVE < ADOPTED. The remaining values are orthogonal dispositions and do
-    not imply a position on that ladder.
-    """
+    """Evidence-aware standing for a runtime result."""
 
     UNKNOWN = "UNKNOWN"
     CANDIDATE = "CANDIDATE"
@@ -49,20 +42,7 @@ class Consequence(StrEnum):
 
 
 class Operation(StrEnum):
-    """Operations the v26.8.7 generic runtime actually executes.
-
-    Deliberately 8, not the earlier ontology work's full 12-operation model
-    (which also named `configure`, `reset`, `start`, `score`). A Reduce
-    decision, not an unfinished 12-op ambition: for the current provider set
-    (all three real gym providers -- CUBE counter, its container variant,
-    the ggen-legacy verifier -- are stateless-enough per episode) `configure`
-    /`reset`/`start` add no information beyond what `materialize` already
-    captures, so a separate operation for each would be pure ceremony. And
-    `score` would duplicate `VerificationResult.passed`, which every real
-    full-lifecycle test already treats as the pass/fail signal. Revisit only
-    if a future gym family genuinely needs configuration separate from
-    materialization, or a scalar score distinct from verification.
-    """
+    """Operations the v26.8.7 generic runtime actually executes."""
 
     DISCOVER = "discover"
     MATERIALIZE = "materialize"
@@ -93,11 +73,7 @@ class CanonicalInputModel(FrozenModel):
 
 
 class Capability(FrozenModel):
-    """Python realization of a public ``sosa:Procedure`` capability.
-
-    ``iri`` is semantic identity. ``binding`` is provider-local execution data and
-    deliberately does not define the capability's meaning.
-    """
+    """Python realization of a public ``sosa:Procedure`` capability."""
 
     iri: str
     title: str
@@ -124,7 +100,7 @@ class Observation(FrozenModel):
 
 
 class AuthorityRequest(CanonicalInputModel):
-    """Question submitted to an external authority resolver before consequential DO."""
+    """Question submitted to an authority resolver before consequential DO."""
 
     episode_id: str
     subject_ref: str
@@ -184,7 +160,7 @@ class Score(FrozenModel):
 
 
 class Receipt(FrozenModel):
-    """Bounded causal evidence for one accepted, blocked, refused, or uncertain operation."""
+    """Bounded causal evidence for one runtime disposition."""
 
     receipt_id: str = Field(default_factory=lambda: uuid4().hex)
     occurred_at: str = Field(default_factory=_utc_now_iso)
@@ -208,6 +184,7 @@ class Receipt(FrozenModel):
     verified: bool | None = None
     observation_confidence: str | None = None
     possibility_graph_digest: str | None = None
+    possibility_exploration_digest: str | None = None
     possibility_path_id: str | None = None
     possibility_morphism_id: str | None = None
     selection_digest: str | None = None
@@ -220,6 +197,7 @@ class Receipt(FrozenModel):
     def combinatorial_binding_is_atomic(self) -> Self:
         core = (
             self.possibility_graph_digest,
+            self.possibility_exploration_digest,
             self.possibility_path_id,
             self.possibility_morphism_id,
             self.selection_digest,
