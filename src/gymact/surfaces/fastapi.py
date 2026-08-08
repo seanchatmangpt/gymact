@@ -7,6 +7,8 @@ from fastapi import FastAPI, HTTPException, Response
 
 from gymact.brce import BRCEBroker, BrokerRequest
 from gymact.contract import build_contract
+from gymact.cut import CombinatorialBrokerRequest
+from gymact.dcm_runtime import DCMDecisionCourt, DecisionCourtRequest
 from gymact.models import ActuationIntent, MaterializationIntent, RestoreRequest, VerifyRequest
 from gymact.providers import MemoryProvider
 from gymact.runtime import BoundaryBlocked, GymAct, ProductionGymAct
@@ -26,9 +28,10 @@ def _boundary_error(exc: BoundaryBlocked) -> HTTPException:
 
 
 def create_app(runtime: GymAct | None = None) -> FastAPI:
-    """Create an HTTP/OpenAPI projection; production defaults are BRCE-exclusive."""
+    """Create HTTP/OpenAPI projection with DCM as the canonical production DO path."""
     service = _runtime(runtime)
-    broker = BRCEBroker(service)
+    compatibility_broker = BRCEBroker(service)
+    court = DCMDecisionCourt()
     contract = build_contract()
     app = FastAPI(title="GymAct", version="26.8.7")
 
@@ -76,6 +79,14 @@ def create_app(runtime: GymAct | None = None) -> FastAPI:
             "prepared": envelope.prepared().model_dump(mode="json"),
         }
 
+    @app.post("/possibilities/explore")
+    async def explore_possibilities(request: DecisionCourtRequest) -> dict[str, object]:
+        """Admit RDF authority and return maximal proven-reversible closure plus DO frontier."""
+        try:
+            return court.admit_request(request).model_dump(mode="json")
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
     @app.post("/episodes")
     async def materialize(intent: MaterializationIntent) -> dict[str, object]:
         return (await service.materialize(intent)).model_dump(mode="json")
@@ -97,13 +108,29 @@ def create_app(runtime: GymAct | None = None) -> FastAPI:
         except BoundaryBlocked as exc:
             raise _boundary_error(exc) from exc
 
-    @app.post("/episodes/{episode_id}/actions/admitted")
+    @app.post("/episodes/{episode_id}/actions/selected")
+    async def act_selected(
+        episode_id: str,
+        request: CombinatorialBrokerRequest,
+    ) -> dict[str, object]:
+        """Canonical DO: execute only a cut bound to maximal possibility closure."""
+        if request.broker_request.prepared.episode_id != episode_id:
+            raise HTTPException(status_code=409, detail="episode_id path/body mismatch")
+        try:
+            transition = await court.execute(service, request)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except BoundaryBlocked as exc:
+            raise _boundary_error(exc) from exc
+        return transition.model_dump(mode="json")
+
+    @app.post("/episodes/{episode_id}/actions/admitted", deprecated=True)
     async def act_admitted(episode_id: str, request: BrokerRequest) -> dict[str, object]:
-        """Production DO: require PreparedAction + ExecutionGrant and verify consequence."""
+        """Compatibility BRCE path; new production clients use /actions/selected."""
         if request.prepared.episode_id != episode_id:
             raise HTTPException(status_code=409, detail="episode_id path/body mismatch")
         try:
-            transition = await broker.execute(request)
+            transition = await compatibility_broker.execute(request)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except BoundaryBlocked as exc:
@@ -112,7 +139,7 @@ def create_app(runtime: GymAct | None = None) -> FastAPI:
 
     @app.post("/episodes/{episode_id}/actions", deprecated=True)
     async def act(episode_id: str, intent: ActuationIntent) -> dict[str, object]:
-        """Compatibility port; ProductionGymAct returns a receipted BRCE refusal."""
+        """Legacy raw port; ProductionGymAct returns a receipted refusal."""
         if intent.episode_id != episode_id:
             raise HTTPException(status_code=409, detail="episode_id path/body mismatch")
         try:
@@ -143,11 +170,15 @@ def create_app(runtime: GymAct | None = None) -> FastAPI:
 
     @app.post("/episodes/{episode_id}/restore")
     async def restore(
-        episode_id: str, request: RestoreRequest, authority_ref: str | None = None
+        episode_id: str,
+        request: RestoreRequest,
+        authority_ref: str | None = None,
     ) -> dict[str, object]:
         try:
             result = await service.restore(
-                episode_id, request.checkpoint, authority_ref=authority_ref
+                episode_id,
+                request.checkpoint,
+                authority_ref=authority_ref,
             )
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
