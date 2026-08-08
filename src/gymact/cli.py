@@ -23,6 +23,8 @@ from gymact.action_contract import (
 from gymact.authority import AllowListAuthorityResolver
 from gymact.brce import BRCEBroker, BrokerRequest
 from gymact.contract import build_contract
+from gymact.dcm_requirements import dcm_requirements_summary, load_dcm_requirements
+from gymact.dcm_runtime import DCMDecisionCourt, DecisionCourtRequest
 from gymact.errc import errc_summary, load_errc
 from gymact.experiments import AntiAgentPoint, anti_agent_benchmark
 from gymact.manufacture import export_manufacturing_bundle
@@ -57,6 +59,22 @@ def _echo(value: object) -> None:
     typer.echo(json.dumps(value, sort_keys=True, default=str))
 
 
+def _load_authority_refs(path: Path | None) -> set[str]:
+    """Load an operator-controlled authority source, never authority from the request."""
+    if path is None:
+        return set()
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(value, list):
+        refs = value
+    elif isinstance(value, dict):
+        refs = value.get("authority_refs", [])
+    else:
+        raise typer.BadParameter("authority file must be a list or object")
+    if not isinstance(refs, list) or not all(isinstance(item, str) and item for item in refs):
+        raise typer.BadParameter("authority_refs must be non-empty strings")
+    return set(refs)
+
+
 def _runtime(provider_name: str, authority_refs: set[str] | None = None) -> ProductionGymAct:
     refs = authority_refs or set()
     resolver = AllowListAuthorityResolver(refs) if refs else None
@@ -65,14 +83,14 @@ def _runtime(provider_name: str, authority_refs: set[str] | None = None) -> Prod
     return runtime
 
 
-async def _materialize_request(data: dict[str, Any]) -> tuple[ProductionGymAct, object]:
+async def _materialize_request(
+    data: dict[str, Any],
+    *,
+    authority_refs: set[str] | None = None,
+) -> tuple[ProductionGymAct, object]:
     provider_name = str(data.get("provider", "memory"))
     authority_ref = data.get("materialization_authority_ref")
-    refs = {str(authority_ref)} if authority_ref else set()
-    grant_data = data.get("grant")
-    if isinstance(grant_data, dict) and grant_data.get("authority_ref"):
-        refs.add(str(grant_data["authority_ref"]))
-    runtime = _runtime(provider_name, refs)
+    runtime = _runtime(provider_name, authority_refs)
     result = await runtime.materialize(
         MaterializationIntent(
             provider=provider_name,
@@ -103,9 +121,21 @@ def crown_status() -> None:
     _echo(crown_summary().as_dict())
 
 
+@app.command("dcm-status")
+def dcm_status() -> None:
+    """Print first-principles Design for Combinatorial Maximum standing."""
+    _echo(dcm_requirements_summary())
+
+
+@app.command("dcm-requirements")
+def dcm_requirements() -> None:
+    """Print the DCM-001..DCM-018 architectural law inventory."""
+    _echo(load_dcm_requirements())
+
+
 @app.command("errc-status")
 def errc_status() -> None:
-    """Print the machine-checkable 80/20 ERRC innovation closure."""
+    """Print the machine-checkable 80/20 ERRC compatibility ledger."""
     _echo(
         {
             "summary": errc_summary().as_dict(),
@@ -165,13 +195,112 @@ def prepare(
     )
 
 
+@app.command("explore")
+def explore(request: Path) -> None:
+    """Admit public RDF authority and compute maximal proven-reversible closure."""
+    court_request = DecisionCourtRequest.model_validate(_read_json(request))
+    _echo(DCMDecisionCourt().admit_request(court_request))
+
+
 @app.command("execute")
-def execute(request: Path) -> None:
-    """Execute one admitted action through the BRCE production DO facade."""
+def execute(
+    request: Path,
+    authority_file: Path | None = typer.Option(
+        None,
+        help="Operator-controlled JSON authority source; request data cannot grant authority",
+    ),
+) -> None:
+    """Execute only after maximal DCM closure, explicit cut and fresh subject observation."""
     data = _read_json(request)
+    authority_refs = _load_authority_refs(authority_file)
 
     async def run() -> dict[str, Any]:
-        runtime, materialized = await _materialize_request(data)
+        runtime, materialized = await _materialize_request(
+            data,
+            authority_refs=authority_refs,
+        )
+        materialization = materialized.model_dump(mode="json")
+        if materialized.episode is None or materialized.observation is None:
+            return {"materialization": materialization}
+
+        action = ActionDefinition.model_validate(data["action"])
+        subject = SubjectRef.model_validate(data["subject"])
+        grant = ExecutionGrant.model_validate(data["grant"])
+        current_observation = materialized.observation
+        episode = materialized.episode
+
+        if subject.provider_ref != episode.environment_id:
+            return {
+                "materialization": materialization,
+                "standing": "REFUSED",
+                "reason": "SUBJECT_PROVIDER_IDENTITY_MISMATCH",
+            }
+        if grant.admitted_observation_ref != current_observation.state_digest:
+            return {
+                "materialization": materialization,
+                "standing": "STALE",
+                "reason": "ADMITTED_OBSERVATION_DRIFT",
+                "current_observation_digest": current_observation.state_digest,
+            }
+
+        prepared = construct_prepared_action(
+            action,
+            episode_id=episode.episode_id,
+            subject=subject,
+            payload=data.get("payload", {}),
+            admission_digest=current_observation.state_digest,
+            idempotency_key=str(data.get("idempotency_key", "cli-dcm-execute")),
+        )
+        court = DCMDecisionCourt()
+        court_request = DecisionCourtRequest.model_validate(data["court"])
+        court_record = court.admit_request(court_request)
+        selection_data = data["selection"]
+        selection = court.select(
+            court_request.graph,
+            court_record,
+            path_id=str(selection_data["path_id"]),
+            morphism_id=str(selection_data["morphism_id"]),
+            action=action,
+            prepared=prepared,
+            grant=grant,
+            selector_ref=str(selection_data["selector_ref"]),
+            basis_refs=tuple(selection_data.get("basis_refs", ())),
+            current_revision=data.get("current_revision"),
+        )
+        broker_request = court.manufacture_request(
+            selection,
+            action=action,
+            prepared=prepared,
+            grant=grant,
+            current_revision=data.get("current_revision"),
+            expected=data.get("expected", {}),
+        )
+        transition = await court.execute(runtime, broker_request)
+        return {
+            "materialization": materialization,
+            "court": court_record.model_dump(mode="json"),
+            "selection": selection.model_dump(mode="json"),
+            "transition": transition.model_dump(mode="json"),
+            "evidence_verified": runtime.verify_evidence_chain(),
+        }
+
+    _echo(anyio.run(run))
+
+
+@app.command("execute-admitted", hidden=True)
+def execute_admitted(
+    request: Path,
+    authority_file: Path | None = typer.Option(None),
+) -> None:
+    """Compatibility BRCE path without a DCM cut; hidden from normal CLI discovery."""
+    data = _read_json(request)
+    authority_refs = _load_authority_refs(authority_file)
+
+    async def run() -> dict[str, Any]:
+        runtime, materialized = await _materialize_request(
+            data,
+            authority_refs=authority_refs,
+        )
         payload = materialized.model_dump(mode="json")
         if materialized.episode is None:
             return {"materialization": payload}
@@ -184,7 +313,7 @@ def execute(request: Path) -> None:
             subject=subject,
             payload=data.get("payload", {}),
             admission_digest=str(data["admission_digest"]),
-            idempotency_key=str(data.get("idempotency_key", "cli-execute")),
+            idempotency_key=str(data.get("idempotency_key", "cli-execute-admitted")),
         )
         transition = await BRCEBroker(runtime).execute(
             BrokerRequest(
@@ -254,9 +383,14 @@ def replay(
     capability_ref: str | None = None,
     policy_revision: str | None = None,
     principal: str | None = None,
+    possibility_graph_digest: str | None = None,
+    possibility_exploration_digest: str | None = None,
+    possibility_path_id: str | None = None,
+    possibility_morphism_id: str | None = None,
+    selection_digest: str | None = None,
     allow_live_reexecution: bool = False,
 ) -> None:
-    """Replay evidence/verifier identity; live re-execution is refused by default."""
+    """Replay effect and DCM decision identity; live re-execution is refused by default."""
     try:
         replay_mode = ReplayMode(mode)
     except ValueError as exc:
@@ -266,6 +400,11 @@ def replay(
         capability_ref=capability_ref,
         policy_revision=policy_revision,
         principal=principal,
+        possibility_graph_digest=possibility_graph_digest,
+        possibility_exploration_digest=possibility_exploration_digest,
+        possibility_path_id=possibility_path_id,
+        possibility_morphism_id=possibility_morphism_id,
+        selection_digest=selection_digest,
     )
     with SQLiteReceiptLedger(ledger) as receipt_ledger:
         report = replay_ledger(
@@ -293,6 +432,7 @@ def doctor() -> None:
         "git": shutil.which("git") is not None,
         "modules": {name: importlib.util.find_spec(name) is not None for name in modules},
         "providers": builtin_provider_names(),
+        "dcm": dcm_requirements_summary().model_dump(mode="json"),
         "errc": errc_summary().as_dict(),
         "crown": crown_summary().as_dict(),
     }
@@ -338,7 +478,7 @@ def export_bundle(directory: Path) -> None:
 
 @app.command()
 def demo(authority: bool = typer.Option(False, "--authority")) -> None:
-    """Compatibility/reference-kernel example; production callers use ``execute``."""
+    """Compatibility/reference-kernel example; it does not establish production standing."""
 
     async def run() -> dict[str, object]:
         authority_ref = "urn:gymact:authority:demo"
@@ -363,7 +503,8 @@ def demo(authority: bool = typer.Option(False, "--authority")) -> None:
         )
         actuation = await runtime.act(intent)
         verification = await runtime.verify(
-            materialized.episode.episode_id, {"healthy": authority}
+            materialized.episode.episode_id,
+            {"healthy": authority},
         )
         return {
             "materialization": materialized.model_dump(mode="json"),
