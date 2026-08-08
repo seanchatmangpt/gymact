@@ -227,9 +227,9 @@ class TerraformPlanEnvironment:
         if expected:
             passed = all(observed.get(key) == value for key, value in expected.items())
         else:
-            init_ok = observed.get("init_attempted") is True and observed.get(
-                "init_returncode"
-            ) == 0
+            init_ok = (
+                observed.get("init_attempted") is True and observed.get("init_returncode") == 0
+            )
             plan_ran = (
                 observed.get("plan_attempted") is True
                 and observed.get("plan_timed_out") is False
@@ -274,7 +274,9 @@ class TerraformPlanProvider:
         if not isinstance(working_dir, str) or not working_dir:
             raise TypeError("config.working_dir must be a non-empty string")
         if not Path(working_dir).is_dir():
-            raise ValueError(f"config.working_dir does not exist or is not a directory: {working_dir}")
+            raise ValueError(
+                f"config.working_dir does not exist or is not a directory: {working_dir}"
+            )
 
         preferred_binary = config.get("binary")
         if preferred_binary is not None and not isinstance(preferred_binary, str):

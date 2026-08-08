@@ -23,6 +23,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+import pytest
+
 from gymact.gyms.terraform_plan import resolve_binary
 
 _TERRAGOAT_DIR = Path.home() / "autofde-lab" / "vendor" / "gyms" / "terragoat"
@@ -51,25 +53,39 @@ def _terraform_binary_available() -> bool:
     return resolve_binary() is not None
 
 
-def _terragoat_usable() -> tuple[bool, str]:
+def _terragoat_checkout_present() -> tuple[bool, str]:
+    """Environment-fixable gap: no clone, or binary missing. Gated through
+    `require_standing()`'s opt-in mechanism -- the caller can un-degrade by
+    fixing their environment (clone the submodule, install terraform/tofu)."""
+    if not _TERRAGOAT_TARGET_DIR.is_dir() or not any(_TERRAGOAT_TARGET_DIR.glob("*.tf")):
+        return False, f"{_TERRAGOAT_TARGET_DIR} does not exist or has no .tf files"
+    if resolve_binary() is None:
+        return False, "neither 'terraform' nor 'tofu' is on PATH"
+    return True, "ok"
+
+
+def _terragoat_parseable() -> tuple[bool, str]:
     """Real, not assumed: the repo being cloned is not sufficient evidence
     it's actually parseable by the installed terraform/tofu binary.
 
-    Found live this session: terragoat's `.tf` files use pre-0.12 legacy
-    quoted type constraints (`type = "string"`), which both the installed
-    `terraform` (v1.14.6) and `tofu` (v1.10.6) reject at parse time, before
-    even reaching provider download. A previous version of this check only
-    tested `.rglob("*.tf")` existence -- accurate before the clone, silently
-    wrong after it (a real, checked-out, real-.tf-containing directory that
-    still cannot actually be `terraform init`-ed). Run the real init for
-    real, bounded, and report the real reason if it fails, rather than
-    trusting file presence as a proxy for usability.
+    A prior checkout of terragoat's `terraform/aws` used pre-0.12 legacy
+    quoted type constraints (`type = "string"`), which no currently
+    installable terraform/tofu version accepts -- a genuinely structural,
+    non-environment-fixable incompatibility for that path (no local fix
+    changes it; patching the vendored files would corrupt the pinned
+    checkout). This test targets `terraform/alicloud` instead, which has no
+    such legacy syntax and no remote backend block, and is confirmed real
+    `init`-able below. If a future re-pin of the vendored checkout
+    regresses `terraform/alicloud` to a similarly unparseable state, this
+    check reports the real reason and this test is skipped unconditionally
+    (never gated behind the env var) since that would again be a structural
+    incompatibility, not a transient one.
     """
-    if not _TERRAGOAT_TARGET_DIR.is_dir() or not any(_TERRAGOAT_TARGET_DIR.glob("*.tf")):
-        return False, f"{_TERRAGOAT_TARGET_DIR} does not exist or has no .tf files"
+    present, reason = _terragoat_checkout_present()
+    if not present:
+        return False, reason
     binary = resolve_binary()
-    if binary is None:
-        return False, "neither 'terraform' nor 'tofu' is on PATH"
+    assert binary is not None  # guaranteed by _terragoat_checkout_present
     try:
         completed = subprocess.run(
             [binary, "init", "-backend=false", "-input=false"],
@@ -90,33 +106,33 @@ def _terragoat_usable() -> tuple[bool, str]:
     return True, "ok"
 
 
-_USABLE, _USABLE_REASON = _terragoat_usable()
+from gymact.standing import require_standing  # noqa: E402
 
-if not _USABLE:
-    # NOT gated through require_standing()'s opt-in mechanism: that
-    # mechanism exists for transient, environment-fixable gaps ("start
-    # colima," "install this extra") -- the caller can un-degrade by fixing
-    # their environment. Confirmed this session terragoat's own `.tf` files
-    # use pre-0.12 legacy HCL syntax that no currently-installable
-    # terraform/tofu version accepts; no environment fix changes that, and
-    # patching terragoat's vendored files would corrupt the pinned checkout
-    # rather than fix a real gap. Per user direction, terragoat is removed
-    # from GymAct actuation consideration -- see
-    # docs/papers/smoke-lock.ttl's `vendor-terragoat` UNSUPPORTED entry in
-    # autofde-lab. This is a real, named, visible skip (never silent) --
-    # just unconditional rather than requiring every ordinary test run to
-    # explicitly opt into tolerating a permanent, structural incompatibility.
-    import pytest
+_CHECKOUT_PRESENT, _CHECKOUT_REASON = _terragoat_checkout_present()
+require_standing(
+    "LOCAL_GYM:terraform-plan",
+    available=_CHECKOUT_PRESENT,
+    reason=f"real, environment-fixable gap: {_CHECKOUT_REASON} "
+    "(clone ~/autofde-lab's terragoat submodule; install terraform or tofu)",
+)
 
+_PARSEABLE, _PARSEABLE_REASON = _terragoat_parseable()
+if not _PARSEABLE:
+    # NOT gated through require_standing()'s opt-in mechanism: unlike a
+    # missing checkout/binary, a real HCL parse failure against the pinned
+    # terragoat commit is not fixable by the local environment -- see
+    # `_terragoat_parseable`'s docstring. This is a real, named, visible
+    # skip (never silent), just unconditional rather than requiring every
+    # ordinary run to opt into tolerating a permanent incompatibility.
     pytest.skip(
-        f"terragoat structurally excluded from GymAct consideration "
-        f"(not a transient gap): {_USABLE_REASON}",
+        f"terragoat/alicloud structurally unparseable by the installed "
+        f"terraform/tofu (not a transient gap): {_PARSEABLE_REASON}",
         allow_module_level=True,
     )
 
 from gymact import GymAct, MaterializationIntent  # noqa: E402
 from gymact.gyms.terraform_plan import TerraformPlanProvider  # noqa: E402
-from gymact.models import ActuationIntent, Operation, Standing  # noqa: E402
+from gymact.models import ActuationIntent, Operation  # noqa: E402
 from gymact.ocel import receipts_to_ocel, validate_ocel_log, write_ocel_log  # noqa: E402
 from gymact.process import ConformanceChecker  # noqa: E402
 
@@ -244,3 +260,152 @@ async def test_terraform_plan_episode_replays_conformant_and_produces_a_valid_oc
         assert written_log == log
         assert len(digest) == 64  # real sha256 hex digest
         validate_ocel_log(written_log)  # re-validate the exact persisted log
+
+
+async def test_materialize_rejects_missing_or_wrong_typed_config() -> None:
+    """Real validation errors from `TerraformPlanProvider.materialize`, no
+    mocking involved -- each case is a genuinely malformed config dict."""
+    provider = TerraformPlanProvider()
+
+    with pytest.raises(TypeError, match="working_dir"):
+        await provider.materialize(scenario=None, config={})
+
+    with pytest.raises(ValueError, match="does not exist"):
+        await provider.materialize(
+            scenario=None, config={"working_dir": "/definitely/not/a/real/path/xyz"}
+        )
+
+    with pytest.raises(TypeError, match="binary"):
+        await provider.materialize(
+            scenario=None,
+            config={"working_dir": str(_TERRAGOAT_TARGET_DIR), "binary": 12345},
+        )
+
+    with pytest.raises(TypeError, match="init_timeout_seconds"):
+        await provider.materialize(
+            scenario=None,
+            config={
+                "working_dir": str(_TERRAGOAT_TARGET_DIR),
+                "init_timeout_seconds": "not-a-number",
+            },
+        )
+
+    with pytest.raises(TypeError, match="requires_authority"):
+        await provider.materialize(
+            scenario=None,
+            config={"working_dir": str(_TERRAGOAT_TARGET_DIR), "requires_authority": "yes"},
+        )
+
+
+async def test_actuate_rejects_an_unsupported_binding() -> None:
+    """Structural proof (real call, real exception): there is no dispatch
+    branch for anything other than `plan`, in particular not `apply`."""
+    from gymact.models import Capability, Consequence
+
+    gym = GymAct()
+    gym.register_provider(TerraformPlanProvider())
+    m = await gym.materialize(
+        MaterializationIntent(
+            provider="terraform-plan", config={"working_dir": str(_TERRAGOAT_TARGET_DIR)}
+        )
+    )
+    episode_id = m.episode.episode_id
+    env = gym._episodes[episode_id].environment
+
+    bogus_apply = Capability(
+        iri="urn:gymact:terraform-plan:capability:apply",
+        title="not a real capability -- structurally rejected",
+        consequence=Consequence.DO,
+        binding="apply",
+    )
+    with pytest.raises(ValueError, match="unsupported terraform-plan binding"):
+        await env.actuate(bogus_apply, {})
+
+    await gym.teardown(episode_id)
+
+
+async def test_environment_checkpoint_and_restore_round_trip_real_state() -> None:
+    gym = GymAct()
+    gym.register_provider(TerraformPlanProvider())
+    m = await gym.materialize(
+        MaterializationIntent(
+            provider="terraform-plan", config={"working_dir": str(_TERRAGOAT_TARGET_DIR)}
+        )
+    )
+    episode_id = m.episode.episode_id
+    env = gym._episodes[episode_id].environment
+
+    checkpoint = await env.checkpoint()
+    assert checkpoint["init_attempted"] is True
+
+    await env.actuate(env.capabilities()[0], {})
+    observed_after_plan = await env.observe()
+    assert observed_after_plan["plan_attempted"] is True
+
+    await env.restore(checkpoint)
+    restored = await env.observe()
+    assert restored["plan_attempted"] is False
+
+    await gym.teardown(episode_id)
+
+
+async def test_resolve_binary_prefers_explicit_argument_and_falls_back_to_path() -> None:
+    # A real, genuinely nonexistent preferred binary must fall through to a
+    # real PATH lookup rather than being returned as-is.
+    fallback = resolve_binary("definitely-not-a-real-binary-xyz")
+    assert fallback in {"terraform", "tofu"} or fallback is None or "/" in (fallback or "")
+
+    real_binary = resolve_binary()
+    assert real_binary is not None  # guaranteed by require_standing gate above
+    # A real, installed binary passed explicitly as `preferred` is returned
+    # directly (first candidate tried).
+    preferred_name = Path(real_binary).name
+    assert resolve_binary(preferred_name) is not None
+
+
+async def test_real_terraform_plan_timeout_is_captured_not_swallowed() -> None:
+    """A real, unrealistically short timeout against a real `terraform plan`
+    invocation reliably trips `subprocess.TimeoutExpired` -- exercises the
+    real timeout-handling branch without mocking `subprocess`."""
+    gym = GymAct()
+    gym.register_provider(TerraformPlanProvider())
+    m = await gym.materialize(
+        MaterializationIntent(
+            provider="terraform-plan",
+            config={
+                "working_dir": str(_TERRAGOAT_TARGET_DIR),
+                "plan_timeout_seconds": 0.001,
+            },
+        )
+    )
+    episode_id = m.episode.episode_id
+
+    result = await gym.act(ActuationIntent(episode_id=episode_id, capability=PLAN_CAPABILITY))
+    after = result.effect["after"]
+    assert after["plan_attempted"] is True
+    assert after["plan_timed_out"] is True
+    assert after["plan_returncode"] is None
+
+    await gym.teardown(episode_id)
+
+
+async def test_real_init_against_a_nonexistent_binary_path_surfaces_an_oserror() -> None:
+    """A real, nonexistent binary path makes `subprocess.run` raise a real
+    `FileNotFoundError` (an `OSError` subclass) -- exercises the real OSError
+    branch in `materialize_real_init`/`actuate`, no mocking of `subprocess`."""
+    from gymact.gyms.terraform_plan import TerraformPlanEnvironment
+
+    env = TerraformPlanEnvironment(
+        binary="/definitely/not/a/real/binary/xyz",
+        working_dir=str(_TERRAGOAT_TARGET_DIR),
+        init_timeout_seconds=30.0,
+        plan_timeout_seconds=30.0,
+    )
+    state = await env.materialize_real_init()
+    assert state["init_attempted"] is True
+    assert state["init_returncode"] is None
+    assert state["init_stderr"] != ""
+
+    result = await env.actuate(env.capabilities()[0], {})
+    assert result["after"]["plan_attempted"] is True
+    assert result["after"]["plan_returncode"] is None
