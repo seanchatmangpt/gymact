@@ -21,6 +21,10 @@ class ReplayExpectation(FrozenModel):
     capability_ref: str | None = None
     policy_revision: str | None = None
     principal: str | None = None
+    possibility_graph_digest: str | None = None
+    possibility_path_id: str | None = None
+    possibility_morphism_id: str | None = None
+    selection_digest: str | None = None
 
 
 class ReplayReport(FrozenModel):
@@ -39,7 +43,17 @@ class LedgerLike(Protocol):
 
 def _identity_mismatches(receipt: Any, expected: ReplayExpectation) -> list[str]:
     mismatches: list[str] = []
-    for field in ("subject_ref", "capability_ref", "policy_revision", "principal"):
+    fields = (
+        "subject_ref",
+        "capability_ref",
+        "policy_revision",
+        "principal",
+        "possibility_graph_digest",
+        "possibility_path_id",
+        "possibility_morphism_id",
+        "selection_digest",
+    )
+    for field in fields:
         wanted = getattr(expected, field)
         if wanted is not None and getattr(receipt, field, None) not in {None, wanted}:
             mismatches.append(f"{field.upper()}_DRIFT")
