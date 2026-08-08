@@ -106,7 +106,12 @@ def crown_status() -> None:
 @app.command("errc-status")
 def errc_status() -> None:
     """Print the machine-checkable 80/20 ERRC innovation closure."""
-    _echo({"summary": errc_summary().as_dict(), "items": [item.model_dump(mode="json") for item in load_errc()]})
+    _echo(
+        {
+            "summary": errc_summary().as_dict(),
+            "items": [item.model_dump(mode="json") for item in load_errc()],
+        }
+    )
 
 
 @app.command("requirements")
