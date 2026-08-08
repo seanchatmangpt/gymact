@@ -1,9 +1,38 @@
 """GymAct public API."""
 
+from gymact.action_contract import (
+    ActionDefinition,
+    AdmissionResult,
+    AuthorityRequirement,
+    ExecutionGrant,
+    ExpectedEffect,
+    IdempotencyClass,
+    ObservationConfidence,
+    PreparedAction,
+    ProviderHealth,
+    ProviderMetadata,
+    ReconciliationDisposition,
+    ReconciliationResult,
+    RefusalCode,
+    ReversalClass,
+    SubjectRef,
+    VerificationKind,
+    VerificationStrategy,
+    admit_execution,
+    construct_prepared_action,
+)
 from gymact.authority import AllowListAuthorityResolver, AuthorityResolver, DenyAuthorityResolver
 from gymact.contract import RuntimeContract, build_contract
+from gymact.crown_runtime import (
+    ReconciledTransition,
+    VerifiedTransition,
+    execute_admitted,
+    execute_verified,
+    reconcile_uncertain,
+)
 from gymact.evidence import EvidenceRecord, MemoryReceiptLedger, ReceiptLedger, evidence_graph
 from gymact.limits import RuntimeLimits
+from gymact.local_providers import FilesystemProvider, GitProvider, SQLiteProvider
 from gymact.manufacture import export_manufacturing_bundle
 from gymact.models import (
     ActuationIntent,
@@ -29,52 +58,83 @@ from gymact.plugins import (
     load_provider_plugin,
 )
 from gymact.providers import Environment, EnvironmentProvider, MemoryProvider
+from gymact.requirements import CrownSummary, crown_summary, load_crown_requirements
 from gymact.runtime import BoundaryBlocked, GymAct
 from gymact.scoring import BinaryVerificationScorer, Scorer, score_verification
 from gymact.semantic import ProfileAuthority, SemanticValidation
 from gymact.sqlite_ledger import SQLiteReceiptLedger
 
 __all__ = [
+    "ActionDefinition",
     "ActuationIntent",
     "ActuationResult",
+    "AdmissionResult",
     "AllowListAuthorityResolver",
     "AuthorityDecision",
     "AuthorityRequest",
+    "AuthorityRequirement",
     "AuthorityResolver",
     "BinaryVerificationScorer",
     "BoundaryBlocked",
     "Capability",
     "Consequence",
+    "CrownSummary",
     "DenyAuthorityResolver",
     "Environment",
     "EnvironmentProvider",
     "Episode",
     "EvidenceRecord",
+    "ExecutionGrant",
+    "ExpectedEffect",
+    "FilesystemProvider",
+    "GitProvider",
     "GymAct",
+    "IdempotencyClass",
     "MaterializationIntent",
     "MaterializationResult",
     "MemoryProvider",
     "MemoryReceiptLedger",
     "Observation",
+    "ObservationConfidence",
     "Operation",
+    "PreparedAction",
     "ProfileAuthority",
+    "ProviderHealth",
+    "ProviderMetadata",
     "ProviderPluginInfo",
     "ProviderPluginLoad",
     "Receipt",
     "ReceiptLedger",
+    "ReconciledTransition",
+    "ReconciliationDisposition",
+    "ReconciliationResult",
+    "RefusalCode",
+    "ReversalClass",
     "RuntimeContract",
     "RuntimeLimits",
+    "SQLiteProvider",
     "SQLiteReceiptLedger",
     "Score",
     "Scorer",
     "SemanticValidation",
     "Standing",
+    "SubjectRef",
+    "VerificationKind",
     "VerificationResult",
+    "VerificationStrategy",
+    "VerifiedTransition",
+    "admit_execution",
     "build_contract",
+    "construct_prepared_action",
+    "crown_summary",
     "discover_provider_plugins",
     "evidence_graph",
+    "execute_admitted",
+    "execute_verified",
     "export_manufacturing_bundle",
+    "load_crown_requirements",
     "load_provider_plugin",
+    "reconcile_uncertain",
     "score_verification",
 ]
 
