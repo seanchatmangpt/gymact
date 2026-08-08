@@ -1,7 +1,9 @@
 """Compile repeated verified cognition into deterministic powerless HOT recipes."""
 from __future__ import annotations
 
-from pydantic import Field
+from typing import Self
+
+from pydantic import Field, model_validator
 
 from gymact.evidence import digest
 from gymact.models import FrozenModel, Standing
@@ -23,6 +25,19 @@ class CompiledRecipe(FrozenModel):
     source_receipt_refs: tuple[str, ...]
     recipe_digest: str = Field(min_length=1)
     standing: Standing = Standing.STRUCTURAL
+
+    @model_validator(mode="after")
+    def verify_content_identity(self) -> Self:
+        if not self.source_receipt_refs:
+            raise ValueError("COMPILE_OUT_REQUIRES_SOURCE_RECEIPTS")
+        payload = {
+            "identity": self.identity.model_dump(mode="json"),
+            "candidate_ref": self.candidate_ref,
+            "source_receipt_refs": self.source_receipt_refs,
+        }
+        if self.recipe_digest != digest(payload):
+            raise ValueError("COMPILED_RECIPE_DIGEST_MISMATCH")
+        return self
 
 
 class RecipeAdmission(FrozenModel):
