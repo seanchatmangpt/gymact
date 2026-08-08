@@ -1,12 +1,7 @@
-"""Explicit irreversible cut from maximal possibility closure into BRCE.
-
-Selection is separated from exploration and from execution. The cut binds one
-admitted DO-frontier edge to the exact action, prepared subject, grant identity and
-selection basis. It still cannot actuate; it manufactures a receiptable BRCE request.
-"""
+"""Explicit irreversible cut from maximal possibility closure into BRCE."""
 from __future__ import annotations
 
-from typing import Any, Self
+from typing import Self
 
 from pydantic import Field, model_validator
 
@@ -18,12 +13,14 @@ from gymact.action_contract import (
 )
 from gymact.brce import BRCEBroker, BrokerRequest, BrokerRuntime
 from gymact.combinatorial import DecisionPhase, ExplorationResult, PossibilityGraph
+from gymact.crown_runtime import VerifiedTransition
 from gymact.evidence import digest
 from gymact.models import FrozenModel, Receipt
 
 
 class IrreversibleSelection(FrozenModel):
     graph_digest: str = Field(min_length=1)
+    exploration_digest: str = Field(min_length=1)
     path_id: str = Field(min_length=1)
     morphism_id: str = Field(min_length=1)
     target_id: str = Field(min_length=1)
@@ -35,6 +32,12 @@ class IrreversibleSelection(FrozenModel):
     selector_ref: str = Field(min_length=1)
     basis_refs: tuple[str, ...] = ()
     selection_digest: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def basis_refs_are_public_identifiers(self) -> Self:
+        if any(":" not in reference for reference in self.basis_refs):
+            raise ValueError("SELECTION_BASIS_REF_MUST_BE_ABSOLUTE")
+        return self
 
     def verify_digest(self) -> bool:
         payload = self.model_dump(mode="json", exclude={"selection_digest"})
@@ -75,7 +78,7 @@ class CombinatorialBRCEBroker:
         self._runtime = runtime
         self._broker = BRCEBroker(runtime)
 
-    async def execute(self, request: CombinatorialBrokerRequest) -> Any:
+    async def execute(self, request: CombinatorialBrokerRequest) -> VerifiedTransition:
         transition = await self._broker.execute(request.broker_request)
         source = transition.receipt
         values = source.model_dump(
@@ -85,6 +88,7 @@ class CombinatorialBRCEBroker:
                 "occurred_at",
                 "parent_receipt_ids",
                 "possibility_graph_digest",
+                "possibility_exploration_digest",
                 "possibility_path_id",
                 "possibility_morphism_id",
                 "selection_digest",
@@ -95,6 +99,7 @@ class CombinatorialBRCEBroker:
         receipt = Receipt(
             **values,
             possibility_graph_digest=selection.graph_digest,
+            possibility_exploration_digest=selection.exploration_digest,
             possibility_path_id=selection.path_id,
             possibility_morphism_id=selection.morphism_id,
             selection_digest=selection.selection_digest,
@@ -118,9 +123,12 @@ def select_irreversible_cut(
     basis_refs: tuple[str, ...] = (),
     current_revision: str | None = None,
 ) -> IrreversibleSelection:
-    """Select one already-admitted DO frontier edge without executing it."""
+    """Select one admitted DO frontier edge from a complete bounded closure."""
     if exploration.graph_digest != graph.graph_digest:
         raise ValueError("POSSIBILITY_GRAPH_DRIFT")
+    if exploration.truncated:
+        reasons = ",".join(exploration.truncation_reasons)
+        raise ValueError(f"IRREVERSIBLE_SELECTION_FROM_TRUNCATED_CLOSURE_REFUSED:{reasons}")
     frontier = next(
         (
             item
@@ -146,8 +154,10 @@ def select_irreversible_cut(
     )
     if not admission.admitted:
         raise ValueError(f"SELECTION_GRANT_NOT_ADMITTED:{admission.reason}")
+    exploration_digest = digest(exploration.model_dump(mode="json"))
     payload = {
         "graph_digest": graph.graph_digest,
+        "exploration_digest": exploration_digest,
         "path_id": path_id,
         "morphism_id": morphism_id,
         "target_id": frontier.target_id,
@@ -171,7 +181,7 @@ def manufacture_broker_request(
     current_revision: str | None = None,
     expected: dict[str, object] | None = None,
 ) -> CombinatorialBrokerRequest:
-    """Manufacture the BRCE request and re-check every identity bound by the cut."""
+    """Manufacture BRCE request and re-check every identity bound by the cut."""
     request = BrokerRequest(
         action=action,
         prepared=prepared,
