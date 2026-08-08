@@ -8,6 +8,7 @@ from pydantic import Field
 from gymact.action_contract import ActionDefinition, ExecutionGrant, PreparedAction
 from gymact.crown_runtime import VerifiedTransition, execute_admitted
 from gymact.models import FrozenModel
+from gymact.runtime import _PRODUCTION_BRCE_SEAL
 
 
 class BrokerRuntime(Protocol):
@@ -35,7 +36,7 @@ class _BrokerRuntimeView:
     async def act(self, intent: Any) -> Any:
         admitted = getattr(self._runtime, "_act_from_brce", None)
         if admitted is not None:
-            return await admitted(intent)
+            return await admitted(intent, seal=_PRODUCTION_BRCE_SEAL)
         return await self._runtime.act(intent)
 
     async def verify(self, episode_id: str, expected: dict[str, Any]) -> Any:
@@ -50,7 +51,7 @@ class BRCEBroker:
 
     The broker exposes no raw ``act`` method. It accepts only a prepared candidate and
     an identity-bound ExecutionGrant, runs mechanical admission, delegates provider
-    consequence through the private production DO port, and returns independently
+    consequence through the sealed production DO port, and returns independently
     verified standing.
     """
 
