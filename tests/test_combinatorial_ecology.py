@@ -6,7 +6,6 @@ from gymact.combinatorial import (
     MorphismKind,
     PossibilityObject,
     PossibilityObjectKind,
-    explore_maximal_reversible,
 )
 from gymact.ecology import (
     EcologyAlternative,
@@ -14,6 +13,7 @@ from gymact.ecology import (
     IrreversibleOption,
     manufacture_ecology,
 )
+from gymact.maximal import explore_combinatorial_maximum
 
 
 def test_layered_ecology_represents_cartesian_path_space_without_early_choice() -> None:
@@ -68,7 +68,7 @@ def test_layered_ecology_represents_cartesian_path_space_without_early_choice() 
     assert ecology.reversible_path_cardinality == 12
     assert ecology.irreversible_choice_cardinality == 12
 
-    exploration = explore_maximal_reversible(
+    exploration = explore_combinatorial_maximum(
         ecology.graph,
         start_ids=(start.object_id,),
         context=AdmissionContext(execution_grant_ref="urn:grant:present"),
