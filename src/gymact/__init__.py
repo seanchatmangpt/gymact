@@ -24,6 +24,22 @@ from gymact.action_contract import (
 )
 from gymact.authority import AllowListAuthorityResolver, AuthorityResolver, DenyAuthorityResolver
 from gymact.brce import BRCEBroker, BrokerRequest
+from gymact.capsule import (
+    CapsuleIdentity,
+    CapsuleReuseDecision,
+    SubjectCapsuleReceipt,
+    ValidationPack,
+    VerifierCapsuleReceipt,
+    evaluate_capsule_reuse,
+)
+from gymact.compileout import (
+    CompiledRecipe,
+    RecipeAdmission,
+    RecipeCache,
+    RecipeIdentity,
+    admit_compiled_recipe,
+    compile_recipe,
+)
 from gymact.contract import RuntimeContract, build_contract
 from gymact.crown_runtime import (
     ReconciledTransition,
@@ -32,6 +48,14 @@ from gymact.crown_runtime import (
     execute_verified,
     reconcile_uncertain,
 )
+from gymact.decision_cache import (
+    CandidateDecision,
+    DecisionCache,
+    DecisionKey,
+    DecisionResolution,
+    RefusalDecision,
+)
+from gymact.errc import ERRCItem, ERRCMove, ERRCStatus, ERRCSummary, errc_summary, load_errc
 from gymact.evidence import EvidenceRecord, MemoryReceiptLedger, ReceiptLedger, evidence_graph
 from gymact.experiments import (
     AntiAgentPoint,
@@ -102,6 +126,12 @@ from gymact.models import (
     VerificationResult,
 )
 from gymact.network_providers import HTTPJSONProvider
+from gymact.oracle import (
+    DifferentialVerification,
+    OracleObservation,
+    differential_verify,
+    observe_oracle,
+)
 from gymact.physical import (
     ControllerMode,
     EdgeControllerArtifact,
@@ -133,14 +163,9 @@ from gymact.registry import (
     create_builtin_provider,
     describe_builtin_provider,
 )
-from gymact.replay import (
-    ReplayExpectation,
-    ReplayMode,
-    ReplayReport,
-    replay_ledger,
-)
+from gymact.replay import ReplayExpectation, ReplayMode, ReplayReport, replay_ledger
 from gymact.requirements import CrownSummary, crown_summary, load_crown_requirements
-from gymact.runtime import BoundaryBlocked, GymAct
+from gymact.runtime import BoundaryBlocked, GymAct, ProductionGymAct
 from gymact.scoring import BinaryVerificationScorer, Scorer, score_verification
 from gymact.semantic import ProfileAuthority, SemanticValidation
 from gymact.sqlite_ledger import SQLiteReceiptLedger
@@ -168,22 +193,34 @@ __all__ = [
     "BinaryVerificationScorer",
     "BoundaryBlocked",
     "BrokerRequest",
+    "CandidateDecision",
     "CandidateIntentEnvelope",
     "Capability",
     "CapabilityCache",
     "CapabilityCacheEntry",
+    "CapsuleIdentity",
+    "CapsuleReuseDecision",
     "CognitionEpisode",
     "CompilationCandidate",
     "CompileOutObservation",
     "CompileOutReport",
+    "CompiledRecipe",
     "Consequence",
     "ControllerMode",
     "CostPoint",
     "CrossoverResult",
     "CrownProvider",
     "CrownSummary",
+    "DecisionCache",
+    "DecisionKey",
+    "DecisionResolution",
     "DenyAuthorityResolver",
     "DifferentialVerdict",
+    "DifferentialVerification",
+    "ERRCItem",
+    "ERRCMove",
+    "ERRCStatus",
+    "ERRCSummary",
     "EdgeControllerArtifact",
     "EdgeControllerManifest",
     "EmpiricalProviderIndex",
@@ -212,12 +249,14 @@ __all__ = [
     "ObservationConfidence",
     "ObservationRequest",
     "Operation",
+    "OracleObservation",
     "PhysicalAdmission",
     "PhysicalCommand",
     "PhysicalDomain",
     "PhysicalProviderProfile",
     "PreparedAction",
     "ProblemSignature",
+    "ProductionGymAct",
     "ProfileAuthority",
     "ProjectionKind",
     "ProviderBenchmarkRecord",
@@ -231,10 +270,14 @@ __all__ = [
     "ProviderRollbackResult",
     "Receipt",
     "ReceiptLedger",
+    "RecipeAdmission",
+    "RecipeCache",
+    "RecipeIdentity",
     "ReconciledTransition",
     "ReconciliationDisposition",
     "ReconciliationResult",
     "RefusalCode",
+    "RefusalDecision",
     "ReplayExpectation",
     "ReplayMode",
     "ReplayReport",
@@ -254,15 +297,19 @@ __all__ = [
     "SelfPlayScenario",
     "SemanticValidation",
     "Standing",
+    "SubjectCapsuleReceipt",
     "SubjectRef",
     "TransitionEconomics",
     "TransitionMetrics",
     "TransportKind",
     "VCTObservation",
+    "ValidationPack",
     "VerificationKind",
     "VerificationResult",
     "VerificationStrategy",
     "VerifiedTransition",
+    "VerifierCapsuleReceipt",
+    "admit_compiled_recipe",
     "admit_execution",
     "admit_physical_command",
     "admit_retry",
@@ -270,13 +317,17 @@ __all__ = [
     "build_contract",
     "builtin_capabilities",
     "builtin_provider_names",
+    "compile_recipe",
     "construct_prepared_action",
     "create_builtin_provider",
     "crown_summary",
     "describe_builtin_provider",
     "detect_compilation_candidate",
     "differential_verdict",
+    "differential_verify",
     "discover_provider_plugins",
+    "errc_summary",
+    "evaluate_capsule_reuse",
     "evidence_graph",
     "evaluate_compile_out",
     "execute_admitted",
@@ -284,9 +335,11 @@ __all__ = [
     "export_manufacturing_bundle",
     "find_crossover",
     "load_crown_requirements",
+    "load_errc",
     "load_provider_plugin",
     "manufacture_self_play",
     "normalize_candidate",
+    "observe_oracle",
     "pareto_frontier",
     "project_action",
     "protocol_equivalent",
