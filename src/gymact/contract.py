@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 
+from gymact.action_contract import ActionDefinition, ExecutionGrant, PreparedAction
 from gymact.evidence import digest
+from gymact.lab import ActionProjection, ForwardBenchSubject, ProblemSignature
 from gymact.models import (
     ActuationIntent,
     MaterializationIntent,
@@ -54,7 +56,7 @@ class RuntimeContract(BaseModel):
 
 
 def build_contract(version: str = "26.8.7") -> RuntimeContract:
-    """Build and self-digest the admitted Python runtime contract."""
+    """Build and self-digest the admitted Python and Crown semantic contract."""
     payload = {
         "gymact_version": version,
         "profile_uri": ProfileAuthority.profile_uri,
@@ -70,6 +72,14 @@ def build_contract(version: str = "26.8.7") -> RuntimeContract:
             "typer",
             "faststream",
             "rdf",
+            "json-ld",
+            "ocel",
+            "pddl",
+            "ppddl",
+            "rddl",
+            "powl-v2",
+            "bpmn",
+            "a2a",
         ),
         "public_semantics": PUBLIC_SEMANTICS,
         "schemas": {
@@ -77,6 +87,12 @@ def build_contract(version: str = "26.8.7") -> RuntimeContract:
             "actuation_intent": ActuationIntent.model_json_schema(),
             "verification_result": VerificationResult.model_json_schema(),
             "receipt": Receipt.model_json_schema(),
+            "action_definition": ActionDefinition.model_json_schema(),
+            "prepared_action": PreparedAction.model_json_schema(),
+            "execution_grant": ExecutionGrant.model_json_schema(),
+            "problem_signature": ProblemSignature.model_json_schema(),
+            "action_projection": ActionProjection.model_json_schema(),
+            "forwardbench_subject": ForwardBenchSubject.model_json_schema(),
         },
     }
     return RuntimeContract(**payload, contract_digest=digest(payload))
