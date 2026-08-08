@@ -137,6 +137,7 @@ async def test_real_consequence_receipt_binds_graph_path_and_irreversible_cut() 
         context=AdmissionContext(execution_grant_ref="urn:grant:admitted"),
     )
     frontier = exploration.irreversible_frontier[0]
+    basis_ref = f"urn:gymact:receipt:{materialized.receipt.receipt_id}"
     selection = select_irreversible_cut(
         graph,
         exploration,
@@ -146,7 +147,7 @@ async def test_real_consequence_receipt_binds_graph_path_and_irreversible_cut() 
         prepared=prepared,
         grant=grant,
         selector_ref="urn:selector:dcm",
-        basis_refs=(materialized.receipt.receipt_id,),
+        basis_refs=(basis_ref,),
     )
     request = manufacture_broker_request(
         selection,
@@ -160,9 +161,10 @@ async def test_real_consequence_receipt_binds_graph_path_and_irreversible_cut() 
     assert transition.standing is Standing.ALIVE
     assert transition.receipt.verified is True
     assert transition.receipt.possibility_graph_digest == graph.graph_digest
+    assert transition.receipt.possibility_exploration_digest == selection.exploration_digest
     assert transition.receipt.possibility_path_id == frontier.path_id
     assert transition.receipt.possibility_morphism_id == frontier.morphism_id
     assert transition.receipt.selection_digest == selection.selection_digest
-    assert transition.receipt.selection_basis_refs == (materialized.receipt.receipt_id,)
+    assert transition.receipt.selection_basis_refs == (basis_ref,)
     assert transition.receipt.parent_receipt_ids
     assert (await runtime.observe(episode.episode_id)).state == {"x": 2}
