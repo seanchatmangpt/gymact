@@ -7,6 +7,7 @@ and causal locality without granting execution authority.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any, Self
 
@@ -182,8 +183,15 @@ class ExecutionGrant(FrozenModel):
     policy_revision: str = Field(min_length=1)
     admitted_observation_ref: str = Field(min_length=1)
     intended_effects: tuple[ExpectedEffect, ...]
-    expires_at: str | None = None
+    scope_refs: tuple[str, ...] = ()
+    expires_at: datetime | None = None
     nonce: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def require_aware_expiry(self) -> Self:
+        if self.expires_at is not None and self.expires_at.tzinfo is None:
+            raise ValueError("EXECUTION_GRANT_EXPIRY_MUST_BE_TIMEZONE_AWARE")
+        return self
 
 
 class PreparedAction(FrozenModel):
@@ -288,8 +296,12 @@ def admit_execution(
     grant: ExecutionGrant,
     *,
     current_revision: str | None = None,
+    now: datetime | None = None,
 ) -> AdmissionResult:
     """Admit identity/revision closure; this still does not itself perform DO."""
+    moment = now or datetime.now(UTC)
+    if grant.expires_at is not None and grant.expires_at <= moment:
+        return AdmissionResult(admitted=False, reason=RefusalCode.POLICY_REFUSED.value)
     if prepared.action_ref != action.semantic_id or grant.action_ref != action.semantic_id:
         return AdmissionResult(admitted=False, reason=RefusalCode.IDENTITY_REFUSED.value)
     if grant.capability_ref != action.capability_ref:
@@ -298,6 +310,20 @@ def admit_execution(
         return AdmissionResult(admitted=False, reason=RefusalCode.IDENTITY_REFUSED.value)
     if prepared.subject.provider_ref != grant.subject.provider_ref:
         return AdmissionResult(admitted=False, reason=RefusalCode.IDENTITY_REFUSED.value)
+    if grant.scope_refs and not (
+        {prepared.subject.semantic_id, prepared.subject.provider_ref}
+        & set(grant.scope_refs)
+    ):
+        return AdmissionResult(admitted=False, reason=RefusalCode.AUTHORITY_REFUSED.value)
+    if (
+        grant.subject.revision is not None
+        and prepared.subject.revision is not None
+        and grant.subject.revision != prepared.subject.revision
+    ):
+        return AdmissionResult(
+            admitted=False,
+            reason=RefusalCode.REVISION_MISMATCH_REFUSED.value,
+        )
     admitted_revision = grant.subject.revision or prepared.subject.revision
     if (
         current_revision is not None
@@ -314,3 +340,38 @@ def admit_execution(
             reason=RefusalCode.PRECONDITION_REFUSED.value,
         )
     return AdmissionResult(admitted=True, reason="ADMITTED")
+
+
+def admit_retry(
+    action: ActionDefinition, reconciliation: ReconciliationResult
+) -> ReconciliationResult:
+    """Manufacture a retry candidate only after NO_EFFECT; never grant retry authority."""
+    if reconciliation.disposition is not ReconciliationDisposition.NO_EFFECT:
+        return ReconciliationResult(
+            disposition=ReconciliationDisposition.RETRY_REFUSED,
+            standing=Standing.REFUSED,
+            observed_state_digest=reconciliation.observed_state_digest,
+            verification_ref=reconciliation.verification_ref,
+            retry_admitted=False,
+            reason=RefusalCode.UNSAFE_RETRY_REFUSED.value,
+        )
+    if action.idempotency not in {
+        IdempotencyClass.IDEMPOTENT,
+        IdempotencyClass.CONDITIONALLY_IDEMPOTENT,
+    }:
+        return ReconciliationResult(
+            disposition=ReconciliationDisposition.RETRY_REFUSED,
+            standing=Standing.REFUSED,
+            observed_state_digest=reconciliation.observed_state_digest,
+            verification_ref=reconciliation.verification_ref,
+            retry_admitted=False,
+            reason=RefusalCode.UNSAFE_RETRY_REFUSED.value,
+        )
+    return ReconciliationResult(
+        disposition=ReconciliationDisposition.RETRY_ADMITTED,
+        standing=Standing.CANDIDATE,
+        observed_state_digest=reconciliation.observed_state_digest,
+        verification_ref=reconciliation.verification_ref,
+        retry_admitted=True,
+        reason="RETRY_CANDIDATE_ADMITTED_AUTHORITY_STILL_REQUIRED",
+    )
