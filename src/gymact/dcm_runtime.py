@@ -33,6 +33,13 @@ from gymact.models import FrozenModel
 from gymact.structural_scan import StructuralSignature, structural_scan
 
 
+class DecisionCourtRequest(FrozenModel):
+    graph: PossibilityGraph
+    start_ids: tuple[str, ...]
+    context: AdmissionContext = AdmissionContext()
+    bounds: ExplorationBounds = ExplorationBounds()
+
+
 class DecisionCourtRecord(FrozenModel):
     graph_digest: str
     rdf_validation: PossibilityRDFValidation
@@ -70,6 +77,14 @@ class DCMDecisionCourt:
             rdf_validation=validation,
             structural_signature=signature,
             exploration=exploration,
+        )
+
+    def admit_request(self, request: DecisionCourtRequest) -> DecisionCourtRecord:
+        return self.admit_and_explore(
+            request.graph,
+            start_ids=request.start_ids,
+            context=request.context,
+            bounds=request.bounds,
         )
 
     def select(
