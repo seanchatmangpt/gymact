@@ -207,9 +207,28 @@ class Receipt(FrozenModel):
     verification_id: str | None = None
     verified: bool | None = None
     observation_confidence: str | None = None
+    possibility_graph_digest: str | None = None
+    possibility_path_id: str | None = None
+    possibility_morphism_id: str | None = None
+    selection_digest: str | None = None
+    selection_basis_refs: tuple[str, ...] = ()
     parent_receipt_ids: tuple[str, ...] = ()
     error_digest: str | None = None
     reason: str | None = None
+
+    @model_validator(mode="after")
+    def combinatorial_binding_is_atomic(self) -> Self:
+        core = (
+            self.possibility_graph_digest,
+            self.possibility_path_id,
+            self.possibility_morphism_id,
+            self.selection_digest,
+        )
+        if any(item is not None for item in core) and not all(item is not None for item in core):
+            raise ValueError("INCOMPLETE_COMBINATORIAL_RECEIPT_BINDING")
+        if self.selection_basis_refs and self.selection_digest is None:
+            raise ValueError("SELECTION_BASIS_REQUIRES_COMBINATORIAL_BINDING")
+        return self
 
 
 class MaterializationResult(FrozenModel):
