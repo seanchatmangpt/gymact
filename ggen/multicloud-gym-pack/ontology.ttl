@@ -1,0 +1,256 @@
+# multicloud-gym-pack: admitted facts for GymAct's simulated AWS/Azure/GCP gym.
+#
+# NOT a custom ontology. Every class/property used here is either (a) from
+# `ontology/profile.ttl`/`ontology/profile.shacl.ttl` (real symlinks to
+# `src/gymact/ontology/profile.{ttl,shacl.ttl}` in this same repo, per
+# .claude/rules/ontology.md), or (b) a public term reused directly. No new
+# rdfs:Class or owl:*Property is declared anywhere in this file -- only
+# INSTANCES of real public classes (data, not vocabulary), matching this
+# repo's own "public vocabularies first, no custom TBox" rule.
+#
+# `dct:title` is the real, recognizable operation binding a simulated
+# provider dispatches on (see src/gymact/gyms/multicloud.py's
+# CAPABILITY_REGISTRY, cross-checked against this file by
+# tests/test_multicloud.py's ontology-parity test -- code and ontology
+# cannot silently drift). Operation names follow each real cloud SDK's own
+# naming convention (boto3 for AWS, azure-sdk-for-python for Azure, the
+# GCP client libraries for GCP) so a reader familiar with any of the three
+# real SDKs recognizes the shape immediately -- but nothing here calls a
+# real API: gymact.gyms.multicloud is a SIMULATED provider, real in-memory
+# state machine, zero network calls, zero credentials, zero cost or
+# infrastructure risk. See that module's own docstring for the explicit
+# simulation boundary.
+#
+# `dct:type` is one of the two real GymAct consequence-class IRIs
+# (`urn:gymact:consequence:read`/`urn:gymact:consequence:do`) -- IAM/
+# storage/compute creation and policy-binding operations are DO (they
+# mutate the simulated world's state and, in the real cloud they model,
+# would be genuinely consequential); list/describe operations are READ.
+# `dct:title` and `dct:type` are the two properties the real
+# `urn:gymact:shape:capability` SHACL shape (src/gymact/ontology/
+# profile.shacl.ttl) requires on every sosa:Procedure, and the only two
+# this file's own SPARQL gates (ggen/multicloud-gym-pack/gates/*.rq)
+# check for presence and single-valuedness -- both are kept unchanged
+# below; everything added in this pass is additional multi-typing or an
+# rdfs:seeAlso relation layered on top, never a replacement.
+#
+# Additional public-vocabulary grounding added in this pass, one line per
+# semantic family covered, each backed by a live fetch of the cited spec
+# (not guessed, not approximated):
+#
+# - ODRL 2.2 (fetched https://www.w3.org/TR/odrl-vocab/): the three
+#   policy-attachment/role-assignment operations (aws
+#   iam.attach_role_policy, azure authorization.create_role_assignment,
+#   gcp iam.add_iam_policy_binding) are additionally typed `odrl:Permission`
+#   -- ODRL's own definition, "The ability to perform an Action over an
+#   Asset," is exactly what attaching a policy/assigning a role grants.
+#   ODRL has no dedicated "role assignment" class (confirmed by the same
+#   fetch: its model covers permission/prohibition/duty over an
+#   action+target+assigner/assignee, not identity/role-assignment
+#   semantics as a first-class type), so `odrl:Permission` -- not a
+#   speculative "RoleAssignment" class -- is the correct fit, and the
+#   generic `odrl:Action`/`odrl:Rule`/`odrl:action`/`odrl:target` terms
+#   the same fetch confirmed are deliberately NOT added here: `odrl:Action`
+#   would be redundant with `sosa:Procedure`'s own "operation" semantics
+#   without adding information, and `odrl:action`/`odrl:target` require
+#   actual Action/Asset instance values this static capability catalog
+#   does not have (those belong on execution/receipt instance data, not
+#   here).
+#
+# - W3C Organization Ontology (fetched https://www.w3.org/TR/vocab-org/):
+#   the one operation that creates a new IAM role type (aws
+#   iam.create_role) carries `rdfs:seeAlso org:Role` -- "Denotes a role
+#   that a Person or other Agent can take in an organization," the
+#   abstract-role-type reading that matches *defining* a role (as
+#   opposed to *assigning* one, which is the odrl:Permission case above).
+#   `org:Membership` (the n-ary Agent+Role+Organization assignment
+#   instance) is deliberately not instantiated here: this file catalogs
+#   capability *types*, not specific assignment events.
+#   `gcp.iam.create_service_account` is NOT given this relation: a GCP
+#   service account is an identity/agent, not an org:Role, and no
+#   research pass was run in this session on a public identity/agent
+#   vocabulary term for it -- left ungrounded beyond sosa:Procedure rather
+#   than guessed.
+#
+# - DCAT 3 (fetched https://www.w3.org/TR/vocab-dcat-3/): the three
+#   storage-container-creation operations (aws s3.create_bucket, azure
+#   storage.create_account, gcp storage.create_bucket) carry
+#   `rdfs:seeAlso dcat:Distribution` -- "An accessible form of a dataset
+#   such as a downloadable file," the closest exact DCAT fit for a bucket
+#   as the concrete, accessible storage location holding data. Per the
+#   same research pass: DCAT does NOT define a term specifically for
+#   "storage container/bucket" -- this is an explicit best-fit mapping
+#   onto dcat:Distribution, not an exact named match, and is documented
+#   as such rather than silently presented as precise. `dcat:Dataset`
+#   (the abstract data collection, not the container) and `dcat:Resource`
+#   (the generic superclass, too broad) were considered and rejected by
+#   the same research pass. This repo's own admitted profile
+#   (src/gymact/ontology/profile.ttl) already commits to
+#   `http://www.w3.org/ns/dcat#` (http, not https) as the DCAT namespace;
+#   this file uses the identical IRI so the two files' DCAT terms unify
+#   in one graph rather than silently diverging on scheme.
+#
+# - PROV-O (fetched https://www.w3.org/TR/prov-o/): the three
+#   compute-instance-provisioning operations (aws ec2.run_instances,
+#   azure compute.create_virtual_machine, gcp compute.create_instance)
+#   carry `rdfs:seeAlso prov:Entity, prov:Activity` -- the confirmed
+#   PROV-O pattern for "a provisioned VM (entity) generated by a
+#   provisioning activity": `prov:Entity` is "a physical, digital,
+#   conceptual, or other kind of thing with some fixed aspects" (the VM
+#   itself), `prov:Activity` is "something that occurs over a period of
+#   time and acts upon or with entities... generating entities" (the
+#   provisioning process), and the exact linking relation is
+#   `prov:wasGeneratedBy` ("Generation is the completion of production of
+#   a new entity by an activity"). Only the two classes are attached here
+#   as `rdfs:seeAlso`, not `prov:wasGeneratedBy` itself: that property
+#   needs a real `<vm-instance> prov:wasGeneratedBy <provisioning-run>`
+#   pair of instances, which is execution/receipt data produced when a
+#   capability actually runs, not something this static capability
+#   catalog can honestly assert in advance.
+#
+# One research finding was deliberately NOT applied anywhere in this
+# file: SOSA/SSN (fetched https://www.w3.org/TR/vocab-ssn/, cross-checked
+# https://www.w3.org/ns/sosa/) confirms `sosa:Actuation` ("carries out an
+# Actuation Procedure to change the state of the world") is the correct
+# class for the *event* of an API operation being invoked, executed by a
+# `sosa:Actuator`. That is a different thing from what this file's nodes
+# represent: `sosa:Procedure` here types the reusable *capability/method*
+# a provider dispatches on (matching this repo's existing, pre-established
+# convention, confirmed by the same research pass as the right choice for
+# "computational-method semantics"), not a specific invocation event.
+# Multityping these capability nodes as `sosa:Actuation` would conflate a
+# procedure-type with an occurrence and was rejected rather than added
+# for coverage's sake. `sosa:Actuation`/`sosa:Actuator` are the right
+# terms for actual execution/receipt records elsewhere in the runtime,
+# not for this capability catalog.
+
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix sosa: <http://www.w3.org/ns/sosa/> .
+@prefix odrl: <http://www.w3.org/ns/odrl/2/> .
+@prefix org: <http://www.w3.org/ns/org#> .
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+# ---------------------------------------------------------------------------
+# AWS (boto3-style operation names: iam.create_role, ec2.run_instances, ...)
+# ---------------------------------------------------------------------------
+
+<urn:gymact:multicloud:aws:capability:iam.create_role>
+    a sosa:Procedure ;
+    dct:title "aws.iam.create_role" ;
+    dct:type <urn:gymact:consequence:do> ;
+    rdfs:seeAlso org:Role .
+
+<urn:gymact:multicloud:aws:capability:iam.attach_role_policy>
+    a sosa:Procedure, odrl:Permission ;
+    dct:title "aws.iam.attach_role_policy" ;
+    dct:type <urn:gymact:consequence:do> .
+
+<urn:gymact:multicloud:aws:capability:iam.list_roles>
+    a sosa:Procedure ;
+    dct:title "aws.iam.list_roles" ;
+    dct:type <urn:gymact:consequence:read> .
+
+<urn:gymact:multicloud:aws:capability:s3.create_bucket>
+    a sosa:Procedure ;
+    dct:title "aws.s3.create_bucket" ;
+    dct:type <urn:gymact:consequence:do> ;
+    rdfs:seeAlso dcat:Distribution .
+
+<urn:gymact:multicloud:aws:capability:s3.list_buckets>
+    a sosa:Procedure ;
+    dct:title "aws.s3.list_buckets" ;
+    dct:type <urn:gymact:consequence:read> .
+
+<urn:gymact:multicloud:aws:capability:ec2.run_instances>
+    a sosa:Procedure ;
+    dct:title "aws.ec2.run_instances" ;
+    dct:type <urn:gymact:consequence:do> ;
+    rdfs:seeAlso prov:Entity, prov:Activity .
+
+<urn:gymact:multicloud:aws:capability:ec2.describe_instances>
+    a sosa:Procedure ;
+    dct:title "aws.ec2.describe_instances" ;
+    dct:type <urn:gymact:consequence:read> .
+
+# ---------------------------------------------------------------------------
+# Azure (azure-sdk-for-python-style operation names)
+# ---------------------------------------------------------------------------
+
+<urn:gymact:multicloud:azure:capability:authorization.create_role_assignment>
+    a sosa:Procedure, odrl:Permission ;
+    dct:title "azure.authorization.create_role_assignment" ;
+    dct:type <urn:gymact:consequence:do> .
+
+<urn:gymact:multicloud:azure:capability:authorization.list_role_assignments>
+    a sosa:Procedure ;
+    dct:title "azure.authorization.list_role_assignments" ;
+    dct:type <urn:gymact:consequence:read> .
+
+<urn:gymact:multicloud:azure:capability:storage.create_account>
+    a sosa:Procedure ;
+    dct:title "azure.storage.create_account" ;
+    dct:type <urn:gymact:consequence:do> ;
+    rdfs:seeAlso dcat:Distribution .
+
+<urn:gymact:multicloud:azure:capability:storage.list_accounts>
+    a sosa:Procedure ;
+    dct:title "azure.storage.list_accounts" ;
+    dct:type <urn:gymact:consequence:read> .
+
+<urn:gymact:multicloud:azure:capability:compute.create_virtual_machine>
+    a sosa:Procedure ;
+    dct:title "azure.compute.create_virtual_machine" ;
+    dct:type <urn:gymact:consequence:do> ;
+    rdfs:seeAlso prov:Entity, prov:Activity .
+
+<urn:gymact:multicloud:azure:capability:compute.list_virtual_machines>
+    a sosa:Procedure ;
+    dct:title "azure.compute.list_virtual_machines" ;
+    dct:type <urn:gymact:consequence:read> .
+
+# ---------------------------------------------------------------------------
+# GCP (google-cloud-python-style operation names)
+# ---------------------------------------------------------------------------
+
+<urn:gymact:multicloud:gcp:capability:iam.create_service_account>
+    a sosa:Procedure ;
+    dct:title "gcp.iam.create_service_account" ;
+    dct:type <urn:gymact:consequence:do> .
+    # No rdfs:seeAlso here: a GCP service account is an identity/agent,
+    # not an org:Role, and no public term for "IAM identity/service
+    # account" was researched in this pass -- left unstated rather than
+    # guessed, per this repo's own ontology rule.
+
+<urn:gymact:multicloud:gcp:capability:iam.add_iam_policy_binding>
+    a sosa:Procedure, odrl:Permission ;
+    dct:title "gcp.iam.add_iam_policy_binding" ;
+    dct:type <urn:gymact:consequence:do> .
+
+<urn:gymact:multicloud:gcp:capability:iam.list_service_accounts>
+    a sosa:Procedure ;
+    dct:title "gcp.iam.list_service_accounts" ;
+    dct:type <urn:gymact:consequence:read> .
+
+<urn:gymact:multicloud:gcp:capability:storage.create_bucket>
+    a sosa:Procedure ;
+    dct:title "gcp.storage.create_bucket" ;
+    dct:type <urn:gymact:consequence:do> ;
+    rdfs:seeAlso dcat:Distribution .
+
+<urn:gymact:multicloud:gcp:capability:storage.list_buckets>
+    a sosa:Procedure ;
+    dct:title "gcp.storage.list_buckets" ;
+    dct:type <urn:gymact:consequence:read> .
+
+<urn:gymact:multicloud:gcp:capability:compute.create_instance>
+    a sosa:Procedure ;
+    dct:title "gcp.compute.create_instance" ;
+    dct:type <urn:gymact:consequence:do> ;
+    rdfs:seeAlso prov:Entity, prov:Activity .
+
+<urn:gymact:multicloud:gcp:capability:compute.list_instances>
+    a sosa:Procedure ;
+    dct:title "gcp.compute.list_instances" ;
+    dct:type <urn:gymact:consequence:read> .
