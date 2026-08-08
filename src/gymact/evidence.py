@@ -115,6 +115,31 @@ class MemoryReceiptLedger:
         return True
 
 
+def _project_combinatorial_selection(graph: Graph, receipt_ref: URIRef, receipt: Receipt) -> None:
+    if receipt.selection_digest is None:
+        return
+    selection_ref = URIRef(f"urn:gymact:selection:{receipt.selection_digest}")
+    graph_ref = URIRef(f"urn:gymact:possibility-graph:{receipt.possibility_graph_digest}")
+    path_ref = URIRef(f"urn:gymact:possibility-path:{receipt.possibility_path_id}")
+    morphism_ref = URIRef(
+        f"urn:gymact:possibility-morphism-ref:{digest(receipt.possibility_morphism_id)}"
+    )
+    graph.add((selection_ref, RDF.type, PROV.Entity))
+    graph.add((selection_ref, DCTERMS.identifier, Literal(receipt.selection_digest)))
+    graph.add((graph_ref, RDF.type, PROV.Entity))
+    graph.add((graph_ref, DCTERMS.identifier, Literal(receipt.possibility_graph_digest)))
+    graph.add((path_ref, RDF.type, PROV.Entity))
+    graph.add((path_ref, DCTERMS.identifier, Literal(receipt.possibility_path_id)))
+    graph.add((morphism_ref, RDF.type, PROV.Entity))
+    graph.add((morphism_ref, DCTERMS.identifier, Literal(receipt.possibility_morphism_id)))
+    graph.add((receipt_ref, PROV.wasDerivedFrom, selection_ref))
+    graph.add((selection_ref, DCTERMS.references, graph_ref))
+    graph.add((selection_ref, DCTERMS.references, path_ref))
+    graph.add((selection_ref, DCTERMS.references, morphism_ref))
+    for basis_ref in receipt.selection_basis_refs:
+        graph.add((selection_ref, PROV.wasDerivedFrom, URIRef(basis_ref)))
+
+
 def evidence_graph(
     records: Iterable[EvidenceRecord],
     verifications: Iterable[VerificationResult] = (),
@@ -145,6 +170,7 @@ def evidence_graph(
             graph.add((activity_ref, PROV.used, URIRef(receipt.capability_ref)))
         if receipt.authority_evidence_ref:
             graph.add((activity_ref, PROV.used, URIRef(receipt.authority_evidence_ref)))
+        _project_combinatorial_selection(graph, receipt_ref, receipt)
 
     for verification in verifications:
         assertion = URIRef(f"urn:gymact:verification:{verification.verification_id}")
