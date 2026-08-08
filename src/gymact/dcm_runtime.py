@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import Iterable
 
+from pydantic import Field
+
 from gymact.action_contract import ActionDefinition, ExecutionGrant, PreparedAction
 from gymact.brce import BrokerRuntime
 from gymact.combinatorial import (
@@ -21,6 +23,7 @@ from gymact.combinatorial_rdf import (
     rdf_to_graph,
     validate_possibility_rdf,
 )
+from gymact.crown_runtime import VerifiedTransition
 from gymact.cut import (
     CombinatorialBRCEBroker,
     CombinatorialBrokerRequest,
@@ -36,8 +39,8 @@ from gymact.structural_scan import StructuralSignature, structural_scan
 class DecisionCourtRequest(FrozenModel):
     graph: PossibilityGraph
     start_ids: tuple[str, ...]
-    context: AdmissionContext = AdmissionContext()
-    bounds: ExplorationBounds = ExplorationBounds()
+    context: AdmissionContext = Field(default_factory=AdmissionContext)
+    bounds: ExplorationBounds = Field(default_factory=ExplorationBounds)
 
 
 class DecisionCourtRecord(FrozenModel):
@@ -139,6 +142,6 @@ class DCMDecisionCourt:
         self,
         runtime: BrokerRuntime,
         request: CombinatorialBrokerRequest,
-    ):
+    ) -> VerifiedTransition:
         """Execute only an already-cut combinatorial BRCE request."""
         return await CombinatorialBRCEBroker(runtime).execute(request)
