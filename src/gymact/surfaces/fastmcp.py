@@ -36,15 +36,6 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
         return list(service.discover())
 
     @mcp.tool()
-    async def prepare_candidate(candidate: dict[str, Any]) -> dict[str, Any]:
-        """CONSTRUCT a powerless MCP candidate; the transport cannot grant authority."""
-        envelope = normalize_candidate(TransportKind.MCP, candidate)
-        return {
-            "semantic_key": envelope.semantic_key(),
-            "prepared": envelope.prepared().model_dump(mode="json"),
-        }
-
-    @mcp.tool()
     async def create_episode(
         provider: str = "memory",
         scenario: str | None = None,
@@ -75,26 +66,36 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
         return (await service.observe(episode_id)).model_dump(mode="json")
 
     @mcp.tool()
-    async def execute_admitted(
-        episode_id: str,
-        request: dict[str, Any],
-    ) -> dict[str, Any]:
-        """Production DO through BRCE with explicit ActionDefinition and ExecutionGrant."""
-        broker_request = BrokerRequest.model_validate(request)
-        if broker_request.prepared.episode_id != episode_id:
-            raise ValueError("EPISODE_ID_PATH_BODY_MISMATCH")
-        transition = await broker.execute(broker_request)
-        return transition.model_dump(mode="json")
-
-    @mcp.tool()
     async def act(
-        episode_id: str,
-        capability: str,
+        episode_id: str | None = None,
+        capability: str | None = None,
         payload: dict[str, Any] | None = None,
         authority_ref: str | None = None,
         idempotency_key: str | None = None,
+        candidate: dict[str, Any] | None = None,
+        request: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Compatibility port; ProductionGymAct returns a receipted BRCE refusal."""
+        """One actuation transport with three explicit modes.
+
+        ``candidate`` performs CONSTRUCT only. ``request`` performs production DO through
+        BRCE. The legacy episode/capability fields remain for compatibility; on the
+        default ProductionGymAct they return a receipted BRCE refusal rather than mutate.
+        """
+        if candidate is not None:
+            envelope = normalize_candidate(TransportKind.MCP, candidate)
+            return {
+                "mode": "CONSTRUCT",
+                "semantic_key": envelope.semantic_key(),
+                "prepared": envelope.prepared().model_dump(mode="json"),
+            }
+        if request is not None:
+            broker_request = BrokerRequest.model_validate(request)
+            if episode_id is not None and broker_request.prepared.episode_id != episode_id:
+                raise ValueError("EPISODE_ID_PATH_BODY_MISMATCH")
+            transition = await broker.execute(broker_request)
+            return {"mode": "DO", "transition": transition.model_dump(mode="json")}
+        if episode_id is None or capability is None:
+            raise ValueError("ACT_REQUIRES_CANDIDATE_REQUEST_OR_LEGACY_FIELDS")
         values: dict[str, Any] = {
             "episode_id": episode_id,
             "capability": capability,
@@ -104,7 +105,8 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
         if idempotency_key is not None:
             values["idempotency_key"] = idempotency_key
         intent = ActuationIntent.model_validate(values)
-        return (await service.act(intent)).model_dump(mode="json")
+        result = await service.act(intent)
+        return {"mode": "LEGACY", **result.model_dump(mode="json")}
 
     @mcp.tool()
     async def verify(episode_id: str, expected: dict[str, Any]) -> dict[str, Any]:
@@ -148,8 +150,8 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
                 return None
 
         readme = None
-        for candidate in ("README.md", "README.rst", "README.txt", "README"):
-            readme = _read(candidate)
+        for candidate_name in ("README.md", "README.rst", "README.txt", "README"):
+            readme = _read(candidate_name)
             if readme is not None:
                 break
 
