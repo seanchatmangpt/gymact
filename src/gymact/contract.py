@@ -5,6 +5,9 @@ from pydantic import BaseModel, ConfigDict
 
 from gymact.action_contract import ActionDefinition, ExecutionGrant, PreparedAction
 from gymact.brce import BrokerRequest
+from gymact.capsule import CapsuleIdentity, SubjectCapsuleReceipt, VerifierCapsuleReceipt
+from gymact.compileout import CompiledRecipe, RecipeIdentity
+from gymact.decision_cache import CandidateDecision, DecisionKey, RefusalDecision
 from gymact.evidence import digest
 from gymact.experiments import (
     AntiAgentPoint,
@@ -23,6 +26,7 @@ from gymact.models import (
     Receipt,
     VerificationResult,
 )
+from gymact.oracle import DifferentialVerification, OracleObservation
 from gymact.physical import (
     EdgeControllerArtifact,
     PhysicalCommand,
@@ -108,6 +112,10 @@ def build_contract(version: str = "26.8.7") -> RuntimeContract:
             "robotics-profile",
             "industrial-ot-profile",
             "edge-controller-profile",
+            "execution-capsule",
+            "compiled-recipe",
+            "decision-cache",
+            "differential-oracle",
         ),
         "public_semantics": PUBLIC_SEMANTICS,
         "schemas": {
@@ -141,6 +149,16 @@ def build_contract(version: str = "26.8.7") -> RuntimeContract:
             "anti_agent_point": AntiAgentPoint.model_json_schema(),
             "intelligence_run": IntelligenceRun.model_json_schema(),
             "compile_out_report": CompileOutReport.model_json_schema(),
+            "capsule_identity": CapsuleIdentity.model_json_schema(),
+            "verifier_capsule_receipt": VerifierCapsuleReceipt.model_json_schema(),
+            "subject_capsule_receipt": SubjectCapsuleReceipt.model_json_schema(),
+            "recipe_identity": RecipeIdentity.model_json_schema(),
+            "compiled_recipe": CompiledRecipe.model_json_schema(),
+            "decision_key": DecisionKey.model_json_schema(),
+            "candidate_decision": CandidateDecision.model_json_schema(),
+            "refusal_decision": RefusalDecision.model_json_schema(),
+            "oracle_observation": OracleObservation.model_json_schema(),
+            "differential_verification": DifferentialVerification.model_json_schema(),
         },
     }
     return RuntimeContract(**payload, contract_digest=digest(payload))
