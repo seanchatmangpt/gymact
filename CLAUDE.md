@@ -33,6 +33,8 @@ Do not generate Python boilerplate with ggen when the host ecosystem already der
 
 Use `UNKNOWN`, `PARTIAL_ALIVE`, `ALIVE`, `BLOCKED`, `BUILD_BROKEN`, `UNSUPPORTED`, and typed `REFUSED` reasons. Importability is not scenario execution. A benchmark integration retains its own execution standing.
 
+A gym's pytest suite passing is a claim about `request accepted`, not `objective verified` — a provider's own unit tests can correctly pass while proving nothing about whether a real end-to-end episode was actuated. Whether a gym is actuated is decided only by a real, schema-valid, conformant-replay, `solved=True` OCEL 2.0 log (`reports/ocel/<subject>/episode.ocel.json`), asserted on directly per `.claude/rules/ocel-standing.md` — never by a hardcoded expected value or by trusting a summarizing script's packaged verdict.
+
 Do not claim v26.8.7 release standing until exact-head CI has executed the semantic/runtime tests, Python matrix, package/wheel installation, docs build, lock validation, and container build required by the release contract.
 
 ## Change discipline
