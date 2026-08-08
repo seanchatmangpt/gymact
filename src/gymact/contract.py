@@ -22,7 +22,13 @@ from gymact.combinatorial import (
 )
 from gymact.combinatorial_rdf import PossibilityRDFValidation
 from gymact.compileout import CompiledRecipe, RecipeIdentity
+from gymact.compileout_graph import (
+    CompiledGraphRecipe,
+    GraphRecipeAdmission,
+    GraphRecipeIdentity,
+)
 from gymact.cut import CombinatorialBrokerRequest, IrreversibleSelection
+from gymact.dcm_runtime import DecisionCourtRecord, DecisionCourtRequest
 from gymact.decision_cache import CandidateDecision, DecisionKey, RefusalDecision
 from gymact.ecology import EcologyAlternative, EcologyDimension, IrreversibleOption, ManufacturedEcology
 from gymact.evidence import digest
@@ -50,6 +56,7 @@ from gymact.physical import (
     PhysicalProviderProfile,
     SafetyEnvelope,
 )
+from gymact.possibility_index import EmpiricalCombinationRecord
 from gymact.provider_spi import (
     ObservationRequest,
     ProviderExecutionAttempt,
@@ -58,6 +65,7 @@ from gymact.provider_spi import (
 )
 from gymact.replay import ReplayExpectation, ReplayReport
 from gymact.semantic import ProfileAuthority
+from gymact.structural_scan import StructuralSignature
 from gymact.transport import CandidateIntentEnvelope
 
 PUBLIC_SEMANTICS = (
@@ -100,7 +108,7 @@ class RuntimeContract(BaseModel):
 
 
 def build_contract(version: str = "26.8.7") -> RuntimeContract:
-    """Build and self-digest the admitted Python and Crown semantic contract."""
+    """Build and self-digest the admitted Python, DCM and Crown semantic contract."""
     payload = {
         "gymact_version": version,
         "profile_uri": ProfileAuthority.profile_uri,
@@ -112,9 +120,15 @@ def build_contract(version: str = "26.8.7") -> RuntimeContract:
             "pydantic",
             "brce",
             "combinatorial-maximum",
+            "maximal-reversible-closure",
             "combinatorial-rdf",
             "combinatorial-cut",
+            "dcm-decision-court",
+            "action-graph",
             "ecology-graph",
+            "structural-scan",
+            "empirical-possibility-index",
+            "compiled-graph-route",
             "fastapi",
             "openapi",
             "fastmcp",
@@ -134,8 +148,8 @@ def build_contract(version: str = "26.8.7") -> RuntimeContract:
             "industrial-ot-profile",
             "edge-controller-profile",
             "execution-capsule",
-            "compiled-recipe",
-            "decision-cache",
+            "compiled-recipe-compatibility",
+            "decision-cache-compatibility",
             "differential-oracle",
         ),
         "public_semantics": PUBLIC_SEMANTICS,
@@ -195,6 +209,13 @@ def build_contract(version: str = "26.8.7") -> RuntimeContract:
             "possibility_rdf_validation": PossibilityRDFValidation.model_json_schema(),
             "irreversible_selection": IrreversibleSelection.model_json_schema(),
             "combinatorial_broker_request": CombinatorialBrokerRequest.model_json_schema(),
+            "decision_court_request": DecisionCourtRequest.model_json_schema(),
+            "decision_court_record": DecisionCourtRecord.model_json_schema(),
+            "structural_signature": StructuralSignature.model_json_schema(),
+            "graph_recipe_identity": GraphRecipeIdentity.model_json_schema(),
+            "compiled_graph_recipe": CompiledGraphRecipe.model_json_schema(),
+            "graph_recipe_admission": GraphRecipeAdmission.model_json_schema(),
+            "empirical_combination_record": EmpiricalCombinationRecord.model_json_schema(),
             "ecology_alternative": EcologyAlternative.model_json_schema(),
             "ecology_dimension": EcologyDimension.model_json_schema(),
             "irreversible_option": IrreversibleOption.model_json_schema(),
