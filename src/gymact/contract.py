@@ -6,8 +6,25 @@ from pydantic import BaseModel, ConfigDict
 from gymact.action_contract import ActionDefinition, ExecutionGrant, PreparedAction
 from gymact.brce import BrokerRequest
 from gymact.capsule import CapsuleIdentity, SubjectCapsuleReceipt, VerifierCapsuleReceipt
+from gymact.combinatorial import (
+    AdmissionContext,
+    Combination,
+    CombinationSpace,
+    ExplorationBounds,
+    ExplorationResult,
+    Factor,
+    MorphismRequirements,
+    ObjectiveVector,
+    PossibilityGraph,
+    PossibilityMorphism,
+    PossibilityObject,
+    PossibilityPath,
+)
+from gymact.combinatorial_rdf import PossibilityRDFValidation
 from gymact.compileout import CompiledRecipe, RecipeIdentity
+from gymact.cut import CombinatorialBrokerRequest, IrreversibleSelection
 from gymact.decision_cache import CandidateDecision, DecisionKey, RefusalDecision
+from gymact.ecology import EcologyAlternative, EcologyDimension, IrreversibleOption, ManufacturedEcology
 from gymact.evidence import digest
 from gymact.experiments import (
     AntiAgentPoint,
@@ -94,6 +111,10 @@ def build_contract(version: str = "26.8.7") -> RuntimeContract:
             "python",
             "pydantic",
             "brce",
+            "combinatorial-maximum",
+            "combinatorial-rdf",
+            "combinatorial-cut",
+            "ecology-graph",
             "fastapi",
             "openapi",
             "fastmcp",
@@ -159,6 +180,25 @@ def build_contract(version: str = "26.8.7") -> RuntimeContract:
             "refusal_decision": RefusalDecision.model_json_schema(),
             "oracle_observation": OracleObservation.model_json_schema(),
             "differential_verification": DifferentialVerification.model_json_schema(),
+            "possibility_object": PossibilityObject.model_json_schema(),
+            "possibility_morphism": PossibilityMorphism.model_json_schema(),
+            "morphism_requirements": MorphismRequirements.model_json_schema(),
+            "objective_vector": ObjectiveVector.model_json_schema(),
+            "possibility_graph": PossibilityGraph.model_json_schema(),
+            "admission_context": AdmissionContext.model_json_schema(),
+            "exploration_bounds": ExplorationBounds.model_json_schema(),
+            "possibility_path": PossibilityPath.model_json_schema(),
+            "exploration_result": ExplorationResult.model_json_schema(),
+            "factor": Factor.model_json_schema(),
+            "combination": Combination.model_json_schema(),
+            "combination_space": CombinationSpace.model_json_schema(),
+            "possibility_rdf_validation": PossibilityRDFValidation.model_json_schema(),
+            "irreversible_selection": IrreversibleSelection.model_json_schema(),
+            "combinatorial_broker_request": CombinatorialBrokerRequest.model_json_schema(),
+            "ecology_alternative": EcologyAlternative.model_json_schema(),
+            "ecology_dimension": EcologyDimension.model_json_schema(),
+            "irreversible_option": IrreversibleOption.model_json_schema(),
+            "manufactured_ecology": ManufacturedEcology.model_json_schema(),
         },
     }
     return RuntimeContract(**payload, contract_digest=digest(payload))
