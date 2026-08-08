@@ -26,20 +26,41 @@ class BrokerRequest(FrozenModel):
     expected: dict[str, Any] = Field(default_factory=dict)
 
 
-class BRCEBroker:
-    """Exclusive production-oriented DO facade.
-
-    The broker exposes no raw ``act`` method. It accepts only a prepared candidate and
-    an identity-bound ExecutionGrant, runs mechanical admission, delegates the provider
-    consequence to the existing kernel, and returns independently verified standing.
-    """
+class _BrokerRuntimeView:
+    """Give Crown runtime only the DO port admitted for broker execution."""
 
     def __init__(self, runtime: BrokerRuntime) -> None:
         self._runtime = runtime
 
+    async def act(self, intent: Any) -> Any:
+        admitted = getattr(self._runtime, "_act_from_brce", None)
+        if admitted is not None:
+            return await admitted(intent)
+        return await self._runtime.act(intent)
+
+    async def verify(self, episode_id: str, expected: dict[str, Any]) -> Any:
+        return await self._runtime.verify(episode_id, expected)
+
+    def _record(self, receipt: Any) -> Any:
+        return self._runtime._record(receipt)
+
+
+class BRCEBroker:
+    """Exclusive production-oriented DO facade.
+
+    The broker exposes no raw ``act`` method. It accepts only a prepared candidate and
+    an identity-bound ExecutionGrant, runs mechanical admission, delegates provider
+    consequence through the private production DO port, and returns independently
+    verified standing.
+    """
+
+    def __init__(self, runtime: BrokerRuntime) -> None:
+        self._runtime = runtime
+        self._view = _BrokerRuntimeView(runtime)
+
     async def execute(self, request: BrokerRequest) -> VerifiedTransition:
         return await execute_admitted(
-            self._runtime,
+            self._view,
             request.action,
             request.prepared,
             request.grant,
