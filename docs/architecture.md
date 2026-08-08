@@ -98,6 +98,7 @@ genuinely real external collaborator (zero mocks anywhere in `src/` or `tests/`)
 | `gyms.mcp_client_session.McpClientSessionProvider` | a real `fastmcp.Client` session against a real subject `FastMCP` server (defaults to `gymact.surfaces.fastmcp.create_mcp()`), driven only through `list_tools()`/`call_tool()` -- no simulated tool catalog or canned result |
 | `gyms.kubernetes_reconciliation.KubernetesReconciliationProvider` | a real local Kubernetes cluster (`kind`/`k3d`/colima `--kubernetes`) via real `kubectl` subprocess calls -- `verify()` polls real cluster-observed pod phase, not `kubectl apply`'s exit code |
 | `gyms.terraform_plan.TerraformPlanProvider` | a real `terraform`/`tofu` subprocess running `init -backend=false` and `plan` against a real checked-out Terraform configuration directory -- structurally no `apply`/`destroy` path |
+| `gyms.terraform_docker_apply.TerraformDockerApplyProvider` | a real local `terraform`/`tofu` binary running `apply`/`destroy` against a hand-authored, checked-in Terraform config (`gyms/fixtures/terraform_docker/main.tf`) that provisions exactly one pinned `docker_image`/`docker_container` on colima's real local Docker daemon -- no cloud provider, no cloud credentials |
 
 Each of these claims a `gymact.standing.require_standing` standing string (e.g.
 `"LOCAL_GYM:cube-counter"`). The real thing is the default: if the real collaborator is

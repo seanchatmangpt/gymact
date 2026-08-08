@@ -83,8 +83,7 @@ def resolve_binary(preferred: str | None = None) -> str | None:
 TERRAFORM_DOCKER_APPLY_CAPABILITIES = (
     Capability(
         iri="urn:gymact:terraform-docker-apply:capability:plan",
-        title="Run a real, read-only `terraform plan` against the checked-in "
-        "local-Docker config",
+        title="Run a real, read-only `terraform plan` against the checked-in local-Docker config",
         consequence=Consequence.READ,
         binding="plan",
     ),
@@ -225,9 +224,7 @@ class TerraformDockerApplyEnvironment:
         local-only config. Called once from the provider's `materialize()`."""
         self._ensure_open()
         try:
-            completed = self._run(
-                ["init", "-input=false", "-no-color"], timeout=self._init_timeout
-            )
+            completed = self._run(["init", "-input=false", "-no-color"], timeout=self._init_timeout)
             self._state["init_attempted"] = True
             self._state["init_returncode"] = completed.returncode
             self._state["init_stdout"] = completed.stdout[-_MAX_CAPTURED_OUTPUT:]
@@ -397,7 +394,9 @@ class TerraformDockerApplyProvider:
                 "TerraformDockerApplyProvider"
             )
 
-        container_name = config.get("container_name", f"{_DEFAULT_CONTAINER_NAME}-{uuid4().hex[:8]}")
+        container_name = config.get(
+            "container_name", f"{_DEFAULT_CONTAINER_NAME}-{uuid4().hex[:8]}"
+        )
         if not isinstance(container_name, str) or not container_name:
             raise TypeError("config.container_name must be a non-empty string")
 

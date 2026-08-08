@@ -98,6 +98,8 @@
 
 ::: gymact.gyms.terraform_plan.TerraformPlanProvider
 
+::: gymact.gyms.terraform_docker_apply.TerraformDockerApplyProvider
+
 ::: gymact.contract.RuntimeContract
 
 ::: gymact.contract.build_contract

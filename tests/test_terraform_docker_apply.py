@@ -64,9 +64,7 @@ PLAN = "urn:gymact:terraform-docker-apply:capability:plan"
 async def test_real_terraform_plan_runs_read_only_against_the_checked_in_config() -> None:
     gym = GymAct()
     gym.register_provider(TerraformDockerApplyProvider())
-    m = await gym.materialize(
-        MaterializationIntent(provider="terraform-docker-apply", config={})
-    )
+    m = await gym.materialize(MaterializationIntent(provider="terraform-docker-apply", config={}))
     assert m.accepted is True
     episode_id = m.episode.episode_id
     env = gym._episodes[episode_id].environment
@@ -83,9 +81,7 @@ async def test_real_terraform_plan_runs_read_only_against_the_checked_in_config(
 async def test_real_apply_creates_a_real_running_container_verified_via_docker() -> None:
     gym = GymAct()
     gym.register_provider(TerraformDockerApplyProvider())
-    m = await gym.materialize(
-        MaterializationIntent(provider="terraform-docker-apply", config={})
-    )
+    m = await gym.materialize(MaterializationIntent(provider="terraform-docker-apply", config={}))
     assert m.accepted is True
     episode_id = m.episode.episode_id
     env = gym._episodes[episode_id].environment
@@ -104,9 +100,7 @@ async def test_real_apply_creates_a_real_running_container_verified_via_docker()
     finally:
         # Real cleanup even on assertion failure: destroy + confirm via
         # docker inspect, never leak the container.
-        destroy_result = await gym.act(
-            ActuationIntent(episode_id=episode_id, capability=DESTROY)
-        )
+        destroy_result = await gym.act(ActuationIntent(episode_id=episode_id, capability=DESTROY))
         assert destroy_result.accepted is True
         gone_verification = await gym.verify(episode_id, {"container_running": False})
         assert gone_verification.passed is True
@@ -117,9 +111,7 @@ async def test_real_apply_creates_a_real_running_container_verified_via_docker()
 async def test_teardown_really_destroys_and_confirms_via_real_docker_inspect() -> None:
     gym = GymAct()
     gym.register_provider(TerraformDockerApplyProvider())
-    m = await gym.materialize(
-        MaterializationIntent(provider="terraform-docker-apply", config={})
-    )
+    m = await gym.materialize(MaterializationIntent(provider="terraform-docker-apply", config={}))
     episode_id = m.episode.episode_id
     env = gym._episodes[episode_id].environment
     try:
@@ -166,9 +158,7 @@ async def _run_real_episode() -> list:
         verification = await gym.verify(episode_id, {"container_running": True})
         assert verification.passed is True
 
-        destroy_result = await gym.act(
-            ActuationIntent(episode_id=episode_id, capability=DESTROY)
-        )
+        destroy_result = await gym.act(ActuationIntent(episode_id=episode_id, capability=DESTROY))
         assert destroy_result.accepted is True
         receipts.append(destroy_result.receipt)
 
