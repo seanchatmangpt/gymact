@@ -9,7 +9,14 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
-from gymact.action_contract import ReconciliationDisposition, ReconciliationResult
+from gymact.action_contract import (
+    ActionDefinition,
+    ExecutionGrant,
+    PreparedAction,
+    ReconciliationDisposition,
+    ReconciliationResult,
+    admit_execution,
+)
 from gymact.models import (
     ActuationIntent,
     ActuationResult,
@@ -153,7 +160,10 @@ async def reconcile_uncertain(
         disposition = ReconciliationDisposition.EFFECT_CONFIRMED
         standing = Standing.ALIVE
         reason = "RECONCILIATION_EFFECT_CONFIRMED"
-    elif source.pre_state_digest is not None and verification.state_digest == source.pre_state_digest:
+    elif (
+        source.pre_state_digest is not None
+        and verification.state_digest == source.pre_state_digest
+    ):
         disposition = ReconciliationDisposition.NO_EFFECT
         standing = Standing.REFUSED
         reason = "RECONCILIATION_NO_EFFECT_RETRY_NOT_ADMITTED"
@@ -182,3 +192,52 @@ async def reconcile_uncertain(
         verification=verification,
         receipt=receipt,
     )
+
+
+async def execute_admitted(
+    runtime: CrownRuntimeLike,
+    action: ActionDefinition,
+    prepared: PreparedAction,
+    grant: ExecutionGrant,
+    *,
+    current_revision: str | None,
+    expected: dict[str, Any],
+) -> VerifiedTransition:
+    """Bridge CONSTRUCT to DO only after identity/revision admission closes."""
+    admission = admit_execution(
+        action,
+        prepared,
+        grant,
+        current_revision=current_revision,
+    )
+    if not admission.admitted:
+        receipt = Receipt(
+            episode_id=prepared.episode_id,
+            operation=Operation.ACT,
+            standing=Standing.REFUSED,
+            subject_ref=prepared.subject.provider_ref,
+            capability_ref=action.capability_ref,
+            authority_ref=grant.authority_ref,
+            idempotency_key=prepared.idempotency_key,
+            reason=admission.reason,
+        )
+        runtime._record(receipt)
+        actuation = ActuationResult(
+            accepted=False,
+            standing=Standing.REFUSED,
+            receipt=receipt,
+        )
+        return VerifiedTransition(
+            standing=Standing.REFUSED,
+            actuation=actuation,
+            receipt=receipt,
+        )
+
+    intent = ActuationIntent(
+        episode_id=prepared.episode_id,
+        capability=action.capability_ref,
+        payload=prepared.payload,
+        authority_ref=grant.authority_ref,
+        idempotency_key=prepared.idempotency_key,
+    )
+    return await execute_verified(runtime, intent, expected)
