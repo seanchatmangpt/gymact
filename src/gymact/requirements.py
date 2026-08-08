@@ -105,8 +105,12 @@ def crown_summary(data: dict[str, Any] | None = None) -> CrownSummary:
         specification=inventory["spec_version"],
         requirements=len(requirements),
         checkpoints=len(checkpoints),
-        requirement_statuses={status: req_counts.get(status, 0) for status in inventory["statuses"]},
-        checkpoint_statuses={status: cp_counts.get(status, 0) for status in inventory["statuses"]},
+        requirement_statuses={
+            status: req_counts.get(status, 0) for status in inventory["statuses"]
+        },
+        checkpoint_statuses={
+            status: cp_counts.get(status, 0) for status in inventory["statuses"]
+        },
         crown_ready=not blockers,
         blockers=blockers,
     )
