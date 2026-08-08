@@ -14,6 +14,7 @@ def receipt() -> Receipt:
         subject_ref="urn:subject:1",
         capability_ref="urn:capability:1",
         possibility_graph_digest="graph-1",
+        possibility_exploration_digest="exploration-1",
         possibility_path_id="path-1",
         possibility_morphism_id="do-1",
         selection_digest="selection-1",
@@ -31,6 +32,7 @@ def test_replay_accepts_exact_combinatorial_identity() -> None:
             subject_ref="urn:subject:1",
             capability_ref="urn:capability:1",
             possibility_graph_digest="graph-1",
+            possibility_exploration_digest="exploration-1",
             possibility_path_id="path-1",
             possibility_morphism_id="do-1",
             selection_digest="selection-1",
@@ -40,13 +42,14 @@ def test_replay_accepts_exact_combinatorial_identity() -> None:
     assert report.mismatches == ()
 
 
-def test_replay_detects_graph_path_morphism_and_selection_drift() -> None:
+def test_replay_detects_graph_closure_path_morphism_and_selection_drift() -> None:
     ledger = MemoryReceiptLedger()
     ledger.append(receipt())
     report = replay_ledger(
         ledger,
         expected=ReplayExpectation(
             possibility_graph_digest="graph-2",
+            possibility_exploration_digest="exploration-2",
             possibility_path_id="path-2",
             possibility_morphism_id="do-2",
             selection_digest="selection-2",
@@ -55,7 +58,39 @@ def test_replay_detects_graph_path_morphism_and_selection_drift() -> None:
     assert not report.valid
     assert set(report.mismatches) == {
         "POSSIBILITY_GRAPH_DIGEST_DRIFT",
+        "POSSIBILITY_EXPLORATION_DIGEST_DRIFT",
         "POSSIBILITY_PATH_ID_DRIFT",
         "POSSIBILITY_MORPHISM_ID_DRIFT",
         "SELECTION_DIGEST_DRIFT",
+    }
+
+
+def test_replay_treats_missing_dcm_identity_as_evidence_loss() -> None:
+    ledger = MemoryReceiptLedger()
+    ledger.append(
+        Receipt(
+            receipt_id="legacy",
+            episode_id="episode",
+            operation=Operation.VERIFY,
+            standing=Standing.ALIVE,
+            verified=True,
+        )
+    )
+    report = replay_ledger(
+        ledger,
+        expected=ReplayExpectation(
+            possibility_graph_digest="graph-1",
+            possibility_exploration_digest="exploration-1",
+            possibility_path_id="path-1",
+            possibility_morphism_id="do-1",
+            selection_digest="selection-1",
+        ),
+    )
+    assert not report.valid
+    assert set(report.mismatches) == {
+        "POSSIBILITY_GRAPH_DIGEST_MISSING",
+        "POSSIBILITY_EXPLORATION_DIGEST_MISSING",
+        "POSSIBILITY_PATH_ID_MISSING",
+        "POSSIBILITY_MORPHISM_ID_MISSING",
+        "SELECTION_DIGEST_MISSING",
     }
