@@ -65,6 +65,9 @@ dist/
 
 # Terraform
 .terraform/
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info
 
 # uv
 uv.lock

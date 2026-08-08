@@ -92,6 +92,8 @@
 
 ::: gymact.gyms.gymnasium_env.GymnasiumProvider
 
+::: gymact.gyms.terraform_docker_apply.TerraformDockerApplyProvider
+
 ::: gymact.contract.RuntimeContract
 
 ::: gymact.contract.build_contract
