@@ -1,7 +1,12 @@
 """Project ActionDefinition into the canonical combinatorial possibility topology."""
 from __future__ import annotations
 
-from gymact.action_contract import ActionDefinition, ObservationConfidence, ReversalClass, SubjectRef
+from gymact.action_contract import (
+    ActionDefinition,
+    ObservationConfidence,
+    ReversalClass,
+    SubjectRef,
+)
 from gymact.combinatorial import (
     DecisionPhase,
     MorphismKind,
@@ -27,11 +32,23 @@ def _object_id(prefix: str, semantic_ref: str) -> str:
     return f"{prefix}:{digest(semantic_ref)}"
 
 
+def _edge_id(source_id: str, target_id: str, *, action_ref: str | None = None) -> str:
+    payload = {"from": source_id, "to": target_id, "action": action_ref}
+    return f"urn:gymact:morphism:{digest(payload)}"
+
+
 def action_possibility_fragment(
     action: ActionDefinition,
     subject: SubjectRef,
 ) -> PossibilityGraph:
     """Manufacture one powerless action path; union fragments to preserve alternatives."""
+    subject_object = PossibilityObject(
+        object_id=_object_id("subject", subject.semantic_id),
+        kind=PossibilityObjectKind.SUBJECT,
+        semantic_ref=subject.semantic_id,
+        revision=subject.revision,
+        attributes={"provider_ref": subject.provider_ref},
+    )
     provider = PossibilityObject(
         object_id=_object_id("provider", action.provider_ref),
         kind=PossibilityObjectKind.PROVIDER,
@@ -53,6 +70,7 @@ def action_possibility_fragment(
             "input_schema": action.input_schema,
             "output_schema": action.output_schema,
             "preconditions": action.preconditions,
+            "locality": action.locality.model_dump(mode="json"),
         },
     )
     verifier = PossibilityObject(
@@ -60,7 +78,8 @@ def action_possibility_fragment(
         kind=PossibilityObjectKind.VERIFIER,
         semantic_ref=action.verification.observer_ref,
     )
-    effect_ref = f"urn:gymact:expected-effect:{digest([item.model_dump(mode='json') for item in action.expected_effects])}"
+    effects = [item.model_dump(mode="json") for item in action.expected_effects]
+    effect_ref = f"urn:gymact:expected-effect:{digest(effects)}"
     effect = PossibilityObject(
         object_id=_object_id("effect", effect_ref),
         kind=PossibilityObjectKind.RECEIPT,
@@ -76,16 +95,23 @@ def action_possibility_fragment(
         risk_score=action.cost.expected_failure_probability,
         verification_confidence=_CONFIDENCE[action.verification.minimum_confidence],
     )
-    policy_refs = action.authority.policy_refs
     requirements = MorphismRequirements(
         capability_refs=(action.capability_ref, *action.authority.capability_refs),
-        policy_refs=policy_refs,
+        policy_refs=action.authority.policy_refs,
         required_revision=subject.revision,
         execution_grant_required=True,
     )
     edges = (
         PossibilityMorphism(
-            morphism_id=f"urn:gymact:morphism:{digest({'from': provider.object_id, 'to': capability.object_id})}",
+            morphism_id=_edge_id(subject_object.object_id, provider.object_id),
+            source_id=subject_object.object_id,
+            target_id=provider.object_id,
+            kind=MorphismKind.ENABLE,
+            phase=DecisionPhase.SELECT,
+            reversal=reversible,
+        ),
+        PossibilityMorphism(
+            morphism_id=_edge_id(provider.object_id, capability.object_id),
             source_id=provider.object_id,
             target_id=capability.object_id,
             kind=MorphismKind.ENABLE,
@@ -93,7 +119,7 @@ def action_possibility_fragment(
             reversal=reversible,
         ),
         PossibilityMorphism(
-            morphism_id=f"urn:gymact:morphism:{digest({'from': capability.object_id, 'to': action_object.object_id})}",
+            morphism_id=_edge_id(capability.object_id, action_object.object_id),
             source_id=capability.object_id,
             target_id=action_object.object_id,
             kind=MorphismKind.REALIZE,
@@ -101,7 +127,7 @@ def action_possibility_fragment(
             reversal=reversible,
         ),
         PossibilityMorphism(
-            morphism_id=f"urn:gymact:morphism:{digest({'from': action_object.object_id, 'to': verifier.object_id})}",
+            morphism_id=_edge_id(action_object.object_id, verifier.object_id),
             source_id=action_object.object_id,
             target_id=verifier.object_id,
             kind=MorphismKind.VERIFY,
@@ -109,7 +135,11 @@ def action_possibility_fragment(
             reversal=reversible,
         ),
         PossibilityMorphism(
-            morphism_id=f"urn:gymact:morphism:{digest({'from': verifier.object_id, 'to': effect.object_id, 'action': action.semantic_id})}",
+            morphism_id=_edge_id(
+                verifier.object_id,
+                effect.object_id,
+                action_ref=action.semantic_id,
+            ),
             source_id=verifier.object_id,
             target_id=effect.object_id,
             kind=MorphismKind.ACTUATE,
@@ -122,6 +152,6 @@ def action_possibility_fragment(
         ),
     )
     return PossibilityGraph(
-        objects=(provider, capability, action_object, verifier, effect),
+        objects=(subject_object, provider, capability, action_object, verifier, effect),
         morphisms=edges,
     )
