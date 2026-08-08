@@ -23,6 +23,7 @@ from gymact.action_contract import (
 from gymact.authority import AllowListAuthorityResolver
 from gymact.brce import BRCEBroker, BrokerRequest
 from gymact.contract import build_contract
+from gymact.errc import errc_summary, load_errc
 from gymact.experiments import AntiAgentPoint, anti_agent_benchmark
 from gymact.manufacture import export_manufacturing_bundle
 from gymact.models import ActuationIntent, MaterializationIntent
@@ -34,7 +35,7 @@ from gymact.registry import (
 )
 from gymact.replay import ReplayExpectation, ReplayMode, replay_ledger
 from gymact.requirements import crown_summary, load_crown_requirements
-from gymact.runtime import GymAct
+from gymact.runtime import GymAct, ProductionGymAct
 from gymact.semantic import ProfileAuthority
 from gymact.sqlite_ledger import SQLiteReceiptLedger
 from gymact.surfaces.fastapi import create_app
@@ -56,15 +57,15 @@ def _echo(value: object) -> None:
     typer.echo(json.dumps(value, sort_keys=True, default=str))
 
 
-def _runtime(provider_name: str, authority_refs: set[str] | None = None) -> GymAct:
+def _runtime(provider_name: str, authority_refs: set[str] | None = None) -> ProductionGymAct:
     refs = authority_refs or set()
     resolver = AllowListAuthorityResolver(refs) if refs else None
-    runtime = GymAct(authority_resolver=resolver)
+    runtime = ProductionGymAct(authority_resolver=resolver)
     runtime.register_provider(create_builtin_provider(provider_name))
     return runtime
 
 
-async def _materialize_request(data: dict[str, Any]) -> tuple[GymAct, object]:
+async def _materialize_request(data: dict[str, Any]) -> tuple[ProductionGymAct, object]:
     provider_name = str(data.get("provider", "memory"))
     authority_ref = data.get("materialization_authority_ref")
     refs = {str(authority_ref)} if authority_ref else set()
@@ -100,6 +101,12 @@ def contract() -> None:
 def crown_status() -> None:
     """Print the evidence-bounded Crown build queue and current GALL blockers."""
     _echo(crown_summary().as_dict())
+
+
+@app.command("errc-status")
+def errc_status() -> None:
+    """Print the machine-checkable 80/20 ERRC innovation closure."""
+    _echo({"summary": errc_summary().as_dict(), "items": [item.model_dump(mode="json") for item in load_errc()]})
 
 
 @app.command("requirements")
@@ -281,6 +288,7 @@ def doctor() -> None:
         "git": shutil.which("git") is not None,
         "modules": {name: importlib.util.find_spec(name) is not None for name in modules},
         "providers": builtin_provider_names(),
+        "errc": errc_summary().as_dict(),
         "crown": crown_summary().as_dict(),
     }
     _echo(payload)
@@ -325,11 +333,13 @@ def export_bundle(directory: Path) -> None:
 
 @app.command()
 def demo(authority: bool = typer.Option(False, "--authority")) -> None:
-    """Execute a deterministic bounded transition; retained as a development example."""
+    """Compatibility/reference-kernel example; production callers use ``execute``."""
 
     async def run() -> dict[str, object]:
         authority_ref = "urn:gymact:authority:demo"
-        runtime = _runtime("memory", {authority_ref} if authority else set())
+        resolver = AllowListAuthorityResolver({authority_ref}) if authority else None
+        runtime = GymAct(authority_resolver=resolver)
+        runtime.register_provider(create_builtin_provider("memory"))
         materialized = await runtime.materialize(
             MaterializationIntent(
                 provider="memory",
@@ -365,7 +375,5 @@ def serve(
     host: str = typer.Option("127.0.0.1"),
     port: int = typer.Option(8000, min=1, max=65535),
 ) -> None:
-    """Run the FastAPI/OpenAPI surface with the deterministic reference provider."""
-    runtime = GymAct()
-    runtime.register_provider(create_builtin_provider("memory"))
-    uvicorn.run(create_app(runtime), host=host, port=port)
+    """Run the production FastAPI/OpenAPI surface."""
+    uvicorn.run(create_app(), host=host, port=port)
