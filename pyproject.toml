@@ -44,7 +44,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-gyms = ["gymnasium>=1.0,<2", "pettingzoo>=1.24,<2"]
+gyms = ["gymnasium>=1.0,<2", "pettingzoo>=1.24,<2", "inspect-ai>=0.3.90,<1"]
 # The first real gym bridge target: CUBE's own no-Docker reference benchmark
 # (examples/counter-cube), vendored read-only at
 # ~/autofde-lab/vendor/gyms/cube-standard (a lazy git submodule of that repo,
