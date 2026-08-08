@@ -1,0 +1,135 @@
+{
+  "spec_version": "26.8.7",
+  "items": [
+    {
+      "item_id": "E-001",
+      "move": "ELIMINATE",
+      "outcome": "Eliminate direct production actuation that bypasses an identity-bound ExecutionGrant.",
+      "requirement_refs": ["G-LAW-001", "G-P0-004"],
+      "evidence": ["src/gymact/runtime.py", "src/gymact/brce.py"],
+      "impact": 5,
+      "effort": 2,
+      "status": "SATISFIED"
+    },
+    {
+      "item_id": "E-002",
+      "move": "ELIMINATE",
+      "outcome": "Eliminate ambient transport authority and authority-bearing planner/model output.",
+      "requirement_refs": ["G-LAW-002", "G-P0-016", "G-P0-017"],
+      "evidence": ["src/gymact/transport.py", "src/gymact/surfaces/fastapi.py", "src/gymact/surfaces/fastmcp.py"],
+      "impact": 5,
+      "effort": 2,
+      "status": "SATISFIED"
+    },
+    {
+      "item_id": "E-003",
+      "move": "ELIMINATE",
+      "outcome": "Eliminate false subject crowns when only validator/toolchain evidence is reusable.",
+      "requirement_refs": ["G-LAW-007", "G-P0-018"],
+      "evidence": ["src/gymact/capsule.py"],
+      "impact": 5,
+      "effort": 1,
+      "status": "SATISFIED"
+    },
+    {
+      "item_id": "R-001",
+      "move": "REDUCE",
+      "outcome": "Reduce repeated cold cognition by compiling verified equivalence classes into deterministic HOT recipes.",
+      "requirement_refs": ["G-P1-009", "G-P2-006"],
+      "evidence": ["src/gymact/compileout.py", "src/gymact/intelligence.py"],
+      "impact": 5,
+      "effort": 2,
+      "status": "SATISFIED"
+    },
+    {
+      "item_id": "R-002",
+      "move": "REDUCE",
+      "outcome": "Reduce repeated doomed planning by caching exact-identity typed refusals without caching authority.",
+      "requirement_refs": ["G-LAW-008", "G-P1-010"],
+      "evidence": ["src/gymact/decision_cache.py"],
+      "impact": 4,
+      "effort": 1,
+      "status": "SATISFIED"
+    },
+    {
+      "item_id": "R-003",
+      "move": "REDUCE",
+      "outcome": "Reduce protocol-specific business logic to one transport-neutral candidate-intent normalization law.",
+      "requirement_refs": ["G-P0-017"],
+      "evidence": ["src/gymact/transport.py", "tests/test_transport_crown.py"],
+      "impact": 4,
+      "effort": 1,
+      "status": "SATISFIED"
+    },
+    {
+      "item_id": "R-004",
+      "move": "REDUCE",
+      "outcome": "Reduce provider discovery duplication through one built-in provider/capability registry.",
+      "requirement_refs": ["G-P0-002", "G-P0-013"],
+      "evidence": ["src/gymact/registry.py", "src/gymact/cli.py"],
+      "impact": 3,
+      "effort": 1,
+      "status": "SATISFIED"
+    },
+    {
+      "item_id": "H-001",
+      "move": "RAISE",
+      "outcome": "Raise consequence confidence from single-path observation to distinct-channel multi-oracle quorum.",
+      "requirement_refs": ["G-LAW-004", "G-P0-006", "G-P1-015"],
+      "evidence": ["src/gymact/oracle.py"],
+      "impact": 5,
+      "effort": 2,
+      "status": "SATISFIED"
+    },
+    {
+      "item_id": "H-002",
+      "move": "RAISE",
+      "outcome": "Raise economic selection quality with Pareto/VCT and anti-agent crossover evidence.",
+      "requirement_refs": ["G-P1-007", "G-P1-009", "G-P2-006"],
+      "evidence": ["src/gymact/lab.py", "src/gymact/experiments.py"],
+      "impact": 4,
+      "effort": 2,
+      "status": "SATISFIED"
+    },
+    {
+      "item_id": "H-003",
+      "move": "RAISE",
+      "outcome": "Raise safety standing for physical/edge effectors with bounded envelopes, safe-state and verifier identities.",
+      "requirement_refs": ["G-P2-001", "G-P2-002", "G-P2-003"],
+      "evidence": ["src/gymact/physical.py", "tests/test_physical_crown.py"],
+      "impact": 5,
+      "effort": 2,
+      "status": "SATISFIED"
+    },
+    {
+      "item_id": "C-001",
+      "move": "CREATE",
+      "outcome": "Create exact-identity execution capsules that separate VERIFIER_ALIVE reuse from SUBJECT_ALIVE proof.",
+      "requirement_refs": ["G-LAW-007", "G-P0-018", "G-P2-006"],
+      "evidence": ["src/gymact/capsule.py"],
+      "impact": 5,
+      "effort": 1,
+      "status": "SATISFIED"
+    },
+    {
+      "item_id": "C-002",
+      "move": "CREATE",
+      "outcome": "Create a real network effector family with separate mutation and observation requests.",
+      "requirement_refs": ["G-P0-005", "G-P0-012"],
+      "evidence": ["src/gymact/network_providers.py", "tests/test_network_provider.py"],
+      "impact": 5,
+      "effort": 2,
+      "status": "SATISFIED"
+    },
+    {
+      "item_id": "C-003",
+      "move": "CREATE",
+      "outcome": "Create evidence-over-constitution requirement overlays so implementation status can advance without rewriting architectural law.",
+      "requirement_refs": ["G-P0-018"],
+      "evidence": ["src/gymact/requirements.py", "src/gymact/schemas/crown-evidence-v26.8.7.json"],
+      "impact": 4,
+      "effort": 1,
+      "status": "SATISFIED"
+    }
+  ]
+}

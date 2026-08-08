@@ -1,0 +1,230 @@
+{
+  "spec_version": "26.8.7",
+  "evidence_context": {
+    "base_sha": "d4b66abb2fe6dde774e8143d9160f175d5115a74",
+    "branch": "agent/crown-prd-ard-runtime",
+    "environment": "cloud container / Python 3.13.5",
+    "standing_rule": "SATISFIED means implemented with bounded executable evidence for the requirement; dependency-closed or external Crown checkpoints remain PARTIAL or BLOCKED until exact compatible subjects execute."
+  },
+  "requirements": {
+    "G-LAW-001": {
+      "status": "SATISFIED",
+      "evidence": [
+        "src/gymact/brce.py",
+        "src/gymact/runtime.py",
+        "tests/test_brce_crown.py",
+        "tests/test_brce_seal.py"
+      ]
+    },
+    "G-LAW-003": {
+      "status": "SATISFIED",
+      "evidence": ["src/gymact/crown_runtime.py", "tests/test_crown_runtime.py"]
+    },
+    "G-LAW-005": {
+      "status": "SATISFIED",
+      "evidence": [
+        "src/gymact/replay.py",
+        "src/gymact/experiments.py",
+        "tests/test_replay_crown.py"
+      ]
+    },
+    "G-LAW-007": {
+      "status": "SATISFIED",
+      "evidence": ["src/gymact/capsule.py", "tests/test_errc_innovations.py"]
+    },
+    "G-P0-004": {
+      "status": "SATISFIED",
+      "evidence": [
+        "src/gymact/brce.py",
+        "src/gymact/runtime.py",
+        "src/gymact/surfaces/fastapi.py",
+        "src/gymact/surfaces/fastmcp.py",
+        "src/gymact/surfaces/faststream.py",
+        "tests/test_brce_seal.py",
+        "tests/test_production_surfaces.py"
+      ]
+    },
+    "G-P0-008": {
+      "status": "SATISFIED",
+      "evidence": [
+        "src/gymact/crown_runtime.py",
+        "src/gymact/experiments.py",
+        "tests/test_crown_runtime.py"
+      ]
+    },
+    "G-P0-010": {
+      "status": "SATISFIED",
+      "evidence": [
+        "src/gymact/models.py",
+        "src/gymact/evidence.py",
+        "tests/test_receipt_binding.py"
+      ]
+    },
+    "G-P0-011": {
+      "status": "SATISFIED",
+      "evidence": [
+        "src/gymact/action_contract.py",
+        "src/gymact/local_providers.py",
+        "tests/test_crown_runtime.py"
+      ]
+    },
+    "G-P0-012": {
+      "status": "SATISFIED",
+      "evidence": [
+        "src/gymact/local_providers.py",
+        "src/gymact/network_providers.py",
+        "tests/test_network_provider.py"
+      ]
+    },
+    "G-P0-013": {
+      "status": "PARTIAL",
+      "evidence": ["src/gymact/cli.py", "src/gymact/errc.py"]
+    },
+    "G-P0-016": {
+      "status": "PARTIAL",
+      "evidence": [
+        "src/gymact/surfaces/fastmcp.py",
+        "src/gymact/transport.py",
+        "tests/test_production_surfaces.py"
+      ]
+    },
+    "G-P0-017": {
+      "status": "SATISFIED",
+      "evidence": [
+        "src/gymact/transport.py",
+        "src/gymact/surfaces/fastapi.py",
+        "src/gymact/surfaces/fastmcp.py",
+        "src/gymact/surfaces/faststream.py",
+        "tests/test_transport_crown.py"
+      ]
+    },
+    "G-P0-018": {
+      "status": "SATISFIED",
+      "evidence": [
+        "src/gymact/capsule.py",
+        "src/gymact/requirements.py",
+        "src/gymact/schemas/crown-evidence-v26.8.7.json"
+      ]
+    },
+    "G-P1-009": {
+      "status": "SATISFIED",
+      "evidence": [
+        "src/gymact/lab.py",
+        "src/gymact/experiments.py",
+        "src/gymact/compileout.py",
+        "tests/test_experiments_crown.py"
+      ]
+    },
+    "G-P1-010": {
+      "status": "SATISFIED",
+      "evidence": [
+        "src/gymact/decision_cache.py",
+        "src/gymact/lab.py",
+        "tests/test_errc_innovations.py"
+      ]
+    },
+    "G-P1-013": {
+      "status": "SATISFIED",
+      "evidence": ["src/gymact/experiments.py", "tests/test_experiments_crown.py"]
+    },
+    "G-P1-014": {
+      "status": "SATISFIED",
+      "evidence": [
+        "src/gymact/lab.py",
+        "src/gymact/experiments.py",
+        "tests/test_experiments_crown.py"
+      ]
+    },
+    "G-P1-015": {
+      "status": "PARTIAL",
+      "evidence": [
+        "src/gymact/oracle.py",
+        "src/gymact/lab.py",
+        "tests/test_network_provider.py",
+        "tests/test_errc_innovations.py"
+      ]
+    },
+    "G-P2-001": {
+      "status": "PARTIAL",
+      "evidence": ["src/gymact/physical.py", "tests/test_physical_crown.py"]
+    },
+    "G-P2-002": {
+      "status": "PARTIAL",
+      "evidence": ["src/gymact/physical.py", "tests/test_physical_crown.py"]
+    },
+    "G-P2-003": {
+      "status": "SATISFIED",
+      "evidence": ["src/gymact/physical.py", "tests/test_physical_crown.py"]
+    },
+    "G-P2-006": {
+      "status": "SATISFIED",
+      "evidence": [
+        "src/gymact/capsule.py",
+        "src/gymact/compileout.py",
+        "src/gymact/decision_cache.py",
+        "src/gymact/experiments.py"
+      ]
+    }
+  },
+  "gall_checkpoints": {
+    "CP2": {
+      "status": "SATISFIED",
+      "evidence": ["src/gymact/local_providers.py", "tests/test_crown_runtime.py"]
+    },
+    "CP3": {
+      "status": "SATISFIED",
+      "evidence": ["src/gymact/network_providers.py", "tests/test_network_provider.py"]
+    },
+    "CP6": {
+      "status": "SATISFIED",
+      "evidence": ["src/gymact/crown_runtime.py", "tests/test_crown_runtime.py"]
+    },
+    "CP8": {
+      "status": "SATISFIED",
+      "evidence": ["src/gymact/transport.py", "tests/test_transport_crown.py"]
+    },
+    "CP9": {
+      "status": "SATISFIED",
+      "evidence": ["src/gymact/local_providers.py", "src/gymact/network_providers.py"]
+    },
+    "CP10": {
+      "status": "SATISFIED",
+      "evidence": ["src/gymact/experiments.py", "tests/test_experiments_crown.py"]
+    },
+    "CP11": {
+      "status": "PARTIAL",
+      "evidence": [
+        "src/gymact/oracle.py",
+        "tests/test_network_provider.py",
+        "tests/test_errc_innovations.py"
+      ]
+    },
+    "CP12": {
+      "status": "SATISFIED",
+      "evidence": ["src/gymact/experiments.py", "tests/test_experiments_crown.py"]
+    },
+    "CP14": {
+      "status": "PARTIAL",
+      "evidence": [
+        "src/gymact/replay.py",
+        "src/gymact/sqlite_ledger.py",
+        "tests/test_replay_crown.py",
+        "tests/test_crown_completion.py"
+      ]
+    },
+    "CP15": {
+      "status": "SATISFIED",
+      "evidence": ["src/gymact/experiments.py", "tests/test_experiments_crown.py"]
+    },
+    "CP16": {
+      "status": "PARTIAL",
+      "evidence": [
+        "src/gymact/intelligence.py",
+        "src/gymact/experiments.py",
+        "src/gymact/compileout.py",
+        "src/gymact/capsule.py",
+        "tests/test_errc_innovations.py"
+      ]
+    }
+  }
+}

@@ -1,5 +1,4 @@
 """FastMCP surface over GymAct's semantic runtime."""
-
 from __future__ import annotations
 
 import os
@@ -8,9 +7,13 @@ from typing import Any
 
 from fastmcp import FastMCP
 
+from gymact.brce import BRCEBroker, BrokerRequest
+from gymact.cut import CombinatorialBrokerRequest
+from gymact.dcm_runtime import DCMDecisionCourt, DecisionCourtRequest
 from gymact.models import ActuationIntent, MaterializationIntent
 from gymact.providers import MemoryProvider
-from gymact.runtime import GymAct
+from gymact.runtime import GymAct, ProductionGymAct
+from gymact.transport import TransportKind, normalize_candidate
 
 _PROBE_MAX_CHARS = 4000
 
@@ -18,14 +21,16 @@ _PROBE_MAX_CHARS = 4000
 def _runtime(runtime: GymAct | None) -> GymAct:
     if runtime is not None:
         return runtime
-    instance = GymAct()
+    instance = ProductionGymAct()
     instance.register_provider(MemoryProvider())
     return instance
 
 
 def create_mcp(runtime: GymAct | None = None) -> FastMCP:
-    """Create generic GymAct MCP tools; benchmark identity remains data."""
+    """Create GymAct MCP tools; DCM selected-cut execution is the production DO mode."""
     service = _runtime(runtime)
+    compatibility_broker = BRCEBroker(service)
+    decision_court = DCMDecisionCourt()
     mcp = FastMCP("GymAct")
 
     @mcp.tool()
@@ -65,13 +70,62 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
 
     @mcp.tool()
     async def act(
-        episode_id: str,
-        capability: str,
+        episode_id: str | None = None,
+        capability: str | None = None,
         payload: dict[str, Any] | None = None,
         authority_ref: str | None = None,
         idempotency_key: str | None = None,
+        candidate: dict[str, Any] | None = None,
+        court: dict[str, Any] | None = None,
+        selected: dict[str, Any] | None = None,
+        request: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Submit a semantic actuation intent; MCP transport itself grants no authority."""
+        """One transport, explicit authority phases.
+
+        ``candidate`` is powerless CONSTRUCT. ``court`` admits/explores a public RDF
+        possibility graph. ``selected`` is canonical DO and must contain a DCM cut-bound
+        request. ``request`` is deprecated BRCE compatibility. Legacy fields cannot
+        mutate the default ProductionGymAct runtime.
+        """
+        supplied = sum(
+            value is not None
+            for value in (candidate, court, selected, request)
+        )
+        legacy_supplied = episode_id is not None or capability is not None
+        if supplied + int(legacy_supplied) != 1:
+            raise ValueError("ACT_REQUIRES_EXACTLY_ONE_MODE")
+
+        if candidate is not None:
+            envelope = normalize_candidate(TransportKind.MCP, candidate)
+            return {
+                "mode": "CONSTRUCT",
+                "semantic_key": envelope.semantic_key(),
+                "prepared": envelope.prepared().model_dump(mode="json"),
+            }
+
+        if court is not None:
+            court_request = DecisionCourtRequest.model_validate(court)
+            result = decision_court.admit_request(court_request)
+            return {"mode": "MAXIMAL_CLOSURE", "court": result.model_dump(mode="json")}
+
+        if selected is not None:
+            cut_request = CombinatorialBrokerRequest.model_validate(selected)
+            prepared_episode = cut_request.broker_request.prepared.episode_id
+            if episode_id is not None and prepared_episode != episode_id:
+                raise ValueError("EPISODE_ID_PATH_BODY_MISMATCH")
+            transition = await decision_court.execute(service, cut_request)
+            return {"mode": "DCM_DO", "transition": transition.model_dump(mode="json")}
+
+        if request is not None:
+            broker_request = BrokerRequest.model_validate(request)
+            transition = await compatibility_broker.execute(broker_request)
+            return {
+                "mode": "COMPATIBILITY_DO",
+                "transition": transition.model_dump(mode="json"),
+            }
+
+        if episode_id is None or capability is None:
+            raise ValueError("LEGACY_ACT_REQUIRES_EPISODE_AND_CAPABILITY")
         values: dict[str, Any] = {
             "episode_id": episode_id,
             "capability": capability,
@@ -81,7 +135,8 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
         if idempotency_key is not None:
             values["idempotency_key"] = idempotency_key
         intent = ActuationIntent.model_validate(values)
-        return (await service.act(intent)).model_dump(mode="json")
+        result = await service.act(intent)
+        return {"mode": "LEGACY", **result.model_dump(mode="json")}
 
     @mcp.tool()
     async def verify(episode_id: str, expected: dict[str, Any]) -> dict[str, Any]:
@@ -95,7 +150,9 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
 
     @mcp.tool()
     async def restore(
-        episode_id: str, checkpoint: dict[str, Any], authority_ref: str | None = None
+        episode_id: str,
+        checkpoint: dict[str, Any],
+        authority_ref: str | None = None,
     ) -> dict[str, Any]:
         """Restore checkpoint state under the same authority rules as actuation."""
         return (
@@ -104,15 +161,7 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
 
     @mcp.tool()
     async def probe_repo(subject_path: str) -> dict[str, Any]:
-        """Read-only probe of a real repository directory: README, pyproject/
-        setup.py (whichever exists), and top-level file listing, truncated.
-
-        This is the only new read surface an LLM-driven discovery loop gets --
-        no shell access, no arbitrary code execution granted here. What to do
-        with this information (propose a real command) is the caller's job;
-        actually running it goes through GymAct's own actuate()/authority
-        path like every other consequential operation.
-        """
+        """Read-only bounded probe of a repository directory for discovery."""
         root = Path(subject_path)
         if not root.is_dir():
             return {"exists": False, "subject_path": subject_path}
@@ -127,8 +176,8 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
                 return None
 
         readme = None
-        for candidate in ("README.md", "README.rst", "README.txt", "README"):
-            readme = _read(candidate)
+        for candidate_name in ("README.md", "README.rst", "README.txt", "README"):
+            readme = _read(candidate_name)
             if readme is not None:
                 break
 

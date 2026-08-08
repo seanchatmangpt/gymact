@@ -1,10 +1,47 @@
 """Portable semantic/runtime contract for cross-language manufacture."""
-
 from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 
+from gymact.action_contract import ActionDefinition, ExecutionGrant, PreparedAction
+from gymact.brce import BrokerRequest
+from gymact.capsule import CapsuleIdentity, SubjectCapsuleReceipt, VerifierCapsuleReceipt
+from gymact.combinatorial import (
+    AdmissionContext,
+    Combination,
+    CombinationSpace,
+    ExplorationBounds,
+    ExplorationResult,
+    Factor,
+    MorphismRequirements,
+    ObjectiveVector,
+    PossibilityGraph,
+    PossibilityMorphism,
+    PossibilityObject,
+    PossibilityPath,
+)
+from gymact.combinatorial_rdf import PossibilityRDFValidation
+from gymact.compileout import CompiledRecipe, RecipeIdentity
+from gymact.compileout_graph import (
+    CompiledGraphRecipe,
+    GraphRecipeAdmission,
+    GraphRecipeIdentity,
+)
+from gymact.cut import CombinatorialBrokerRequest, IrreversibleSelection
+from gymact.dcm_runtime import DecisionCourtRecord, DecisionCourtRequest
+from gymact.decision_cache import CandidateDecision, DecisionKey, RefusalDecision
+from gymact.ecology import EcologyAlternative, EcologyDimension, IrreversibleOption, ManufacturedEcology
 from gymact.evidence import digest
+from gymact.experiments import (
+    AntiAgentPoint,
+    CompileOutReport,
+    FaultPlan,
+    IntelligenceRun,
+    SelfPlayReport,
+    TransitionEconomics,
+)
+from gymact.intelligence import CompileOutObservation, SelectionDecision
+from gymact.lab import ActionProjection, ForwardBenchSubject, ProblemSignature
 from gymact.models import (
     ActuationIntent,
     MaterializationIntent,
@@ -12,7 +49,24 @@ from gymact.models import (
     Receipt,
     VerificationResult,
 )
+from gymact.oracle import DifferentialVerification, OracleObservation
+from gymact.physical import (
+    EdgeControllerArtifact,
+    PhysicalCommand,
+    PhysicalProviderProfile,
+    SafetyEnvelope,
+)
+from gymact.possibility_index import EmpiricalCombinationRecord
+from gymact.provider_spi import (
+    ObservationRequest,
+    ProviderExecutionAttempt,
+    ProviderPreparation,
+    ProviderRollbackResult,
+)
+from gymact.replay import ReplayExpectation, ReplayReport
 from gymact.semantic import ProfileAuthority
+from gymact.structural_scan import StructuralSignature
+from gymact.transport import CandidateIntentEnvelope
 
 PUBLIC_SEMANTICS = (
     "http://www.w3.org/ns/dx/prof/",
@@ -54,7 +108,7 @@ class RuntimeContract(BaseModel):
 
 
 def build_contract(version: str = "26.8.7") -> RuntimeContract:
-    """Build and self-digest the admitted Python runtime contract."""
+    """Build and self-digest the admitted Python, DCM and Crown semantic contract."""
     payload = {
         "gymact_version": version,
         "profile_uri": ProfileAuthority.profile_uri,
@@ -64,12 +118,39 @@ def build_contract(version: str = "26.8.7") -> RuntimeContract:
         "surfaces": (
             "python",
             "pydantic",
+            "brce",
+            "combinatorial-maximum",
+            "maximal-reversible-closure",
+            "combinatorial-rdf",
+            "combinatorial-cut",
+            "dcm-decision-court",
+            "action-graph",
+            "ecology-graph",
+            "structural-scan",
+            "empirical-possibility-index",
+            "compiled-graph-route",
             "fastapi",
             "openapi",
             "fastmcp",
             "typer",
             "faststream",
+            "http-json",
             "rdf",
+            "json-ld",
+            "ocel",
+            "pddl",
+            "ppddl",
+            "rddl",
+            "powl-v2",
+            "bpmn",
+            "a2a",
+            "robotics-profile",
+            "industrial-ot-profile",
+            "edge-controller-profile",
+            "execution-capsule",
+            "compiled-recipe-compatibility",
+            "decision-cache-compatibility",
+            "differential-oracle",
         ),
         "public_semantics": PUBLIC_SEMANTICS,
         "schemas": {
@@ -77,6 +158,68 @@ def build_contract(version: str = "26.8.7") -> RuntimeContract:
             "actuation_intent": ActuationIntent.model_json_schema(),
             "verification_result": VerificationResult.model_json_schema(),
             "receipt": Receipt.model_json_schema(),
+            "action_definition": ActionDefinition.model_json_schema(),
+            "prepared_action": PreparedAction.model_json_schema(),
+            "execution_grant": ExecutionGrant.model_json_schema(),
+            "broker_request": BrokerRequest.model_json_schema(),
+            "candidate_intent_envelope": CandidateIntentEnvelope.model_json_schema(),
+            "problem_signature": ProblemSignature.model_json_schema(),
+            "action_projection": ActionProjection.model_json_schema(),
+            "forwardbench_subject": ForwardBenchSubject.model_json_schema(),
+            "observation_request": ObservationRequest.model_json_schema(),
+            "provider_preparation": ProviderPreparation.model_json_schema(),
+            "provider_execution_attempt": ProviderExecutionAttempt.model_json_schema(),
+            "provider_rollback_result": ProviderRollbackResult.model_json_schema(),
+            "selection_decision": SelectionDecision.model_json_schema(),
+            "compile_out_observation": CompileOutObservation.model_json_schema(),
+            "replay_expectation": ReplayExpectation.model_json_schema(),
+            "replay_report": ReplayReport.model_json_schema(),
+            "safety_envelope": SafetyEnvelope.model_json_schema(),
+            "physical_command": PhysicalCommand.model_json_schema(),
+            "physical_provider_profile": PhysicalProviderProfile.model_json_schema(),
+            "edge_controller_artifact": EdgeControllerArtifact.model_json_schema(),
+            "fault_plan": FaultPlan.model_json_schema(),
+            "self_play_report": SelfPlayReport.model_json_schema(),
+            "transition_economics": TransitionEconomics.model_json_schema(),
+            "anti_agent_point": AntiAgentPoint.model_json_schema(),
+            "intelligence_run": IntelligenceRun.model_json_schema(),
+            "compile_out_report": CompileOutReport.model_json_schema(),
+            "capsule_identity": CapsuleIdentity.model_json_schema(),
+            "verifier_capsule_receipt": VerifierCapsuleReceipt.model_json_schema(),
+            "subject_capsule_receipt": SubjectCapsuleReceipt.model_json_schema(),
+            "recipe_identity": RecipeIdentity.model_json_schema(),
+            "compiled_recipe": CompiledRecipe.model_json_schema(),
+            "decision_key": DecisionKey.model_json_schema(),
+            "candidate_decision": CandidateDecision.model_json_schema(),
+            "refusal_decision": RefusalDecision.model_json_schema(),
+            "oracle_observation": OracleObservation.model_json_schema(),
+            "differential_verification": DifferentialVerification.model_json_schema(),
+            "possibility_object": PossibilityObject.model_json_schema(),
+            "possibility_morphism": PossibilityMorphism.model_json_schema(),
+            "morphism_requirements": MorphismRequirements.model_json_schema(),
+            "objective_vector": ObjectiveVector.model_json_schema(),
+            "possibility_graph": PossibilityGraph.model_json_schema(),
+            "admission_context": AdmissionContext.model_json_schema(),
+            "exploration_bounds": ExplorationBounds.model_json_schema(),
+            "possibility_path": PossibilityPath.model_json_schema(),
+            "exploration_result": ExplorationResult.model_json_schema(),
+            "factor": Factor.model_json_schema(),
+            "combination": Combination.model_json_schema(),
+            "combination_space": CombinationSpace.model_json_schema(),
+            "possibility_rdf_validation": PossibilityRDFValidation.model_json_schema(),
+            "irreversible_selection": IrreversibleSelection.model_json_schema(),
+            "combinatorial_broker_request": CombinatorialBrokerRequest.model_json_schema(),
+            "decision_court_request": DecisionCourtRequest.model_json_schema(),
+            "decision_court_record": DecisionCourtRecord.model_json_schema(),
+            "structural_signature": StructuralSignature.model_json_schema(),
+            "graph_recipe_identity": GraphRecipeIdentity.model_json_schema(),
+            "compiled_graph_recipe": CompiledGraphRecipe.model_json_schema(),
+            "graph_recipe_admission": GraphRecipeAdmission.model_json_schema(),
+            "empirical_combination_record": EmpiricalCombinationRecord.model_json_schema(),
+            "ecology_alternative": EcologyAlternative.model_json_schema(),
+            "ecology_dimension": EcologyDimension.model_json_schema(),
+            "irreversible_option": IrreversibleOption.model_json_schema(),
+            "manufactured_ecology": ManufacturedEcology.model_json_schema(),
         },
     }
     return RuntimeContract(**payload, contract_digest=digest(payload))

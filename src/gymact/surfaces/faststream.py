@@ -1,29 +1,45 @@
 """FastStream binding for event-driven GymAct commands."""
-
 from __future__ import annotations
 
 from typing import Any
 
 from faststream import FastStream
 
+from gymact.brce import BRCEBroker, BrokerRequest
+from gymact.cut import CombinatorialBrokerRequest
+from gymact.dcm_runtime import DCMDecisionCourt, DecisionCourtRequest
 from gymact.models import ActuationIntent, MaterializationIntent
 from gymact.providers import MemoryProvider
-from gymact.runtime import GymAct
+from gymact.runtime import GymAct, ProductionGymAct
+from gymact.transport import TransportKind, normalize_candidate
 
 
 def _runtime(runtime: GymAct | None) -> GymAct:
     if runtime is not None:
         return runtime
-    instance = GymAct()
+    instance = ProductionGymAct()
     instance.register_provider(MemoryProvider())
     return instance
 
 
 async def dispatch_stream_command(service: GymAct, command: dict[str, Any]) -> dict[str, Any]:
-    """Execute one broker-neutral command against a GymAct runtime."""
+    """Dispatch one broker-neutral command; canonical DO requires a DCM selected cut."""
     operation = command.get("operation")
     if operation == "discover":
         return {"operation": operation, "providers": list(service.discover())}
+    if operation == "prepare_candidate":
+        envelope = normalize_candidate(TransportKind.A2A, command["candidate"])
+        return {
+            "operation": operation,
+            "result": {
+                "semantic_key": envelope.semantic_key(),
+                "prepared": envelope.prepared().model_dump(mode="json"),
+            },
+        }
+    if operation == "explore_possibilities":
+        request = DecisionCourtRequest.model_validate(command["request"])
+        result = DCMDecisionCourt().admit_request(request)
+        return {"operation": operation, "result": result.model_dump(mode="json")}
     if operation == "create_episode":
         values: dict[str, Any] = {
             "provider": str(command.get("provider", "memory")),
@@ -44,6 +60,21 @@ async def dispatch_stream_command(service: GymAct, command: dict[str, Any]) -> d
     if operation == "observe":
         result = await service.observe(str(command["episode_id"]))
         return {"operation": operation, "result": result.model_dump(mode="json")}
+    if operation == "execute_selected":
+        request = CombinatorialBrokerRequest.model_validate(command["request"])
+        if request.broker_request.prepared.episode_id != str(command["episode_id"]):
+            raise ValueError("EPISODE_ID_PATH_BODY_MISMATCH")
+        result = await DCMDecisionCourt().execute(service, request)
+        return {"operation": operation, "result": result.model_dump(mode="json")}
+    if operation == "execute_admitted":
+        request = BrokerRequest.model_validate(command["request"])
+        if request.prepared.episode_id != str(command["episode_id"]):
+            raise ValueError("EPISODE_ID_PATH_BODY_MISMATCH")
+        result = await BRCEBroker(service).execute(request)
+        return {
+            "operation": "execute_admitted_compatibility",
+            "result": result.model_dump(mode="json"),
+        }
     if operation == "act":
         intent = ActuationIntent.model_validate(command["intent"])
         result = await service.act(intent)
