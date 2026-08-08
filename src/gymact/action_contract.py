@@ -189,6 +189,7 @@ class ExecutionGrant(FrozenModel):
 class PreparedAction(FrozenModel):
     """Constructed executable intent. Possession does not authorize DO."""
 
+    episode_id: str = Field(min_length=1)
     action_ref: str = Field(min_length=1)
     subject: SubjectRef
     payload: dict[str, Any] = Field(default_factory=dict)
@@ -224,10 +225,7 @@ class ReconciliationResult(FrozenModel):
     def retry_requires_explicit_disposition(self) -> Self:
         if self.disposition is ReconciliationDisposition.STILL_UNCERTAIN and self.retry_admitted:
             raise ValueError("UNCERTAIN_OUTCOME_CANNOT_IMPLY_RETRY")
-        if (
-            self.retry_admitted
-            and self.disposition is not ReconciliationDisposition.RETRY_ADMITTED
-        ):
+        if self.retry_admitted and self.disposition is not ReconciliationDisposition.RETRY_ADMITTED:
             raise ValueError("RETRY_REQUIRES_RETRY_ADMITTED_DISPOSITION")
         return self
 
@@ -247,3 +245,72 @@ class ProviderHealth(FrozenModel):
     subject_ref: str | None = None
     evidence_refs: tuple[str, ...] = ()
     reason: str | None = None
+
+
+class AdmissionResult(FrozenModel):
+    """Mechanical admission of a prepared action against an identity-bound grant."""
+
+    admitted: bool
+    reason: str
+
+
+def construct_prepared_action(
+    action: ActionDefinition,
+    *,
+    episode_id: str,
+    subject: SubjectRef,
+    payload: dict[str, Any],
+    admission_digest: str,
+    idempotency_key: str,
+) -> PreparedAction:
+    """CONSTRUCT only: validate input shape and manufacture a powerless intent."""
+    try:
+        from jsonschema import ValidationError, validate
+
+        validate(instance=payload, schema=action.input_schema)
+    except ImportError as exc:
+        raise RuntimeError("JSONSCHEMA_RUNTIME_REQUIRED") from exc
+    except ValidationError as exc:
+        raise ValueError("PRECONDITION_REFUSED:INPUT_SCHEMA") from exc
+    return PreparedAction(
+        episode_id=episode_id,
+        action_ref=action.semantic_id,
+        subject=subject,
+        payload=payload,
+        admission_digest=admission_digest,
+        idempotency_key=idempotency_key,
+    )
+
+
+def admit_execution(
+    action: ActionDefinition,
+    prepared: PreparedAction,
+    grant: ExecutionGrant,
+    *,
+    current_revision: str | None = None,
+) -> AdmissionResult:
+    """Admit identity/revision closure; this still does not itself perform DO."""
+    if prepared.action_ref != action.semantic_id or grant.action_ref != action.semantic_id:
+        return AdmissionResult(admitted=False, reason=RefusalCode.IDENTITY_REFUSED.value)
+    if grant.capability_ref != action.capability_ref:
+        return AdmissionResult(admitted=False, reason=RefusalCode.CAPABILITY_REFUSED.value)
+    if prepared.subject.semantic_id != grant.subject.semantic_id:
+        return AdmissionResult(admitted=False, reason=RefusalCode.IDENTITY_REFUSED.value)
+    if prepared.subject.provider_ref != grant.subject.provider_ref:
+        return AdmissionResult(admitted=False, reason=RefusalCode.IDENTITY_REFUSED.value)
+    admitted_revision = grant.subject.revision or prepared.subject.revision
+    if (
+        current_revision is not None
+        and admitted_revision is not None
+        and current_revision != admitted_revision
+    ):
+        return AdmissionResult(
+            admitted=False,
+            reason=RefusalCode.REVISION_MISMATCH_REFUSED.value,
+        )
+    if grant.intended_effects != action.expected_effects:
+        return AdmissionResult(
+            admitted=False,
+            reason=RefusalCode.PRECONDITION_REFUSED.value,
+        )
+    return AdmissionResult(admitted=True, reason="ADMITTED")
