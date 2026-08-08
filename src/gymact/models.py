@@ -184,7 +184,7 @@ class Score(FrozenModel):
 
 
 class Receipt(FrozenModel):
-    """Bounded causal evidence for one accepted, blocked, or refused operation."""
+    """Bounded causal evidence for one accepted, blocked, refused, or uncertain operation."""
 
     receipt_id: str = Field(default_factory=lambda: uuid4().hex)
     occurred_at: str = Field(default_factory=_utc_now_iso)
@@ -195,10 +195,19 @@ class Receipt(FrozenModel):
     capability_ref: str | None = None
     authority_ref: str | None = None
     authority_evidence_ref: str | None = None
+    principal: str | None = None
+    delegated_principal: str | None = None
+    policy_revision: str | None = None
+    intended_effects: tuple[dict[str, Any], ...] = ()
     idempotency_key: str | None = None
     pre_state_digest: str | None = None
     post_state_digest: str | None = None
+    acknowledgement_status: str | None = None
+    world_changed: bool | None = None
     verification_id: str | None = None
+    verified: bool | None = None
+    observation_confidence: str | None = None
+    parent_receipt_ids: tuple[str, ...] = ()
     error_digest: str | None = None
     reason: str | None = None
 
