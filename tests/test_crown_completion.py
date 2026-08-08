@@ -3,7 +3,14 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 from typer.main import get_command
 
-from gymact import MemoryProvider, MemoryReceiptLedger, Operation, Receipt, Standing, build_contract
+from gymact import (
+    MemoryProvider,
+    MemoryReceiptLedger,
+    Operation,
+    Receipt,
+    Standing,
+    build_contract,
+)
 from gymact.cli import app as cli_app
 from gymact.replay import ReplayMode, replay_ledger
 from gymact.runtime import GymAct
@@ -24,6 +31,7 @@ def test_cli_exposes_complete_canonical_surface() -> None:
         "replay",
         "doctor",
         "benchmark",
+        "errc-status",
     }
     assert required <= commands
 
@@ -37,7 +45,7 @@ def test_openapi_exposes_candidate_and_brce_production_do() -> None:
     assert "/candidates" in paths
     admitted = "/episodes/{episode_id}/actions/admitted"
     assert admitted in paths
-    assert paths[admitted]["post"]["deprecated"] is not True
+    assert paths[admitted]["post"].get("deprecated", False) is False
     assert paths["/episodes/{episode_id}/actions"]["post"]["deprecated"] is True
 
 
@@ -51,6 +59,10 @@ def test_contract_contains_crown_completion_schemas() -> None:
         "safety_envelope",
         "fault_plan",
         "compile_out_report",
+        "capsule_identity",
+        "compiled_recipe",
+        "decision_key",
+        "differential_verification",
     ):
         assert key in contract.schemas
 
