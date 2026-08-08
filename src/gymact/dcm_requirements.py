@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 import json
-from importlib.resources import files
+from pathlib import Path
 from typing import Any
 
 from pydantic import Field
 
 from gymact.models import FrozenModel, Standing
 
+_SCHEMA_PATH = Path(__file__).with_name("schemas") / "dcm-v26.8.7.json"
 _EXPECTED_IDS = tuple(f"DCM-{index:03d}" for index in range(1, 19))
 _ALLOWED_STANDINGS = {
     Standing.UNKNOWN.value,
@@ -30,9 +31,9 @@ class DCMRequirementsSummary(FrozenModel):
     witnessed_crown: bool
 
 
-def load_dcm_requirements() -> dict[str, Any]:
-    resource = files("gymact.schemas").joinpath("dcm-v26.8.7.json")
-    data = json.loads(resource.read_text(encoding="utf-8"))
+def load_dcm_requirements(path: Path | None = None) -> dict[str, Any]:
+    target = path or _SCHEMA_PATH
+    data = json.loads(target.read_text(encoding="utf-8"))
     validate_dcm_requirements(data)
     return data
 
