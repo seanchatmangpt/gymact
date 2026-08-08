@@ -85,7 +85,7 @@ returns).
 
 ## Real gym providers
 
-Three real `EnvironmentProvider` implementations exist in `gymact.gyms`, each driving a
+Real `EnvironmentProvider` implementations exist in `gymact.gyms`, each driving a
 genuinely real external collaborator (zero mocks anywhere in `src/` or `tests/`):
 
 | Provider | Real collaborator |
@@ -95,6 +95,7 @@ genuinely real external collaborator (zero mocks anywhere in `src/` or `tests/`)
 | `gyms.ggen_legacy.GgenLegacyVerifierProvider` | a real subprocess of the compiled `ggen-v26-8-1-verifier` binary against a real `~/ggen-legacy` checkout |
 | `gyms.discovered.GenericDiscoveredProvider` | a generic actuator: runs an LLM-proposed, bounded subprocess recipe (`command`/`cwd`/`timeout_seconds`/`success_markers`) against an arbitrary checked-out repo, instead of a hand-written adapter per benchmark subject |
 | `gyms.gymnasium_env.GymnasiumProvider` | a real, already-installed `gymnasium` package's `Env` (default `CartPole-v1`) -- no vendored agentgym, no subprocess |
+| `gyms.mcp_client_session.McpClientSessionProvider` | a real `fastmcp.Client` session against a real subject `FastMCP` server (defaults to `gymact.surfaces.fastmcp.create_mcp()`), driven only through `list_tools()`/`call_tool()` -- no simulated tool catalog or canned result |
 
 Each of the first three claims a `gymact.standing.require_standing` standing string (e.g.
 `"LOCAL_GYM:cube-counter"`). The real thing is the default: if the real collaborator is
