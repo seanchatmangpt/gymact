@@ -122,7 +122,7 @@ def _project_combinatorial_selection(graph: Graph, receipt_ref: URIRef, receipt:
     graph_ref = URIRef(f"urn:gymact:possibility-graph:{receipt.possibility_graph_digest}")
     path_ref = URIRef(f"urn:gymact:possibility-path:{receipt.possibility_path_id}")
     morphism_ref = URIRef(
-        f"urn:gymact:possibility-morphism-ref:{digest(receipt.possibility_morphism_id)}"
+        f"urn:gymact:possibility-morphism:{digest(receipt.possibility_morphism_id)}"
     )
     graph.add((selection_ref, RDF.type, PROV.Entity))
     graph.add((selection_ref, DCTERMS.identifier, Literal(receipt.selection_digest)))
