@@ -94,6 +94,12 @@
 
 ::: gymact.gyms.mcp_client_session.McpClientSessionProvider
 
+::: gymact.gyms.kubernetes_reconciliation.KubernetesReconciliationProvider
+
+::: gymact.gyms.terraform_plan.TerraformPlanProvider
+
+::: gymact.gyms.terraform_docker_apply.TerraformDockerApplyProvider
+
 ::: gymact.contract.RuntimeContract
 
 ::: gymact.contract.build_contract
