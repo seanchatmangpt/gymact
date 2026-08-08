@@ -12,17 +12,19 @@ from gymact.requirements import (
 )
 
 
-def test_packaged_inventory_is_closed() -> None:
+def test_packaged_inventory_is_closed_and_no_requirement_is_missing() -> None:
     data = load_crown_requirements()
     assert len(data["requirements"]) == 49
     assert list(data["gall_checkpoints"]) == [f"CP{i}" for i in range(17)]
+    assert all(item["status"] != "MISSING" for item in data["requirements"].values())
 
 
-def test_summary_refuses_false_crown() -> None:
+def test_summary_refuses_false_crown_while_external_checkpoints_remain() -> None:
     summary = crown_summary()
     assert summary.crown_ready is False
     assert "CP3" in summary.blockers
-    assert summary.requirement_statuses["MISSING"] > 0
+    assert summary.requirement_statuses["MISSING"] == 0
+    assert summary.requirement_statuses["PARTIAL"] > 0
 
 
 def test_mutated_safety_budget_is_rejected() -> None:
