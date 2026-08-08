@@ -92,6 +92,8 @@
 
 ::: gymact.gyms.gymnasium_env.GymnasiumProvider
 
+::: gymact.gyms.mcp_client_session.McpClientSessionProvider
+
 ::: gymact.contract.RuntimeContract
 
 ::: gymact.contract.build_contract
