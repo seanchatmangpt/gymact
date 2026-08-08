@@ -133,10 +133,10 @@
     a skos:Concept ;
     skos:inScheme <urn:gymact:scheme:interaction> ;
     skos:prefLabel "Tool session" ;
-    skos:definition "A persistent session exposing discoverable, independently invocable capabilities -- e.g. an MCP server's tool set. A description of the pattern; no provider in this repo exhibits it yet." .
+    skos:definition "A persistent session exposing discoverable, independently invocable capabilities -- e.g. an MCP server's tool set. Exhibited today by gymact.gyms.mcp_client_session's real MCP tool-discovery/invocation session." .
 
 <urn:gymact:interaction:reconciliation>
     a skos:Concept ;
     skos:inScheme <urn:gymact:scheme:interaction> ;
     skos:prefLabel "Reconciliation" ;
-    skos:definition "Desired-state convergence against an independently observable current state -- e.g. Kubernetes- or Terraform-style control planes. A description of the pattern; no provider in this repo exhibits it yet." .
+    skos:definition "Desired-state convergence against an independently observable current state -- e.g. Kubernetes- or Terraform-style control planes. Exhibited today by gymact.gyms.kubernetes_reconciliation (a real local kind/k8s cluster), gymact.gyms.terraform_plan, and gymact.gyms.terraform_docker_apply." .
