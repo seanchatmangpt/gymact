@@ -41,22 +41,33 @@ class LedgerLike(Protocol):
     def records(self) -> tuple[Any, ...]: ...
 
 
+_LEGACY_OPTIONAL_IDENTITY_FIELDS = (
+    "subject_ref",
+    "capability_ref",
+    "policy_revision",
+    "principal",
+)
+_DCM_STRICT_IDENTITY_FIELDS = (
+    "possibility_graph_digest",
+    "possibility_path_id",
+    "possibility_morphism_id",
+    "selection_digest",
+)
+
+
 def _identity_mismatches(receipt: Any, expected: ReplayExpectation) -> list[str]:
     mismatches: list[str] = []
-    fields = (
-        "subject_ref",
-        "capability_ref",
-        "policy_revision",
-        "principal",
-        "possibility_graph_digest",
-        "possibility_path_id",
-        "possibility_morphism_id",
-        "selection_digest",
-    )
-    for field in fields:
+    for field in _LEGACY_OPTIONAL_IDENTITY_FIELDS:
         wanted = getattr(expected, field)
-        if wanted is not None and getattr(receipt, field, None) not in {None, wanted}:
+        actual = getattr(receipt, field, None)
+        if wanted is not None and actual not in {None, wanted}:
             mismatches.append(f"{field.upper()}_DRIFT")
+    for field in _DCM_STRICT_IDENTITY_FIELDS:
+        wanted = getattr(expected, field)
+        actual = getattr(receipt, field, None)
+        if wanted is not None and actual != wanted:
+            suffix = "MISSING" if actual is None else "DRIFT"
+            mismatches.append(f"{field.upper()}_{suffix}")
     return mismatches
 
 
