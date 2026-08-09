@@ -1,0 +1,11 @@
+[project]
+name = "gymact-protocol-gym"
+
+[ontology]
+source = "ontology.ttl"
+
+[packs]
+protocol-gym-pack = { path = "pack" }
+
+[templates]
+dir = "templates"

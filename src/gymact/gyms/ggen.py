@@ -1,9 +1,8 @@
 """Bounded real-ggen gym.
 
-The subject is the current `ggen` CLI. Materialization copies an admitted small
-project into a private temporary workspace; `sync run` can therefore never
-mutate the caller's source tree. The original source is observation input,
-not the actuation target.
+The subject is the current `ggen` CLI. Materialization copies an admitted,
+dependency-closed ggen consumer project into a private temporary workspace;
+`sync run` can therefore never mutate the caller's source tree.
 """
 from __future__ import annotations
 
@@ -11,6 +10,7 @@ import asyncio
 import hashlib
 import shutil
 import tempfile
+import tomllib
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -53,6 +53,22 @@ def _snapshot(root: Path, *, max_files: int, max_bytes: int) -> dict[str, Any]:
         "files": [{"path": path, "sha256": content_digest, "bytes": size} for path, content_digest, size in records],
         "receipt_present": (root / ".ggen" / "receipts" / "latest.json").is_file(),
     }
+
+
+def _require_dependency_closed_consumer(source: Path) -> None:
+    manifest = tomllib.loads((source / "ggen.toml").read_text(encoding="utf-8"))
+    for name, config in (manifest.get("packs") or {}).items():
+        if not isinstance(config, dict):
+            continue
+        pack_path = config.get("path")
+        if not isinstance(pack_path, str):
+            continue
+        candidate = Path(pack_path)
+        if candidate.is_absolute() or ".." in candidate.parts:
+            raise ValueError(f"REFUSED:GGEN_EXTERNAL_PACK_PATH:{name}")
+        mounted = source / candidate
+        if not mounted.exists():
+            raise ValueError(f"BLOCKED:GGEN_PACK_MISSING:{name}")
 
 
 class GgenEnvironment:
@@ -154,12 +170,13 @@ class GgenProvider:
         del scenario
         source_value = config.get("source")
         if not isinstance(source_value, str) or not source_value:
-            raise TypeError("config.source must be a non-empty ggen project directory")
+            raise TypeError("config.source must be a non-empty dependency-closed ggen consumer")
         source = Path(source_value).expanduser().resolve()
         if not source.is_dir():
             raise TypeError(f"config.source is not a directory: {source}")
-        if not ((source / "ggen.toml").is_file() or (source / "pack.toml").is_file()):
-            raise TypeError("config.source must contain ggen.toml or pack.toml")
+        if not (source / "ggen.toml").is_file():
+            raise TypeError("config.source must contain ggen.toml; a bare pack is not executable")
+        _require_dependency_closed_consumer(source)
         ggen_bin = config.get("ggen_bin", "ggen")
         if not isinstance(ggen_bin, str) or not ggen_bin:
             raise TypeError("config.ggen_bin must be a non-empty string")

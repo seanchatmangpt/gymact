@@ -10,9 +10,9 @@ from gymact.models import Consequence
 from gymact.registry import builtin_provider_names
 
 
-def _fixture_pack(source: Path) -> None:
+def _fixture_project(source: Path) -> None:
     source.mkdir()
-    (source / "pack.toml").write_text('[pack]\nname="fixture"\nversion="0.1.0"\ndescription="real ggen gym smoke"\n')
+    (source / "ggen.toml").write_text('[project]\nname="fixture"\n\n[ontology]\nsource="ontology.ttl"\n\n[templates]\ndir="templates"\n')
     (source / "ontology.ttl").write_text("@prefix dct: <http://purl.org/dc/terms/> .\n")
     templates = source / "templates"
     templates.mkdir()
@@ -32,9 +32,18 @@ def test_ggen_gym_classifies_only_sync_as_do() -> None:
 
 
 @pytest.mark.asyncio
+async def test_ggen_refuses_external_pack_paths(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    _fixture_project(source)
+    (source / "ggen.toml").write_text((source / "ggen.toml").read_text() + '\n[packs]\nexternal = { path = "../outside" }\n')
+    with pytest.raises(ValueError, match="REFUSED:GGEN_EXTERNAL_PACK_PATH"):
+        await GgenProvider().materialize(scenario=None, config={"source": str(source)})
+
+
+@pytest.mark.asyncio
 async def test_ggen_gym_materializes_an_isolated_workspace(tmp_path: Path) -> None:
     source = tmp_path / "source"
-    _fixture_pack(source)
+    _fixture_project(source)
     environment = await GgenProvider().materialize(scenario=None, config={"source": str(source), "ggen_bin": shutil.which("ggen") or "ggen"})
     try:
         assert environment.workspace != source
@@ -53,7 +62,7 @@ async def test_real_ggen_sync_when_binary_is_available(tmp_path: Path) -> None:
     if ggen is None:
         pytest.skip("REAL_GGEN_BINARY_MISSING")
     source = tmp_path / "source"
-    _fixture_pack(source)
+    _fixture_project(source)
     environment = await GgenProvider().materialize(scenario=None, config={"source": str(source), "ggen_bin": ggen})
     try:
         sync = next(item for item in GGEN_CAPABILITIES if item.binding == "sync")
