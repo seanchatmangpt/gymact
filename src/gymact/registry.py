@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from gymact.gyms.codebase import CODEBASE_CAPABILITIES, CodebaseProvider
 from gymact.local_providers import (
     FILESYSTEM_CAPABILITIES,
     GIT_CAPABILITIES,
@@ -15,6 +16,7 @@ from gymact.network_providers import HTTP_JSON_CAPABILITIES, HTTPJSONProvider
 from gymact.providers import MEMORY_CAPABILITIES, MemoryProvider
 
 _BUILTINS = {
+    "codebase": (CodebaseProvider, CODEBASE_CAPABILITIES),
     "filesystem": (FilesystemProvider, FILESYSTEM_CAPABILITIES),
     "git": (GitProvider, GIT_CAPABILITIES),
     "http-json": (HTTPJSONProvider, HTTP_JSON_CAPABILITIES),
