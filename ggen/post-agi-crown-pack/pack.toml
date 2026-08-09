@@ -1,0 +1,4 @@
+[pack]
+name = "post-agi-crown-pack"
+version = "0.1.0"
+description = "Independent ggen-manufactured Rust/WIT Crown and SOTA cross-check surface. Source authority is ontology.ttl; Python remains native; outputs are powerless projections and never carry execution authority."

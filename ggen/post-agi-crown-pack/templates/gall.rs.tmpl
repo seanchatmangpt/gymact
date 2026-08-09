@@ -1,0 +1,65 @@
+---
+to: "rust/crown/tests/gall.rs"
+force: true
+sparql:
+  stages: |
+    PREFIX pplan: <http://purl.org/net/p-plan#>
+    SELECT ?stage WHERE { ?stage a pplan:Step ; pplan:isStepOfPlan <urn:gymact:crown:plan> . }
+  evidence: |
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    SELECT ?evidence WHERE { ?evidence a skos:Concept ; skos:broader <urn:gymact:crown:concept:evidence-dimension> . }
+  metrics: |
+    PREFIX dqv: <http://www.w3.org/ns/dqv#>
+    SELECT ?metric WHERE { ?metric a dqv:Metric ; dqv:inDimension <urn:gymact:crown:dimension:sota> . }
+  transports: |
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    SELECT ?transport WHERE { ?transport a skos:Concept ; skos:broader <urn:gymact:crown:concept:transport> . }
+  projections: |
+    PREFIX prov: <http://www.w3.org/ns/prov#>
+    PREFIX dct: <http://purl.org/dc/terms/>
+    SELECT ?projection WHERE { ?projection a prov:Entity ; dct:type <urn:gymact:crown:concept:projection> . }
+---
+use gymact_crown::{
+    admission::{admit, REQUIRED_EVIDENCE},
+    authority::{admit_do, BRCE_IS_EXCLUSIVE_DO_PATH},
+    frontier::{dominates, Point},
+    metrics::METRICS,
+    stages::STAGES,
+    transport::{semantic_round_trip, TRANSPORTS},
+    ZERO_UNRECEIPTED_ACTUATION,
+};
+
+#[test]
+fn ontology_cardinalities_are_preserved() {
+    assert_eq!(STAGES.len(), {{ stages | length }});
+    assert_eq!(REQUIRED_EVIDENCE.len(), {{ evidence | length }});
+    assert_eq!(METRICS.len(), {{ metrics | length }});
+    assert_eq!(TRANSPORTS.len(), {{ transports | length }});
+    assert!({{ projections | length }} >= 10);
+}
+
+#[test]
+fn authority_and_receipt_are_non_compensatory() {
+    assert!(BRCE_IS_EXCLUSIVE_DO_PATH);
+    assert!(ZERO_UNRECEIPTED_ACTUATION);
+    assert!(admit_do(false, true).is_err());
+    assert!(admit_do(true, false).is_err());
+}
+
+#[test]
+fn incomplete_crown_cannot_compare() { assert!(admit(&[("subject_digest", true)]).is_err()); }
+
+#[test]
+fn semantic_transport_must_round_trip() {
+    assert!(semantic_round_trip("urn:action:set", "urn:action:set").is_ok());
+    assert!(semantic_round_trip("urn:action:set", "urn:action:delete").is_err());
+}
+
+#[test]
+fn pareto_dominator_falsifies_weaker_point() {
+    let weak = [0.5; {{ metrics | length }}];
+    let strong = [1.0; {{ metrics | length }}];
+    let left = Point { result_id: "strong", values: &strong, crown_alive: true };
+    let right = Point { result_id: "weak", values: &weak, crown_alive: true };
+    assert_eq!(dominates(&left, &right).unwrap(), true);
+}

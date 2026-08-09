@@ -1,0 +1,46 @@
+use crate::metrics::METRICS;
+
+#[derive(Debug, Clone, Copy)]
+pub struct Point<'a> {
+    pub result_id: &'a str,
+    pub values: &'a [f64],
+    pub crown_alive: bool,
+}
+
+fn admit(point: &Point<'_>) -> Result<(), &'static str> {
+    if !point.crown_alive {
+        return Err("REFUSED:SOTA:CROWN_NOT_ALIVE");
+    }
+    if point.values.len() != METRICS.len() || point.values.iter().any(|value| !value.is_finite()) {
+        return Err("REFUSED:SOTA:METRIC_SPACE_MISMATCH");
+    }
+    Ok(())
+}
+
+pub fn dominates(left: &Point<'_>, right: &Point<'_>) -> Result<bool, &'static str> {
+    admit(left)?;
+    admit(right)?;
+    let weakly_better = left.values.iter().zip(right.values).all(|(l, r)| l >= r);
+    let strictly_better = left.values.iter().zip(right.values).any(|(l, r)| l > r);
+    Ok(weakly_better && strictly_better)
+}
+
+pub fn frontier<'a>(points: &'a [Point<'a>]) -> Result<Vec<&'a Point<'a>>, &'static str> {
+    for point in points {
+        admit(point)?;
+    }
+    let mut result = Vec::new();
+    for candidate in points {
+        let mut dominated = false;
+        for challenger in points {
+            if challenger.result_id != candidate.result_id && dominates(challenger, candidate)? {
+                dominated = true;
+                break;
+            }
+        }
+        if !dominated {
+            result.push(candidate);
+        }
+    }
+    Ok(result)
+}

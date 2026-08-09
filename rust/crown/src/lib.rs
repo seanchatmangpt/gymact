@@ -1,0 +1,16 @@
+//! ggen-owned Crown/SOTA cross-check surface.
+//! Source authority: `ggen/post-agi-crown-pack/ontology.ttl`.
+//! This crate is powerless: it models admission/standing and exposes no actuator.
+
+pub mod admission;
+pub mod authority;
+pub mod frontier;
+pub mod metrics;
+pub mod receipt;
+pub mod replay;
+pub mod stages;
+pub mod transport;
+
+pub const SOURCE_ONTOLOGY: &str = "ggen/post-agi-crown-pack/ontology.ttl";
+pub const BRCE_ONLY_DO_PATH: bool = true;
+pub const ZERO_UNRECEIPTED_ACTUATION: bool = true;

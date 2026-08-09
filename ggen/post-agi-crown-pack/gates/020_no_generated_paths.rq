@@ -1,0 +1,10 @@
+# MESSAGE: ggen-owned output paths must be ordinary project paths, never generated/* or generated-named files.
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX dct: <http://purl.org/dc/terms/>
+SELECT ?projection ?path WHERE {
+  ?projection a prov:Entity ;
+              dct:type <urn:gymact:crown:concept:projection> ;
+              dct:identifier ?path .
+  FILTER(CONTAINS(LCASE(STR(?path)), "generated"))
+}
+ORDER BY ?path

@@ -1,0 +1,22 @@
+---
+to: "rust/crown/src/transport.rs"
+force: true
+sparql:
+  transports: |
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    PREFIX dct: <http://purl.org/dc/terms/>
+    SELECT ?id ?title WHERE { ?transport a skos:Concept ; skos:broader <urn:gymact:crown:concept:transport> ; dct:identifier ?id ; dct:title ?title . }
+    ORDER BY ?id
+---
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Transport { pub id: &'static str, pub title: &'static str }
+
+pub const TRANSPORTS: &[Transport] = &[
+{% for row in transports -%}
+    Transport { id: "{{ row.id }}", title: "{{ row.title }}" },
+{% endfor -%}
+];
+
+pub fn semantic_round_trip(before: &str, after: &str) -> Result<(), &'static str> {
+    if before == after { Ok(()) } else { Err("REFUSED:SEMANTIC_TRANSPORT_DRIFT") }
+}
