@@ -1,0 +1,317 @@
+name: Delivery
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: delivery-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  docs:
+    name: GitHub Pages consequence
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Download exact verified bundle
+        uses: actions/download-artifact@v8.0.1
+        with:
+          name: ci-bundle-${{ github.event.workflow_run.id }}
+          path: delivery
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Admit CI receipt for docs delivery
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          receipt = json.loads(Path("delivery/artifacts/ci/receipt.json").read_text())
+          assert receipt["repository"] == os.environ["GITHUB_REPOSITORY"]
+          assert receipt["subject_sha"] == os.environ["EXPECTED_SHA"]
+          assert receipt["verifier_standing"] == "ALIVE"
+          assert receipt["workflow_count"] == 2
+          assert Path("delivery/site").is_dir()
+          PY
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v6.0.0
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: delivery/site
+
+      - name: Deploy Pages
+        id: deploy
+        continue-on-error: true
+        uses: actions/deploy-pages@v5.0.0
+
+      - name: Emit Pages receipt
+        if: ${{ always() }}
+        shell: bash
+        env:
+          SUBJECT_SHA: ${{ github.event.workflow_run.head_sha }}
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+          PAGE_URL: ${{ steps.deploy.outputs.page_url }}
+          SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          mkdir -p delivery-receipts
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          standing = "ALIVE" if os.environ["DEPLOY_OUTCOME"] == "success" else "BUILD_BROKEN"
+          receipt = {
+              "operation": "github-pages-deploy",
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "subject_sha": os.environ["SUBJECT_SHA"],
+              "source_ci_run_id": os.environ["SOURCE_RUN_ID"],
+              "deploy_outcome": os.environ["DEPLOY_OUTCOME"],
+              "page_url": os.environ.get("PAGE_URL", ""),
+              "standing": standing,
+          }
+          Path("delivery-receipts/pages.json").write_text(
+              json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n"
+          )
+          PY
+
+      - name: Upload Pages receipt
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: pages-receipt-${{ github.run_id }}
+          path: delivery-receipts/pages.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce Pages consequence
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          receipt = json.loads(Path("delivery-receipts/pages.json").read_text())
+          assert receipt["standing"] == "ALIVE", receipt
+          PY
+
+  release:
+    name: PyPI and GitHub Release consequence
+    if: >-
+      ${{
+        github.event.workflow_run.conclusion == 'success' &&
+        startsWith(github.event.workflow_run.head_commit.message, 'bump:')
+      }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: write
+      id-token: write
+    steps:
+      - name: Download exact verified bundle
+        uses: actions/download-artifact@v8.0.1
+        with:
+          name: ci-bundle-${{ github.event.workflow_run.id }}
+          path: delivery
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Admit full release standing
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          receipt = json.loads(Path("delivery/artifacts/ci/receipt.json").read_text())
+          assert receipt["repository"] == os.environ["GITHUB_REPOSITORY"]
+          assert receipt["subject_sha"] == os.environ["EXPECTED_SHA"]
+          assert receipt["verifier_standing"] == "ALIVE"
+          assert receipt["standing"] == "ALIVE"
+          assert receipt["workflow_count"] == 2
+          wheels = list(Path("delivery/dist").glob("*.whl"))
+          sdists = list(Path("delivery/dist").glob("*.tar.gz"))
+          assert len(wheels) == 1, wheels
+          assert len(sdists) == 1, sdists
+          PY
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9.0.0
+
+      - name: Resolve package identity
+        id: package
+        shell: bash
+        env:
+          SUBJECT_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import email
+          import zipfile
+          from pathlib import Path
+
+          wheel = next(Path("delivery/dist").glob("*.whl"))
+          with zipfile.ZipFile(wheel) as archive:
+              metadata_name = next(name for name in archive.namelist() if name.endswith(".dist-info/METADATA"))
+              metadata = email.message_from_bytes(archive.read(metadata_name))
+          print(f"version={metadata['Version']}")
+          print(f"name={metadata['Name']}")
+          PY
+
+      - name: Publish exact verified distributions to PyPI
+        id: publish_pypi
+        continue-on-error: true
+        run: uv publish --trusted-publishing always delivery/dist/*
+
+      - name: Create or verify exact GitHub Release
+        id: github_release
+        if: ${{ steps.publish_pypi.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SUBJECT_SHA: ${{ github.event.workflow_run.head_sha }}
+          PACKAGE_VERSION: ${{ steps.package.outputs.version }}
+        run: |
+          set -euo pipefail
+          tag="v${PACKAGE_VERSION}"
+          if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$tag" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$SUBJECT_SHA" \
+              --generate-notes \
+              --title "$tag"
+          fi
+          observed="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${tag}" --jq .sha)"
+          test "$observed" = "$SUBJECT_SHA"
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json tagName,url
+
+      - name: Verify PyPI consequence
+        id: verify_pypi
+        if: ${{ steps.publish_pypi.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        env:
+          PACKAGE_NAME: ${{ steps.package.outputs.name }}
+          PACKAGE_VERSION: ${{ steps.package.outputs.version }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import time
+          import urllib.request
+
+          name = os.environ["PACKAGE_NAME"]
+          version = os.environ["PACKAGE_VERSION"]
+          url = f"https://pypi.org/pypi/{name}/{version}/json"
+          for attempt in range(10):
+              try:
+                  with urllib.request.urlopen(url, timeout=10) as response:
+                      payload = json.load(response)
+                  assert payload["info"]["version"] == version
+                  print(json.dumps({"name": name, "version": version, "verified": True}))
+                  break
+              except Exception:
+                  if attempt == 9:
+                      raise
+                  time.sleep(3)
+          PY
+
+      - name: Emit release receipt
+        if: ${{ always() }}
+        shell: bash
+        env:
+          SUBJECT_SHA: ${{ github.event.workflow_run.head_sha }}
+          SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
+          PACKAGE_NAME: ${{ steps.package.outputs.name }}
+          PACKAGE_VERSION: ${{ steps.package.outputs.version }}
+          PYPI_PUBLISH_OUTCOME: ${{ steps.publish_pypi.outcome }}
+          PYPI_VERIFY_OUTCOME: ${{ steps.verify_pypi.outcome }}
+          GITHUB_RELEASE_OUTCOME: ${{ steps.github_release.outcome }}
+        run: |
+          set -euo pipefail
+          mkdir -p delivery-receipts
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          outcomes = {
+              "pypi_publish": os.environ.get("PYPI_PUBLISH_OUTCOME", ""),
+              "pypi_verify": os.environ.get("PYPI_VERIFY_OUTCOME", ""),
+              "github_release": os.environ.get("GITHUB_RELEASE_OUTCOME", ""),
+          }
+          all_alive = all(value == "success" for value in outcomes.values())
+          publish_succeeded = outcomes["pypi_publish"] == "success"
+          standing = "ALIVE" if all_alive else ("PARTIAL_ALIVE" if publish_succeeded else "BUILD_BROKEN")
+          receipt = {
+              "operation": "package-release",
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "subject_sha": os.environ["SUBJECT_SHA"],
+              "source_ci_run_id": os.environ["SOURCE_RUN_ID"],
+              "package_name": os.environ.get("PACKAGE_NAME", ""),
+              "package_version": os.environ.get("PACKAGE_VERSION", ""),
+              "tag": f"v{os.environ.get('PACKAGE_VERSION', '')}",
+              "outcomes": outcomes,
+              "standing": standing,
+          }
+          Path("delivery-receipts/release.json").write_text(
+              json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n"
+          )
+          PY
+
+      - name: Upload release receipt
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: release-receipt-${{ github.run_id }}
+          path: delivery-receipts/release.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Enforce release consequence
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          receipt = json.loads(Path("delivery-receipts/release.json").read_text())
+          assert receipt["standing"] == "ALIVE", receipt
+          PY
