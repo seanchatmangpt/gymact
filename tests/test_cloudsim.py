@@ -18,6 +18,12 @@ from gymact.gyms.cloudsim import (
 )
 from gymact.models import ActuationIntent, Consequence, MaterializationIntent, Standing
 from gymact.providers import EnvironmentProvider
+from gymact.registry import (
+    builtin_capabilities,
+    builtin_provider_names,
+    create_builtin_provider,
+    describe_builtin_provider,
+)
 from gymact.runtime import GymAct
 
 SOSA = Namespace("http://www.w3.org/ns/sosa/")
@@ -99,6 +105,16 @@ def result_resource_id(result: Any) -> str:
 
 def test_provider_satisfies_gymact_environment_provider_contract() -> None:
     assert isinstance(CloudSimProvider(), EnvironmentProvider)
+
+
+def test_cloudsim_is_first_class_builtin_provider() -> None:
+    assert "cloudsim" in builtin_provider_names()
+    provider = create_builtin_provider("cloudsim")
+    assert isinstance(provider, CloudSimProvider)
+    assert builtin_capabilities("cloudsim") == CLOUDSIM_CAPABILITIES
+    description = describe_builtin_provider("cloudsim")
+    assert description["type"] == "CloudSimProvider"
+    assert len(description["capabilities"]) == 4
 
 
 def test_capabilities_are_unique_consequential_do_operations() -> None:
