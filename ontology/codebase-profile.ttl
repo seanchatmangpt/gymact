@@ -1,0 +1,61 @@
+@prefix gymact: <urn:gymact:codebase:> .
+@prefix prof: <http://www.w3.org/ns/dx/prof/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix pplan: <http://purl.org/net/p-plan#> .
+@prefix sosa: <http://www.w3.org/ns/sosa/> .
+@prefix odrl: <http://www.w3.org/ns/odrl/2/> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix earl: <http://www.w3.org/ns/earl#> .
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix schema: <https://schema.org/> .
+@prefix doap: <http://usefulinc.com/ns/doap#> .
+@prefix spdx: <https://spdx.org/rdf/3.0.1/terms/Software/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# Application profile only. Local IRIs are instances, concepts and SHACL shapes;
+# no local OWL/RDFS TBox is introduced.
+gymact:profile a prof:Profile ;
+  dct:title "GymAct isolated codebase-development profile" ;
+  dct:description "Git worktree development, software identity, SBOM/evidence, authority and verification composed from public vocabularies." ;
+  prof:isProfileOf <https://spdx.org/rdf/3.0.1/terms/Software/>,
+                   <https://schema.org/SoftwareSourceCode>,
+                   <http://usefulinc.com/ns/doap#Project>,
+                   <http://www.w3.org/ns/prov#>,
+                   <http://www.w3.org/ns/sosa/>,
+                   <http://www.w3.org/ns/odrl/2/>,
+                   <http://www.w3.org/ns/earl#> .
+
+gymact:operation-kinds a skos:ConceptScheme ; dct:title "Codebase operation kinds" .
+gymact:inspect-kind a skos:Concept ; skos:inScheme gymact:operation-kinds ; skos:prefLabel "inspect" .
+gymact:modify-kind a skos:Concept ; skos:inScheme gymact:operation-kinds ; skos:prefLabel "modify" .
+gymact:verify-kind a skos:Concept ; skos:inScheme gymact:operation-kinds ; skos:prefLabel "verify" .
+gymact:commit-kind a skos:Concept ; skos:inScheme gymact:operation-kinds ; skos:prefLabel "commit" .
+
+# Reusable procedures. Actual invocations are sosa:Actuation + prov:Activity in evidence.
+gymact:inspect a sosa:Procedure, schema:Action ; dct:title "Inspect isolated repository and SPDX/SWH identity" ; dct:type gymact:inspect-kind .
+gymact:write-text a sosa:Procedure, schema:Action ; dct:title "Write UTF-8 source text" ; dct:type gymact:modify-kind .
+gymact:apply-replacement a sosa:Procedure, schema:Action ; dct:title "Apply one exact source replacement" ; dct:type gymact:modify-kind .
+gymact:delete-file a sosa:Procedure, schema:Action ; dct:title "Delete one source file" ; dct:type gymact:modify-kind .
+gymact:run-build a sosa:Procedure, schema:Action ; dct:title "Run admitted build command" ; dct:type gymact:verify-kind .
+gymact:run-test a sosa:Procedure, schema:Action ; dct:title "Run admitted test command" ; dct:type gymact:verify-kind .
+gymact:run-lint a sosa:Procedure, schema:Action ; dct:title "Run admitted lint command" ; dct:type gymact:verify-kind .
+gymact:run-typecheck a sosa:Procedure, schema:Action ; dct:title "Run admitted type-check command" ; dct:type gymact:verify-kind .
+gymact:commit a sosa:Procedure, schema:Action ; dct:title "Commit isolated worktree changes" ; dct:type gymact:commit-kind .
+
+# This describes an authority envelope only; it never constitutes a bearer grant.
+gymact:development-policy a odrl:Policy ;
+  odrl:permission [ a odrl:Permission ; odrl:target gymact:profile ; odrl:action odrl:use ] .
+
+# Public evidence/software subjects used by the profile.
+gymact:snapshot-dataset a dcat:Dataset ; dct:title "Codebase episode semantic snapshots" .
+gymact:repository-example a spdx:Package, schema:SoftwareSourceCode, doap:Project, prov:Entity .
+gymact:verification-example a earl:Assertion, prov:Entity .
+gymact:development-plan-example a pplan:Plan, prov:Entity .
+
+# Operational admission for every reusable codebase procedure.
+gymact:ProcedureShape a sh:NodeShape ;
+  sh:targetClass sosa:Procedure ;
+  sh:property [ sh:path dct:title ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+  sh:property [ sh:path dct:type ; sh:minCount 1 ; sh:maxCount 1 ; sh:class skos:Concept ] .
