@@ -1,7 +1,7 @@
-"""Real gym bridges: GymAct `Environment`/`EnvironmentProvider` implementations
-backed by actual, already-installed benchmark packages -- not synthetic stand-ins.
+"""GymAct world providers over one common Environment/EnvironmentProvider basis.
 
-The first bridge target (`gymact.gyms.cube_counter`) drives CUBE's own
-no-Docker reference benchmark (`counter-cube`), installed from
-~/autofde-lab/vendor/gyms/cube-standard via the optional `cube` extra.
+The package contains both bridges to real benchmark packages and explicitly labeled,
+deterministic simulation providers. Simulators remain consequential GymAct worlds: DO
+capabilities cross the same authority and receipt kernel even when no external service is
+contacted.
 """
