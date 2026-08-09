@@ -273,8 +273,21 @@ class AutonomicController:
                 cleanup_standing = cleanup.standing
             except Exception:
                 cleanup_standing = Standing.BLOCKED
-        receipts = self.runtime.episode_receipts(episode_id) if episode_id is not None else []
-        evidence_refs = tuple(receipt.receipt_id for receipt in receipts)
+
+        evidence: list[str] = []
+        if episode_id is not None:
+            for receipt in self.runtime.episode_receipts(episode_id):
+                if receipt.receipt_id not in evidence:
+                    evidence.append(receipt.receipt_id)
+        # Pre-episode refusals still have phase-bound receipts (especially the
+        # materialization receipt). Preserve them so terminal knowledge never drops
+        # evidence merely because an Environment was correctly never created.
+        for record in records:
+            for evidence_ref in record.evidence_refs:
+                if evidence_ref not in evidence:
+                    evidence.append(evidence_ref)
+        evidence_refs = tuple(evidence)
+
         knowledge = AutonomicKnowledge(
             failure_class=self._failure_class(standing, reason),
             pre_state_digest=pre_state_digest,
