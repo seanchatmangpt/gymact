@@ -1,0 +1,19 @@
+---
+to: "rust/protocol_gym/src/capabilities.rs"
+force: true
+sparql:
+  caps: |
+    PREFIX sosa: <http://www.w3.org/ns/sosa/>
+    PREFIX dct: <http://purl.org/dc/terms/>
+    SELECT ?id ?title ?kind WHERE {
+      ?cap a sosa:Procedure ; dct:identifier ?id ; dct:title ?title ; dct:type ?kind .
+    } ORDER BY ?id
+---
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Capability { pub id: &'static str, pub title: &'static str, pub consequence: &'static str }
+
+pub const CAPABILITIES: &[Capability] = &[
+{% for row in caps -%}
+    Capability { id: "{{ row.id }}", title: "{{ row.title }}", consequence: "{{ row.kind }}" },
+{% endfor -%}
+];

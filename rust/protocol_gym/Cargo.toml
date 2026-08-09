@@ -1,0 +1,9 @@
+[package]
+name = "gymact-protocol-gym"
+version = "26.8.8"
+edition = "2021"
+publish = false
+license = "MIT"
+
+[lib]
+path = "src/lib.rs"
