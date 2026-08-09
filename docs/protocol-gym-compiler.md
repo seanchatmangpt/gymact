@@ -27,16 +27,19 @@ graph. No output is placed under a `generated/` directory.
 ## ggen gym
 
 `GgenProvider` is distinct from the existing `GgenLegacyVerifierProvider`. The latter
-wraps the ggen-legacy v26.8.1 verifier. The current ggen gym copies an admitted small ggen
-project into an isolated temporary workspace and exposes:
+wraps the ggen-legacy v26.8.1 verifier. The current ggen gym admits a real consumer
+project containing `ggen.toml` plus an explicit `bundle_root`. It resolves the consumer's
+declared ontology, template, and path-pack dependencies; every resolved path and symlink
+must remain inside that admitted bundle root. It preflights file/byte bounds, copies an
+isomorphic dependency-closed bundle into a private temporary world, and exposes:
 
 - `graph validate` — READ
 - `doctor run` — READ
 - `sync run` — DO, BRCE/authority-gated by GymAct
 - `receipt verify` — READ
 
-The source checkout is never the actuation target. Observation hashes the bounded
-workspace tree and records whether `.ggen/receipts/latest.json` exists.
+The source checkout is never the actuation target. Observation hashes the complete copied
+bundle tree and records whether the consumer's `.ggen/receipts/latest.json` exists.
 
 ## Standing
 

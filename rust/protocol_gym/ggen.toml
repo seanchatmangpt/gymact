@@ -2,10 +2,10 @@
 name = "gymact-protocol-gym"
 
 [ontology]
-source = "ontology.ttl"
+source = "../../ggen/protocol-gym-pack/ontology.ttl"
 
 [packs]
-protocol-gym-pack = { path = "pack" }
+protocol-gym-pack = { path = "../../ggen/protocol-gym-pack" }
 
 [templates]
 dir = "templates"

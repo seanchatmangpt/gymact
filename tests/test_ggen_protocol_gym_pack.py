@@ -29,11 +29,12 @@ def test_protocol_gym_pack_owns_at_least_ten_normal_outputs() -> None:
     assert all((CONSUMER / target).is_file() for target in targets)
 
 
-def test_protocol_gym_consumer_mounts_the_pack_inside_its_boundary() -> None:
+def test_protocol_gym_consumer_names_canonical_pack_and_ontology() -> None:
     manifest = (CONSUMER / "ggen.toml").read_text()
-    assert 'protocol-gym-pack = { path = "pack" }' in manifest
-    assert (CONSUMER / "pack").resolve() == PACK.resolve()
-    assert (CONSUMER / "ontology.ttl").resolve() == (PACK / "ontology.ttl").resolve()
+    assert 'source = "../../ggen/protocol-gym-pack/ontology.ttl"' in manifest
+    assert 'protocol-gym-pack = { path = "../../ggen/protocol-gym-pack" }' in manifest
+    assert not (CONSUMER / "pack").exists()
+    assert not (CONSUMER / "ontology.ttl").exists()
 
 
 def test_protocol_gym_fixture_is_public_vocabulary_abox() -> None:
