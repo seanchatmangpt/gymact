@@ -1,0 +1,32 @@
+name: Export AutoFDE Wheel
+
+on:
+  push:
+    branches:
+      - agent/export-autofde-wheel
+
+permissions:
+  contents: read
+
+jobs:
+  wheel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+      - uses: astral-sh/setup-uv@v8.3.2
+      - name: Build exact wheel
+        run: uv build --wheel
+      - name: Record identity
+        run: |
+          sha256sum dist/*.whl > dist/SHA256SUMS
+          printf '%s\n' '${{ github.sha }}' > dist/SOURCE_COMMIT
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gymact-wheel-${{ github.sha }}
+          path: |
+            dist/*.whl
+            dist/SHA256SUMS
+            dist/SOURCE_COMMIT
+          if-no-files-found: error
