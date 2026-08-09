@@ -23,7 +23,9 @@ jobs:
       matrix:
         python: ["3.11", "3.12", "3.13"]
     env:
-      GYMACT_ALLOW_DEGRADED_STANDINGS: "1"
+      # The standing contract admits exact names or "*", never boolean-like flags.
+      # Hosted CI explicitly permits unavailable real collaborators to become visible skips.
+      GYMACT_ALLOW_DEGRADED_STANDINGS: "*"
     steps:
       - name: Checkout exact subject
         uses: actions/checkout@v4
@@ -73,7 +75,11 @@ jobs:
           fi
 
       - name: Runtime and evidence tests
-        run: uv run coverage run -m pytest -v
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/test-evidence
+          uv run coverage run -m pytest -v --junitxml="artifacts/test-evidence/junit-${{ matrix.python }}.xml"
 
       - name: Coverage
         run: uv run coverage report
@@ -85,25 +91,49 @@ jobs:
           uv run ruff check src tests
           uv run ruff format --check src tests
 
+      - name: Upload matrix standing evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-evidence-${{ matrix.python }}
+          path: artifacts/test-evidence/junit-${{ matrix.python }}.xml
+          if-no-files-found: error
+          retention-days: 14
+
   artifact:
     name: wheel/docs/container consequence
     needs: test
     runs-on: ubuntu-24.04
     timeout-minutes: 35
-    env:
-      GYMACT_ALLOW_DEGRADED_STANDINGS: "1"
     steps:
       - name: Checkout exact subject
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+
+      - name: Admit exact artifact subject
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+
+      - name: Download matrix standing evidence
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-evidence-*
+          path: artifacts/test-evidence
+          merge-multiple: true
+
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.13"
+
       - name: Install build/docs dependencies
         run: uv sync --frozen --no-default-groups --group dev --python 3.13
+
       - name: Build and independently install wheel
         shell: bash
         run: |
@@ -123,8 +153,23 @@ jobs:
           test -s /tmp/manufacturing-bundle/profile.ttl
           test -s /tmp/manufacturing-bundle/profile.shacl.ttl
           test -s /tmp/manufacturing-bundle/runtime-contract.jcs.json
+          /tmp/gymact-wheel/bin/python - <<'PY'
+          import json
+          from pathlib import Path
+
+          from gymact import build_contract
+          from gymact.evidence import canonical_bytes
+
+          observed = json.loads(Path("/tmp/runtime-contract.json").read_text())
+          contract = build_contract()
+          assert observed["contract_digest"] == contract.contract_digest
+          bundle = Path("/tmp/manufacturing-bundle/runtime-contract.jcs.json").read_bytes()
+          assert bundle == canonical_bytes(contract.model_dump(mode="json"))
+          PY
+
       - name: Build documentation
         run: uv run zensical build --clean
+
       - name: Build and probe production container
         shell: bash
         run: |
@@ -144,6 +189,7 @@ jobs:
           done
           docker logs "$cid"
           exit 1
+
       - name: Emit verification receipt
         shell: bash
         env:
@@ -151,10 +197,63 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/ci
-          cat > artifacts/ci/receipt.json <<JSON
-          {"repository":"${GITHUB_REPOSITORY}","subject_sha":"${SUBJECT_SHA}","workflow":"${GITHUB_WORKFLOW}","run_id":"${GITHUB_RUN_ID}","standing":"ALIVE","workflow_count":1,"boundaries":["python-3.11","python-3.12","python-3.13","semantic-profile","ocel-runtime-tests","wheel-install","docs","container"]}
-          JSON
-          cat artifacts/ci/receipt.json
+          PACKAGE_VERSION="$("/tmp/gymact-wheel/bin/python" -c 'from importlib.metadata import version; print(version("gymact"))')"
+          export PACKAGE_VERSION
+          python - <<'PY'
+          import json
+          import os
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          reports = sorted(Path("artifacts/test-evidence").glob("junit-*.xml"))
+          if len(reports) != 3:
+              raise SystemExit(f"expected 3 matrix reports, found {len(reports)}")
+
+          skipped = 0
+          tests = 0
+          for report in reports:
+              root = ET.parse(report).getroot()
+              suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite"))
+              for suite in suites:
+                  tests += int(suite.attrib.get("tests", 0))
+                  skipped += int(suite.attrib.get("skipped", 0))
+
+          subject_standing = "ALIVE" if skipped == 0 else "PARTIAL_ALIVE"
+          reason = (
+              "ALL_REQUIRED_BOUNDARIES_EXECUTED_WITHOUT_DEGRADATION"
+              if skipped == 0
+              else "EXPLICIT_DEGRADED_STANDINGS_OBSERVED"
+          )
+          receipt = {
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "subject_sha": os.environ["SUBJECT_SHA"],
+              "package_version": os.environ["PACKAGE_VERSION"],
+              "workflow": os.environ["GITHUB_WORKFLOW"],
+              "run_id": os.environ["GITHUB_RUN_ID"],
+              "standing": subject_standing,
+              "verifier_standing": "ALIVE",
+              "reason": reason,
+              "degraded_standings_allowed": "*",
+              "pytest_tests": tests,
+              "pytest_skipped": skipped,
+              "workflow_count": 1,
+              "boundaries": [
+                  "python-3.11",
+                  "python-3.12",
+                  "python-3.13",
+                  "semantic-profile",
+                  "ocel-runtime-tests",
+                  "wheel-install",
+                  "runtime-contract-equivalence",
+                  "docs",
+                  "container",
+              ],
+          }
+          path = Path("artifacts/ci/receipt.json")
+          path.write_text(json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n")
+          print(path.read_text(), end="")
+          PY
+
       - uses: actions/upload-artifact@v4
         with:
           name: ci-receipt-${{ github.run_id }}
