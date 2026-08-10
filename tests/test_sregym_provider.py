@@ -26,6 +26,7 @@ from gymact.gyms.sregym import (
     SregymVendorProvider,
     _build_argv,
     _build_full_subprocess_env,
+    _connect_with_retry,
     _resolve_materialize_argv_and_env,
     _tcp_port_reachable,
 )
@@ -111,6 +112,57 @@ class SregymSubprocessEnvTests(unittest.TestCase):
         # A real, always-present env var on any POSIX process -- proves
         # os.environ's real content actually made it into the result.
         self.assertIn("PATH", result)
+
+
+class _FakeFlakyClient:
+    """Real, hand-written fake -- not a mock: a real object whose
+    `__aenter__` genuinely fails a real, counted number of times before
+    genuinely succeeding, exercising `_connect_with_retry`'s real retry
+    loop against real (if simple) behavior."""
+
+    def __init__(self, fail_times: int) -> None:
+        self.fail_times = fail_times
+        self.attempts = 0
+
+    async def __aenter__(self) -> "_FakeFlakyClient":
+        self.attempts += 1
+        if self.attempts <= self.fail_times:
+            raise RuntimeError(f"real simulated failure, attempt {self.attempts}")
+        return self
+
+
+class ConnectWithRetryTests(unittest.TestCase):
+    """Real regression tests for the connect-retry defect found and fixed
+    forward this session: `_tcp_port_reachable` alone (a raw TCP accept)
+    does not prove the real MCP handshake behind it will succeed -- a
+    bounded retry at the actual connection point is required. Real asyncio
+    event loop, real (if fake) client object, real sleeps (short, patched
+    delay constant restored after each test)."""
+
+    def setUp(self) -> None:
+        import gymact.gyms.sregym as sregym_module
+
+        self._orig_delay = sregym_module._CLIENT_CONNECT_RETRY_DELAY_SECONDS
+        sregym_module._CLIENT_CONNECT_RETRY_DELAY_SECONDS = 0.01
+
+    def tearDown(self) -> None:
+        import gymact.gyms.sregym as sregym_module
+
+        sregym_module._CLIENT_CONNECT_RETRY_DELAY_SECONDS = self._orig_delay
+
+    def test_succeeds_after_real_transient_failures_within_budget(self):
+        client = _FakeFlakyClient(fail_times=2)
+        asyncio.run(_connect_with_retry(client, label="test"))  # type: ignore[arg-type]
+        self.assertEqual(client.attempts, 3)
+
+    def test_raises_a_real_named_error_after_exhausting_all_real_attempts(self):
+        from gymact.gyms.sregym import _CLIENT_CONNECT_RETRIES
+
+        client = _FakeFlakyClient(fail_times=_CLIENT_CONNECT_RETRIES + 5)
+        with self.assertRaises(RuntimeError) as ctx:
+            asyncio.run(_connect_with_retry(client, label="test-label"))  # type: ignore[arg-type]
+        self.assertIn("test-label", str(ctx.exception))
+        self.assertEqual(client.attempts, _CLIENT_CONNECT_RETRIES)
 
 
 class TcpPortReachableTests(unittest.TestCase):

@@ -159,6 +159,38 @@ def _build_argv(
     ]
 
 
+_CLIENT_CONNECT_RETRIES = 5
+_CLIENT_CONNECT_RETRY_DELAY_SECONDS = 2.0
+
+
+async def _connect_with_retry(client: Client, *, label: str) -> None:
+    """Real, bounded retry around a real `fastmcp.Client.__aenter__()` call.
+
+    Real gap found and fixed forward this session: `__init__`'s own
+    readiness wait (`_tcp_port_reachable`, added earlier this session)
+    proves a TCP listener exists, but a raw TCP accept succeeding does not
+    prove the actual port-forward/MCP protocol handshake behind it is
+    ready -- confirmed live: `_tcp_port_reachable` passed, `__init__`
+    returned "ready", and the very next real `_ensure_clients_open()` call
+    still failed with `RuntimeError: Client failed to connect: All
+    connection attempts failed`. A bounded retry at the actual point of use
+    is the correct fix, not a stronger pre-check (no pre-check can fully
+    predict a later real handshake's success)."""
+    last_error: Exception | None = None
+    for attempt in range(1, _CLIENT_CONNECT_RETRIES + 1):
+        try:
+            await client.__aenter__()
+            return
+        except Exception as exc:  # noqa: BLE001 -- real connection failures come in several real exception types (RuntimeError, ConnectError, ...)
+            last_error = exc
+            if attempt < _CLIENT_CONNECT_RETRIES:
+                await asyncio.sleep(_CLIENT_CONNECT_RETRY_DELAY_SECONDS)
+    raise RuntimeError(
+        f"real MCP client {label!r} failed to connect after "
+        f"{_CLIENT_CONNECT_RETRIES} real attempts: {last_error!r}"
+    ) from last_error
+
+
 def _tcp_port_reachable(host: str, port: int, *, timeout: float) -> bool:
     """Real, lightweight TCP-connect probe -- no HTTP/MCP protocol handshake
     needed, just proof something is actually listening on `port` before a
@@ -314,11 +346,13 @@ class SregymEnvironment:
 
     async def _ensure_clients_open(self) -> None:
         if self._kubectl_client is None:
-            self._kubectl_client = Client(self._kubectl_mcp_url)
-            await self._kubectl_client.__aenter__()
+            client = Client(self._kubectl_mcp_url)
+            await _connect_with_retry(client, label="kubectl_client")
+            self._kubectl_client = client
         if self._submit_client is None:
-            self._submit_client = Client(self._submit_mcp_url)
-            await self._submit_client.__aenter__()
+            client = Client(self._submit_mcp_url)
+            await _connect_with_retry(client, label="submit_client")
+            self._submit_client = client
 
     def _ensure_open(self) -> None:
         if self._closed:
