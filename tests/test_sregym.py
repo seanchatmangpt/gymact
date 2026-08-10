@@ -24,6 +24,7 @@ from gymact.gyms.sregym import (
 )
 from gymact.models import Consequence
 from gymact.registry import builtin_capabilities, builtin_provider_names, create_builtin_provider
+from gymact.semantic import ProfileAuthority
 
 
 def _environment(tmp_path: Path, **overrides) -> SREGymEnvironment:
@@ -57,6 +58,11 @@ def test_sregym_is_a_first_class_builtin_provider() -> None:
     assert "sregym" in builtin_provider_names()
     assert builtin_capabilities("sregym") == (SREGYM_RUN_CAPABILITY,)
     assert isinstance(create_builtin_provider("sregym"), SREGymProvider)
+
+
+def test_sregym_capability_is_admitted_by_public_semantic_profile() -> None:
+    result = ProfileAuthority().validate_capabilities((SREGYM_RUN_CAPABILITY,))
+    assert result.conforms is True, result.report_text
 
 
 def test_sregym_run_is_a_do_capability_and_environment_requires_authority(tmp_path: Path) -> None:
