@@ -40,6 +40,7 @@ real `fastmcp.Client`).
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import socket
 import subprocess
@@ -203,6 +204,43 @@ async def _connect_with_retry(client_factory, *, label: str) -> Any:
     ) from last_error
 
 
+@contextlib.asynccontextmanager
+async def _open_client_with_retry(client_factory, *, label: str):
+    """Real, connect-use-close-fresh-every-call client lifecycle.
+
+    Real, architectural defect found and fixed forward this session,
+    deeper than the two connection-layer fixes above: `SregymEnvironment`
+    previously cached `_kubectl_client`/`_submit_client` as persistent
+    instance state, opened once and reused across many `actuate()`/
+    `verify()` calls -- explicitly built that way for efficiency (see this
+    module's own top docstring). But the real caller
+    (`autofde_lab.reasoning.gymact_diagnosis_driver`) runs each
+    `action_bindings` closure inside its OWN fresh event loop
+    (`ThreadPoolExecutor` + `asyncio.run()` per call, required because each
+    closure runs inside `run_pipeline`'s synchronous callback, which may
+    already be inside a running loop). A client's underlying async
+    transport/tasks are bound to the event loop that created them; reusing
+    a client across two different `asyncio.run()` invocations is not a
+    race, it is a structural impossibility -- confirmed live, deterministic,
+    100% reproduction rate past the first real client-using call:
+    `RuntimeError: Client is not connected. Use the 'async with client:'
+    context manager first.`
+
+    Fixed: every real operation now opens its own fresh client (via the
+    already-real `_connect_with_retry` bounded retry), uses it, and closes
+    it -- entirely within the ONE event loop that is actually running this
+    coroutine, never persisted on `self` across calls. This trades one real
+    connect/disconnect round-trip per operation for correctness; matches
+    `vendor_benchmarks.py`'s own one-shot-per-call precedent in this same
+    package, which never had this problem for exactly this reason."""
+    client = await _connect_with_retry(client_factory, label=label)
+    try:
+        yield client
+    finally:
+        with contextlib.suppress(Exception):
+            await client.__aexit__(None, None, None)
+
+
 def _tcp_port_reachable(host: str, port: int, *, timeout: float) -> bool:
     """Real, lightweight TCP-connect probe -- no HTTP/MCP protocol handshake
     needed, just proof something is actually listening on `port` before a
@@ -249,14 +287,29 @@ def _build_full_subprocess_env(
 
 
 class SregymEnvironment:
-    """Wraps one real `sregym` `main.py` subprocess plus a persistent real
-    `fastmcp.Client` session against its real `kubectl-mcp` server.
+    """Wraps one real `sregym` `main.py` subprocess and opens a fresh real
+    `fastmcp.Client` session per real `actuate()` call against its real
+    `kubectl-mcp`/submit-MCP servers.
 
-    `__init__` starts the subprocess and waits (bounded, polling) for the
-    real conductor HTTP API to answer `/status` before opening the real MCP
-    client sessions -- SREGym's own server startup is not instantaneous and
+    `__init__` starts the subprocess and waits (bounded, polling) for both
+    the real conductor HTTP API AND the kubectl-mcp port to become reachable
+    before returning -- SREGym's own server startup is not instantaneous and
     there is no other real readiness signal to wait on.
-    """
+
+    Real, architectural correction made this session: this class previously
+    cached one persistent `Client` per (kubectl/submit) surface, opened once
+    and reused across every `actuate()` call, for efficiency. That is
+    incompatible with the real caller
+    (`autofde_lab.reasoning.gymact_diagnosis_driver`), which runs each real
+    binding inside its own fresh event loop -- a client's async
+    transport/tasks are bound to the loop that created them, so reusing one
+    across two different `asyncio.run()` invocations is a structural
+    impossibility, not a race (confirmed live, deterministic, 100%
+    reproduction past the first real client-using call). Each `actuate()`
+    call now opens, uses, and closes its own client via
+    `_open_client_with_retry`, entirely within whichever single event loop
+    is actually running that one call -- see that function's own docstring
+    for the full account."""
 
     def __init__(
         self,
@@ -282,8 +335,6 @@ class SregymEnvironment:
         self._verify_timeout = verify_timeout_seconds
         self._teardown_timeout = teardown_timeout_seconds
         self._closed = False
-        self._kubectl_client: Client | None = None
-        self._submit_client: Client | None = None
 
         full_env = _build_full_subprocess_env(
             base_env=dict(os.environ),
@@ -356,16 +407,6 @@ class SregymEnvironment:
                 f"reachable={mcp_ready}): last_error={last_error!r}"
             )
 
-    async def _ensure_clients_open(self) -> None:
-        if self._kubectl_client is None:
-            self._kubectl_client = await _connect_with_retry(
-                lambda: Client(self._kubectl_mcp_url), label="kubectl_client"
-            )
-        if self._submit_client is None:
-            self._submit_client = await _connect_with_retry(
-                lambda: Client(self._submit_mcp_url), label="submit_client"
-            )
-
     def _ensure_open(self) -> None:
         if self._closed:
             raise RuntimeError("environment is torn down")
@@ -385,14 +426,12 @@ class SregymEnvironment:
 
     async def actuate(self, capability: Capability, payload: dict[str, Any]) -> dict[str, Any]:
         self._ensure_open()
-        await self._ensure_clients_open()
         binding = capability.binding
         before = self._status()
         if binding == "run_kubectl":
             command = payload.get("command")
             if not isinstance(command, str) or not command:
                 raise TypeError("payload.command must be a non-empty string")
-            assert self._kubectl_client is not None
             # Real defect found and fixed forward this session: the real
             # exec_kubectl_cmd_safely MCP tool's schema requires the
             # argument named `cmd`, not `command` -- confirmed live
@@ -404,9 +443,10 @@ class SregymEnvironment:
             # module's own `payload["command"]` key name (this class's own
             # external API) is unaffected -- only the real MCP call's own
             # argument name changes to match the real tool.
-            result = await self._kubectl_client.call_tool(
-                _KUBECTL_TOOL_NAME, {"cmd": command}
-            )
+            async with _open_client_with_retry(
+                lambda: Client(self._kubectl_mcp_url), label="kubectl_client"
+            ) as kubectl_client:
+                result = await kubectl_client.call_tool(_KUBECTL_TOOL_NAME, {"cmd": command})
             after = self._status()
             return {
                 "before": before,
@@ -416,8 +456,10 @@ class SregymEnvironment:
         if binding in ("submit_diagnosis", "submit_mitigation"):
             tool_name = binding
             args = dict(payload)
-            assert self._submit_client is not None
-            result = await self._submit_client.call_tool(tool_name, args)
+            async with _open_client_with_retry(
+                lambda: Client(self._submit_mcp_url), label="submit_client"
+            ) as submit_client:
+                result = await submit_client.call_tool(tool_name, args)
             after = self._status()
             return {
                 "before": before,
@@ -472,12 +514,9 @@ class SregymEnvironment:
         if self._closed:
             return
         try:
-            if self._kubectl_client is not None:
-                await self._kubectl_client.__aexit__(None, None, None)
-                self._kubectl_client = None
-            if self._submit_client is not None:
-                await self._submit_client.__aexit__(None, None, None)
-                self._submit_client = None
+            # No persistent client state to close anymore -- every real
+            # actuate() call already opened, used, and closed its own
+            # client via _open_client_with_retry.
             self._process.terminate()
             try:
                 self._process.wait(timeout=self._teardown_timeout)
