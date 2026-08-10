@@ -92,19 +92,37 @@ SREGYM_CAPABILITIES = (
     ),
     Capability(
         iri="urn:gymact:sregym:capability:run_kubectl",
-        title="Execute a real kubectl command through sregym's real kubectl-mcp server",
+        # `Capability` has no payload-schema field; naming the real required
+        # payload key directly in the title is the same generic-discovery
+        # stopgap already applied to MEMORY_CAPABILITIES (providers.py) --
+        # found real and necessary via gymact.dspy_agent's grounding-guard
+        # investigation this session: this value is a composed command
+        # string (not a bare reference), a real, separate gap tracked by the
+        # gymact-capability-schema-pack plan.
+        title=(
+            "Execute a real kubectl command through sregym's real kubectl-mcp server. "
+            'Payload: {"command": <str, a full kubectl command line>}.'
+        ),
         consequence=Consequence.DO,
         binding="run_kubectl",
     ),
     Capability(
         iri="urn:gymact:sregym:capability:submit_diagnosis",
-        title="Submit a real diagnosis to sregym's real conductor via its submit MCP surface",
+        title=(
+            "Submit a real diagnosis to sregym's real conductor via its submit MCP surface. "
+            "Payload: any free-form JSON-serializable dict describing the diagnosis "
+            "(no fixed required keys -- rendered as-is into the real submit answer)."
+        ),
         consequence=Consequence.DO,
         binding="submit_diagnosis",
     ),
     Capability(
         iri="urn:gymact:sregym:capability:submit_mitigation",
-        title="Submit a real mitigation to sregym's real conductor via its submit MCP surface",
+        title=(
+            "Submit a real mitigation to sregym's real conductor via its submit MCP surface. "
+            "Payload: any free-form JSON-serializable dict describing the mitigation "
+            "(no fixed required keys -- rendered as-is into the real submit answer)."
+        ),
         consequence=Consequence.DO,
         binding="submit_mitigation",
     ),
@@ -667,6 +685,22 @@ class SregymEnvironment:
                     self._process.kill()
                 self._process.wait(timeout=10.0)
         finally:
+            # Real defect found and fixed forward this session: `wait()`
+            # reaps the process but never closes the real `stdout`/`stderr`
+            # PIPE file objects `__init__` opened -- on the normal
+            # (non-startup-failure) path `communicate()` is never called
+            # either, so those two real file descriptors leaked past
+            # teardown, confirmed live via a real
+            # `PytestUnraisableExceptionWarning` naming two real
+            # `_io.FileIO` objects at session cleanup. `Popen.stdout`/
+            # `.stderr` are `None` on the early-return-before-Popen path
+            # (never reached here, since `self._process` always exists by
+            # this point) and `.close()` is idempotent/safe if pytest or
+            # another caller already consumed the pipe via `communicate()`.
+            if self._process.stdout is not None:
+                self._process.stdout.close()
+            if self._process.stderr is not None:
+                self._process.stderr.close()
             self._closed = True
 
     def is_really_stopped(self) -> bool:
@@ -689,7 +723,21 @@ def _resolve_materialize_argv_and_env(
     agent_name = config.get("agent_name", "debug")
     if not isinstance(agent_name, str) or not agent_name:
         raise TypeError("config.agent_name must be a non-empty string")
-    judge_model_id = config.get("judge_model_id", "openai/gemma-4-26b-a4b-it")
+    # Real defect fixed forward this session: this default previously
+    # named an "openai/..." litellm provider prefix, which forces litellm
+    # to require a real OPENAI_API_KEY regardless of what's actually
+    # exported in the environment -- confirmed live (a real trial crashed
+    # with `litellm.AuthenticationError: ... OPENAI_API_KEY ...` even
+    # though this repo has no OpenAI credential anywhere and GROQ_API_KEY
+    # was exported and confirmed forwarded via `_build_full_subprocess_env`).
+    # `autofde-lab`'s own driver (`gymact_diagnosis_driver.py`) already
+    # passes an explicit, real, working Groq-hosted model id for every
+    # live trial (`groq/openai/gpt-oss-20b`, confirmed against the real
+    # Groq `/v1/models` listing this session) -- this default now matches
+    # it, so a caller that omits `judge_model_id` entirely (e.g. this
+    # module's own test suite) resolves to Groq, never OpenAI, matching
+    # every other credential this repo forwards.
+    judge_model_id = config.get("judge_model_id", "groq/openai/gpt-oss-20b")
     if not isinstance(judge_model_id, str) or not judge_model_id:
         raise TypeError("config.judge_model_id must be a non-empty string")
     problem_id = config.get("problem_id", scenario or "misconfig_app_hotel_res")

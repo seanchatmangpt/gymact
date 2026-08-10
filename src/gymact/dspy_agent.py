@@ -151,6 +151,7 @@ class AgentRunResult:
     ReAct-loop output plus the real, ordered trace of tool calls it made."""
 
     outcome: str
+    goal_accomplished: bool = False
     steps: list[AgentStep] = field(default_factory=list)
     final_observation: dict[str, Any] | None = None
 
@@ -288,17 +289,30 @@ class GymActReActAgent:
             only values already present in a real prior `observe()` result --
             never invent a resource name, key, or identifier."""
 
-            goal: str = dspy.InputField(desc="the real goal to accomplish in this episode")
-            outcome: str = dspy.OutputField(
+            episode_goal: str = dspy.InputField(
+                desc="the real goal to accomplish in this episode"
+            )
+            outcome_summary: str = dspy.OutputField(
                 desc="a real, honest summary of what was actually accomplished"
+            )
+            # Real bool output (not parsed out of `outcome_summary` prose) --
+            # per dspy.ai's own signature guidance, a bool field surfaces a
+            # clear validation warning if the LM's output can't be coerced,
+            # and gives callers a real structured success signal instead of
+            # having to parse free text.
+            goal_accomplished: bool = dspy.OutputField(
+                desc="true only if the stated goal was actually, verifiably accomplished"
             )
 
         react = dspy.ReAct(AccomplishGymGoal, tools=tools, max_iters=self._max_iters)
-        lm = dspy.LM(self._judge_model_id)
+        lm = dspy.LM(self._judge_model_id, max_tokens=16000)
         with dspy.context(lm=lm):
-            prediction = await react.acall(goal=goal)
+            prediction = await react.acall(episode_goal=goal)
 
         final_state = self._last_observation.state if self._last_observation else None
         return AgentRunResult(
-            outcome=prediction.outcome, steps=steps, final_observation=final_state
+            outcome=prediction.outcome_summary,
+            goal_accomplished=bool(prediction.goal_accomplished),
+            steps=steps,
+            final_observation=final_state,
         )

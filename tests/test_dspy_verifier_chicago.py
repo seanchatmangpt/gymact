@@ -183,7 +183,7 @@ class TestGepaOptimizesTheRealJudge:
             )
             return dspy.Prediction(score=score, feedback=feedback)
 
-        lm = dspy.LM("groq/openai/gpt-oss-20b")
+        lm = dspy.LM("groq/openai/gpt-oss-20b", max_tokens=16000)
         with dspy.context(lm=lm):
             base_program = suspicion_scoring_program()
 
