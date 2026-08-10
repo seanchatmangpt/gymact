@@ -85,7 +85,7 @@ def test_native_result_keeps_diagnosis_and_mitigation_distinct(tmp_path: Path) -
     row = result["rows"][0]
     assert row["diagnosis_success"] is True
     assert row["mitigation_success"] is False
-n    assert row["solved"] is False
+    assert row["solved"] is False
     assert result["all_solved"] is False
 
 
