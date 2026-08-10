@@ -46,7 +46,6 @@ import os
 import signal
 import socket
 import subprocess
-import time
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -56,6 +55,7 @@ from fastmcp import Client
 
 from gymact.gyms.vendor_benchmarks import VendorAdmissionError, VendorSpec, _audit_spec
 from gymact.models import Capability, Consequence
+from gymact.polling import poll_until
 
 # Not sourced from `vendor_benchmarks.VENDOR_REVISIONS`: that dict is an exact,
 # lock-derived corpus (`tests/test_vendor_benchmarks.py` pins its own length and
@@ -409,11 +409,12 @@ class SregymEnvironment:
             start_new_session=True,
         )
 
-        deadline = time.monotonic() + startup_timeout_seconds
         last_error: Exception | None = None
         api_ready = False
         mcp_ready = False
-        while time.monotonic() < deadline:
+
+        def _startup_check() -> bool:
+            nonlocal api_ready, mcp_ready, last_error
             if self._process.poll() is not None:
                 stdout, stderr = self._process.communicate()
                 # Real defect fixed forward this session: main.py's own rich
@@ -448,9 +449,13 @@ class SregymEnvironment:
             # required before `ready`, not just the API's.
             if api_ready and not mcp_ready:
                 mcp_ready = _tcp_port_reachable("127.0.0.1", mcp_server_port, timeout=1.0)
-            if api_ready and mcp_ready:
-                break
-            time.sleep(_POLL_INTERVAL_SECONDS)
+            return api_ready and mcp_ready
+
+        poll_until(
+            _startup_check,
+            timeout_seconds=startup_timeout_seconds,
+            interval_seconds=_POLL_INTERVAL_SECONDS,
+        )
         if not (api_ready and mcp_ready):
             self._process.kill()
             self._process.wait(timeout=10.0)
@@ -580,7 +585,6 @@ class SregymEnvironment:
         transitioned yet -- the bounded deadline (not a swallowed
         exception) is still what ends the loop."""
         self._ensure_open()
-        deadline = time.monotonic() + self._verify_timeout
 
         def _poll() -> dict[str, Any]:
             try:
@@ -588,13 +592,18 @@ class SregymEnvironment:
             except Exception:  # noqa: BLE001 -- a transient real network hiccup during polling is not a fatal verify() failure; the bounded deadline below still ends the loop
                 return {}
 
-        observed = _poll()
-        while not all(observed.get(key) == value for key, value in expected.items()):
-            if time.monotonic() >= deadline:
-                break
-            time.sleep(_POLL_INTERVAL_SECONDS)
+        observed: dict[str, Any] = {}
+
+        def _check() -> bool:
+            nonlocal observed
             observed = _poll()
-        passed = all(observed.get(key) == value for key, value in expected.items())
+            return all(observed.get(key) == value for key, value in expected.items())
+
+        passed = poll_until(
+            _check,
+            timeout_seconds=self._verify_timeout,
+            interval_seconds=_POLL_INTERVAL_SECONDS,
+        )
         return passed, observed
 
     async def checkpoint(self) -> dict[str, Any]:
