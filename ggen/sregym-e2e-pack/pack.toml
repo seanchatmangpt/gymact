@@ -1,0 +1,4 @@
+[pack]
+name = "sregym-e2e-pack"
+version = "0.1.0"
+description = "ggen manufacturing pack for GymAct's first-class SREGym end-to-end evidence contract. The pack does not generate Python and never actuates SREGym. It projects the admitted SREGym subject, exact upstream revision, authority requirement, solved predicate, receipt sequence, and required OCEL/replay evidence into a static Rust verifier, a WIT ABI, and a Rust cross-projection proof. This is the Rust/WIT Gall checkpoint required by .claude/rules/ggen-boundary.md: Python owns real SREGym execution; ggen compiles the same admitted semantic facts into a powerless verifier closure. A subject is still ALIVE only after real SREGym execution plus native-result observation, independent GymAct verification, schema-valid OCEL, and conformant replay."

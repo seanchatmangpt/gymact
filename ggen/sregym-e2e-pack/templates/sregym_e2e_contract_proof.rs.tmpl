@@ -1,0 +1,168 @@
+---
+to: "tests/sregym_e2e_contract_proof.rs"
+sparql:
+  contract: |
+    PREFIX dct: <http://purl.org/dc/terms/>
+    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    SELECT
+      (STR(?source) AS ?repository)
+      ?revision
+      (STR(?capability) AS ?capability_iri)
+      ?state_key
+      (STR(?state_value) AS ?state_value_text)
+      ?op1 ?op2 ?op3 ?op4
+    WHERE {
+      <urn:gymact:sregym:e2e:contract>
+        dct:source ?source ;
+        dct:hasVersion ?revision ;
+        dct:relation ?capability .
+      <urn:gymact:sregym:e2e:expected-solved>
+        dct:identifier ?state_key ;
+        rdf:value ?state_value .
+      <urn:gymact:sregym:e2e:receipt-sequence>
+        rdf:_1 ?o1 ; rdf:_2 ?o2 ; rdf:_3 ?o3 ; rdf:_4 ?o4 .
+      ?o1 skos:prefLabel ?op1 .
+      ?o2 skos:prefLabel ?op2 .
+      ?o3 skos:prefLabel ?op3 .
+      ?o4 skos:prefLabel ?op4 .
+    }
+  evidence: |
+    PREFIX dct: <http://purl.org/dc/terms/>
+    SELECT ?id WHERE {
+      <urn:gymact:sregym:e2e:contract> dct:requires ?evidence .
+      ?evidence dct:identifier ?id .
+    }
+    ORDER BY ?id
+  package: |
+    PREFIX dct: <http://purl.org/dc/terms/>
+    SELECT ?id WHERE {
+      <urn:gymact:sregym:e2e:wit-package> dct:identifier ?id .
+    }
+  interface: |
+    PREFIX dct: <http://purl.org/dc/terms/>
+    SELECT ?id WHERE {
+      <urn:gymact:sregym:e2e:wit-interface> dct:identifier ?id .
+    }
+  world: |
+    PREFIX dct: <http://purl.org/dc/terms/>
+    SELECT ?id WHERE {
+      <urn:gymact:sregym:e2e:wit-world> dct:identifier ?id .
+    }
+---
+//! GENERATED cross-projection proof for the SREGym E2E contract.
+//! It compiles against the separately generated Rust verifier and also reads
+//! the separately generated WIT file. No benchmark execution is mocked here.
+
+#[path = "../src/sregym_e2e_contract.rs"]
+mod contract;
+
+use contract::{Disposition, Evidence, Subject};
+
+const EXPECTED_EVIDENCE: &[&str] = &[
+{% for row in evidence -%}
+    "{{ row.id }}",
+{% endfor -%}
+];
+
+#[test]
+fn rust_contract_matches_the_admitted_graph() {
+    assert_eq!(contract::CONTRACT.repository, "{{ contract[0].repository }}");
+    assert_eq!(contract::CONTRACT.revision, "{{ contract[0].revision }}");
+    assert_eq!(contract::CONTRACT.capability_iri, "{{ contract[0].capability_iri }}");
+    assert_eq!(contract::CONTRACT.expected_state_key, "{{ contract[0].state_key }}");
+    assert_eq!(contract::CONTRACT.expected_state_value, {{ contract[0].state_value_text }});
+    assert_eq!(
+        contract::REQUIRED_RECEIPT_OPERATIONS,
+        &[
+            "{{ contract[0].op1 }}",
+            "{{ contract[0].op2 }}",
+            "{{ contract[0].op3 }}",
+            "{{ contract[0].op4 }}",
+        ]
+    );
+    assert_eq!(contract::REQUIRED_EVIDENCE_IDS, EXPECTED_EVIDENCE);
+}
+
+#[test]
+fn exact_complete_evidence_crowns_alive() {
+    let receipts = [
+        "{{ contract[0].op1 }}",
+        "{{ contract[0].op2 }}",
+        "{{ contract[0].op3 }}",
+        "{{ contract[0].op4 }}",
+    ];
+    let subject = Subject {
+        repository: "{{ contract[0].repository }}",
+        revision: "{{ contract[0].revision }}",
+        capability_iri: "{{ contract[0].capability_iri }}",
+    };
+    let evidence = Evidence {
+        state_key: "{{ contract[0].state_key }}",
+        state_value: {{ contract[0].state_value_text }},
+        receipt_operations: &receipts,
+        evidence_ids: EXPECTED_EVIDENCE,
+    };
+    assert_eq!(contract::verify(subject, evidence), Disposition::Alive);
+}
+
+#[test]
+fn revision_drift_is_refused() {
+    let subject = Subject {
+        repository: "{{ contract[0].repository }}",
+        revision: "not-the-admitted-revision",
+        capability_iri: "{{ contract[0].capability_iri }}",
+    };
+    let evidence = Evidence {
+        state_key: "{{ contract[0].state_key }}",
+        state_value: {{ contract[0].state_value_text }},
+        receipt_operations: contract::REQUIRED_RECEIPT_OPERATIONS,
+        evidence_ids: EXPECTED_EVIDENCE,
+    };
+    assert_eq!(contract::verify(subject, evidence), Disposition::Refused);
+}
+
+#[test]
+fn unsolved_or_incomplete_evidence_is_refused() {
+    let subject = Subject {
+        repository: "{{ contract[0].repository }}",
+        revision: "{{ contract[0].revision }}",
+        capability_iri: "{{ contract[0].capability_iri }}",
+    };
+    let unsolved = Evidence {
+        state_key: "{{ contract[0].state_key }}",
+        state_value: false,
+        receipt_operations: contract::REQUIRED_RECEIPT_OPERATIONS,
+        evidence_ids: EXPECTED_EVIDENCE,
+    };
+    assert_eq!(contract::verify(subject, unsolved), Disposition::Refused);
+
+    let missing_receipts = Evidence {
+        state_key: "{{ contract[0].state_key }}",
+        state_value: {{ contract[0].state_value_text }},
+        receipt_operations: &[],
+        evidence_ids: EXPECTED_EVIDENCE,
+    };
+    assert_eq!(contract::verify(subject, missing_receipts), Disposition::Refused);
+
+    let missing_required_evidence = Evidence {
+        state_key: "{{ contract[0].state_key }}",
+        state_value: {{ contract[0].state_value_text }},
+        receipt_operations: contract::REQUIRED_RECEIPT_OPERATIONS,
+        evidence_ids: &[],
+    };
+    assert_eq!(
+        contract::verify(subject, missing_required_evidence),
+        Disposition::Refused
+    );
+}
+
+#[test]
+fn wit_projection_carries_the_same_subject_identity() {
+    let wit = std::fs::read_to_string("wit/sregym-e2e.wit").expect("generated WIT");
+    assert!(wit.contains("package {{ package[0].id }};"));
+    assert!(wit.contains("interface {{ interface[0].id }}"));
+    assert!(wit.contains("world {{ world[0].id }}"));
+    assert!(wit.contains("revision={{ contract[0].revision }}"));
+    assert!(wit.contains("capability={{ contract[0].capability_iri }}"));
+}
