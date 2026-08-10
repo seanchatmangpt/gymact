@@ -14,6 +14,7 @@ def receipt() -> Receipt:
         subject_ref="urn:subject:1",
         capability_ref="urn:capability:1",
         possibility_graph_digest="graph-1",
+        possibility_exploration_digest="exploration-1",
         possibility_path_id="path-1",
         possibility_morphism_id="do-1",
         selection_digest="selection-1",

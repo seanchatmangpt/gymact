@@ -1,0 +1,18 @@
+---
+to: "docs/compiled-reference.md"
+force: true
+sparql:
+  caps: |
+    PREFIX sosa: <http://www.w3.org/ns/sosa/>
+    PREFIX dct: <http://purl.org/dc/terms/>
+    SELECT ?id ?title ?kind WHERE {
+      ?cap a sosa:Procedure ; dct:identifier ?id ; dct:title ?title ; dct:type ?kind .
+    } ORDER BY ?id
+---
+# Protocol gym compiled reference
+
+Discovery is structural evidence, not execution proof.
+
+{% for row in caps -%}
+- `{{ row.id }}` — {{ row.title }} (`{{ row.kind }}`)
+{% endfor %}

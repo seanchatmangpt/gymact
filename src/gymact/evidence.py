@@ -49,6 +49,35 @@ class ReceiptLedger(Protocol):
     def find(self, receipt_id: str) -> EvidenceRecord | None: ...
 
 
+# Fields that define "same intended effect" for idempotency-key comparison.
+# Narrower than first drafted: this codebase's own internal receipt-
+# refinement chain (crown_runtime.py's execute_verified -> _verification_receipt,
+# and execute_admitted's "bound" receipt; cut.py's CombinatorialBRCEBroker)
+# legitimately re-receipts the SAME idempotency_key multiple times for the
+# same real intent while varying `operation` (ACT then its own follow-on
+# VERIFY), `subject_ref` (kernel-level receipts use environment_id; DCM-level
+# receipts use prepared.subject.provider_ref for the same real subject), and
+# every lineage/combinatorial-binding field (parent_receipt_ids,
+# possibility_graph_digest, possibility_exploration_digest, possibility_path_id,
+# possibility_morphism_id, selection_digest, selection_basis_refs) -- verified
+# directly against tests/test_combinatorial_receipt.py and
+# tests/test_combinatorial_cut.py, both of which legitimately re-receipt an
+# idempotency_key through this exact chain. `episode_id` and `capability_ref`
+# are the two fields that stayed stable across every real internal flow
+# audited this session; this intentionally catches a narrower bug class (an
+# idempotency_key reused for an unrelated capability within the same episode)
+# than the field set first drafted, in exchange for not producing false
+# positives against this codebase's own legitimate re-receipting patterns.
+_SAME_INTENT_FIELDS = (
+    "episode_id",
+    "capability_ref",
+)
+
+
+def _same_intent(a: Receipt, b: Receipt) -> bool:
+    return all(getattr(a, field) == getattr(b, field) for field in _SAME_INTENT_FIELDS)
+
+
 class MemoryReceiptLedger:
     """Deterministic in-memory BLAKE3 chain used by the reference runtime.
 
@@ -59,6 +88,7 @@ class MemoryReceiptLedger:
     def __init__(self) -> None:
         self._records: list[EvidenceRecord] = []
         self._by_receipt: dict[str, EvidenceRecord] = {}
+        self._by_idempotency_key: dict[str, EvidenceRecord] = {}
 
     @staticmethod
     def _record_digest(sequence: int, previous_digest: str | None, receipt_digest: str) -> str:
@@ -76,6 +106,10 @@ class MemoryReceiptLedger:
             if prior.receipt != receipt:
                 raise ValueError("RECEIPT_ID_CONFLICT")
             return prior
+        if receipt.idempotency_key is not None:
+            key_prior = self._by_idempotency_key.get(receipt.idempotency_key)
+            if key_prior is not None and not _same_intent(key_prior.receipt, receipt):
+                raise ValueError("IDEMPOTENCY_KEY_REUSE_WITH_DIFFERENT_INTENT")
         sequence = len(self._records)
         previous = self._records[-1].record_digest if self._records else None
         receipt_digest = digest(receipt.model_dump(mode="json"))
@@ -88,6 +122,8 @@ class MemoryReceiptLedger:
         )
         self._records.append(record)
         self._by_receipt[receipt.receipt_id] = record
+        if receipt.idempotency_key is not None:
+            self._by_idempotency_key.setdefault(receipt.idempotency_key, record)
         return record
 
     def records(self) -> tuple[EvidenceRecord, ...]:

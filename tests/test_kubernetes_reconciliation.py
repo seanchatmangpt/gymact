@@ -52,7 +52,7 @@ require_standing(
     "`colima start --kubernetes`)",
 )
 
-from gymact import GymAct, MaterializationIntent  # noqa: E402
+from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent  # noqa: E402
 from gymact.gyms.kubernetes_reconciliation import KubernetesReconciliationProvider  # noqa: E402
 from gymact.models import ActuationIntent, Operation, Standing  # noqa: E402
 from gymact.ocel import receipts_to_ocel, validate_ocel_log  # noqa: E402
@@ -60,6 +60,16 @@ from gymact.process import ConformanceChecker  # noqa: E402
 
 GET_STATUS = "urn:gymact:kubernetes-reconciliation:capability:get_status"
 SCALE_RESTART = "urn:gymact:kubernetes-reconciliation:capability:scale_restart"
+# kubernetes_reconciliation.py's requires_authority now defaults to True (a
+# real DO capability against a real cluster must not run unauthorized) --
+# every test below explicitly admits AUTHORITY.
+AUTHORITY = "urn:test:kubernetes-reconciliation-authority"
+
+
+def _authorized_gym() -> GymAct:
+    gym = GymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
+    gym.register_provider(KubernetesReconciliationProvider())
+    return gym
 
 
 async def _run_real_kubernetes_episode() -> list:
@@ -68,8 +78,7 @@ async def _run_real_kubernetes_episode() -> list:
     capability) -> teardown. GET_STATUS is Consequence.READ, which `act()`
     correctly refuses (READ_CAPABILITY_IS_NOT_ACTUATION) -- reads happen via
     `observe()`/`verify()`, not `act()`."""
-    gym = GymAct()
-    gym.register_provider(KubernetesReconciliationProvider())
+    gym = _authorized_gym()
     receipts = []
 
     materialization = await gym.materialize(
@@ -82,14 +91,16 @@ async def _run_real_kubernetes_episode() -> list:
     verification = await gym.verify(episode_id, {"running": True})
     assert verification.passed is True
 
-    result = await gym.act(ActuationIntent(episode_id=episode_id, capability=SCALE_RESTART))
+    result = await gym.act(
+        ActuationIntent(episode_id=episode_id, capability=SCALE_RESTART, authority_ref=AUTHORITY)
+    )
     assert result.accepted is True
     receipts.append(result.receipt)
 
     verification_after = await gym.verify(episode_id, {"running": True})
     assert verification_after.passed is True
 
-    receipts.append(await gym.teardown(episode_id))
+    receipts.append(await gym.teardown(episode_id, authority_ref=AUTHORITY))
     return receipts
 
 
@@ -121,8 +132,7 @@ async def test_real_pod_materializes_and_converges_to_running_on_the_real_cluste
 
 
 async def test_scale_restart_capability_is_real_and_forces_real_rescheduling() -> None:
-    gym = GymAct()
-    gym.register_provider(KubernetesReconciliationProvider())
+    gym = _authorized_gym()
     m = await gym.materialize(
         MaterializationIntent(provider="kubernetes-reconciliation", config={})
     )
@@ -131,7 +141,9 @@ async def test_scale_restart_capability_is_real_and_forces_real_rescheduling() -
     v = await gym.verify(episode_id, {"running": True})
     assert v.passed is True
 
-    result = await gym.act(ActuationIntent(episode_id=episode_id, capability=SCALE_RESTART))
+    result = await gym.act(
+        ActuationIntent(episode_id=episode_id, capability=SCALE_RESTART, authority_ref=AUTHORITY)
+    )
     assert result.accepted is True
     assert result.effect["apply_returncode"] == 0
 
@@ -140,12 +152,11 @@ async def test_scale_restart_capability_is_real_and_forces_real_rescheduling() -
     verification = await gym.verify(episode_id, {"running": True})
     assert verification.passed is True
 
-    await gym.teardown(episode_id)
+    await gym.teardown(episode_id, authority_ref=AUTHORITY)
 
 
 async def test_teardown_really_deletes_the_pod_from_the_real_cluster() -> None:
-    gym = GymAct()
-    gym.register_provider(KubernetesReconciliationProvider())
+    gym = _authorized_gym()
     m = await gym.materialize(
         MaterializationIntent(provider="kubernetes-reconciliation", config={})
     )
@@ -154,7 +165,7 @@ async def test_teardown_really_deletes_the_pod_from_the_real_cluster() -> None:
         episode_id
     ].environment  # real environment handle, captured before teardown removes the episode
 
-    receipt = await gym.teardown(episode_id)
+    receipt = await gym.teardown(episode_id, authority_ref=AUTHORITY)
     assert receipt.standing == Standing.ALIVE
 
     # Real confirmation against the real cluster -- not trusting

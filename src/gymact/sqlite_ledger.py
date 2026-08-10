@@ -7,7 +7,7 @@ import sqlite3
 from pathlib import Path
 from threading import RLock
 
-from gymact.evidence import EvidenceRecord, canonical_bytes, digest
+from gymact.evidence import EvidenceRecord, _same_intent, canonical_bytes, digest
 from gymact.models import Receipt
 
 
@@ -88,6 +88,26 @@ class SQLiteReceiptLedger:
                         raise ValueError("RECEIPT_ID_CONFLICT")
                     self._connection.commit()
                     return prior
+
+                if receipt.idempotency_key is not None:
+                    # json_extract over receipt_json avoids a schema migration
+                    # for existing database files (see MemoryReceiptLedger's
+                    # in-memory equivalent for the field-set rationale --
+                    # excludes lineage/combinatorial-binding fields so cut.py's
+                    # legitimate re-receipting flow is never falsely refused).
+                    key_row = self._connection.execute(
+                        """
+                        SELECT sequence, previous_digest, receipt_digest, record_digest, receipt_json
+                        FROM receipt_evidence
+                        WHERE json_extract(receipt_json, '$.idempotency_key') = ?
+                        ORDER BY sequence ASC LIMIT 1
+                        """,
+                        (receipt.idempotency_key,),
+                    ).fetchone()
+                    if key_row is not None:
+                        key_prior = self._record(key_row)
+                        if not _same_intent(key_prior.receipt, receipt):
+                            raise ValueError("IDEMPOTENCY_KEY_REUSE_WITH_DIFFERENT_INTENT")
 
                 last = self._connection.execute(
                     "SELECT sequence, record_digest FROM receipt_evidence "

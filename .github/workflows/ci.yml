@@ -1,0 +1,407 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: Python ${{ matrix.python }} semantic/runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    env:
+      GYMACT_ALLOW_DEGRADED_STANDINGS: "*"
+    steps:
+      - name: Checkout exact subject
+        uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Admit exact head and two-workflow topology
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          count="$(find .github/workflows -maxdepth 1 -type f \( -name '*.yml' -o -name '*.yaml' \) | wc -l | tr -d ' ')"
+          test "$count" -eq 2
+          printf 'subject_sha=%s workflow_count=%s\n' "$EXPECTED_SHA" "$count"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Install package and verification tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[gyms]' \
+            'build>=1.2,<2' \
+            'coverage[toml]>=7.6,<8' \
+            'httpx2>=2.9,<3' \
+            'mkdocstrings[python]>=0.30,<1' \
+            'pytest>=8.3,<9' \
+            'pytest-asyncio>=0.25,<2' \
+            'ruff>=0.15,<1' \
+            'twine>=6,<7' \
+            'zensical>=0.0.51,<1'
+
+      - name: Semantic profile admission
+        run: gymact validate-profile
+
+      - name: Refuse interaction-verifying test seams
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RInE 'unittest\.mock|\bMock\b|\bpatch\b|monkeypatch' tests; then
+            echo 'REFUSED:INTERACTION_VERIFYING_TEST_SEAM' >&2
+            exit 1
+          fi
+
+      - name: Runtime and evidence tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/test-evidence
+          coverage run -m pytest -v --junitxml="artifacts/test-evidence/junit-${{ matrix.python }}.xml"
+
+      - name: Coverage and static contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          coverage report
+          ruff check src tests
+          ruff format --check src tests
+
+      - name: Upload matrix standing evidence
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: test-evidence-${{ matrix.python }}
+          path: artifacts/test-evidence/junit-${{ matrix.python }}.xml
+          if-no-files-found: error
+          retention-days: 14
+
+  cloudsim:
+    name: Zero-live-cloud AWS/Azure/GCP simulation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GYMACT_ALLOW_DEGRADED_STANDINGS: "*"
+      AWS_ACCESS_KEY_ID: ""
+      AWS_SECRET_ACCESS_KEY: ""
+      AWS_SESSION_TOKEN: ""
+      AWS_PROFILE: ""
+      AWS_EC2_METADATA_DISABLED: "true"
+      AZURE_CLIENT_ID: ""
+      AZURE_CLIENT_SECRET: ""
+      AZURE_TENANT_ID: ""
+      AZURE_SUBSCRIPTION_ID: ""
+      GOOGLE_APPLICATION_CREDENTIALS: ""
+      GOOGLE_CLOUD_PROJECT: ""
+      CLOUDSDK_CORE_PROJECT: ""
+    steps:
+      - name: Checkout exact subject
+        uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install simulator verification surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install -e . \
+            'pytest>=8.3,<9' \
+            'pytest-asyncio>=0.25,<2' \
+            'pytest-socket>=0.7,<1'
+
+      - name: Prove cloud package has no vendor SDK dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          roots = [
+              Path("src/gymact/gyms/cloudsim"),
+              Path("src/gymact/gyms/multicloud.py"),
+          ]
+          forbidden = ("boto3", "botocore", "azure", "google.cloud")
+          imported = set()
+          paths = []
+          for root in roots:
+              paths.extend(root.glob("*.py") if root.is_dir() else [root])
+          for path in paths:
+              tree = ast.parse(path.read_text(), filename=str(path))
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.Import):
+                      imported.update(alias.name for alias in node.names)
+                  elif isinstance(node, ast.ImportFrom) and node.module:
+                      imported.add(node.module)
+          leaked = sorted(name for name in imported if name.startswith(forbidden))
+          if leaked:
+              raise SystemExit(f"REFUSED:VENDOR_CLOUD_SDK_IMPORT:{leaked}")
+          print("vendor_cloud_sdk_imports=0")
+          PY
+
+      - name: Execute cloud worlds with sockets disabled
+        shell: bash
+        env:
+          SUBJECT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/cloudsim
+          pytest -v --disable-socket \
+            tests/test_multicloud.py \
+            tests/test_cloudsim.py \
+            --junitxml=artifacts/cloudsim/junit-cloudsim.xml
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          receipt = {
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "subject_sha": os.environ["SUBJECT_SHA"],
+              "standing": "ALIVE",
+              "boundary": "cloudsim-zero-live-cloud",
+              "clouds": ["aws", "azure", "gcp"],
+              "network": "SOCKETS_DISABLED",
+              "credentials": "EMPTY",
+              "vendor_cloud_sdk_imports": 0,
+              "real_cloud_spend_required": False,
+              "authority_semantics": "GYMACT_RUNTIME",
+              "receipt_semantics": "GYMACT_RUNTIME",
+          }
+          path = Path("artifacts/cloudsim/receipt.json")
+          path.write_text(json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n")
+          print(path.read_text(), end="")
+          PY
+
+      - name: Upload cloud-simulation receipt
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: cloudsim-evidence
+          path: artifacts/cloudsim/
+          if-no-files-found: error
+          retention-days: 14
+
+  artifact:
+    name: wheel/docs/container consequence
+    needs: [core, cloudsim]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact subject
+        uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Admit exact artifact subject
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+
+      - name: Download cloud-simulation evidence
+        uses: actions/download-artifact@v8.0.1
+        with:
+          name: cloudsim-evidence
+          path: artifacts/cloudsim-evidence
+
+      - name: Download Python matrix evidence
+        uses: actions/download-artifact@v8.0.1
+        with:
+          pattern: test-evidence-*
+          path: artifacts/test-evidence
+          merge-multiple: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install build and documentation surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install -e . \
+            'build>=1.2,<2' \
+            'twine>=6,<7' \
+            'zensical>=0.0.51,<1' \
+            'mkdocstrings[python]>=0.30,<1'
+
+      - name: Build and independently install wheel
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf dist /tmp/gymact-wheel /tmp/exported-profile /tmp/manufacturing-bundle
+          python -m build
+          python -m twine check dist/*
+          python -m venv /tmp/gymact-wheel
+          /tmp/gymact-wheel/bin/pip install -q dist/*.whl
+          /tmp/gymact-wheel/bin/gymact version
+          /tmp/gymact-wheel/bin/gymact validate-profile
+          /tmp/gymact-wheel/bin/gymact contract > /tmp/runtime-contract.json
+          /tmp/gymact-wheel/bin/gymact export-profile /tmp/exported-profile
+          /tmp/gymact-wheel/bin/gymact export-bundle /tmp/manufacturing-bundle
+          test -s /tmp/exported-profile/profile.ttl
+          test -s /tmp/exported-profile/profile.shacl.ttl
+          test -s /tmp/manufacturing-bundle/profile.ttl
+          test -s /tmp/manufacturing-bundle/profile.shacl.ttl
+          test -s /tmp/manufacturing-bundle/runtime-contract.jcs.json
+          /tmp/gymact-wheel/bin/python - <<'PY'
+          import json
+          from pathlib import Path
+
+          from gymact import build_contract
+          from gymact.evidence import canonical_bytes
+
+          observed = json.loads(Path("/tmp/runtime-contract.json").read_text())
+          contract = build_contract()
+          assert observed["contract_digest"] == contract.contract_digest
+          bundle = Path("/tmp/manufacturing-bundle/runtime-contract.jcs.json").read_bytes()
+          assert bundle == canonical_bytes(contract.model_dump(mode="json"))
+          PY
+
+      - name: Build documentation
+        run: zensical build --clean
+
+      - name: Build and probe production container
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --target production -t gymact:ci .
+          docker run --rm gymact:ci version
+          docker run --rm gymact:ci contract | grep -q 'contract_digest'
+          cid="$(docker run -d -p 127.0.0.1:8000:8000 gymact:ci)"
+          trap 'docker rm -f "$cid" >/dev/null 2>&1 || true' EXIT
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/health | grep -q 'ALIVE'; then
+              curl -fsS http://127.0.0.1:8000/contract | grep -q 'RFC8785-JCS'
+              curl -fsS http://127.0.0.1:8000/evidence | grep -q 'verified'
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs "$cid"
+          exit 1
+
+      - name: Emit verification receipt
+        shell: bash
+        env:
+          SUBJECT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/ci
+          PACKAGE_VERSION="$("/tmp/gymact-wheel/bin/python" -c 'from importlib.metadata import version; print(version("gymact"))')"
+          export PACKAGE_VERSION
+          python - <<'PY'
+          import json
+          import os
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          reports = sorted(Path("artifacts/test-evidence").glob("junit-*.xml"))
+          if len(reports) != 3:
+              raise SystemExit(f"expected 3 matrix reports, found {len(reports)}")
+          cloud_receipts = list(Path("artifacts/cloudsim-evidence").rglob("receipt.json"))
+          if not cloud_receipts:
+              raise SystemExit("cloud-simulation receipt is missing")
+
+          skipped = 0
+          tests = 0
+          for report in reports:
+              root = ET.parse(report).getroot()
+              suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite"))
+              for suite in suites:
+                  tests += int(suite.attrib.get("tests", 0))
+                  skipped += int(suite.attrib.get("skipped", 0))
+
+          cloud = json.loads(cloud_receipts[0].read_text())
+          if cloud.get("subject_sha") != os.environ["SUBJECT_SHA"]:
+              raise SystemExit("cloud-simulation receipt subject does not match exact head")
+          if cloud.get("standing") != "ALIVE" or cloud.get("network") != "SOCKETS_DISABLED":
+              raise SystemExit("cloud-simulation receipt does not prove zero-live-cloud boundary")
+          if cloud.get("credentials") != "EMPTY" or cloud.get("real_cloud_spend_required") is not False:
+              raise SystemExit("cloud-simulation receipt does not prove zero-spend boundary")
+
+          subject_standing = "ALIVE" if skipped == 0 else "PARTIAL_ALIVE"
+          reason = (
+              "ALL_REQUIRED_BOUNDARIES_EXECUTED_WITHOUT_DEGRADATION"
+              if skipped == 0
+              else "EXPLICIT_DEGRADED_STANDINGS_OBSERVED"
+          )
+          receipt = {
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "subject_sha": os.environ["SUBJECT_SHA"],
+              "package_version": os.environ["PACKAGE_VERSION"],
+              "workflow": os.environ["GITHUB_WORKFLOW"],
+              "run_id": os.environ["GITHUB_RUN_ID"],
+              "standing": subject_standing,
+              "verifier_standing": "ALIVE",
+              "reason": reason,
+              "degraded_standings_allowed": "*",
+              "pytest_tests": tests,
+              "pytest_skipped": skipped,
+              "workflow_count": 2,
+              "cloudsim_zero_live_cloud": True,
+              "boundaries": [
+                  "python-3.11",
+                  "python-3.12",
+                  "python-3.13",
+                  "semantic-profile",
+                  "runtime-evidence-tests",
+                  "cloudsim-zero-live-cloud",
+                  "wheel-install",
+                  "runtime-contract-equivalence",
+                  "docs",
+                  "container",
+              ],
+          }
+          path = Path("artifacts/ci/receipt.json")
+          path.write_text(json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n")
+          print(path.read_text(), end="")
+          PY
+
+      - name: Upload verified delivery bundle
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: ci-bundle-${{ github.run_id }}
+          path: |
+            artifacts/ci/receipt.json
+            dist/*
+            site/
+          if-no-files-found: error
+          retention-days: 14

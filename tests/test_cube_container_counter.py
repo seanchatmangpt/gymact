@@ -50,7 +50,7 @@ require_standing(
     "(uv sync --extra cube --all-extras; start colima: `colima start`)",
 )
 
-from gymact import GymAct, MaterializationIntent  # noqa: E402
+from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent  # noqa: E402
 from gymact.gyms.cube_container_counter import CubeContainerCounterProvider  # noqa: E402
 from gymact.models import ActuationIntent, Operation, Standing  # noqa: E402
 from gymact.ocel import receipts_to_ocel, validate_ocel_log  # noqa: E402
@@ -59,11 +59,20 @@ from gymact.process import ConformanceChecker  # noqa: E402
 INCREMENT = "urn:gymact:cube-container-counter:capability:increment"
 DECREMENT = "urn:gymact:cube-container-counter:capability:decrement"
 GET_VALUE = "urn:gymact:cube-container-counter:capability:get_value"
+# cube_container_counter.py's requires_authority now defaults to True (a real
+# DO capability against a real Docker container must not run unauthorized) --
+# every test below explicitly admits AUTHORITY, matching test_cube_counter.py.
+AUTHORITY = "urn:test:cube-container-counter-authority"
+
+
+def _authorized_gym() -> GymAct:
+    gym = GymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
+    gym.register_provider(CubeContainerCounterProvider())
+    return gym
 
 
 async def _run_real_container_episode() -> list:
-    gym = GymAct()
-    gym.register_provider(CubeContainerCounterProvider())
+    gym = _authorized_gym()
     receipts = []
 
     materialization = await gym.materialize(
@@ -76,17 +85,18 @@ async def _run_real_container_episode() -> list:
     assert materialization.observation.state["containerized"] is True
 
     for _ in range(3):
-        result = await gym.act(ActuationIntent(episode_id=episode_id, capability=INCREMENT))
+        result = await gym.act(
+            ActuationIntent(episode_id=episode_id, capability=INCREMENT, authority_ref=AUTHORITY)
+        )
         assert result.accepted is True
         receipts.append(result.receipt)
 
-    receipts.append(await gym.teardown(episode_id))
+    receipts.append(await gym.teardown(episode_id, authority_ref=AUTHORITY))
     return receipts
 
 
 async def test_real_container_episode_reaches_target_inside_a_real_docker_container() -> None:
-    gym = GymAct()
-    gym.register_provider(CubeContainerCounterProvider())
+    gym = _authorized_gym()
 
     materialization = await gym.materialize(
         MaterializationIntent(provider="cube-container-counter", config={})
@@ -103,7 +113,9 @@ async def test_real_container_episode_reaches_target_inside_a_real_docker_contai
     episode_id = materialization.episode.episode_id
 
     for expected_counter in (1, 2, 3):
-        result = await gym.act(ActuationIntent(episode_id=episode_id, capability=INCREMENT))
+        result = await gym.act(
+            ActuationIntent(episode_id=episode_id, capability=INCREMENT, authority_ref=AUTHORITY)
+        )
         assert result.accepted is True
         assert result.observation.state["counter"] == expected_counter
 
@@ -112,25 +124,30 @@ async def test_real_container_episode_reaches_target_inside_a_real_docker_contai
     v = await gym.verify(episode_id, {"counter": 3, "solved": True})
     assert v.passed is True
 
-    receipt = await gym.teardown(episode_id)
+    receipt = await gym.teardown(episode_id, authority_ref=AUTHORITY)
     assert receipt.standing == Standing.ALIVE
 
 
 async def test_decrement_capability_is_real_and_actually_changes_container_state() -> None:
-    gym = GymAct()
-    gym.register_provider(CubeContainerCounterProvider())
+    gym = _authorized_gym()
     m = await gym.materialize(MaterializationIntent(provider="cube-container-counter", config={}))
     episode_id = m.episode.episode_id
 
-    await gym.act(ActuationIntent(episode_id=episode_id, capability=INCREMENT))
-    await gym.act(ActuationIntent(episode_id=episode_id, capability=INCREMENT))
+    await gym.act(
+        ActuationIntent(episode_id=episode_id, capability=INCREMENT, authority_ref=AUTHORITY)
+    )
+    await gym.act(
+        ActuationIntent(episode_id=episode_id, capability=INCREMENT, authority_ref=AUTHORITY)
+    )
     assert (await gym.observe(episode_id)).state["counter"] == 2
 
-    result = await gym.act(ActuationIntent(episode_id=episode_id, capability=DECREMENT))
+    result = await gym.act(
+        ActuationIntent(episode_id=episode_id, capability=DECREMENT, authority_ref=AUTHORITY)
+    )
     assert result.accepted is True
     assert result.observation.state["counter"] == 1
 
-    await gym.teardown(episode_id)
+    await gym.teardown(episode_id, authority_ref=AUTHORITY)
 
 
 async def test_checkpoint_restore_round_trips_the_real_container_state() -> None:
@@ -138,15 +155,16 @@ async def test_checkpoint_restore_round_trips_the_real_container_state() -> None
     against real container-backed counter state -- `checkpoint`/`restore`
     existed on this provider before this session but had zero test
     coverage."""
-    gym = GymAct()
-    gym.register_provider(CubeContainerCounterProvider())
+    gym = _authorized_gym()
 
     materialization = await gym.materialize(
         MaterializationIntent(provider="cube-container-counter", config={})
     )
     episode_id = materialization.episode.episode_id
 
-    await gym.act(ActuationIntent(episode_id=episode_id, capability=INCREMENT))
+    await gym.act(
+        ActuationIntent(episode_id=episode_id, capability=INCREMENT, authority_ref=AUTHORITY)
+    )
     first = await gym.observe(episode_id)
     assert first.state["counter"] == 1
 
@@ -154,11 +172,15 @@ async def test_checkpoint_restore_round_trips_the_real_container_state() -> None
     assert checkpoint["counter"] == 1
     assert len(checkpoint["history"]) == 1
 
-    await gym.act(ActuationIntent(episode_id=episode_id, capability=INCREMENT))
-    await gym.act(ActuationIntent(episode_id=episode_id, capability=INCREMENT))
+    await gym.act(
+        ActuationIntent(episode_id=episode_id, capability=INCREMENT, authority_ref=AUTHORITY)
+    )
+    await gym.act(
+        ActuationIntent(episode_id=episode_id, capability=INCREMENT, authority_ref=AUTHORITY)
+    )
     assert (await gym.observe(episode_id)).state["counter"] == 3
 
-    restored = await gym.restore(episode_id, checkpoint)
+    restored = await gym.restore(episode_id, checkpoint, authority_ref=AUTHORITY)
     assert restored.standing == Standing.ALIVE
 
     observed_after_restore = await gym.observe(episode_id)

@@ -11,6 +11,7 @@ import hashlib
 import json
 import sqlite3
 import subprocess
+from contextlib import closing
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -296,7 +297,7 @@ class SQLiteEnvironment:
         self.database = database.resolve()
         self.environment_id = f"urn:gymact:sqlite:environment:{uuid4().hex}"
         self._closed = False
-        with sqlite3.connect(self.database) as connection:
+        with closing(sqlite3.connect(self.database)) as connection, connection:
             connection.execute(
                 "CREATE TABLE IF NOT EXISTS gymact_state "
                 "(key TEXT PRIMARY KEY, value_json TEXT NOT NULL)"
@@ -312,7 +313,7 @@ class SQLiteEnvironment:
 
     async def observe(self) -> dict[str, Any]:
         self._open()
-        with sqlite3.connect(self.database) as connection:
+        with closing(sqlite3.connect(self.database)) as connection, connection:
             rows = connection.execute(
                 "SELECT key, value_json FROM gymact_state ORDER BY key"
             ).fetchall()
@@ -326,7 +327,7 @@ class SQLiteEnvironment:
         key = payload.get("key")
         if not isinstance(key, str) or not key:
             raise ValueError("AMBIGUOUS_SUBJECT_REFUSED")
-        with sqlite3.connect(self.database) as connection:
+        with closing(sqlite3.connect(self.database)) as connection, connection:
             if capability.binding == "set":
                 encoded = json.dumps(
                     payload.get("value"), sort_keys=True, separators=(",", ":")
@@ -354,7 +355,7 @@ class SQLiteEnvironment:
         values = checkpoint.get("values")
         if not isinstance(values, dict):
             raise TypeError("checkpoint.values must be an object")
-        with sqlite3.connect(self.database) as connection:
+        with closing(sqlite3.connect(self.database)) as connection, connection:
             connection.execute("DELETE FROM gymact_state")
             connection.executemany(
                 "INSERT INTO gymact_state(key, value_json) VALUES(?, ?)",

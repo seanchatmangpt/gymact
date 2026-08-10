@@ -248,7 +248,7 @@ class InspectEvalsProvider:
         if not isinstance(log_dir, str) or not log_dir:
             raise TypeError("config.log_dir must be a non-empty string")
 
-        requires_authority = config.get("requires_authority", False)
+        requires_authority = config.get("requires_authority", True)
         if not isinstance(requires_authority, bool):
             raise TypeError("config.requires_authority must be a boolean")
 

@@ -56,6 +56,51 @@ def test_sqlite_ledger_conflict_rolls_back_without_appending(tmp_path) -> None:
         ledger.close()
 
 
+def test_memory_ledger_refuses_idempotency_key_reuse_with_different_intent() -> None:
+    ledger = MemoryReceiptLedger()
+    ledger.append(_receipt())
+    different_intent = _receipt(receipt_id="receipt-2").model_copy(
+        update={"capability_ref": "urn:test:a-different-capability"}
+    )
+    with pytest.raises(ValueError, match="IDEMPOTENCY_KEY_REUSE_WITH_DIFFERENT_INTENT"):
+        ledger.append(different_intent)
+
+
+def test_memory_ledger_admits_combinatorial_refinement_of_the_same_intent() -> None:
+    """Mirrors cut.py's CombinatorialBRCEBroker: the same idempotency_key
+    re-receipted with refined lineage/combinatorial-selection metadata is a
+    legitimate refinement of the same intent, not a conflicting duplicate."""
+    ledger = MemoryReceiptLedger()
+    original = ledger.append(_receipt())
+    refined = _receipt(receipt_id="receipt-2").model_copy(
+        update={
+            "parent_receipt_ids": (original.receipt.receipt_id,),
+            "possibility_graph_digest": "graph-digest",
+            "possibility_exploration_digest": "exploration-digest",
+            "possibility_path_id": "path-id",
+            "possibility_morphism_id": "do-id",
+            "selection_digest": "selection-digest",
+        }
+    )
+    record = ledger.append(refined)
+    assert record.receipt.receipt_id == "receipt-2"
+    assert len(ledger.records()) == 2
+
+
+def test_sqlite_ledger_refuses_idempotency_key_reuse_with_different_intent(tmp_path) -> None:
+    ledger = SQLiteReceiptLedger(tmp_path / "ledger.sqlite3")
+    try:
+        ledger.append(_receipt())
+        different_intent = _receipt(receipt_id="receipt-2").model_copy(
+            update={"capability_ref": "urn:test:a-different-capability"}
+        )
+        with pytest.raises(ValueError, match="IDEMPOTENCY_KEY_REUSE_WITH_DIFFERENT_INTENT"):
+            ledger.append(different_intent)
+        assert len(ledger.records()) == 1
+    finally:
+        ledger.close()
+
+
 def test_sqlite_ledger_refuses_tampered_database_on_reopen(tmp_path) -> None:
     path = tmp_path / "tampered.sqlite3"
     ledger = SQLiteReceiptLedger(path)

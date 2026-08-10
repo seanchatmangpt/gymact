@@ -366,7 +366,7 @@ class TerraformPlanProvider:
             if not isinstance(value, (int, float)) or isinstance(value, bool):
                 raise TypeError(f"config.{field_name} must be a number")
 
-        requires_authority = config.get("requires_authority", False)
+        requires_authority = config.get("requires_authority", True)
         if not isinstance(requires_authority, bool):
             raise TypeError("config.requires_authority must be a boolean")
 

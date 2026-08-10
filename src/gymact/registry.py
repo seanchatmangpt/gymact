@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from gymact.gyms.cloudsim import CLOUDSIM_CAPABILITIES, CloudSimProvider
+from gymact.gyms.ggen import GGEN_CAPABILITIES, GgenProvider
 from gymact.gyms.sregym import SREGYM_RUN_CAPABILITY, SREGymProvider
 from gymact.local_providers import (
     FILESYSTEM_CAPABILITIES,
@@ -16,7 +18,9 @@ from gymact.network_providers import HTTP_JSON_CAPABILITIES, HTTPJSONProvider
 from gymact.providers import MEMORY_CAPABILITIES, MemoryProvider
 
 _BUILTINS = {
+    "cloudsim": (CloudSimProvider, CLOUDSIM_CAPABILITIES),
     "filesystem": (FilesystemProvider, FILESYSTEM_CAPABILITIES),
+    "ggen": (GgenProvider, GGEN_CAPABILITIES),
     "git": (GitProvider, GIT_CAPABILITIES),
     "http-json": (HTTPJSONProvider, HTTP_JSON_CAPABILITIES),
     "memory": (MemoryProvider, MEMORY_CAPABILITIES),
@@ -49,8 +53,6 @@ def describe_builtin_provider(name: str) -> dict[str, Any]:
     return {
         "name": name,
         "type": type(provider).__name__,
-        "materialization_requires_authority": bool(
-            getattr(provider, "materialization_requires_authority", False)
-        ),
+        "materialization_requires_authority": bool(getattr(provider, "materialization_requires_authority", False)),
         "capabilities": [item.model_dump(mode="json") for item in builtin_capabilities(name)],
     }

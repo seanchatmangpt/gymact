@@ -1,0 +1,7 @@
+# MESSAGE: consequence must be the canonical GymAct READ or DO IRI.
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+PREFIX dct: <http://purl.org/dc/terms/>
+SELECT ?cap ?kind WHERE {
+  ?cap a sosa:Procedure ; dct:type ?kind .
+  FILTER(?kind NOT IN (<urn:gymact:consequence:read>, <urn:gymact:consequence:do>))
+}

@@ -26,6 +26,30 @@ loudly if this tuple and that file ever diverge in either direction --
 mirroring `ggen/gymact-bridge-pack`'s `operation_catalog_proof.rs.tmpl`
 pattern, in Python/pytest instead of Rust.
 
+`ontology.ttl`'s grounding was expanded to maximal public-vocabulary
+coverage per `.claude/rules/ontology.md`: every one of the 20 capabilities
+is now additionally typed `skos:Concept`, classified by cloud provider
+(AWS/Azure/GCP) and service domain (IAM/Storage/Compute) via `skos:broader`
+into two new `skos:ConceptScheme`s owned by this pack; the account/
+subscription/project containment boundary each capability's simulated
+identifiers are scoped under is modeled as three `org:OrganizationalUnit`
+instances (also `skos:Concept`s, in a third `resource-kind` scheme); and
+the three policy-attach/role-assign `odrl:Permission` operations
+(`aws.iam.attach_role_policy`, `azure.authorization.create_role_assignment`,
+`gcp.iam.add_iam_policy_binding`) carry a real OWL-Time `time:Interval`
+authority-window via `dct:temporal`, since those are the only three
+capabilities with genuine temporal-validity meaning (granting/assigning
+standing authority) -- list/describe reads and non-authority DO operations
+(bucket/VM/role creation) do not get one. DQV was evaluated and explicitly
+rejected for this pass: this module's own `verify()` (below) performs a
+plain state-equality diff, not a quality *measurement* (no freshness/
+completeness score is computed anywhere), so there is no real DQV referent
+to ground. QUDT, GeoSPARQL, DPV, SPDX, and FOAF were each evaluated against
+the real capability set and rejected for the same reason (no quantity, no
+geometry, no personal data, no software package, no named individual
+anywhere in this gym's real payloads) -- see `ontology.ttl`'s own header
+for the full per-vocabulary reasoning.
+
 Per `.claude/rules/actuation-authority.md`, `MulticloudEnvironment` defaults
 `requires_authority=True`: every DO capability here models a genuinely
 consequential real-world cloud action (create an IAM role, attach a policy,

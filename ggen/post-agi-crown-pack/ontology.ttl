@@ -1,0 +1,150 @@
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix pplan: <http://purl.org/net/p-plan#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix odrl: <http://www.w3.org/ns/odrl/2/> .
+@prefix earl: <http://www.w3.org/ns/earl#> .
+@prefix dqv: <http://www.w3.org/ns/dqv#> .
+
+<urn:gymact:crown:plan>
+    a pplan:Plan ;
+    dct:title "GymAct post-AGI receipted Crown pipeline" ;
+    dct:identifier "post-agi-crown-v1" .
+
+<urn:gymact:crown:concept:evidence-dimension> a skos:Concept ;
+    skos:prefLabel "Crown evidence dimension" .
+
+<urn:gymact:crown:concept:transport> a skos:Concept ;
+    skos:prefLabel "Semantic transport" .
+
+<urn:gymact:crown:concept:projection> a skos:Concept ;
+    skos:prefLabel "ggen-owned compiled projection" .
+
+<urn:gymact:crown:dimension:sota> a dqv:Dimension ;
+    dct:title "Standing-qualified SOTA dimension" .
+
+<urn:gymact:crown:permission:brce-do>
+    a odrl:Permission ;
+    dct:title "BRCE exclusive consequential DO permission" ;
+    odrl:action <urn:gymact:crown:stage:actuate> .
+
+<urn:gymact:crown:verification>
+    a earl:Assertion ;
+    dct:title "Independent Crown consequence verification assertion" .
+
+<urn:gymact:crown:receipt-bundle>
+    a prov:Bundle ;
+    dct:title "Crown receipt lineage bundle" .
+
+<urn:gymact:crown:stage:observe>
+    a pplan:Step, prov:Activity ;
+    pplan:isStepOfPlan <urn:gymact:crown:plan> ;
+    dct:identifier "010" ;
+    dct:title "Observe raw world evidence" .
+
+<urn:gymact:crown:stage:admit>
+    a pplan:Step, prov:Activity ;
+    pplan:isStepOfPlan <urn:gymact:crown:plan> ;
+    dct:identifier "020" ;
+    dct:title "Admit bounded observation" .
+
+<urn:gymact:crown:stage:select>
+    a pplan:Step, prov:Activity ;
+    pplan:isStepOfPlan <urn:gymact:crown:plan> ;
+    dct:identifier "030" ;
+    dct:title "Select reversible candidate" .
+
+<urn:gymact:crown:stage:construct>
+    a pplan:Step, prov:Activity ;
+    pplan:isStepOfPlan <urn:gymact:crown:plan> ;
+    dct:identifier "040" ;
+    dct:title "Construct powerless artifact" .
+
+<urn:gymact:crown:stage:authorize>
+    a pplan:Step, prov:Activity ;
+    pplan:isStepOfPlan <urn:gymact:crown:plan> ;
+    dct:identifier "050" ;
+    dct:title "Resolve explicit authority" .
+
+<urn:gymact:crown:stage:actuate>
+    a pplan:Step, prov:Activity ;
+    pplan:isStepOfPlan <urn:gymact:crown:plan> ;
+    dct:identifier "060" ;
+    dct:title "Actuate only through BRCE" .
+
+<urn:gymact:crown:stage:observe_consequence>
+    a pplan:Step, prov:Activity ;
+    pplan:isStepOfPlan <urn:gymact:crown:plan> ;
+    dct:identifier "070" ;
+    dct:title "Observe external consequence" .
+
+<urn:gymact:crown:stage:verify>
+    a pplan:Step, prov:Activity ;
+    pplan:isStepOfPlan <urn:gymact:crown:plan> ;
+    dct:identifier "080" ;
+    dct:title "Verify objective independently" .
+
+<urn:gymact:crown:stage:receipt>
+    a pplan:Step, prov:Activity ;
+    pplan:isStepOfPlan <urn:gymact:crown:plan> ;
+    dct:identifier "090" ;
+    dct:title "Bind execution receipt" .
+
+<urn:gymact:crown:stage:replay>
+    a pplan:Step, prov:Activity ;
+    pplan:isStepOfPlan <urn:gymact:crown:plan> ;
+    dct:identifier "100" ;
+    dct:title "Replay exact evidence" .
+
+<urn:gymact:crown:stage:standing>
+    a pplan:Step, prov:Activity ;
+    pplan:isStepOfPlan <urn:gymact:crown:plan> ;
+    dct:identifier "110" ;
+    dct:title "Admit Crown standing" .
+
+<urn:gymact:crown:stage:compare>
+    a pplan:Step, prov:Activity ;
+    pplan:isStepOfPlan <urn:gymact:crown:plan> ;
+    dct:identifier "120" ;
+    dct:title "Compare bounded SOTA frontier" .
+
+<urn:gymact:crown:evidence:subject_digest> a skos:Concept ; skos:broader <urn:gymact:crown:concept:evidence-dimension> ; dct:identifier "subject_digest" ; dct:title "Exact subject identity" .
+<urn:gymact:crown:evidence:experiment_digest> a skos:Concept ; skos:broader <urn:gymact:crown:concept:evidence-dimension> ; dct:identifier "experiment_digest" ; dct:title "Exact experiment identity" .
+<urn:gymact:crown:evidence:admitted_observation_digest> a skos:Concept ; skos:broader <urn:gymact:crown:concept:evidence-dimension> ; dct:identifier "admitted_observation_digest" ; dct:title "Admitted observation identity" .
+<urn:gymact:crown:evidence:authority_evidence_ref> a skos:Concept ; skos:broader <urn:gymact:crown:concept:evidence-dimension> ; dct:identifier "authority_evidence_ref" ; dct:title "Authority evidence identity" .
+<urn:gymact:crown:evidence:consequence_digest> a skos:Concept ; skos:broader <urn:gymact:crown:concept:evidence-dimension> ; dct:identifier "consequence_digest" ; dct:title "Observed consequence identity" .
+<urn:gymact:crown:evidence:verifier_digest> a skos:Concept ; skos:broader <urn:gymact:crown:concept:evidence-dimension> ; dct:identifier "verifier_digest" ; dct:title "Independent verifier identity" .
+<urn:gymact:crown:evidence:receipt_digest> a skos:Concept ; skos:broader <urn:gymact:crown:concept:evidence-dimension> ; dct:identifier "receipt_digest" ; dct:title "Receipt identity" .
+<urn:gymact:crown:evidence:replay_receipt_digest> a skos:Concept ; skos:broader <urn:gymact:crown:concept:evidence-dimension> ; dct:identifier "replay_receipt_digest" ; dct:title "Replay receipt identity" .
+
+<urn:gymact:crown:metric:quality> a dqv:Metric ; dqv:inDimension <urn:gymact:crown:dimension:sota> ; dct:identifier "quality" ; dct:title "Quality" .
+<urn:gymact:crown:metric:cost_efficiency> a dqv:Metric ; dqv:inDimension <urn:gymact:crown:dimension:sota> ; dct:identifier "cost_efficiency" ; dct:title "Cost efficiency" .
+<urn:gymact:crown:metric:latency_efficiency> a dqv:Metric ; dqv:inDimension <urn:gymact:crown:dimension:sota> ; dct:identifier "latency_efficiency" ; dct:title "Latency efficiency" .
+<urn:gymact:crown:metric:actuation_efficiency> a dqv:Metric ; dqv:inDimension <urn:gymact:crown:dimension:sota> ; dct:identifier "actuation_efficiency" ; dct:title "Actuation efficiency" .
+<urn:gymact:crown:metric:recovery> a dqv:Metric ; dqv:inDimension <urn:gymact:crown:dimension:sota> ; dct:identifier "recovery" ; dct:title "Recovery" .
+<urn:gymact:crown:metric:verifiability> a dqv:Metric ; dqv:inDimension <urn:gymact:crown:dimension:sota> ; dct:identifier "verifiability" ; dct:title "Verifiability" .
+<urn:gymact:crown:metric:portability> a dqv:Metric ; dqv:inDimension <urn:gymact:crown:dimension:sota> ; dct:identifier "portability" ; dct:title "Portability" .
+<urn:gymact:crown:metric:generalization> a dqv:Metric ; dqv:inDimension <urn:gymact:crown:dimension:sota> ; dct:identifier "generalization" ; dct:title "Generalization" .
+
+<urn:gymact:crown:transport:mcp> a skos:Concept ; skos:broader <urn:gymact:crown:concept:transport> ; dct:identifier "mcp" ; dct:title "MCP" .
+<urn:gymact:crown:transport:http> a skos:Concept ; skos:broader <urn:gymact:crown:concept:transport> ; dct:identifier "http" ; dct:title "HTTP" .
+<urn:gymact:crown:transport:cli> a skos:Concept ; skos:broader <urn:gymact:crown:concept:transport> ; dct:identifier "cli" ; dct:title "CLI" .
+<urn:gymact:crown:transport:bpmn> a skos:Concept ; skos:broader <urn:gymact:crown:concept:transport> ; dct:identifier "bpmn" ; dct:title "BPMN" .
+<urn:gymact:crown:transport:powl> a skos:Concept ; skos:broader <urn:gymact:crown:concept:transport> ; dct:identifier "powl" ; dct:title "POWL" .
+<urn:gymact:crown:transport:a2a> a skos:Concept ; skos:broader <urn:gymact:crown:concept:transport> ; dct:identifier "a2a" ; dct:title "A2A" .
+<urn:gymact:crown:transport:cloud_api> a skos:Concept ; skos:broader <urn:gymact:crown:concept:transport> ; dct:identifier "cloud_api" ; dct:title "Cloud API" .
+<urn:gymact:crown:transport:wasm> a skos:Concept ; skos:broader <urn:gymact:crown:concept:transport> ; dct:identifier "wasm" ; dct:title "WASM" .
+
+<urn:gymact:crown:projection:rust-crown-Cargo-toml> a prov:Entity ; dct:type <urn:gymact:crown:concept:projection> ; dct:identifier "rust/crown/Cargo.toml" ; dct:title "Rust crate manifest" ; prov:wasDerivedFrom <urn:gymact:crown:plan> .
+<urn:gymact:crown:projection:rust-crown-src-lib-rs> a prov:Entity ; dct:type <urn:gymact:crown:concept:projection> ; dct:identifier "rust/crown/src/lib.rs" ; dct:title "Rust Crown library facade" ; prov:wasDerivedFrom <urn:gymact:crown:plan> .
+<urn:gymact:crown:projection:rust-crown-src-stages-rs> a prov:Entity ; dct:type <urn:gymact:crown:concept:projection> ; dct:identifier "rust/crown/src/stages.rs" ; dct:title "Crown stage catalog" ; prov:wasDerivedFrom <urn:gymact:crown:plan> .
+<urn:gymact:crown:projection:rust-crown-src-admission-rs> a prov:Entity ; dct:type <urn:gymact:crown:concept:projection> ; dct:identifier "rust/crown/src/admission.rs" ; dct:title "Non-compensatory Crown admission" ; prov:wasDerivedFrom <urn:gymact:crown:plan> .
+<urn:gymact:crown:projection:rust-crown-src-receipt-rs> a prov:Entity ; dct:type <urn:gymact:crown:concept:projection> ; dct:identifier "rust/crown/src/receipt.rs" ; dct:title "Receipt binding model" ; prov:wasDerivedFrom <urn:gymact:crown:plan> .
+<urn:gymact:crown:projection:rust-crown-src-replay-rs> a prov:Entity ; dct:type <urn:gymact:crown:concept:projection> ; dct:identifier "rust/crown/src/replay.rs" ; dct:title "Replay gate" ; prov:wasDerivedFrom <urn:gymact:crown:plan> .
+<urn:gymact:crown:projection:rust-crown-src-metrics-rs> a prov:Entity ; dct:type <urn:gymact:crown:concept:projection> ; dct:identifier "rust/crown/src/metrics.rs" ; dct:title "SOTA metric catalog" ; prov:wasDerivedFrom <urn:gymact:crown:plan> .
+<urn:gymact:crown:projection:rust-crown-src-frontier-rs> a prov:Entity ; dct:type <urn:gymact:crown:concept:projection> ; dct:identifier "rust/crown/src/frontier.rs" ; dct:title "Pareto frontier calculus" ; prov:wasDerivedFrom <urn:gymact:crown:plan> .
+<urn:gymact:crown:projection:rust-crown-src-transport-rs> a prov:Entity ; dct:type <urn:gymact:crown:concept:projection> ; dct:identifier "rust/crown/src/transport.rs" ; dct:title "Semantic transport catalog" ; prov:wasDerivedFrom <urn:gymact:crown:plan> .
+<urn:gymact:crown:projection:rust-crown-src-authority-rs> a prov:Entity ; dct:type <urn:gymact:crown:concept:projection> ; dct:identifier "rust/crown/src/authority.rs" ; dct:title "Authority boundary constants" ; prov:wasDerivedFrom <urn:gymact:crown:plan> .
+<urn:gymact:crown:projection:rust-crown-tests-gall-rs> a prov:Entity ; dct:type <urn:gymact:crown:concept:projection> ; dct:identifier "rust/crown/tests/gall.rs" ; dct:title "Gall cross-check proof" ; prov:wasDerivedFrom <urn:gymact:crown:plan> .
+<urn:gymact:crown:projection:wit-gymact-crown-wit> a prov:Entity ; dct:type <urn:gymact:crown:concept:projection> ; dct:identifier "wit/gymact-crown.wit" ; dct:title "WIT Crown interface" ; prov:wasDerivedFrom <urn:gymact:crown:plan> .
+<urn:gymact:crown:projection:docs-crown-compiled-reference-md> a prov:Entity ; dct:type <urn:gymact:crown:concept:projection> ; dct:identifier "docs/crown-compiled-reference.md" ; dct:title "Compiled Crown reference" ; prov:wasDerivedFrom <urn:gymact:crown:plan> .

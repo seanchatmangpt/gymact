@@ -1,0 +1,246 @@
+# codebase-gym-pack: admitted facts for GymAct's "codebase" gym -- an agent
+# operating on a real, local git-tracked source tree (inspect/read/patch/
+# commit/test/build).
+#
+# NOT a custom ontology. Every class/property used here is either (a) from
+# `ontology/profile.ttl`/`ontology/profile.shacl.ttl` (real symlinks to
+# `src/gymact/ontology/profile.{ttl,shacl.ttl}` in this same repo, per
+# .claude/rules/ontology.md), or (b) a public term reused directly. No new
+# rdfs:Class or owl:*Property is declared anywhere in this file -- only
+# INSTANCES of real public classes (data, not vocabulary).
+#
+# SCOPE NOTE: this pack grounds a deliberately minimal initial capability
+# set -- 4 READ + 4 DO, not the larger set originally sketched for a
+# "codebase" gym. Per this session's own scoping instruction: start
+# minimal, expand only once a real provider module (gymact.gyms.codebase,
+# not yet written as of this pass) exists to keep an ontology-parity test
+# honest against, the same way ggen/multicloud-gym-pack/ontology.ttl is
+# kept honest against gymact.gyms.multicloud.CAPABILITY_REGISTRY.
+#
+# `dct:title` is the real, recognizable operation name a future provider
+# would dispatch on (snake_case, matching this repo's other providers'
+# `Capability.title` convention). `dct:type` is one of the two real GymAct
+# consequence-class IRIs (`urn:gymact:consequence:read`/`...:do`), matching
+# `urn:gymact:shape:capability`'s SHACL requirement (exactly one of each,
+# `dct:type` constrained to that two-member `sh:in` list) in
+# `src/gymact/ontology/profile.shacl.ttl`.
+#
+# =============================================================================
+# Vocabulary decisions -- what was used, why, and (per this repo's
+# PUBLIC_ONTOLOGY_GAP convention) what was evaluated and explicitly deferred
+# or rejected, grounded in the real survey run for this pass (git/SBOM/SWHID/
+# SPDX/rdflib-offline-resolution findings), not guessed.
+#
+# - PROV-O (fetched https://www.w3.org/TR/prov-o/, already the accepted
+#   provenance vocabulary for change/build/test semantics elsewhere in this
+#   repo's ontology -- profile.ttl declares `prof:isProfileOf prov:` and the
+#   multicloud pack already uses prov:Entity/prov:Activity for
+#   provisioning). Applied here as the confirmed-safe grounding for every
+#   capability whose real-world effect is producing or consuming a
+#   version of the working tree:
+#     * `apply_patch` and `git_commit` (both DO) are additionally typed
+#       `rdfs:seeAlso prov:Activity` -- each is "something that occurs over
+#       a period of time and acts upon or with entities... generating
+#       entities" (PROV-O's own Activity definition), generating a new
+#       tree/commit state from a prior one. The generated state itself
+#       (a `prov:Entity`) is execution/receipt data produced when the
+#       capability actually runs -- not asserted in this static capability
+#       catalog, same reasoning the multicloud pack already used for
+#       `prov:wasGeneratedBy` (a relation needing real instance pairs,
+#       not catalog-time data).
+#     * `run_test` and `run_build` (both DO) are likewise typed
+#       `rdfs:seeAlso prov:Activity` -- a test run and a build are each a
+#       real activity that consumes the working tree and generates a
+#       result (pass/fail, build artifact); same catalog-vs-instance
+#       boundary applies: no `prov:Entity`/`prov:wasGeneratedBy` triple is
+#       asserted here.
+#     * `inspect_tree`, `read_file`, `inspect_manifest`, and
+#       `inspect_git_diff` (all READ) are NOT given a PROV-O type: each is
+#       a pure observation of existing state, not an activity that
+#       generates anything -- SOSA's own Observation semantics (see below)
+#       already cover this, and adding `prov:Activity` to a read-only
+#       operation would misrepresent it as consequential.
+#
+# - dcterms:identifier + a real git SHA string, in place of a fabricated
+#   SWHID or SPDX identifier scheme (explicit, honest scope reduction --
+#   see the two REJECTED/DEFERRED entries below for the reasoning this
+#   replaces):
+#     * `inspect_git_diff` and `git_commit` each carry
+#       `dct:description` text naming `dct:identifier` as the real property
+#       a future provider instance would use to attach the actual 40-hex
+#       git commit SHA (`git rev-parse HEAD`-shaped, confirmed real by this
+#       session's survey: `/opt/homebrew/bin/git` 2.51.2 is ALIVE on this
+#       machine) to a specific commit/diff instance -- e.g.
+#       `<urn:gymact:codebase:instance:commit:...> dct:identifier
+#       "a1b2c3...(40 hex)"`. No such instance triple is asserted in this
+#       static catalog (there is no real commit yet to identify); this
+#       comment documents the intended real-instance pattern so a future
+#       provider and its tests know which property to use.
+#
+# - SWHID (Software Heritage persistent identifier): EVALUATED, NOT
+#   APPLIED as a namespace/IRI scheme in this file -- PUBLIC_ONTOLOGY_GAP.
+#   This session's survey confirmed the real SWHID *format* from Software
+#   Heritage's own persistent-identifiers spec
+#   (`swh:1:<object_type>:<object_id>` with `<object_type>` in the fixed
+#   five-member set `snp|rel|rev|dir|cnt` and `<object_id>` a 40-hex SHA1),
+#   but the survey did NOT confirm that `swh.model` (the package that
+#   computes real SWHIDs from real git objects) is installed on this
+#   machine -- `pip show swh.model` returned nothing; a dry-run resolver
+#   pass showed it is pip-installable (`swh.model-8.4.1` resolves cleanly
+#   against real PyPI), but "resolvable" is not "installed and usable."
+#   Per this task's own instruction not to fabricate an unconfirmed
+#   namespace/IRI: no `swh:1:...` value is asserted anywhere in this file.
+#   If `swh.model` is installed in a later pass and a provider actually
+#   computes SWHIDs, they attach as opaque literal/IRI values (e.g. via
+#   `dct:identifier` or an `rdfs:seeAlso`-style link, per the survey's own
+#   finding that a SWHID is "an opaque identifier value, never its own RDF
+#   class hierarchy") -- not before.
+#
+# - SPDX (File/Package/Snippet terms, SPDX 3.0.1 namespace): EVALUATED,
+#   NOT APPLIED -- PUBLIC_ONTOLOGY_GAP, deferred pending offline-vocabulary
+#   availability. This session's survey ran a real, live rdflib fetch
+#   (`rdflib.Graph().parse("https://spdx.org/rdf/3.0.1/terms/",
+#   format="turtle")`) and confirmed it fails: the URL redirects to an HTML
+#   "Redirecting..." page that raises `rdflib.exceptions.BadSyntax` when
+#   parsed as Turtle, because the bare namespace IRI does not content-
+#   negotiate to RDF without an explicit `Accept: text/turtle` header (or a
+#   local copy of the SPDX 3.0.1 JSON-LD context/vocabulary release
+#   artifact). Per the survey's own conclusion, rdflib cannot be relied on
+#   to auto-resolve that IRI as a graph source, and per this task's own
+#   instruction to add SPDX only if the namespace is confirmed usable
+#   offline via rdflib without a network fetch, it is NOT confirmed and is
+#   therefore deferred rather than added. `dct:identifier` + a real git SHA
+#   (above) stands in as the honest fallback for file/change identity in
+#   this pass. Separately, the survey also confirmed `spdx-tools` is not
+#   installed locally (no binary, no pip package present) -- only pip-
+#   resolvable, same "resolvable is not installed" gap as swh.model above.
+#
+# - CodeMeta: EVALUATED, NOT APPLIED. CodeMeta was named in the originally
+#   proposed design but no live fetch of its schema/JSON-LD context was run
+#   in this session's survey, and none of this pack's 8 capabilities model
+#   software *citation/authorship/release* metadata (CodeMeta's actual
+#   domain: `codemeta:author`, `codemeta:softwareVersion`,
+#   `codemeta:codeRepository`) -- they model live inspect/patch/commit/
+#   test/build *operations* on a working tree, which CodeMeta has no terms
+#   for. Deferred rather than added speculatively; would need its own
+#   research pass if a future capability (e.g. "read package metadata for
+#   citation purposes") actually needed it.
+#
+# - SOSA/SSN (fetched https://www.w3.org/TR/vocab-ssn/, already this
+#   pack's base class for every capability via `sosa:Procedure`, matching
+#   the repo-wide convention that a capability catalog entry types the
+#   reusable *procedure*, not a specific invocation event -- same
+#   `sosa:Actuation`-is-for-events-not-procedures reasoning the multicloud
+#   pack's header already documents, not re-derived here).
+#
+# - SKOS: applied identically to the multicloud pack's pattern -- one
+#   `skos:ConceptScheme` for this pack's own taxonomy dimension
+#   (operation-domain: inspect / mutate / verify), which core
+#   `profile.ttl` does not cover. Every capability is additionally typed
+#   `skos:Concept` with exactly one `skos:broader` into this scheme.
+#
+# - DQV, QUDT, GeoSPARQL, DPV, FOAF, ODRL, org:, dcat:, time: -- NOT
+#   evaluated in this pass (no provider module exists yet to check real
+#   payload/verify() code against, unlike the multicloud pack's second
+#   grounding pass which read real handler code). Left unconsidered rather
+#   than guessed; a future pass should re-run that same code-grounded
+#   evaluation once `gymact.gyms.codebase` actually exists.
+
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix sosa: <http://www.w3.org/ns/sosa/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+# ---------------------------------------------------------------------------
+# SKOS taxonomy: operation-domain (inspect / mutate / verify), the one
+# taxonomy dimension this pack owns (core profile.ttl does not cover it).
+# Every capability below is additionally typed skos:Concept and linked
+# skos:broader into exactly one operation-domain concept.
+# ---------------------------------------------------------------------------
+
+<urn:gymact:codebase:scheme:operation-domain>
+    a skos:ConceptScheme ;
+    dct:title "Codebase gym: operation-domain taxonomy" .
+
+<urn:gymact:codebase:operation-domain:inspect>
+    a skos:Concept ;
+    skos:inScheme <urn:gymact:codebase:scheme:operation-domain> ;
+    skos:prefLabel "Inspect" ;
+    skos:definition "Read-only observation of working-tree structure, file content, manifest, or diff state -- never mutates the tree." .
+
+<urn:gymact:codebase:operation-domain:mutate>
+    a skos:Concept ;
+    skos:inScheme <urn:gymact:codebase:scheme:operation-domain> ;
+    skos:prefLabel "Mutate" ;
+    skos:definition "Changes working-tree or repository state -- applying a patch or recording a commit." .
+
+<urn:gymact:codebase:operation-domain:verify>
+    a skos:Concept ;
+    skos:inScheme <urn:gymact:codebase:scheme:operation-domain> ;
+    skos:prefLabel "Verify" ;
+    skos:definition "Runs an external process (test suite or build) that consumes working-tree state and produces a pass/fail or build-success result." .
+
+# ---------------------------------------------------------------------------
+# Capabilities
+# ---------------------------------------------------------------------------
+
+<urn:gymact:codebase:capability:inspect_tree>
+    a sosa:Procedure, skos:Concept ;
+    dct:title "inspect_tree" ;
+    dct:type <urn:gymact:consequence:read> ;
+    dct:description "Lists the working tree's directory/file structure. Pure observation; no PROV-O activity typing (nothing is generated)." ;
+    skos:broader <urn:gymact:codebase:operation-domain:inspect> .
+
+<urn:gymact:codebase:capability:read_file>
+    a sosa:Procedure, skos:Concept ;
+    dct:title "read_file" ;
+    dct:type <urn:gymact:consequence:read> ;
+    dct:description "Reads the content of a single file at a given path in the working tree. Pure observation." ;
+    skos:broader <urn:gymact:codebase:operation-domain:inspect> .
+
+<urn:gymact:codebase:capability:inspect_manifest>
+    a sosa:Procedure, skos:Concept ;
+    dct:title "inspect_manifest" ;
+    dct:type <urn:gymact:consequence:read> ;
+    dct:description "Reads a package/project manifest (e.g. pyproject.toml) without evaluating or executing it. Pure observation." ;
+    skos:broader <urn:gymact:codebase:operation-domain:inspect> .
+
+<urn:gymact:codebase:capability:inspect_git_diff>
+    a sosa:Procedure, skos:Concept ;
+    dct:title "inspect_git_diff" ;
+    dct:type <urn:gymact:consequence:read> ;
+    dct:description "Reads the real `git diff` output between two working-tree/commit states via the real, confirmed-installed git 2.51.2 binary. A future provider instance attaches the real 40-hex commit SHA(s) being diffed via dct:identifier on the instance data, not asserted here (no SWHID/SPDX identifier scheme used -- see header PUBLIC_ONTOLOGY_GAP notes)." ;
+    skos:broader <urn:gymact:codebase:operation-domain:inspect> .
+
+<urn:gymact:codebase:capability:apply_patch>
+    a sosa:Procedure, skos:Concept ;
+    dct:title "apply_patch" ;
+    dct:type <urn:gymact:consequence:do> ;
+    dct:description "Applies a unified-diff patch to the working tree, mutating file content on disk." ;
+    rdfs:seeAlso prov:Activity ;
+    skos:broader <urn:gymact:codebase:operation-domain:mutate> .
+
+<urn:gymact:codebase:capability:git_commit>
+    a sosa:Procedure, skos:Concept ;
+    dct:title "git_commit" ;
+    dct:type <urn:gymact:consequence:do> ;
+    dct:description "Records a real git commit of the current working-tree state via the real, confirmed-installed git 2.51.2 binary. A future provider instance attaches the resulting real 40-hex commit SHA via dct:identifier on the instance data (not asserted here -- see header PUBLIC_ONTOLOGY_GAP notes on SWHID/SPDX)." ;
+    rdfs:seeAlso prov:Activity ;
+    skos:broader <urn:gymact:codebase:operation-domain:mutate> .
+
+<urn:gymact:codebase:capability:run_test>
+    a sosa:Procedure, skos:Concept ;
+    dct:title "run_test" ;
+    dct:type <urn:gymact:consequence:do> ;
+    dct:description "Runs the real test suite as a real subprocess against the current working tree; typed DO (not READ) because it is a genuine external-process activity whose outcome (pass/fail) is the thing later verified, per the scoped mission's explicit reclassification of this capability from the originally-proposed READ list." ;
+    rdfs:seeAlso prov:Activity ;
+    skos:broader <urn:gymact:codebase:operation-domain:verify> .
+
+<urn:gymact:codebase:capability:run_build>
+    a sosa:Procedure, skos:Concept ;
+    dct:title "run_build" ;
+    dct:type <urn:gymact:consequence:do> ;
+    dct:description "Runs a real build process as a real subprocess against the current working tree, producing a build-success/failure outcome." ;
+    rdfs:seeAlso prov:Activity ;
+    skos:broader <urn:gymact:codebase:operation-domain:verify> .

@@ -172,7 +172,7 @@ class McpClientSessionProvider:
             safe_call_tool_name = str(safe_call_tool["name"])
             safe_call_tool_args = dict(safe_call_tool.get("args", {}))
 
-        requires_authority = config.get("requires_authority", False)
+        requires_authority = config.get("requires_authority", True)
         if not isinstance(requires_authority, bool):
             raise TypeError("config.requires_authority must be a boolean")
 

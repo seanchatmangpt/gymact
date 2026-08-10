@@ -190,7 +190,7 @@ class GymnasiumProvider:
         env_id = config.get("env_id", "CartPole-v1")
         if not isinstance(env_id, str):
             raise TypeError("config.env_id must be a str")
-        requires_authority = config.get("requires_authority", False)
+        requires_authority = config.get("requires_authority", True)
         if not isinstance(requires_authority, bool):
             raise TypeError("config.requires_authority must be a boolean")
         return GymnasiumEnvironment(env_id=env_id, requires_authority=requires_authority)

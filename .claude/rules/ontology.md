@@ -32,6 +32,18 @@ failed, not just that it failed.
 | Metadata | DCTERMS | title, identifier, version, conformsTo |
 | Evidence packaging | Workflow Run RO-Crate | portable run provenance |
 | Software identity | DOAP, SPDX, Schema.org | repos, releases, SBOM |
+| Geography | GeoSPARQL | geographic/region semantics |
+| Privacy/personal data | DPV | personal-data/privacy processing scenarios |
+| Software/package identity | SPDX | deployed software/package/image identity |
+| Human identity | FOAF | simple public human-identity references |
+
+## Gap documentation
+
+When a candidate public vocabulary is searched and rejected for a given file or module,
+that rejection must be named in the consuming file's own header or docstring — what was
+searched and why it didn't fit — not silently omitted. This already happens in practice in
+`ggen/multicloud-gym-pack/ontology.ttl`'s header comments; it is now an explicit repo rule,
+not an incidental convention.
 
 ## Concrete replacements (do not reintroduce these classes)
 

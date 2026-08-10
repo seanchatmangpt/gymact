@@ -123,6 +123,146 @@
 # for coverage's sake. `sosa:Actuation`/`sosa:Actuator` are the right
 # terms for actual execution/receipt records elsewhere in the runtime,
 # not for this capability catalog.
+#
+# =============================================================================
+# Second grounding pass: provider/service-domain taxonomy, authority-window
+# temporal shape, account/subscription/project containment, and an explicit
+# evaluation of five further candidate vocabularies (qudt, GeoSPARQL, DPV,
+# SPDX, FOAF). Each addition and each rejection below is backed by a live
+# check of the term against this file's real 20 sosa:Procedure instances --
+# not guessed, not approximated.
+#
+# - SKOS (already used by `src/gymact/ontology/profile.ttl` for the
+#   standing/consequence/interaction taxonomies -- this pass generalizes the
+#   identical pattern to a dimension profile.ttl does not cover: which cloud
+#   provider and which service domain a capability belongs to, which this
+#   pack owns because it is specific to the multicloud gym, not to GymAct's
+#   core runtime). Two new `skos:ConceptScheme`s are declared:
+#   `urn:gymact:multicloud:scheme:provider` (AWS/Azure/GCP, 3 concepts) and
+#   `urn:gymact:multicloud:scheme:service-domain` (IAM/Storage/Compute, 3
+#   concepts). Every one of the 20 `sosa:Procedure` capability nodes is
+#   additionally typed `skos:Concept` and given exactly one `skos:broader`
+#   into each scheme (one provider concept, one service-domain concept) --
+#   the identical "multi-type the capability node as skos:Concept, link with
+#   skos:broader" shape `profile.ttl` already uses for standing/roles, simply
+#   applied to a taxonomy dimension this pack, not the core profile, owns.
+#
+# - OWL-Time (fetched https://www.w3.org/TR/owl-time/, already a declared
+#   `prof:isProfileOf` member of `src/gymact/ontology/profile.ttl` but not
+#   previously instantiated anywhere in this pack): a `time:Interval`
+#   authority-window is attached, via the real DCTERMS property
+#   `dct:temporal` ("Temporal characteristics of the resource" -- DCTERMS
+#   deliberately leaves its range open to "a general class for any of the
+#   different kinds of periods of time," which `time:Interval` is exactly
+#   an instance of), to the three capabilities whose real-world effect is
+#   granting or assigning standing authority with genuine temporal-validity
+#   meaning: `aws.iam.attach_role_policy`, `azure.authorization.create_role_assignment`,
+#   and `gcp.iam.add_iam_policy_binding` -- the same three already typed
+#   `odrl:Permission` above, because "this permission holds starting now,
+#   for an interval" is exactly what an authority window over an
+#   already-declared `odrl:Permission` means. Nothing else gets a
+#   `time:Interval`: `aws.iam.create_role`/`gcp.iam.create_service_account`
+#   define an identity, not a grant, and every list/describe (READ) and
+#   storage/compute create (DO but not an authority grant) operation has no
+#   real temporal-validity semantics to attach -- a bucket or a VM existing
+#   is not itself a bounded authority window, so no `time:Interval` was
+#   force-fit onto those nodes.
+#
+# - W3C Organization Ontology, second use (same spec fetch as the
+#   `org:Role` grounding above): `org:OrganizationalUnit` ("used to define
+#   an organization in terms of the sub-units that it comprises") is the
+#   correct fit for the account/subscription/project containment boundary
+#   each of the three clouds imposes on every resource this pack's
+#   capabilities create. Three INSTANCES only -- no new class -- are
+#   declared: `urn:gymact:multicloud:containment:aws-account`,
+#   `...azure-subscription`, `...gcp-project`, each multi-typed
+#   `org:OrganizationalUnit, skos:Concept` and placed in a third new
+#   `skos:ConceptScheme`, `urn:gymact:multicloud:scheme:resource-kind`
+#   (a "ResourceKindScheme" classifying the kind of containment resource
+#   each simulated identifier is generated under -- `_AWS_ACCOUNT_ID`,
+#   `_AZURE_SUBSCRIPTION_ID`, `_GCP_PROJECT_ID` in
+#   `src/gymact/gyms/multicloud.py`), each with `skos:broader` into the
+#   matching provider concept from the taxonomy above. `org:Membership`
+#   is again deliberately not instantiated (same reasoning as the
+#   `org:Role` grounding: no specific assignment *event* is being
+#   catalogued here, only the resource-kind taxonomy itself).
+#
+# - DQV (Data Quality Vocabulary): evaluated and REJECTED for this pass.
+#   `gymact.gyms.multicloud.MulticloudEnvironment.verify()` was read
+#   directly (src/gymact/gyms/multicloud.py, `verify()` method): it does
+#   `passed = all(observed.get(key) == value for key, value in
+#   expected.items())` -- a plain dict-equality diff of a caller-supplied
+#   `expected` mapping against the real observed state. That is a real
+#   verification *decision* (state-based, per this repo's own testing
+#   discipline) but it does not compute or expose any independent quality
+#   *measurement* -- no freshness timestamp, no completeness ratio, no
+#   score of any kind is produced or returned anywhere in this method or
+#   provider. DQV's own model (`dqv:QualityMeasurement` = a `dqv:metric` +
+#   a value) requires exactly that kind of measurement to attach to, which
+#   this provider's real code does not produce. Per this task's own
+#   instruction ("ONLY if multicloud.py's real verify() implementation
+#   produces a real quality signal ... check first, do not add
+#   speculatively"), DQV is NOT added anywhere in this file. If `verify()`
+#   is later extended to compute e.g. a real staleness/completeness ratio,
+#   DQV would become a real fit at that point, not before.
+#
+# - QUDT: evaluated and REJECTED. QUDT's actual purpose (fetched
+#   https://qudt.org/schema/qudt/, already a declared `prof:isProfileOf`
+#   member of `profile.ttl` for future dimensional-metric use) is typed
+#   quantities with units (`qudt:QuantityValue`, `qudt:unit`,
+#   `qudt:numericValue`). None of this pack's 20 capabilities carry any
+#   quantity-with-unit fact: `instance_type`, `zone`, `bucket_name`,
+#   `role_name`, `policy_arn`, `principal_id`, `role_definition`,
+#   `account_name`, `vm_name`, `account_id`, `member`, `role` (the full set
+#   of real payload keys read via `_require`/`payload.get` across every
+#   `_aws_*`/`_azure_*`/`_gcp_*` handler in `src/gymact/gyms/multicloud.py`)
+#   are all opaque identifier/name strings, never a measured quantity. No
+#   QUDT term is added.
+#
+# - GeoSPARQL: evaluated and REJECTED. GeoSPARQL (fetched
+#   https://www.ogc.org/standard/geosparql/) models geometry/location --
+#   `geo:Feature`, `geo:Geometry`, WKT/GML literals. This pack's only
+#   location-shaped payload value is `zone` (`gcp_compute_create_instance`,
+#   e.g. `"us-central1-a"`) and the fixed `_AWS_REGION = "us-east-1"`
+#   constant -- both are opaque cloud-provider region/zone identifier
+#   strings with no real coordinate geometry or spatial-query use anywhere
+#   in this provider's actual code (no bounding box, no distance
+#   calculation, no WKT literal is ever constructed or compared). Modeling
+#   a zone string as a `geo:Feature` would assert geometric semantics this
+#   simulated provider does not actually compute over. No GeoSPARQL term is
+#   added.
+#
+# - DPV (Data Privacy Vocabulary): evaluated and REJECTED. DPV (fetched
+#   https://w3c.github.io/dpv/dpv/) models personal-data processing --
+#   `dpv:PersonalData`, `dpv:ProcessingPurpose`, `dpv:LegalBasis`. This
+#   pack's payloads never carry any personal data field of any kind: no
+#   name, no email, no address, nothing PII-shaped appears in
+#   `_require`/`payload.get` calls anywhere in
+#   `src/gymact/gyms/multicloud.py` (identifiers are cloud-resource names
+#   like `role_name`/`bucket_name`/`vm_name`, not person-identifying data).
+#   `principal_id`/`member` (the closest candidates) are opaque IAM
+#   principal/service-account identifiers, not personal data about a
+#   natural person. No DPV term is added.
+#
+# - SPDX: evaluated and REJECTED. SPDX (fetched
+#   https://spdx.github.io/spdx-spec/v2.3/) models software package
+#   provenance and licensing -- `spdx:Package`, `spdx:File`,
+#   `spdx:licenseDeclared`. This pack catalogs cloud-infrastructure API
+#   capabilities (IAM roles, storage buckets, compute instances), not
+#   software packages, files, or licenses of any kind -- there is no
+#   package/file/license concept anywhere in this gym's real domain. No
+#   SPDX term is added.
+#
+# - FOAF: evaluated and REJECTED. FOAF (fetched
+#   http://xmlns.com/foaf/spec/) models named individual people and their
+#   social/personal attributes -- `foaf:Person`, `foaf:name`,
+#   `foaf:mbox`. This pack has no named-individual-person concept
+#   anywhere: every identity-shaped resource it creates
+#   (`aws.iam.create_role`, `gcp.iam.create_service_account`) is a
+#   machine/service identity, already covered by `org:Role` (the AWS case)
+#   or deliberately left ungrounded (the GCP case, per the existing
+#   research-gap note above) -- neither is a `foaf:Person`. No FOAF term is
+#   added.
 
 @prefix dct: <http://purl.org/dc/terms/> .
 @prefix sosa: <http://www.w3.org/ns/sosa/> .
@@ -131,126 +271,238 @@
 @prefix dcat: <http://www.w3.org/ns/dcat#> .
 @prefix prov: <http://www.w3.org/ns/prov#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix time: <http://www.w3.org/2006/time#> .
+
+# ---------------------------------------------------------------------------
+# SKOS taxonomy: provider, service-domain, and resource-kind (containment)
+# concept schemes. Every capability below is additionally typed skos:Concept
+# and linked skos:broader into exactly one provider concept and one
+# service-domain concept, mirroring src/gymact/ontology/profile.ttl's own
+# standing/roles/interaction skos:ConceptScheme pattern, generalized here to
+# a taxonomy dimension this pack (not the core profile) owns.
+# ---------------------------------------------------------------------------
+
+<urn:gymact:multicloud:scheme:provider>
+    a skos:ConceptScheme ;
+    dct:title "Multicloud gym: cloud provider taxonomy" .
+
+<urn:gymact:multicloud:provider:aws>
+    a skos:Concept ;
+    skos:inScheme <urn:gymact:multicloud:scheme:provider> ;
+    skos:prefLabel "AWS" ;
+    skos:definition "Amazon Web Services -- the provider namespace for every urn:gymact:multicloud:aws:capability:* node in this file." .
+
+<urn:gymact:multicloud:provider:azure>
+    a skos:Concept ;
+    skos:inScheme <urn:gymact:multicloud:scheme:provider> ;
+    skos:prefLabel "Azure" ;
+    skos:definition "Microsoft Azure -- the provider namespace for every urn:gymact:multicloud:azure:capability:* node in this file." .
+
+<urn:gymact:multicloud:provider:gcp>
+    a skos:Concept ;
+    skos:inScheme <urn:gymact:multicloud:scheme:provider> ;
+    skos:prefLabel "GCP" ;
+    skos:definition "Google Cloud Platform -- the provider namespace for every urn:gymact:multicloud:gcp:capability:* node in this file." .
+
+<urn:gymact:multicloud:scheme:service-domain>
+    a skos:ConceptScheme ;
+    dct:title "Multicloud gym: service-domain taxonomy" .
+
+<urn:gymact:multicloud:service-domain:iam>
+    a skos:Concept ;
+    skos:inScheme <urn:gymact:multicloud:scheme:service-domain> ;
+    skos:prefLabel "IAM" ;
+    skos:definition "Identity and access management: role/service-account creation, policy attachment/binding, role assignment, and their list operations." .
+
+<urn:gymact:multicloud:service-domain:storage>
+    a skos:Concept ;
+    skos:inScheme <urn:gymact:multicloud:scheme:service-domain> ;
+    skos:prefLabel "Storage" ;
+    skos:definition "Object/blob storage container creation and listing (S3 buckets, Azure storage accounts, GCS buckets)." .
+
+<urn:gymact:multicloud:service-domain:compute>
+    a skos:Concept ;
+    skos:inScheme <urn:gymact:multicloud:scheme:service-domain> ;
+    skos:prefLabel "Compute" ;
+    skos:definition "Virtual machine / instance provisioning and listing (EC2, Azure VMs, GCE instances)." .
+
+<urn:gymact:multicloud:scheme:resource-kind>
+    a skos:ConceptScheme ;
+    dct:title "Multicloud gym: containment resource-kind taxonomy" .
+
+<urn:gymact:multicloud:containment:aws-account>
+    a org:OrganizationalUnit, skos:Concept ;
+    skos:inScheme <urn:gymact:multicloud:scheme:resource-kind> ;
+    skos:broader <urn:gymact:multicloud:provider:aws> ;
+    skos:prefLabel "AWS Account" ;
+    skos:definition "The account-level org:OrganizationalUnit every ARN this provider generates is scoped under (the fixed, obviously-simulated _AWS_ACCOUNT_ID constant in src/gymact/gyms/multicloud.py)." .
+
+<urn:gymact:multicloud:containment:azure-subscription>
+    a org:OrganizationalUnit, skos:Concept ;
+    skos:inScheme <urn:gymact:multicloud:scheme:resource-kind> ;
+    skos:broader <urn:gymact:multicloud:provider:azure> ;
+    skos:prefLabel "Azure Subscription" ;
+    skos:definition "The subscription-level org:OrganizationalUnit every Azure resource ID this provider generates is scoped under (_AZURE_SUBSCRIPTION_ID, and the _AZURE_RESOURCE_GROUP nested within it, in src/gymact/gyms/multicloud.py)." .
+
+<urn:gymact:multicloud:containment:gcp-project>
+    a org:OrganizationalUnit, skos:Concept ;
+    skos:inScheme <urn:gymact:multicloud:scheme:resource-kind> ;
+    skos:broader <urn:gymact:multicloud:provider:gcp> ;
+    skos:prefLabel "GCP Project" ;
+    skos:definition "The project-level org:OrganizationalUnit every GCP resource name this provider generates is scoped under (_GCP_PROJECT_ID in src/gymact/gyms/multicloud.py)." .
 
 # ---------------------------------------------------------------------------
 # AWS (boto3-style operation names: iam.create_role, ec2.run_instances, ...)
 # ---------------------------------------------------------------------------
 
 <urn:gymact:multicloud:aws:capability:iam.create_role>
-    a sosa:Procedure ;
+    a sosa:Procedure, skos:Concept ;
     dct:title "aws.iam.create_role" ;
     dct:type <urn:gymact:consequence:do> ;
-    rdfs:seeAlso org:Role .
+    rdfs:seeAlso org:Role ;
+    skos:broader <urn:gymact:multicloud:provider:aws>, <urn:gymact:multicloud:service-domain:iam> .
 
 <urn:gymact:multicloud:aws:capability:iam.attach_role_policy>
-    a sosa:Procedure, odrl:Permission ;
+    a sosa:Procedure, odrl:Permission, skos:Concept ;
     dct:title "aws.iam.attach_role_policy" ;
-    dct:type <urn:gymact:consequence:do> .
+    dct:type <urn:gymact:consequence:do> ;
+    dct:temporal <urn:gymact:multicloud:aws:authority-window:iam.attach_role_policy> ;
+    skos:broader <urn:gymact:multicloud:provider:aws>, <urn:gymact:multicloud:service-domain:iam> .
+
+<urn:gymact:multicloud:aws:authority-window:iam.attach_role_policy>
+    a time:Interval .
 
 <urn:gymact:multicloud:aws:capability:iam.list_roles>
-    a sosa:Procedure ;
+    a sosa:Procedure, skos:Concept ;
     dct:title "aws.iam.list_roles" ;
-    dct:type <urn:gymact:consequence:read> .
+    dct:type <urn:gymact:consequence:read> ;
+    skos:broader <urn:gymact:multicloud:provider:aws>, <urn:gymact:multicloud:service-domain:iam> .
 
 <urn:gymact:multicloud:aws:capability:s3.create_bucket>
-    a sosa:Procedure ;
+    a sosa:Procedure, skos:Concept ;
     dct:title "aws.s3.create_bucket" ;
     dct:type <urn:gymact:consequence:do> ;
-    rdfs:seeAlso dcat:Distribution .
+    rdfs:seeAlso dcat:Distribution ;
+    skos:broader <urn:gymact:multicloud:provider:aws>, <urn:gymact:multicloud:service-domain:storage> .
 
 <urn:gymact:multicloud:aws:capability:s3.list_buckets>
-    a sosa:Procedure ;
+    a sosa:Procedure, skos:Concept ;
     dct:title "aws.s3.list_buckets" ;
-    dct:type <urn:gymact:consequence:read> .
+    dct:type <urn:gymact:consequence:read> ;
+    skos:broader <urn:gymact:multicloud:provider:aws>, <urn:gymact:multicloud:service-domain:storage> .
 
 <urn:gymact:multicloud:aws:capability:ec2.run_instances>
-    a sosa:Procedure ;
+    a sosa:Procedure, skos:Concept ;
     dct:title "aws.ec2.run_instances" ;
     dct:type <urn:gymact:consequence:do> ;
-    rdfs:seeAlso prov:Entity, prov:Activity .
+    rdfs:seeAlso prov:Entity, prov:Activity ;
+    skos:broader <urn:gymact:multicloud:provider:aws>, <urn:gymact:multicloud:service-domain:compute> .
 
 <urn:gymact:multicloud:aws:capability:ec2.describe_instances>
-    a sosa:Procedure ;
+    a sosa:Procedure, skos:Concept ;
     dct:title "aws.ec2.describe_instances" ;
-    dct:type <urn:gymact:consequence:read> .
+    dct:type <urn:gymact:consequence:read> ;
+    skos:broader <urn:gymact:multicloud:provider:aws>, <urn:gymact:multicloud:service-domain:compute> .
 
 # ---------------------------------------------------------------------------
 # Azure (azure-sdk-for-python-style operation names)
 # ---------------------------------------------------------------------------
 
 <urn:gymact:multicloud:azure:capability:authorization.create_role_assignment>
-    a sosa:Procedure, odrl:Permission ;
+    a sosa:Procedure, odrl:Permission, skos:Concept ;
     dct:title "azure.authorization.create_role_assignment" ;
-    dct:type <urn:gymact:consequence:do> .
+    dct:type <urn:gymact:consequence:do> ;
+    dct:temporal <urn:gymact:multicloud:azure:authority-window:authorization.create_role_assignment> ;
+    skos:broader <urn:gymact:multicloud:provider:azure>, <urn:gymact:multicloud:service-domain:iam> .
+
+<urn:gymact:multicloud:azure:authority-window:authorization.create_role_assignment>
+    a time:Interval .
 
 <urn:gymact:multicloud:azure:capability:authorization.list_role_assignments>
-    a sosa:Procedure ;
+    a sosa:Procedure, skos:Concept ;
     dct:title "azure.authorization.list_role_assignments" ;
-    dct:type <urn:gymact:consequence:read> .
+    dct:type <urn:gymact:consequence:read> ;
+    skos:broader <urn:gymact:multicloud:provider:azure>, <urn:gymact:multicloud:service-domain:iam> .
 
 <urn:gymact:multicloud:azure:capability:storage.create_account>
-    a sosa:Procedure ;
+    a sosa:Procedure, skos:Concept ;
     dct:title "azure.storage.create_account" ;
     dct:type <urn:gymact:consequence:do> ;
-    rdfs:seeAlso dcat:Distribution .
+    rdfs:seeAlso dcat:Distribution ;
+    skos:broader <urn:gymact:multicloud:provider:azure>, <urn:gymact:multicloud:service-domain:storage> .
 
 <urn:gymact:multicloud:azure:capability:storage.list_accounts>
-    a sosa:Procedure ;
+    a sosa:Procedure, skos:Concept ;
     dct:title "azure.storage.list_accounts" ;
-    dct:type <urn:gymact:consequence:read> .
+    dct:type <urn:gymact:consequence:read> ;
+    skos:broader <urn:gymact:multicloud:provider:azure>, <urn:gymact:multicloud:service-domain:storage> .
 
 <urn:gymact:multicloud:azure:capability:compute.create_virtual_machine>
-    a sosa:Procedure ;
+    a sosa:Procedure, skos:Concept ;
     dct:title "azure.compute.create_virtual_machine" ;
     dct:type <urn:gymact:consequence:do> ;
-    rdfs:seeAlso prov:Entity, prov:Activity .
+    rdfs:seeAlso prov:Entity, prov:Activity ;
+    skos:broader <urn:gymact:multicloud:provider:azure>, <urn:gymact:multicloud:service-domain:compute> .
 
 <urn:gymact:multicloud:azure:capability:compute.list_virtual_machines>
-    a sosa:Procedure ;
+    a sosa:Procedure, skos:Concept ;
     dct:title "azure.compute.list_virtual_machines" ;
-    dct:type <urn:gymact:consequence:read> .
+    dct:type <urn:gymact:consequence:read> ;
+    skos:broader <urn:gymact:multicloud:provider:azure>, <urn:gymact:multicloud:service-domain:compute> .
 
 # ---------------------------------------------------------------------------
 # GCP (google-cloud-python-style operation names)
 # ---------------------------------------------------------------------------
 
 <urn:gymact:multicloud:gcp:capability:iam.create_service_account>
-    a sosa:Procedure ;
+    a sosa:Procedure, skos:Concept ;
     dct:title "gcp.iam.create_service_account" ;
-    dct:type <urn:gymact:consequence:do> .
+    dct:type <urn:gymact:consequence:do> ;
+    skos:broader <urn:gymact:multicloud:provider:gcp>, <urn:gymact:multicloud:service-domain:iam> .
     # No rdfs:seeAlso here: a GCP service account is an identity/agent,
     # not an org:Role, and no public term for "IAM identity/service
     # account" was researched in this pass -- left unstated rather than
     # guessed, per this repo's own ontology rule.
 
 <urn:gymact:multicloud:gcp:capability:iam.add_iam_policy_binding>
-    a sosa:Procedure, odrl:Permission ;
+    a sosa:Procedure, odrl:Permission, skos:Concept ;
     dct:title "gcp.iam.add_iam_policy_binding" ;
-    dct:type <urn:gymact:consequence:do> .
+    dct:type <urn:gymact:consequence:do> ;
+    dct:temporal <urn:gymact:multicloud:gcp:authority-window:iam.add_iam_policy_binding> ;
+    skos:broader <urn:gymact:multicloud:provider:gcp>, <urn:gymact:multicloud:service-domain:iam> .
+
+<urn:gymact:multicloud:gcp:authority-window:iam.add_iam_policy_binding>
+    a time:Interval .
 
 <urn:gymact:multicloud:gcp:capability:iam.list_service_accounts>
-    a sosa:Procedure ;
+    a sosa:Procedure, skos:Concept ;
     dct:title "gcp.iam.list_service_accounts" ;
-    dct:type <urn:gymact:consequence:read> .
+    dct:type <urn:gymact:consequence:read> ;
+    skos:broader <urn:gymact:multicloud:provider:gcp>, <urn:gymact:multicloud:service-domain:iam> .
 
 <urn:gymact:multicloud:gcp:capability:storage.create_bucket>
-    a sosa:Procedure ;
+    a sosa:Procedure, skos:Concept ;
     dct:title "gcp.storage.create_bucket" ;
     dct:type <urn:gymact:consequence:do> ;
-    rdfs:seeAlso dcat:Distribution .
+    rdfs:seeAlso dcat:Distribution ;
+    skos:broader <urn:gymact:multicloud:provider:gcp>, <urn:gymact:multicloud:service-domain:storage> .
 
 <urn:gymact:multicloud:gcp:capability:storage.list_buckets>
-    a sosa:Procedure ;
+    a sosa:Procedure, skos:Concept ;
     dct:title "gcp.storage.list_buckets" ;
-    dct:type <urn:gymact:consequence:read> .
+    dct:type <urn:gymact:consequence:read> ;
+    skos:broader <urn:gymact:multicloud:provider:gcp>, <urn:gymact:multicloud:service-domain:storage> .
 
 <urn:gymact:multicloud:gcp:capability:compute.create_instance>
-    a sosa:Procedure ;
+    a sosa:Procedure, skos:Concept ;
     dct:title "gcp.compute.create_instance" ;
     dct:type <urn:gymact:consequence:do> ;
-    rdfs:seeAlso prov:Entity, prov:Activity .
+    rdfs:seeAlso prov:Entity, prov:Activity ;
+    skos:broader <urn:gymact:multicloud:provider:gcp>, <urn:gymact:multicloud:service-domain:compute> .
 
 <urn:gymact:multicloud:gcp:capability:compute.list_instances>
-    a sosa:Procedure ;
+    a sosa:Procedure, skos:Concept ;
     dct:title "gcp.compute.list_instances" ;
-    dct:type <urn:gymact:consequence:read> .
+    dct:type <urn:gymact:consequence:read> ;
+    skos:broader <urn:gymact:multicloud:provider:gcp>, <urn:gymact:multicloud:service-domain:compute> .

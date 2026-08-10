@@ -15,7 +15,7 @@ from enum import StrEnum
 from itertools import islice, product
 from typing import Any, Iterable, Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from gymact.action_contract import ReversalClass
 from gymact.evidence import digest
@@ -62,6 +62,22 @@ class DecisionPhase(StrEnum):
     DO = "DO"
 
 
+def _json_canonicalize(value: Any) -> Any:
+    """Recursively coerce tuples to lists so attributes survive a JSON round trip
+    (json.dumps/json.loads, as combinatorial_rdf.py's PROV.value projection does)
+    with an identical in-memory shape -- tuples have no JSON representation and
+    always come back as lists, so equality after RDF projection would otherwise
+    fail for any attributes payload containing one (see POSSIBILITY_RDF_PROJECTION
+    _NOT_LOSSLESS in dcm_runtime.py)."""
+    if isinstance(value, tuple):
+        return [_json_canonicalize(item) for item in value]
+    if isinstance(value, list):
+        return [_json_canonicalize(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _json_canonicalize(item) for key, item in value.items()}
+    return value
+
+
 class PossibilityObject(FrozenModel):
     object_id: str = Field(min_length=1)
     kind: PossibilityObjectKind
@@ -71,6 +87,11 @@ class PossibilityObject(FrozenModel):
     standing: Standing = Standing.UNKNOWN
     evidence_refs: tuple[str, ...] = ()
     attributes: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("attributes", mode="after")
+    @classmethod
+    def attributes_are_json_canonical(cls, value: dict[str, Any]) -> dict[str, Any]:
+        return _json_canonicalize(value)
 
     @model_validator(mode="after")
     def graph_objects_cannot_carry_live_authority(self) -> Self:

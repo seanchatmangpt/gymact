@@ -146,7 +146,7 @@ async def test_real_consequence_receipt_binds_graph_path_and_irreversible_cut() 
         prepared=prepared,
         grant=grant,
         selector_ref="urn:selector:dcm",
-        basis_refs=(materialized.receipt.receipt_id,),
+        basis_refs=(f"urn:gymact:receipt:{materialized.receipt.receipt_id}",),
     )
     request = manufacture_broker_request(
         selection,
@@ -163,6 +163,8 @@ async def test_real_consequence_receipt_binds_graph_path_and_irreversible_cut() 
     assert transition.receipt.possibility_path_id == frontier.path_id
     assert transition.receipt.possibility_morphism_id == frontier.morphism_id
     assert transition.receipt.selection_digest == selection.selection_digest
-    assert transition.receipt.selection_basis_refs == (materialized.receipt.receipt_id,)
+    assert transition.receipt.selection_basis_refs == (
+        f"urn:gymact:receipt:{materialized.receipt.receipt_id}",
+    )
     assert transition.receipt.parent_receipt_ids
     assert (await runtime.observe(episode.episode_id)).state == {"x": 2}
