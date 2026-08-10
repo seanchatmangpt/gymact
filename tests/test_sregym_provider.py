@@ -21,7 +21,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from gymact.gyms.sregym import SREGYM_CAPABILITIES, SregymVendorProvider
+from gymact.gyms.sregym import SREGYM_CAPABILITIES, SregymVendorProvider, _build_full_subprocess_env
 from gymact.gyms.vendor_benchmarks import VendorAdmissionError, VendorSpec, _audit_spec
 
 
@@ -52,6 +52,47 @@ def _real_sregym_checkout_ready() -> tuple[bool, str]:
     if audit.standing != "PARTIAL_ALIVE":
         return False, f"sregym checkout not at pinned revision: {audit.reason}"
     return True, "ready"
+
+
+class SregymSubprocessEnvTests(unittest.TestCase):
+    """Real regression test for the env-replacement defect found and fixed
+    forward this session: `subprocess.Popen(env=...)` replaces the child's
+    entire environment rather than merging with the parent's, so
+    `SregymEnvironment.__init__` must build its `full_env` on top of a real
+    base environment, not construct one from scratch. No subprocess or
+    cluster needed -- this exercises the pure merge function directly."""
+
+    def test_base_env_keys_survive_into_full_env(self):
+        base = {"GROQ_API_KEY": "gsk_real_key_value", "PATH": "/usr/bin:/bin"}
+        result = _build_full_subprocess_env(
+            base_env=base, mcp_server_port=9954, api_port=8000, overrides={}
+        )
+        self.assertEqual(result["GROQ_API_KEY"], "gsk_real_key_value")
+        self.assertEqual(result["PATH"], "/usr/bin:/bin")
+
+    def test_port_keys_and_overrides_still_win_over_base_env(self):
+        base = {"MCP_SERVER_PORT": "1", "API_PORT": "2", "AGENT_API_KEY": "stale"}
+        result = _build_full_subprocess_env(
+            base_env=base,
+            mcp_server_port=9955,
+            api_port=8001,
+            overrides={"AGENT_API_KEY": "fresh"},
+        )
+        self.assertEqual(result["MCP_SERVER_PORT"], "9955")
+        self.assertEqual(result["API_PORT"], "8001")
+        self.assertEqual(result["AGENT_API_KEY"], "fresh")
+
+    def test_real_os_environ_is_a_valid_base(self):
+        """Proves the actual production call shape (dict(os.environ) as
+        base_env) works end to end, not just a hand-constructed dict."""
+        import os
+
+        result = _build_full_subprocess_env(
+            base_env=dict(os.environ), mcp_server_port=1, api_port=2, overrides={}
+        )
+        # A real, always-present env var on any POSIX process -- proves
+        # os.environ's real content actually made it into the result.
+        self.assertIn("PATH", result)
 
 
 class SregymProviderAdmissionTests(unittest.TestCase):

@@ -36,6 +36,7 @@ real `fastmcp.Client`).
 from __future__ import annotations
 
 import asyncio
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -127,6 +128,28 @@ def _build_env(
     return env
 
 
+def _build_full_subprocess_env(
+    *, base_env: dict[str, str], mcp_server_port: int, api_port: int, overrides: dict[str, str]
+) -> dict[str, str]:
+    """Real defect fixed forward this session: `subprocess.Popen(env=...)`
+    REPLACES the child process's entire environment rather than merging with
+    the parent's -- so `base_env` (the caller's real `os.environ`, in
+    production) must be the base, or real shell credentials (GROQ_API_KEY,
+    PATH, kubeconfig-adjacent vars) silently never reach `main.py` regardless
+    of whether they are correctly set in the parent shell. Reproduced live:
+    `main.py`'s own Groq preflight check failed with "Invalid API Key" even
+    though `GROQ_API_KEY` was confirmed set and exported in the calling
+    shell -- because it was never forwarded. Extracted as its own function,
+    separate from `SregymEnvironment.__init__`'s real subprocess launch, so
+    this merge behavior is directly unit-testable without a live cluster."""
+    return {
+        **base_env,
+        "MCP_SERVER_PORT": str(mcp_server_port),
+        "API_PORT": str(api_port),
+        **overrides,
+    }
+
+
 class SregymEnvironment:
     """Wraps one real `sregym` `main.py` subprocess plus a persistent real
     `fastmcp.Client` session against its real `kubectl-mcp` server.
@@ -164,11 +187,12 @@ class SregymEnvironment:
         self._kubectl_client: Client | None = None
         self._submit_client: Client | None = None
 
-        full_env = {
-            "MCP_SERVER_PORT": str(mcp_server_port),
-            "API_PORT": str(api_port),
-            **env,
-        }
+        full_env = _build_full_subprocess_env(
+            base_env=dict(os.environ),
+            mcp_server_port=mcp_server_port,
+            api_port=api_port,
+            overrides=env,
+        )
         # Real subprocess: sregym's own main.py, launched against its own
         # real vendored checkout root, exactly as vendor_benchmarks.py's
         # run_native() launches native vendor commands -- but kept alive

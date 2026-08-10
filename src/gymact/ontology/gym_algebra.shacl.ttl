@@ -1,0 +1,60 @@
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix odrl: <http://www.w3.org/ns/odrl/2/> .
+@prefix pplan: <http://purl.org/net/p-plan#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix sosa: <http://www.w3.org/ns/sosa/> .
+
+# Additive SHACL contract for the gym algebra G = (S, O, C, A, Gamma, T, V, R).
+# Separate from profile.shacl.ttl (the capability/profile/resource-descriptor
+# shapes) so this file can evolve without touching that existing contract.
+#
+# Every sh:targetClass below is an existing public class per
+# .claude/rules/ontology.md's "Concrete replacements" table -- no gymact:
+# class or property is introduced; only sh:NodeShape instances under
+# urn:gymact:shape:* constraining public predicates, mirroring the exact
+# urn:gymact:shape:capability pattern in profile.shacl.ttl.
+
+<urn:gymact:shape:transition>
+    a sh:NodeShape ;
+    sh:targetClass prov:Entity ;
+    sh:property [
+        sh:path prov:wasDerivedFrom ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "A Transition (prov:Entity) must reference exactly one before-WorldState via prov:wasDerivedFrom." ;
+    ] ;
+    sh:property [
+        sh:path prov:wasGeneratedBy ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "A Transition (prov:Entity) must reference exactly one Action (prov:Activity/sosa:Actuation) via prov:wasGeneratedBy that generated its after-WorldState." ;
+    ] ;
+    sh:property [
+        sh:path odrl:target ;
+        sh:minCount 1 ;
+        sh:message "A Transition must reference the AuthorityEnvelope (odrl:Policy) that admitted its Action via odrl:target." ;
+    ] ;
+    sh:property [
+        sh:path prov:used ;
+        sh:minCount 1 ;
+        sh:message "A Transition must reference at least one Observation (sosa:Observation) it used via prov:used." ;
+    ] .
+
+<urn:gymact:shape:episode>
+    a sh:NodeShape ;
+    sh:targetClass prov:Activity ;
+    sh:property [
+        sh:path prov:generated ;
+        sh:minCount 1 ;
+        sh:message "An Episode (prov:Activity) must generate at least one Transition (prov:Entity) via prov:generated." ;
+    ] .
+
+<urn:gymact:shape:composition>
+    a sh:NodeShape ;
+    sh:targetClass pplan:Plan ;
+    sh:property [
+        sh:path pplan:hasInputVar ;
+        sh:minCount 1 ;
+        sh:message "A Composition (p-plan:Plan) must reference at least one constituent SubGym via p-plan:hasInputVar." ;
+    ] .
