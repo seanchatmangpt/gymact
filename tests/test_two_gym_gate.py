@@ -143,7 +143,10 @@ async def test_two_gym_gate(
     assert teardown_receipt.standing is Standing.ALIVE
 
     # -- real Receipt trail, same generic shape, both providers --
+    # Includes "verify": since PR #24's independent PostconditionVerifier,
+    # kernel.verify() (called above) emits its own real receipt rather than
+    # trusting the provider's self-reported verdict silently.
     receipts = kernel.episode_receipts(episode_id)
     operations = [r.operation.value for r in receipts]
-    assert operations == ["materialize", "act", "teardown"]
+    assert operations == ["materialize", "act", "verify", "teardown"]
     assert all(r.episode_id == episode_id for r in receipts)

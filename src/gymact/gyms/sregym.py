@@ -54,10 +54,27 @@ from uuid import uuid4
 import httpx
 from fastmcp import Client
 
-from gymact.gyms.vendor_benchmarks import VENDOR_SPECS, VendorAdmissionError, _audit_spec
+from gymact.gyms.vendor_benchmarks import VendorAdmissionError, VendorSpec, _audit_spec
 from gymact.models import Capability, Consequence
 
-_SPEC = VENDOR_SPECS["sregym"]
+# Not sourced from `vendor_benchmarks.VENDOR_REVISIONS`: that dict is an exact,
+# lock-derived corpus (`tests/test_vendor_benchmarks.py` pins its own length and
+# `LOCK_SOURCE_SHA`) -- adding an entry by hand here would misrepresent this pin
+# as lock-derived when it isn't. `_audit_spec`/`VendorSpec` are still reused
+# (the real, shared exact-pin admission machinery); only the spec's construction
+# is local to this module.
+_SPEC = VendorSpec(name="sregym", revision="ba07faf1a322f9b6d4a279643bb796aa2f36f64b")
+
+
+def _default_root() -> Path:
+    """Reproduces `vendor_benchmarks.vendor_root()`'s real layout
+    (`<lab_root>/vendor/gyms/sregym`) without depending on that helper's
+    `VENDOR_SPECS` lookup, which does not contain `"sregym"` (see `_SPEC`
+    above)."""
+    configured = os.environ.get("AUTOFDE_LAB")
+    lab_root = Path(configured).expanduser() if configured else Path.home() / "autofde-lab"
+    return lab_root / _SPEC.relative_root
+
 
 _DEFAULT_MCP_SERVER_PORT = 9954
 _DEFAULT_API_PORT = 8000
@@ -714,12 +731,16 @@ class SregymVendorProvider:
     async def materialize(
         self, *, scenario: str | None, config: dict[str, Any]
     ) -> SregymEnvironment:
-        from gymact.gyms.vendor_benchmarks import vendor_root
-
         root_value = config.get("root")
         if root_value is not None and not isinstance(root_value, str):
             raise TypeError("config.root must be a string path when supplied")
-        root = Path(root_value).expanduser() if root_value else vendor_root("sregym")
+        # Not `vendor_benchmarks.vendor_root("sregym")`: that helper looks
+        # `"sregym"` up in the shared, lock-derived `VENDOR_SPECS` dict, which
+        # deliberately does not contain a `"sregym"` entry (see `_SPEC`'s own
+        # comment above). `_SPEC.relative_root` (`vendor/gyms/sregym`) is the
+        # same real layout `vendor_root()` would produce; only the lab-root
+        # resolution is reproduced locally here.
+        root = Path(root_value).expanduser() if root_value else _default_root()
 
         audit = _audit_spec(_SPEC, root)
         if audit.standing != "PARTIAL_ALIVE":

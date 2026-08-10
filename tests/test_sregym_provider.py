@@ -67,9 +67,9 @@ def _real_sregym_checkout_ready() -> tuple[bool, str]:
         return False, f"real sregym checkout not present at {sregym_root}"
     if not (sregym_root / "main.py").is_file():
         return False, f"sregym checkout at {sregym_root} has no main.py"
-    from gymact.gyms.vendor_benchmarks import VENDOR_SPECS
+    from gymact.gyms.sregym import _SPEC as _SREGYM_SPEC
 
-    audit = _audit_spec(VENDOR_SPECS["sregym"], sregym_root)
+    audit = _audit_spec(_SREGYM_SPEC, sregym_root)
     if audit.standing != "PARTIAL_ALIVE":
         return False, f"sregym checkout not at pinned revision: {audit.reason}"
     return True, "ready"
