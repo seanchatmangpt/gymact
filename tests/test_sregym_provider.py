@@ -101,6 +101,42 @@ class SregymSubprocessEnvTests(unittest.TestCase):
         self.assertIn("PATH", result)
 
 
+class SregymEnvironmentStartupErrorMessageTests(unittest.TestCase):
+    """Real regression test for the diagnostic-loss defect found and fixed
+    forward this session: the RuntimeError raised when the real subprocess
+    exits during startup previously included only stderr, silently dropping
+    main.py's own rich-logged stdout diagnostics -- confirmed live, more
+    than once, when the raised message was empty/unhelpful while the real
+    cause sat in stdout. Uses a real throwaway Python script as the fake
+    main.py (a real subprocess, real exit, real captured output) rather
+    than sregym's own main.py, so this is fast and needs no cluster."""
+
+    def test_stdout_is_included_when_subprocess_exits_during_startup(self):
+        from gymact.gyms.sregym import SregymEnvironment
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            fake_main = root / "main.py"
+            fake_main.write_text(
+                "import sys\n"
+                "print('DISTINCTIVE_STDOUT_MARKER: real diagnostic here')\n"
+                "sys.exit(0)\n",
+                encoding="utf-8",
+            )
+            with self.assertRaises(RuntimeError) as ctx:
+                SregymEnvironment(
+                    root=root,
+                    argv=["python3", str(fake_main)],
+                    env={},
+                    mcp_server_port=1,
+                    api_port=2,
+                    startup_timeout_seconds=5.0,
+                    verify_timeout_seconds=5.0,
+                    teardown_timeout_seconds=5.0,
+                )
+            self.assertIn("DISTINCTIVE_STDOUT_MARKER", str(ctx.exception))
+
+
 class SregymBuildArgvAgentNameTests(unittest.TestCase):
     """Real string assertions on `_build_argv`'s agent_name threading -- no
     subprocess needed. Regression coverage for the real, confirmed defect:

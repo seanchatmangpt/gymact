@@ -229,9 +229,18 @@ class SregymEnvironment:
         while time.monotonic() < deadline:
             if self._process.poll() is not None:
                 stdout, stderr = self._process.communicate()
+                # Real defect fixed forward this session: main.py's own rich
+                # logging writes diagnostic output to stdout, not stderr --
+                # confirmed live, multiple times, when this error's stderr
+                # was empty or just deprecation-warning noise while the real
+                # cause (a Groq preflight failure, a port conflict, etc.) sat
+                # in stdout the caller never saw. Both streams are now
+                # included so a real failure is actually diagnosable from
+                # the raised message alone, not a second manual repro.
                 raise RuntimeError(
                     f"sregym main.py exited during startup (returncode="
-                    f"{self._process.returncode}): stderr={stderr[-4000:]!r}"
+                    f"{self._process.returncode}): stdout={stdout[-4000:]!r} "
+                    f"stderr={stderr[-4000:]!r}"
                 )
             try:
                 response = httpx.get(f"{self._api_base}/status", timeout=2.0)
