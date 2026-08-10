@@ -14,6 +14,7 @@ are not present in this environment.
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import shutil
 import subprocess
@@ -27,6 +28,7 @@ from gymact.gyms.sregym import (
     _build_argv,
     _build_full_subprocess_env,
     _connect_with_retry,
+    _render_submit_answer,
     _resolve_materialize_argv_and_env,
     _tcp_port_reachable,
 )
@@ -112,6 +114,30 @@ class SregymSubprocessEnvTests(unittest.TestCase):
         # A real, always-present env var on any POSIX process -- proves
         # os.environ's real content actually made it into the result.
         self.assertIn("PATH", result)
+
+
+class RenderSubmitAnswerTests(unittest.TestCase):
+    """Real regression tests for the defect found and fixed forward this
+    session: the real sregym submit MCP server exposes exactly ONE real
+    tool, "submit", taking a single free-text `ans` argument -- confirmed
+    live (`fastmcp.exceptions.ToolError: Unknown tool: submit_diagnosis`)
+    and cross-checked against clients/demo/driver.py's real, working
+    manual_submit_tool(). No cluster needed: pure string rendering."""
+
+    def test_renders_a_real_json_string_containing_the_binding_and_payload(self):
+        answer = _render_submit_answer(
+            "submit_diagnosis", {"diagnosis": "wrong_dns_policy", "confidence": 0.8}
+        )
+        self.assertIsInstance(answer, str)
+        parsed = json.loads(answer)
+        self.assertEqual(parsed["kind"], "submit_diagnosis")
+        self.assertEqual(parsed["payload"]["diagnosis"], "wrong_dns_policy")
+
+    def test_rendering_is_deterministic_for_the_same_payload(self):
+        payload = {"b": 2, "a": 1}
+        first = _render_submit_answer("submit_mitigation", payload)
+        second = _render_submit_answer("submit_mitigation", payload)
+        self.assertEqual(first, second)
 
 
 class _FakeFlakyClient:

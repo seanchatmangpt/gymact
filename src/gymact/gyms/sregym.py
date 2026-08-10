@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import os
 import socket
 import subprocess
@@ -298,6 +299,16 @@ def _build_full_subprocess_env(
     }
 
 
+def _render_submit_answer(binding: str, payload: dict[str, Any]) -> str:
+    """Render a `submit_diagnosis`/`submit_mitigation` capability payload
+    into the single real free-text answer the real sregym `submit` MCP tool
+    actually accepts (see `SregymEnvironment.actuate()`'s own docstring for
+    the full account of why this exists). Deterministic JSON rendering
+    (`sort_keys=True`) so the same payload always renders the same text --
+    real, testable, no cluster needed."""
+    return json.dumps({"kind": binding, "payload": payload}, sort_keys=True)
+
+
 class SregymEnvironment:
     """Wraps one real `sregym` `main.py` subprocess and opens a fresh real
     `fastmcp.Client` session per real `actuate()` call against its real
@@ -466,12 +477,28 @@ class SregymEnvironment:
                 "result_text": [block.model_dump(mode="json") for block in result.content],
             }
         if binding in ("submit_diagnosis", "submit_mitigation"):
-            tool_name = binding
-            args = dict(payload)
+            # Real defect found and fixed forward this session: the real
+            # sregym submit MCP server (mcp_server/submit_server.py) exposes
+            # exactly ONE real tool, named "submit", taking a single free-
+            # text argument `ans` -- confirmed live
+            # (`fastmcp.exceptions.ToolError: Unknown tool: submit_diagnosis`)
+            # and cross-checked against a real working client
+            # (clients/demo/driver.py's manual_submit_tool, which calls
+            # `call_tool("submit", {"ans": ...})`). There is no separate
+            # `submit_diagnosis`/`submit_mitigation` tool in the real
+            # benchmark -- SREGym's real grading model is one free-text
+            # answer, not two typed submissions. This class's own two
+            # `Capability` bindings are kept (a real caller may still
+            # conceptually distinguish "I am submitting my diagnosis" from
+            # "I am submitting my mitigation") but both now call the one
+            # real tool with `payload` rendered as a single real text
+            # answer via `_render_submit_answer`, matching what the real
+            # benchmark actually accepts.
+            ans = _render_submit_answer(binding, payload)
             async with _open_client_with_retry(
                 lambda: Client(self._submit_mcp_url), label="submit_client"
             ) as submit_client:
-                result = await submit_client.call_tool(tool_name, args)
+                result = await submit_client.call_tool("submit", {"ans": ans})
             after = self._status()
             return {
                 "before": before,
