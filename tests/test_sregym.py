@@ -1,8 +1,8 @@
 """Contract tests for the first-class SREGym provider.
 
-These tests intentionally do not manufacture a fake Kubernetes/SREGym run.  They cover
+These tests intentionally do not manufacture a fake Kubernetes/SREGym run. They cover
 the GymAct-owned boundary only: exact native-result interpretation, command projection,
-authority classification, checkpoint semantics, and verification.  A real SREGym episode
+authority classification, checkpoint semantics, and verification. A real SREGym episode
 remains a separate standing and is validated with the procedure in
 ``docs/integrations/sregym.md``.
 """
@@ -18,10 +18,12 @@ from gymact.gyms.sregym import (
     SREGYM_COMPAT_REVISION,
     SREGYM_RUN_CAPABILITY,
     SREGymEnvironment,
+    SREGymProvider,
     _boolish,
     _read_result_csv,
 )
 from gymact.models import Consequence
+from gymact.registry import builtin_capabilities, builtin_provider_names, create_builtin_provider
 
 
 def _environment(tmp_path: Path, **overrides) -> SREGymEnvironment:
@@ -51,6 +53,12 @@ def _write_csv(path: Path, rows: list[dict[str, str]]) -> None:
         writer.writerows(rows)
 
 
+def test_sregym_is_a_first_class_builtin_provider() -> None:
+    assert "sregym" in builtin_provider_names()
+    assert builtin_capabilities("sregym") == (SREGYM_RUN_CAPABILITY,)
+    assert isinstance(create_builtin_provider("sregym"), SREGymProvider)
+
+
 def test_sregym_run_is_a_do_capability_and_environment_requires_authority(tmp_path: Path) -> None:
     env = _environment(tmp_path)
     assert SREGYM_RUN_CAPABILITY.consequence == Consequence.DO
@@ -77,7 +85,7 @@ def test_native_result_keeps_diagnosis_and_mitigation_distinct(tmp_path: Path) -
     row = result["rows"][0]
     assert row["diagnosis_success"] is True
     assert row["mitigation_success"] is False
-    assert row["solved"] is False
+n    assert row["solved"] is False
     assert result["all_solved"] is False
 
 
@@ -127,8 +135,9 @@ def test_command_projects_real_upstream_single_problem_cli(tmp_path: Path) -> No
         reasoning_effort="high",
     )
     command = env._command()
+    problem_index = command.index("--problem")
     assert command[:4] == ["uv", "run", "python", "main.py"]
-    assert ["--problem", "target_port"] == command[command.index("--problem") :][:2]
+    assert command[problem_index : problem_index + 2] == ["--problem", "target_port"]
     assert "--noise" in command
     assert command[command.index("--n-attempts") + 1] == "2"
     assert command[command.index("--reasoning-effort") + 1] == "high"
@@ -137,7 +146,8 @@ def test_command_projects_real_upstream_single_problem_cli(tmp_path: Path) -> No
 def test_command_projects_real_upstream_lite_suite_cli(tmp_path: Path) -> None:
     env = _environment(tmp_path, problem=None, suite="sregym-lite")
     command = env._command()
-    assert ["--suite", "sregym-lite"] == command[command.index("--suite") :][:2]
+    suite_index = command.index("--suite")
+    assert command[suite_index : suite_index + 2] == ["--suite", "sregym-lite"]
     assert "--problem" not in command
 
 
