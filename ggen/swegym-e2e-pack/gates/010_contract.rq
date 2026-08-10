@@ -1,0 +1,91 @@
+# MESSAGE: SWE-Gym E2E contract must preserve the exact admitted subject,
+# DO capability, solved predicate, receipt sequence, required evidence, and
+# WIT identities. Any returned row is a refusal before generation.
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+
+SELECT ?violation WHERE {
+  {
+    FILTER NOT EXISTS {
+      <urn:gymact:swegym:e2e:contract>
+        dct:identifier "swegym-e2e" ;
+        dct:source <https://huggingface.co/datasets/SWE-Gym/SWE-Gym> ;
+        dct:hasVersion "SWE-Gym/SWE-Gym@main" ;
+        dct:conformsTo <urn:gymact:profile:v26.8.7> ;
+        dct:relation <urn:gymact:swegym:capability:evaluate-patch> ;
+        dct:hasPart <urn:gymact:swegym:e2e:expected-solved>,
+                    <urn:gymact:swegym:e2e:receipt-sequence> .
+    }
+    BIND("subject-contract" AS ?violation)
+  }
+  UNION
+  {
+    <urn:gymact:swegym:e2e:contract> dct:hasVersion ?revision_a, ?revision_b .
+    FILTER(?revision_a != ?revision_b)
+    BIND("revision-not-single-valued" AS ?violation)
+  }
+  UNION
+  {
+    FILTER NOT EXISTS {
+      <urn:gymact:swegym:capability:evaluate-patch>
+        a sosa:Procedure ;
+        dct:title "swegym.evaluate-patch" ;
+        dct:type <urn:gymact:consequence:do> .
+    }
+    BIND("evaluate-patch-capability-not-do" AS ?violation)
+  }
+  UNION
+  {
+    FILTER NOT EXISTS {
+      <urn:gymact:swegym:e2e:expected-solved>
+        dct:identifier "solved" ;
+        rdf:value true .
+    }
+    BIND("expected-solved" AS ?violation)
+  }
+  UNION
+  {
+    FILTER NOT EXISTS {
+      <urn:gymact:swegym:e2e:receipt-sequence>
+        a rdf:Seq ;
+        rdf:_1 <urn:gymact:operation:materialize> ;
+        rdf:_2 <urn:gymact:operation:act> ;
+        rdf:_3 <urn:gymact:operation:verify> ;
+        rdf:_4 <urn:gymact:operation:teardown> .
+    }
+    BIND("receipt-sequence" AS ?violation)
+  }
+  UNION
+  {
+    <urn:gymact:swegym:e2e:receipt-sequence> ?membership ?extra .
+    FILTER(STRSTARTS(STR(?membership), "http://www.w3.org/1999/02/22-rdf-syntax-ns#_"))
+    FILTER(?membership NOT IN (rdf:_1, rdf:_2, rdf:_3, rdf:_4))
+    BIND("receipt-sequence-extra-member" AS ?violation)
+  }
+  UNION
+  {
+    VALUES ?required {
+      "authority-admitted"
+      "native-result-artifact-read"
+      "ocel-schema-valid"
+      "replay-conformant"
+    }
+    FILTER NOT EXISTS {
+      <urn:gymact:swegym:e2e:contract> dct:requires ?evidence .
+      ?evidence dct:identifier ?required .
+    }
+    BIND(CONCAT("missing-evidence:", ?required) AS ?violation)
+  }
+  UNION
+  {
+    VALUES (?resource ?identifier) {
+      (<urn:gymact:swegym:e2e:wit-package> "gymact:swegym-e2e@0.1.0")
+      (<urn:gymact:swegym:e2e:wit-interface> "swegym-e2e-verifier")
+      (<urn:gymact:swegym:e2e:wit-world> "swegym-e2e-world")
+    }
+    FILTER NOT EXISTS { ?resource dct:identifier ?identifier . }
+    BIND(CONCAT("missing-wit-identity:", ?identifier) AS ?violation)
+  }
+}
+ORDER BY ?violation

@@ -6,6 +6,7 @@ from typing import Any
 from gymact.gyms.cloudsim import CLOUDSIM_CAPABILITIES, CloudSimProvider
 from gymact.gyms.ggen import GGEN_CAPABILITIES, GgenProvider
 from gymact.gyms.sregym import SREGYM_RUN_CAPABILITY, SREGymProvider
+from gymact.gyms.swegym import SWEGYM_EVALUATE_CAPABILITY, SWEGymProvider
 from gymact.local_providers import (
     FILESYSTEM_CAPABILITIES,
     GIT_CAPABILITIES,
@@ -26,6 +27,7 @@ _BUILTINS = {
     "memory": (MemoryProvider, MEMORY_CAPABILITIES),
     "sqlite": (SQLiteProvider, SQLITE_CAPABILITIES),
     "sregym": (SREGymProvider, (SREGYM_RUN_CAPABILITY,)),
+    "swegym": (SWEGymProvider, (SWEGYM_EVALUATE_CAPABILITY,)),
 }
 
 
