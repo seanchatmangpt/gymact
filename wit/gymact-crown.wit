@@ -1,0 +1,30 @@
+package gymact:crown@26.8.8;
+
+interface standing {
+    enum state {
+        unknown,
+        partial-alive,
+        alive,
+        blocked,
+        build-broken,
+        unsupported,
+        refused,
+    }
+
+    record evidence {
+        admitted-observation-digest: string,
+        authority-evidence-ref: string,
+        consequence-digest: string,
+        experiment-digest: string,
+        receipt-digest: string,
+        replay-receipt-digest: string,
+        subject-digest: string,
+        verifier-digest: string,
+    }
+
+    admit: func(value: evidence) -> result<state, string>;
+}
+
+world gymact-crown {
+    export standing;
+}

@@ -142,7 +142,7 @@ class CubeCounterProvider:
         target = config.get("target", 3)
         if not isinstance(target, int) or isinstance(target, bool):
             raise TypeError("config.target must be an int")
-        requires_authority = config.get("requires_authority", False)
+        requires_authority = config.get("requires_authority", True)
         if not isinstance(requires_authority, bool):
             raise TypeError("config.requires_authority must be a boolean")
         return CubeCounterEnvironment(target=target, requires_authority=requires_authority)

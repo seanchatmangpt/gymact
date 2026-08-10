@@ -1,0 +1,26 @@
+---
+to: "wit/gymact-crown.wit"
+force: true
+sparql:
+  evidence: |
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    PREFIX dct: <http://purl.org/dc/terms/>
+    SELECT ?id ?wit_id WHERE {
+      ?evidence a skos:Concept ; skos:broader <urn:gymact:crown:concept:evidence-dimension> ; dct:identifier ?id .
+      BIND(REPLACE(STR(?id), "_", "-") AS ?wit_id)
+    }
+    ORDER BY ?id
+---
+package gymact:crown@26.8.8;
+
+interface standing {
+    enum state { unknown, partial-alive, alive, blocked, build-broken, unsupported, refused }
+    record evidence {
+{% for row in evidence -%}
+        {{ row.wit_id }}: string,
+{% endfor -%}
+    }
+    admit: func(value: evidence) -> result<state, string>;
+}
+
+world gymact-crown { export standing; }

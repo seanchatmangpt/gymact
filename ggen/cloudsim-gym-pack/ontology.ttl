@@ -1,0 +1,24 @@
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix odrl: <http://www.w3.org/ns/odrl/2/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix sosa: <http://www.w3.org/ns/sosa/> .
+
+<urn:gymact:cloudsim:aws:capability:apply>
+    a sosa:Procedure, prov:Activity, odrl:Permission ;
+    dct:title "aws.cloudsim.apply" ;
+    dct:type <urn:gymact:consequence:do> .
+
+<urn:gymact:cloudsim:azure:capability:apply>
+    a sosa:Procedure, prov:Activity, odrl:Permission ;
+    dct:title "azure.cloudsim.apply" ;
+    dct:type <urn:gymact:consequence:do> .
+
+<urn:gymact:cloudsim:gcp:capability:apply>
+    a sosa:Procedure, prov:Activity, odrl:Permission ;
+    dct:title "gcp.cloudsim.apply" ;
+    dct:type <urn:gymact:consequence:do> .
+
+<urn:gymact:cloudsim:capability:advance-clock>
+    a sosa:Procedure, prov:Activity ;
+    dct:title "cloudsim.advance_clock" ;
+    dct:type <urn:gymact:consequence:do> .

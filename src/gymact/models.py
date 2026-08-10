@@ -206,6 +206,10 @@ class Receipt(FrozenModel):
             raise ValueError("INCOMPLETE_COMBINATORIAL_RECEIPT_BINDING")
         if self.selection_basis_refs and self.selection_digest is None:
             raise ValueError("SELECTION_BASIS_REQUIRES_COMBINATORIAL_BINDING")
+        if self.receipt_id in self.parent_receipt_ids:
+            raise ValueError("PARENT_RECEIPT_SELF_REFERENCE")
+        if len(set(self.parent_receipt_ids)) != len(self.parent_receipt_ids):
+            raise ValueError("PARENT_RECEIPT_IDS_DUPLICATE")
         return self
 
 

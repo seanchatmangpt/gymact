@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from gymact.gyms.cloudsim import CLOUDSIM_CAPABILITIES, CloudSimProvider
 from gymact.gyms.ggen import GGEN_CAPABILITIES, GgenProvider
 from gymact.local_providers import (
     FILESYSTEM_CAPABILITIES,
@@ -16,6 +17,7 @@ from gymact.network_providers import HTTP_JSON_CAPABILITIES, HTTPJSONProvider
 from gymact.providers import MEMORY_CAPABILITIES, MemoryProvider
 
 _BUILTINS = {
+    "cloudsim": (CloudSimProvider, CLOUDSIM_CAPABILITIES),
     "filesystem": (FilesystemProvider, FILESYSTEM_CAPABILITIES),
     "ggen": (GgenProvider, GGEN_CAPABILITIES),
     "git": (GitProvider, GIT_CAPABILITIES),

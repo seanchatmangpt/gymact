@@ -193,7 +193,7 @@ class CubeContainerCounterProvider:
         self, *, scenario: str | None, config: dict[str, Any]
     ) -> CubeContainerCounterEnvironment:
         del scenario
-        requires_authority = config.get("requires_authority", False)
+        requires_authority = config.get("requires_authority", True)
         if not isinstance(requires_authority, bool):
             raise TypeError("config.requires_authority must be a boolean")
         return CubeContainerCounterEnvironment(requires_authority=requires_authority)
