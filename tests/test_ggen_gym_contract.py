@@ -1,3 +1,13 @@
+"""Chicago-style: real `ggen` subprocess actuation against a real, isolated
+bundle workspace -- not simulated.
+
+Per `gymact.standing.require_standing`, the real thing is the default: if no
+real `ggen` binary is on PATH, this module FAILS unless the run explicitly
+sets `GYMACT_ALLOW_DEGRADED_STANDINGS` to include "LOCAL_GYM:ggen" (or "*")
+-- a skip here is something a run must opt into, never something it
+silently gets. Matches `test_kubernetes_reconciliation.py`'s contract.
+"""
+
 from __future__ import annotations
 
 import shutil
@@ -5,9 +15,23 @@ from pathlib import Path
 
 import pytest
 
-from gymact.gyms.ggen import GGEN_CAPABILITIES, GgenProvider
-from gymact.models import Consequence
-from gymact.registry import builtin_provider_names
+from gymact.standing import require_standing
+
+
+def _ggen_available() -> bool:
+    return shutil.which("ggen") is not None
+
+
+require_standing(
+    "LOCAL_GYM:ggen",
+    available=_ggen_available(),
+    reason="no `ggen` binary found on PATH (install it, e.g. via "
+    "`cargo install ggen`, or ensure ~/.cargo/bin is on PATH)",
+)
+
+from gymact.gyms.ggen import GGEN_CAPABILITIES, GgenProvider  # noqa: E402
+from gymact.models import Consequence  # noqa: E402
+from gymact.registry import builtin_provider_names  # noqa: E402
 
 
 def _fixture_project(source: Path) -> None:
@@ -17,9 +41,7 @@ def _fixture_project(source: Path) -> None:
         '[ontology]\nsource="ontology.ttl"\n\n'
         '[templates]\ndir="templates"\n'
     )
-    (source / "ontology.ttl").write_text(
-        "@prefix dct: <http://purl.org/dc/terms/> .\n"
-    )
+    (source / "ontology.ttl").write_text("@prefix dct: <http://purl.org/dc/terms/> .\n")
     templates = source / "templates"
     templates.mkdir()
     (templates / "reference.md.tmpl").write_text(
@@ -75,8 +97,7 @@ async def test_ggen_dependency_closure_copies_declared_pack_into_private_bundle(
         '[pack]\nname="fixture-pack"\nversion="0.1.0"\ndescription="fixture"\n'
     )
     (source / "ggen.toml").write_text(
-        (source / "ggen.toml").read_text()
-        + '\n[packs]\nfixture-pack = { path = "../pack" }\n'
+        (source / "ggen.toml").read_text() + '\n[packs]\nfixture-pack = { path = "../pack" }\n'
     )
 
     environment = await GgenProvider().materialize(
@@ -92,9 +113,7 @@ async def test_ggen_dependency_closure_copies_declared_pack_into_private_bundle(
         staged_pack = environment.workspace.parent / "pack"
         assert staged_pack.is_dir()
         assert staged_pack != pack
-        assert (staged_pack / "pack.toml").read_text() == (
-            pack / "pack.toml"
-        ).read_text()
+        assert (staged_pack / "pack.toml").read_text() == (pack / "pack.toml").read_text()
     finally:
         await environment.teardown()
 
@@ -116,9 +135,7 @@ async def test_ggen_gym_materializes_an_isolated_workspace(tmp_path: Path) -> No
         checkpoint = await environment.checkpoint()
         (environment.workspace / "ontology.ttl").write_text("mutated")
         await environment.restore(checkpoint)
-        assert "http://purl.org/dc/terms/" in (
-            environment.workspace / "ontology.ttl"
-        ).read_text()
+        assert "http://purl.org/dc/terms/" in (environment.workspace / "ontology.ttl").read_text()
     finally:
         await environment.teardown()
 
@@ -126,8 +143,6 @@ async def test_ggen_gym_materializes_an_isolated_workspace(tmp_path: Path) -> No
 @pytest.mark.asyncio
 async def test_real_ggen_sync_when_binary_is_available(tmp_path: Path) -> None:
     ggen = shutil.which("ggen")
-    if ggen is None:
-        pytest.skip("REAL_GGEN_BINARY_MISSING")
     source = tmp_path / "source"
     _fixture_project(source)
     environment = await GgenProvider().materialize(
@@ -140,5 +155,72 @@ async def test_real_ggen_sync_when_binary_is_available(tmp_path: Path) -> None:
         assert result["returncode"] == 0, result["stderr"]
         assert (environment.workspace / "reference.md").is_file()
         assert result["after"]["file_count"] >= 4
+    finally:
+        await environment.teardown()
+
+
+@pytest.mark.asyncio
+async def test_real_ggen_graph_validate_when_binary_is_available(
+    tmp_path: Path,
+) -> None:
+    ggen = shutil.which("ggen")
+    source = tmp_path / "source"
+    _fixture_project(source)
+    environment = await GgenProvider().materialize(
+        scenario=None,
+        config={"source": str(source), "ggen_bin": ggen},
+    )
+    try:
+        capability = next(item for item in GGEN_CAPABILITIES if item.binding == "graph-validate")
+        # payload is ignored -- actuate()'s first statement is `del payload`.
+        result = await environment.actuate(capability, {"ignored": "payload"})
+        assert isinstance(result["returncode"], int)
+        assert result["before"]["tree_digest"] == result["after"]["tree_digest"]
+        assert result["after"]["receipt_present"] is False
+    finally:
+        await environment.teardown()
+
+
+@pytest.mark.asyncio
+async def test_real_ggen_doctor_when_binary_is_available(tmp_path: Path) -> None:
+    ggen = shutil.which("ggen")
+    source = tmp_path / "source"
+    _fixture_project(source)
+    environment = await GgenProvider().materialize(
+        scenario=None,
+        config={"source": str(source), "ggen_bin": ggen},
+    )
+    try:
+        capability = next(item for item in GGEN_CAPABILITIES if item.binding == "doctor")
+        result = await environment.actuate(capability, {})
+        assert isinstance(result["returncode"], int)
+        assert result["stdout"] or result["stderr"]
+        assert result["before"]["tree_digest"] == result["after"]["tree_digest"]
+    finally:
+        await environment.teardown()
+
+
+@pytest.mark.asyncio
+async def test_real_ggen_receipt_verify_when_binary_is_available(
+    tmp_path: Path,
+) -> None:
+    ggen = shutil.which("ggen")
+    source = tmp_path / "source"
+    _fixture_project(source)
+    environment = await GgenProvider().materialize(
+        scenario=None,
+        config={"source": str(source), "ggen_bin": ggen},
+    )
+    try:
+        capability = next(item for item in GGEN_CAPABILITIES if item.binding == "receipt-verify")
+        # No receipt exists yet in a fresh bundle -- assert the real
+        # subprocess ran and the plumbing returned real, unfabricated
+        # observation state, not a specific success/failure outcome we
+        # haven't personally observed.
+        assert (await environment.observe())["receipt_present"] is False
+        result = await environment.actuate(capability, {})
+        assert isinstance(result["returncode"], int)
+        assert result["before"]["receipt_present"] is False
+        assert result["after"]["receipt_present"] is False
     finally:
         await environment.teardown()
