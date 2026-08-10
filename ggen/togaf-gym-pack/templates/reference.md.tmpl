@@ -1,19 +1,3 @@
----
-to: "docs/compiled-reference.md"
-force: true
-shape:
-  - shapes.ttl
-sparql:
-  phases: |
-    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-    SELECT ?notation ?label WHERE { ?phase a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:adm-phase> ; skos:notation ?notation ; skos:prefLabel ?label . } ORDER BY ?notation
-  tasks: |
-    PREFIX dct: <http://purl.org/dc/terms/>
-    PREFIX pplan: <http://purl.org/net/p-plan#>
-    PREFIX prov: <http://www.w3.org/ns/prov#>
-    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-    SELECT ?id ?title ?phase ?family ?oracle WHERE { ?task a pplan:Plan ; dct:identifier ?id ; dct:title ?title ; dct:type ?family_iri ; dct:requires ?oracle ; prov:wasDerivedFrom ?phase_iri . ?family_iri skos:prefLabel ?family . ?phase_iri skos:notation ?phase . } ORDER BY ?id
----
 # Compiled Enterprise-Architecture Gym Reference
 
 This document is a deterministic projection of the admitted public-ontology graph. It is not TOGAF documentation and contains no TOGAF body text.
@@ -26,18 +10,14 @@ This document is a deterministic projection of the admitted public-ontology grap
 
 | Notation | Public label |
 |---|---|
-{% for row in phases -%}
-| {{ row.notation }} | {{ row.label }} |
-{% endfor %}
-
+{% for row in results %}{% if row["recordKind"] == "phase" %}| {{ row["notation"] }} | {{ row["label"] }} |
+{% endif %}{% endfor %}
 ## Gym tasks
 
 | Task | Phase | Family | Oracle |
 |---|---|---|---|
-{% for row in tasks -%}
-| `{{ row.id }}` | {{ row.phase }} | {{ row.family }} | `{{ row.oracle }}` |
-{% endfor %}
-
+{% for row in results %}{% if row["recordKind"] == "task" %}| `{{ row["id"] }}` | {{ row["phase"] }} | {{ row["family"] }} | `{{ row["oracle"] }}` |
+{% endif %}{% endfor %}
 ## Law
 
-TOGAF-specific vocabulary is classification data. Public ontologies own semantics. SHACL/EARL own falsification. `ggen` owns deterministic projection and its generation receipt. Runtime actuation, if a future task requires it, remains behind GymAct/BRCE authority rather than this pack.
+TOGAF-specific vocabulary is classification data. Public ontologies own semantics. SHACL/EARL own task falsification. SPARQL gates own ggen admission. `ggen` owns deterministic projection and its generation receipt. Runtime actuation, if a future task requires it, remains behind GymAct/BRCE authority rather than this pack.
