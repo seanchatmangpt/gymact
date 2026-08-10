@@ -27,6 +27,7 @@ from gymact.gyms.sregym import (
     _build_argv,
     _build_full_subprocess_env,
     _resolve_materialize_argv_and_env,
+    _tcp_port_reachable,
 )
 from gymact.gyms.vendor_benchmarks import VendorAdmissionError, VendorSpec, _audit_spec
 
@@ -41,9 +42,20 @@ def _real_sregym_checkout_ready() -> tuple[bool, str]:
     exact-pinned real sregym checkout AND a real kubectl binary."""
     if shutil.which("kubectl") is None:
         return False, "kubectl binary not found on PATH"
-    cluster_info = subprocess.run(
-        ["kubectl", "cluster-info"], capture_output=True, text=True, timeout=10.0
-    )
+    # Real collection-safety fix found and applied this cycle: a bare
+    # subprocess.run(..., timeout=...) raises TimeoutExpired uncaught on a
+    # real, transient cluster hiccup (confirmed live, this session,
+    # `net/http: TLS handshake timeout`) -- since this function runs at
+    # MODULE IMPORT TIME, an uncaught exception here aborted collection of
+    # the ENTIRE test file, including every non-live unit test that needs
+    # no cluster at all. A transient reachability blip must degrade to a
+    # named skip reason, never a collection error.
+    try:
+        cluster_info = subprocess.run(
+            ["kubectl", "cluster-info"], capture_output=True, text=True, timeout=10.0
+        )
+    except subprocess.TimeoutExpired as exc:
+        return False, f"kubectl cluster-info timed out: {exc}"
     if cluster_info.returncode != 0:
         return False, f"no reachable kubernetes cluster: {cluster_info.stderr.strip()[:200]}"
     lab_root = _autofde_lab_root()
@@ -99,6 +111,37 @@ class SregymSubprocessEnvTests(unittest.TestCase):
         # A real, always-present env var on any POSIX process -- proves
         # os.environ's real content actually made it into the result.
         self.assertIn("PATH", result)
+
+
+class TcpPortReachableTests(unittest.TestCase):
+    """Real regression test for the readiness-race defect found and fixed
+    forward this session: `SregymEnvironment.__init__` previously only
+    waited for the conductor API's /status, never for the separate
+    kubectl-mcp port -- a real client's first actuate() call could race
+    that gap (reproduced live: `RuntimeError: Client failed to connect`).
+    No cluster needed: a real local socket server stands in for the real
+    kubectl-mcp port."""
+
+    def test_true_when_something_is_really_listening(self):
+        import socket as _socket
+
+        server = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
+        server.bind(("127.0.0.1", 0))
+        server.listen(1)
+        try:
+            port = server.getsockname()[1]
+            self.assertTrue(_tcp_port_reachable("127.0.0.1", port, timeout=1.0))
+        finally:
+            server.close()
+
+    def test_false_when_nothing_is_listening(self):
+        import socket as _socket
+
+        probe = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
+        probe.bind(("127.0.0.1", 0))
+        unused_port = probe.getsockname()[1]
+        probe.close()
+        self.assertFalse(_tcp_port_reachable("127.0.0.1", unused_port, timeout=1.0))
 
 
 class SregymEnvironmentStartupErrorMessageTests(unittest.TestCase):

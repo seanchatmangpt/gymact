@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import socket
 import subprocess
 import time
 from pathlib import Path
@@ -158,6 +159,18 @@ def _build_argv(
     ]
 
 
+def _tcp_port_reachable(host: str, port: int, *, timeout: float) -> bool:
+    """Real, lightweight TCP-connect probe -- no HTTP/MCP protocol handshake
+    needed, just proof something is actually listening on `port` before a
+    real `fastmcp.Client` attempts its own full connection later. Real
+    socket, real connect attempt, closed immediately; never a mock."""
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
 def _build_env(
     *, judge_api_base: str | None, judge_api_key_placeholder: str | None
 ) -> dict[str, str]:
@@ -250,7 +263,8 @@ class SregymEnvironment:
 
         deadline = time.monotonic() + startup_timeout_seconds
         last_error: Exception | None = None
-        ready = False
+        api_ready = False
+        mcp_ready = False
         while time.monotonic() < deadline:
             if self._process.poll() is not None:
                 stdout, stderr = self._process.communicate()
@@ -267,20 +281,35 @@ class SregymEnvironment:
                     f"{self._process.returncode}): stdout={stdout[-4000:]!r} "
                     f"stderr={stderr[-4000:]!r}"
                 )
-            try:
-                response = httpx.get(f"{self._api_base}/status", timeout=2.0)
-                if response.status_code < 500:
-                    ready = True
-                    break
-            except httpx.HTTPError as exc:
-                last_error = exc
+            if not api_ready:
+                try:
+                    response = httpx.get(f"{self._api_base}/status", timeout=2.0)
+                    if response.status_code < 500:
+                        api_ready = True
+                except httpx.HTTPError as exc:
+                    last_error = exc
+            # Real defect found and fixed forward this session: this loop
+            # previously only waited for the conductor API's /status to
+            # respond, never for the SEPARATE kubectl-mcp server/port-forward
+            # (confirmed live, in real logs, to become reachable on its own,
+            # LATER timeline than /status: "Port forwarding established at
+            # 9954" is logged after conductor readiness). A caller's first
+            # real actuate() call could race that gap and fail with
+            # `RuntimeError: Client failed to connect: All connection
+            # attempts failed` -- reproduced live. Both signals are now
+            # required before `ready`, not just the API's.
+            if api_ready and not mcp_ready:
+                mcp_ready = _tcp_port_reachable("127.0.0.1", mcp_server_port, timeout=1.0)
+            if api_ready and mcp_ready:
+                break
             time.sleep(_POLL_INTERVAL_SECONDS)
-        if not ready:
+        if not (api_ready and mcp_ready):
             self._process.kill()
             self._process.wait(timeout=10.0)
             raise RuntimeError(
-                f"sregym conductor API at {self._api_base} did not become ready within "
-                f"{startup_timeout_seconds}s: last_error={last_error!r}"
+                f"sregym did not become fully ready within {startup_timeout_seconds}s "
+                f"(conductor API ready={api_ready}, kubectl-mcp port {mcp_server_port} "
+                f"reachable={mcp_ready}): last_error={last_error!r}"
             )
 
     async def _ensure_clients_open(self) -> None:
