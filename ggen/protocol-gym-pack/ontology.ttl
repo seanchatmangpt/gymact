@@ -1,0 +1,29 @@
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix sosa: <http://www.w3.org/ns/sosa/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+<urn:gymact:protocol:mcp> a skos:Concept ; dct:identifier "mcp" ; dct:title "MCP" .
+<urn:gymact:protocol:a2a> a skos:Concept ; dct:identifier "a2a" ; dct:title "A2A" .
+<urn:gymact:protocol:lsp> a skos:Concept ; dct:identifier "lsp" ; dct:title "LSP" .
+
+<urn:gymact:protocol-gym:fixture>
+    a prov:Entity ;
+    dct:identifier "protocol-gym-fixture" ;
+    dct:conformsTo <urn:gymact:protocol:mcp> ;
+    prov:value "fixture-source-digest" .
+
+<urn:gymact:protocol-gym:fixture:read>
+    a sosa:Procedure ;
+    dct:title "Fixture read capability" ;
+    dct:identifier "read" ;
+    dct:type <urn:gymact:consequence:read> ;
+    prov:wasDerivedFrom <urn:gymact:protocol-gym:fixture> .
+
+<urn:gymact:protocol-gym:fixture:do>
+    a sosa:Procedure ;
+    dct:title "Fixture DO capability" ;
+    dct:identifier "do" ;
+    dct:type <urn:gymact:consequence:do> ;
+    prov:wasDerivedFrom <urn:gymact:protocol-gym:fixture> ;
+    skos:note "authority-required" .

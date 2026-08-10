@@ -67,7 +67,6 @@ VENDOR_REVISIONS: dict[str, str] = {
     "scuba": "b988d167004d7ea207332eff8d55b0691d8cadf9",
     "sec-bench": "31eb43485a3de47da260be0f978528b1f2314415",
     "sre-bench": "a85eecdbd09e7ab04ff9bd5b00ecd3e9bc4464c1",
-    "sregym": "ba07faf1a322f9b6d4a279643bb796aa2f36f64b",
     "st-webagentbench": "67f56dd7df9eca1646c9e49407b087e950aa1e77",
     "swe-bench": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9",
     "tau2-bench": "668d3bcd135c02aa3438f987ef45735b7c163ee3",

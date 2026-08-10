@@ -1,0 +1,12 @@
+---
+to: "wit/gymact-protocol-gym.wit"
+force: true
+---
+package gymact:protocol-gym@26.8.8;
+
+interface discovered {
+    enum protocol { mcp, a2a, lsp }
+    enum standing { structural, alive, blocked, refused }
+    capability-count: func() -> u32;
+}
+world protocol-gym { export discovered; }

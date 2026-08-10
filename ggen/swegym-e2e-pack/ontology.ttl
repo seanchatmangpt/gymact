@@ -1,0 +1,98 @@
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix sosa: <http://www.w3.org/ns/sosa/> .
+
+# ABox only: no GymAct-owned classes or properties are declared here.
+# The pack records the exact compatibility subject and the evidence contract
+# that ggen compiles into Rust/WIT. Execution authority remains outside ggen.
+#
+# SWE-Gym has no git checkout revision: it is distributed as a HuggingFace
+# dataset (https://huggingface.co/datasets/SWE-Gym/SWE-Gym), not a git repo,
+# so dct:source below points at the dataset page rather than a fabricated
+# git URL.
+#
+# TODO(swegym-provider-pin): "SWE-Gym/SWE-Gym@main" below is a placeholder
+# pin only. The exact resolved HuggingFace dataset revision hash must be
+# substituted here once the Python provider module determines it live —
+# never fabricate an unverified commit/revision hash in its place.
+<urn:gymact:swegym:e2e:contract>
+    a prov:Entity ;
+    dct:identifier "swegym-e2e" ;
+    dct:title "SWE-Gym GymAct end-to-end evidence contract" ;
+    dct:source <https://huggingface.co/datasets/SWE-Gym/SWE-Gym> ;
+    dct:hasVersion "SWE-Gym/SWE-Gym@main" ;
+    dct:conformsTo <urn:gymact:profile:v26.8.7> ;
+    dct:relation <urn:gymact:swegym:capability:evaluate-patch> ;
+    dct:hasPart <urn:gymact:swegym:e2e:expected-solved>,
+                <urn:gymact:swegym:e2e:receipt-sequence> ;
+    dct:requires <urn:gymact:swegym:e2e:evidence:authority-admitted>,
+                 <urn:gymact:swegym:e2e:evidence:native-result-artifact-read>,
+                 <urn:gymact:swegym:e2e:evidence:ocel-schema-valid>,
+                 <urn:gymact:swegym:e2e:evidence:replay-conformant> .
+
+<urn:gymact:swegym:capability:evaluate-patch>
+    a sosa:Procedure ;
+    dct:title "swegym.evaluate-patch" ;
+    dct:type <urn:gymact:consequence:do> .
+
+<urn:gymact:swegym:e2e:expected-solved>
+    a prov:Entity ;
+    dct:identifier "solved" ;
+    rdf:value true .
+
+<urn:gymact:swegym:e2e:receipt-sequence>
+    a rdf:Seq ;
+    rdf:_1 <urn:gymact:operation:materialize> ;
+    rdf:_2 <urn:gymact:operation:act> ;
+    rdf:_3 <urn:gymact:operation:verify> ;
+    rdf:_4 <urn:gymact:operation:teardown> .
+
+<urn:gymact:operation:materialize>
+    a skos:Concept ;
+    skos:prefLabel "materialize" .
+
+<urn:gymact:operation:act>
+    a skos:Concept ;
+    skos:prefLabel "act" .
+
+<urn:gymact:operation:verify>
+    a skos:Concept ;
+    skos:prefLabel "verify" .
+
+<urn:gymact:operation:teardown>
+    a skos:Concept ;
+    skos:prefLabel "teardown" .
+
+<urn:gymact:swegym:e2e:evidence:authority-admitted>
+    a prov:Entity ;
+    dct:identifier "authority-admitted" ;
+    dct:title "An explicit BRCE execution grant was admitted for the exact SWE-Gym subject" .
+
+<urn:gymact:swegym:e2e:evidence:native-result-artifact-read>
+    a prov:Entity ;
+    dct:identifier "native-result-artifact-read" ;
+    dct:title "SWE-Gym native result artifact was read rather than replaced by a GymAct score" .
+
+<urn:gymact:swegym:e2e:evidence:ocel-schema-valid>
+    a prov:Entity ;
+    dct:identifier "ocel-schema-valid" ;
+    dct:title "Episode OCEL 2.0 log passed schema validation" .
+
+<urn:gymact:swegym:e2e:evidence:replay-conformant>
+    a prov:Entity ;
+    dct:identifier "replay-conformant" ;
+    dct:title "Episode receipt sequence passed conformant replay" .
+
+<urn:gymact:swegym:e2e:wit-package>
+    a prov:Entity ;
+    dct:identifier "gymact:swegym-e2e@0.1.0" .
+
+<urn:gymact:swegym:e2e:wit-interface>
+    a prov:Entity ;
+    dct:identifier "swegym-e2e-verifier" .
+
+<urn:gymact:swegym:e2e:wit-world>
+    a prov:Entity ;
+    dct:identifier "swegym-e2e-world" .

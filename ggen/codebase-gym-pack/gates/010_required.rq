@@ -1,0 +1,14 @@
+# MESSAGE: every sosa:Procedure capability must have dct:title and dct:type
+# (the real GymAct urn:gymact:shape:capability requirements). Any row = a
+# subject missing its required property.
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+PREFIX dct: <http://purl.org/dc/terms/>
+SELECT ?s ?missing WHERE {
+  {
+    ?s a sosa:Procedure . BIND(dct:title AS ?missing)
+  } UNION {
+    ?s a sosa:Procedure . BIND(dct:type AS ?missing)
+  }
+  FILTER NOT EXISTS { ?s ?missing ?any }
+}
+ORDER BY ?s ?missing

@@ -1,0 +1,10 @@
+---
+to: "src/authority.rs"
+force: true
+---
+pub const ADVERTISED_CAPABILITY_GRANTS_AUTHORITY: bool = false;
+pub const BRCE_REQUIRED_FOR_DO: bool = true;
+
+pub fn admit_do(authority: bool) -> Result<(), &'static str> {
+    if authority { Ok(()) } else { Err("REFUSED:PROTOCOL_GYM_AUTHORITY_REQUIRED") }
+}

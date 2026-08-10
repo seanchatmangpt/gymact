@@ -1,0 +1,15 @@
+---
+to: "src/standing.rs"
+force: true
+---
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Standing { Structural, Alive, Blocked, Refused }
+
+pub fn discovered() -> Standing { Standing::Structural }
+
+pub fn crown(executed: bool, verified: bool, receipted: bool) -> Result<Standing, &'static str> {
+    if !executed { return Err("REFUSED:SUBJECT_NOT_EXECUTED"); }
+    if !verified { return Err("REFUSED:CONSEQUENCE_NOT_VERIFIED"); }
+    if !receipted { return Err("REFUSED:RECEIPT_MISSING"); }
+    Ok(Standing::Alive)
+}

@@ -1,0 +1,14 @@
+---
+to: "src/manifest.rs"
+force: true
+sparql:
+  subjects: |
+    PREFIX prov: <http://www.w3.org/ns/prov#>
+    PREFIX dct: <http://purl.org/dc/terms/>
+    SELECT ?id WHERE { ?subject a prov:Entity ; dct:identifier ?id . } ORDER BY ?id
+---
+pub const SUBJECTS: &[&str] = &[
+{% for row in subjects -%}
+    "{{ row.id }}",
+{% endfor -%}
+];

@@ -22,6 +22,7 @@ from gymact.action_contract import (
     admit_retry,
     construct_prepared_action,
 )
+from gymact.agent import AllowAllCapabilityScope, AllowListCapabilityScope, CapabilityScope
 from gymact.authority import AllowListAuthorityResolver, AuthorityResolver, DenyAuthorityResolver
 from gymact.brce import BRCEBroker, BrokerRequest
 from gymact.capsule import (
@@ -220,6 +221,7 @@ from gymact.transport import (
     normalize_candidate,
     protocol_equivalent,
 )
+from gymact.verification import DictSubsetVerifier, PostconditionVerifier
 
 __all__ = [
     "ActionDefinition",
@@ -228,7 +230,9 @@ __all__ = [
     "ActuationResult",
     "AdmissionContext",
     "AdmissionResult",
+    "AllowAllCapabilityScope",
     "AllowListAuthorityResolver",
+    "AllowListCapabilityScope",
     "AntiAgentPoint",
     "AntiAgentReport",
     "AuthorityDecision",
@@ -244,6 +248,7 @@ __all__ = [
     "Capability",
     "CapabilityCache",
     "CapabilityCacheEntry",
+    "CapabilityScope",
     "CapsuleIdentity",
     "CapsuleReuseDecision",
     "CognitionEpisode",
@@ -266,6 +271,7 @@ __all__ = [
     "DecisionPhase",
     "DecisionResolution",
     "DenyAuthorityResolver",
+    "DictSubsetVerifier",
     "DifferentialVerdict",
     "DifferentialVerification",
     "ERRCItem",
@@ -324,6 +330,7 @@ __all__ = [
     "PossibilityObjectKind",
     "PossibilityPath",
     "PossibilityRDFValidation",
+    "PostconditionVerifier",
     "PreparedAction",
     "ProblemSignature",
     "ProductionGymAct",

@@ -1,0 +1,24 @@
+---
+to: "rust/crown/src/receipt.rs"
+force: true
+sparql:
+  evidence: |
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    PREFIX dct: <http://purl.org/dc/terms/>
+    SELECT ?id WHERE { ?evidence a skos:Concept ; skos:broader <urn:gymact:crown:concept:evidence-dimension> ; dct:identifier ?id . }
+    ORDER BY ?id
+---
+use crate::admission::REQUIRED_EVIDENCE;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CrownReceipt<'a> {
+    pub bindings: &'a [(&'a str, &'a str)],
+    pub transition_receipt_id: &'a str,
+    pub replay_receipt_digest: &'a str,
+}
+
+pub fn complete(receipt: &CrownReceipt<'_>) -> bool {
+    !receipt.transition_receipt_id.is_empty()
+        && !receipt.replay_receipt_digest.is_empty()
+        && REQUIRED_EVIDENCE.iter().all(|required| receipt.bindings.iter().any(|(name, value)| name == required && !value.is_empty()))
+}

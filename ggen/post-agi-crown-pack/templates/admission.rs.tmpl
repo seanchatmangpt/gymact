@@ -1,0 +1,26 @@
+---
+to: "rust/crown/src/admission.rs"
+force: true
+sparql:
+  evidence: |
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    PREFIX dct: <http://purl.org/dc/terms/>
+    SELECT ?id ?title WHERE {
+      ?evidence a skos:Concept ; skos:broader <urn:gymact:crown:concept:evidence-dimension> ; dct:identifier ?id ; dct:title ?title .
+    }
+    ORDER BY ?id
+---
+pub const REQUIRED_EVIDENCE: &[&str] = &[
+{% for row in evidence -%}
+    "{{ row.id }}",
+{% endfor -%}
+];
+
+pub fn admit(flags: &[(&str, bool)]) -> Result<(), &'static str> {
+    for required in REQUIRED_EVIDENCE {
+        if !flags.iter().any(|(name, admitted)| name == required && *admitted) {
+            return Err("REFUSED:CROWN:EVIDENCE_INCOMPLETE");
+        }
+    }
+    Ok(())
+}

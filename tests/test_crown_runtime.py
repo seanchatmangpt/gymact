@@ -218,13 +218,32 @@ async def test_real_filesystem_provider(tmp_path: Path) -> None:
         write,
         {"path": "nested/proof.txt", "text": "verified consequence"},
     )
-    passed, observed = await environment.verify(
-        {"files": {"nested/proof.txt": {"size": 20}}}
-    )
+    passed, observed = await environment.verify({"files": {"nested/proof.txt": {"size": 20}}})
     assert passed
     assert observed["files"]["nested/proof.txt"]["sha256"]
     with pytest.raises(ValueError, match="AMBIGUOUS_SUBJECT_REFUSED"):
         await environment.actuate(write, {"path": "../escape.txt", "text": "no"})
+
+
+@pytest.mark.asyncio
+async def test_real_filesystem_provider_delete(tmp_path: Path) -> None:
+    environment = await FilesystemProvider().materialize(
+        scenario=None,
+        config={"root": str(tmp_path)},
+    )
+    write = next(item for item in environment.capabilities() if item.binding == "write_text")
+    delete = next(item for item in environment.capabilities() if item.binding == "delete")
+    await environment.actuate(
+        write,
+        {"path": "nested/proof.txt", "text": "verified consequence"},
+    )
+    assert (tmp_path / "nested" / "proof.txt").is_file()
+    result = await environment.actuate(delete, {"path": "nested/proof.txt"})
+    assert result == {"path": "nested/proof.txt", "deleted": True}
+    assert not (tmp_path / "nested" / "proof.txt").exists()
+    passed, observed = await environment.verify({"files": {}})
+    assert passed
+    assert observed["files"] == {}
 
 
 @pytest.mark.asyncio
@@ -258,9 +277,7 @@ async def test_real_git_provider_revision_bound_branch(tmp_path: Path) -> None:
         config={"root": str(tmp_path)},
     )
     before = await environment.observe()
-    branch = next(
-        item for item in environment.capabilities() if item.binding == "create_branch"
-    )
+    branch = next(item for item in environment.capabilities() if item.binding == "create_branch")
     await environment.actuate(
         branch,
         {"name": "agent/proof", "expected_revision": before["head"]},
@@ -274,15 +291,55 @@ async def test_real_git_provider_revision_bound_branch(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_real_git_provider_write_text_and_commit(tmp_path: Path) -> None:
+    subprocess.run(
+        ["git", "init", "-b", "main"],
+        cwd=tmp_path,
+        check=True,
+        stdout=subprocess.PIPE,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "gymact@example.invalid"],
+        cwd=tmp_path,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "GymAct Test"],
+        cwd=tmp_path,
+        check=True,
+    )
+    (tmp_path / "README.md").write_text("base\n", encoding="utf-8")
+    subprocess.run(["git", "add", "README.md"], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "base"],
+        cwd=tmp_path,
+        check=True,
+        stdout=subprocess.PIPE,
+    )
+    environment = await GitProvider().materialize(
+        scenario=None,
+        config={"root": str(tmp_path)},
+    )
+    before = await environment.observe()
+    write = next(item for item in environment.capabilities() if item.binding == "write_text")
+    commit = next(item for item in environment.capabilities() if item.binding == "commit")
+    await environment.actuate(write, {"path": "proof.txt", "text": "committed proof"})
+    assert (tmp_path / "proof.txt").read_text(encoding="utf-8") == "committed proof"
+    result = await environment.actuate(commit, {"message": "add proof.txt"})
+    after = await environment.observe()
+    assert result["head"] == after["head"]
+    assert after["head"] != before["head"]
+    assert after["status"] == ""
+
+
+@pytest.mark.asyncio
 async def test_real_sqlite_provider_checkpoint_restore(tmp_path: Path) -> None:
     database = tmp_path / "state.db"
     environment = await SQLiteProvider().materialize(
         scenario=None,
         config={"database": str(database)},
     )
-    set_capability = next(
-        item for item in environment.capabilities() if item.binding == "set"
-    )
+    set_capability = next(item for item in environment.capabilities() if item.binding == "set")
     await environment.actuate(set_capability, {"key": "count", "value": 3})
     passed, observed = await environment.verify({"values": {"count": 3}})
     assert passed and observed["values"] == {"count": 3}
@@ -290,6 +347,27 @@ async def test_real_sqlite_provider_checkpoint_restore(tmp_path: Path) -> None:
     await environment.actuate(set_capability, {"key": "count", "value": 4})
     await environment.restore(checkpoint)
     assert (await environment.observe())["values"] == {"count": 3}
+
+
+@pytest.mark.asyncio
+async def test_real_sqlite_provider_delete(tmp_path: Path) -> None:
+    database = tmp_path / "state.db"
+    environment = await SQLiteProvider().materialize(
+        scenario=None,
+        config={"database": str(database)},
+    )
+    set_capability = next(item for item in environment.capabilities() if item.binding == "set")
+    delete_capability = next(
+        item for item in environment.capabilities() if item.binding == "delete"
+    )
+    await environment.actuate(set_capability, {"key": "count", "value": 3})
+    passed, observed = await environment.verify({"values": {"count": 3}})
+    assert passed and observed["values"] == {"count": 3}
+    result = await environment.actuate(delete_capability, {"key": "count"})
+    assert result == {"key": "count", "deleted": True}
+    observed_after = await environment.observe()
+    assert observed_after["values"] == {}
+    assert "count" not in observed_after["values"]
 
 
 @pytest.mark.asyncio
@@ -328,7 +406,12 @@ async def test_real_kernel_filesystem_crown_path(tmp_path: Path) -> None:
     assert result.verification is not None and result.verification.passed
     assert runtime.verify_evidence_chain()
     operations = [
-        receipt.operation
-        for receipt in runtime.episode_receipts(materialized.episode.episode_id)
+        receipt.operation for receipt in runtime.episode_receipts(materialized.episode.episode_id)
     ]
-    assert operations[-2:] == [Operation.ACT, Operation.VERIFY]
+    # Two real, distinct VERIFY receipts now trail the ACT: GymAct.verify()
+    # itself independently records one (gymact.verification.PostconditionVerifier
+    # closing the "verify never produced a Receipt" gap), and execute_verified's
+    # own richer crown-level verified-transition receipt (_verification_receipt,
+    # linking acknowledgement_status/world_changed off the actuation) follows it
+    # -- a genuine evidence-trail improvement, not a duplicate.
+    assert operations[-3:] == [Operation.ACT, Operation.VERIFY, Operation.VERIFY]

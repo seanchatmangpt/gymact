@@ -1,0 +1,18 @@
+---
+to: "rust/crown/src/metrics.rs"
+force: true
+sparql:
+  metrics: |
+    PREFIX dqv: <http://www.w3.org/ns/dqv#>
+    PREFIX dct: <http://purl.org/dc/terms/>
+    SELECT ?id ?title WHERE { ?metric a dqv:Metric ; dqv:inDimension <urn:gymact:crown:dimension:sota> ; dct:identifier ?id ; dct:title ?title . }
+    ORDER BY ?id
+---
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Metric { pub id: &'static str, pub title: &'static str }
+
+pub const METRICS: &[Metric] = &[
+{% for row in metrics -%}
+    Metric { id: "{{ row.id }}", title: "{{ row.title }}" },
+{% endfor -%}
+];

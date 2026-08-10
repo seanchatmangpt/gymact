@@ -1,0 +1,14 @@
+---
+to: "src/schemas.rs"
+force: true
+sparql:
+  caps: |
+    PREFIX sosa: <http://www.w3.org/ns/sosa/>
+    PREFIX dct: <http://purl.org/dc/terms/>
+    SELECT ?id WHERE { ?cap a sosa:Procedure ; dct:identifier ?id . } ORDER BY ?id
+---
+pub const CAPABILITY_BINDINGS: &[&str] = &[
+{% for row in caps -%}
+    "{{ row.id }}",
+{% endfor -%}
+];

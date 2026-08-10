@@ -71,14 +71,32 @@ def _same_metric_space(left: FrontierResult, right: FrontierResult) -> tuple[str
     return left_keys
 
 
+def metrics_dominate(left: Mapping[str, float], right: Mapping[str, float]) -> bool:
+    """Pure weakly-better-in-all/strictly-better-in-one comparison over an already
+    normalized (larger-is-better) metric space.
+
+    This is the comparison algebra alone, with no standing/evidence gate attached.
+    Callers that hold real `StandingEvidence` should prefer `dominates()`, which
+    wraps this after `FrontierResult.admit()`. This function exists so callers that
+    cannot construct genuine `StandingEvidence` (no real receipt/replay binding
+    available on their record type) can still reuse the one real comparison
+    implementation instead of reimplementing it.
+    """
+    left_keys = tuple(sorted(left))
+    right_keys = tuple(sorted(right))
+    if left_keys != right_keys:
+        raise SotaAdmissionError("REFUSED:SOTA_METRIC_SPACE_MISMATCH")
+    weakly_better = all(left[key] >= right[key] for key in left_keys)
+    strictly_better = any(left[key] > right[key] for key in left_keys)
+    return weakly_better and strictly_better
+
+
 def dominates(left: FrontierResult, right: FrontierResult) -> bool:
     """Return whether left Pareto-dominates right after both are admitted."""
     left.admit()
     right.admit()
-    keys = _same_metric_space(left, right)
-    weakly_better = all(left.metrics[key] >= right.metrics[key] for key in keys)
-    strictly_better = any(left.metrics[key] > right.metrics[key] for key in keys)
-    return weakly_better and strictly_better
+    _same_metric_space(left, right)
+    return metrics_dominate(left.metrics, right.metrics)
 
 
 def pareto_frontier(results: Iterable[FrontierResult]) -> tuple[FrontierResult, ...]:

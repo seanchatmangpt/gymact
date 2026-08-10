@@ -1,0 +1,16 @@
+pub const REPLAY_REQUIRES_RECEIPT: bool = true;
+pub const REPLAY_REQUIRES_EXACT_SUBJECT: bool = true;
+pub const REPLAY_REQUIRES_EXACT_EXPERIMENT: bool = true;
+
+pub fn admit_replay(receipt_bound: bool, exact_identity: bool, consequence_verified: bool) -> Result<(), &'static str> {
+    if !receipt_bound {
+        return Err("REFUSED:CROWN:REPLAY_RECEIPT_MISSING");
+    }
+    if !exact_identity {
+        return Err("REFUSED:CROWN:REPLAY_IDENTITY_DRIFT");
+    }
+    if !consequence_verified {
+        return Err("REFUSED:CROWN:REPLAY_CONSEQUENCE_UNVERIFIED");
+    }
+    Ok(())
+}
