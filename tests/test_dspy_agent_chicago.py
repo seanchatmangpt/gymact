@@ -37,8 +37,13 @@ from gymact.dspy_agent import (  # noqa: E402
     _assert_payload_is_grounded,
     _collect_string_leaves,
 )
+from gymact.gyms.sregym import SregymVendorProvider  # noqa: E402
+from tests.test_sregym_provider import (  # noqa: E402
+    _real_sregym_checkout_ready as _real_sregym_ready,
+)
 
 AUTHORITY = "urn:test:dspy-agent-authority"
+_SREGYM_LIVE_READY, _SREGYM_LIVE_REASON = _real_sregym_ready()
 
 
 def _groq_key_available() -> bool:
@@ -184,3 +189,54 @@ class TestGymActReActAgentRealLiveGoal:
             assert real_state.state["counter"] == 11
         finally:
             await gym.teardown(episode_id, authority_ref=AUTHORITY)
+
+
+@pytest.mark.skipif(not _groq_key_available(), reason="no GROQ_API_KEY in this environment")
+@pytest.mark.skipif(
+    not _SREGYM_LIVE_READY, reason=f"live sregym prerequisites not met: {_SREGYM_LIVE_REASON}"
+)
+class TestGymActReActAgentOverRealSregym:
+    """Real end-to-end: `GymActReActAgent` driving sregym's real
+    `run_kubectl` capability through the real kernel. `run_kubectl`'s
+    payload is a composed command string ("kubectl get pods -n ...") that
+    never appears verbatim as a single grounded leaf even when every fact
+    inside it is genuinely observed -- the exact-match grounding guard
+    (`_assert_payload_is_grounded`) has no per-field composed-payload
+    policy yet (tracked separately; needs the payload-schema pack). Until
+    that lands, `create_capable_bindings={"run_kubectl"}` is the real,
+    explicit, named escape hatch this session settled on: it disables
+    grounding for exactly this one binding rather than silently working
+    around the guard, matching this module's own documented default
+    (fail-closed unless a caller explicitly names an exemption)."""
+
+    @pytest.mark.filterwarnings("ignore::pytest.PytestUnraisableExceptionWarning")
+    async def test_agent_runs_a_real_kubectl_command_through_sregym(self):
+        gym = GymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
+        gym.register_provider(SregymVendorProvider())
+        materialization = await gym.materialize(
+            MaterializationIntent(
+                provider="sregym",
+                config={"scenario": "misconfig_app_hotel_res", "wall_clock_timeout_s": 600},
+                authority_ref=AUTHORITY,
+            )
+        )
+        assert materialization.accepted, materialization.receipt.reason
+        episode_id = materialization.episode.episode_id
+        agent = GymActReActAgent(
+            gym,
+            episode_id,
+            authority_ref=AUTHORITY,
+            max_iters=4,
+            create_capable_bindings=frozenset({"run_kubectl"}),
+        )
+
+        try:
+            result = await agent.run_goal(
+                "List the real Kubernetes namespaces using kubectl, then report what you found."
+            )
+            assert result.outcome
+        finally:
+            await gym.teardown(episode_id, authority_ref=AUTHORITY)
+            import gc
+
+            gc.collect()
