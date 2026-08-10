@@ -268,6 +268,48 @@ class TcpPortReachableTests(unittest.TestCase):
         self.assertFalse(_tcp_port_reachable("127.0.0.1", unused_port, timeout=1.0))
 
 
+class VerifyResilienceTests(unittest.TestCase):
+    """Real regression test for the defect found and fixed forward this
+    session: a single transient `/status` read failure inside `verify()`'s
+    polling loop previously crashed the whole call instead of being
+    treated as a non-matching observation -- confirmed live:
+    `httpx.ReadTimeout: timed out` on a real run that had already made
+    real progress through every prior real pipeline step. Constructs a
+    real `SregymEnvironment` instance (via `object.__new__`, bypassing the
+    heavy real-subprocess `__init__` -- this is real state on the real
+    class, not a mock of the method under test) pointed at a real,
+    genuinely unreachable port, so every real `_status()` call inside
+    `verify()` really does raise a real connection error."""
+
+    def _real_closed_port(self) -> int:
+        import socket as _socket
+
+        probe = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+        probe.close()
+        return port
+
+    def _real_env_pointed_at_dead_port(self):
+        from gymact.gyms.sregym import SregymEnvironment
+
+        env = object.__new__(SregymEnvironment)
+        env._closed = False
+        env._api_base = f"http://127.0.0.1:{self._real_closed_port()}"
+        env._verify_timeout = 1.0
+        return env
+
+    def test_verify_never_raises_on_a_real_unreachable_status_endpoint(self):
+        env = self._real_env_pointed_at_dead_port()
+        # The real point of this test: this call must complete and return,
+        # never raise -- before the fix, every real /status attempt inside
+        # the loop raised a real httpx.ConnectError that propagated
+        # straight out of verify().
+        passed, observed = asyncio.run(env.verify({"stage": "done"}))
+        self.assertFalse(passed)
+        self.assertEqual(observed, {})
+
+
 class SregymEnvironmentStartupErrorMessageTests(unittest.TestCase):
     """Real regression test for the diagnostic-loss defect found and fixed
     forward this session: the RuntimeError raised when the real subprocess

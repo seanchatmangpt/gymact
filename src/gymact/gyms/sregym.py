@@ -512,15 +512,36 @@ class SregymEnvironment:
     async def verify(self, expected: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
         """Poll the real conductor `/status` endpoint until it matches
         `expected` (e.g. a real stage transition) or a bounded timeout
-        elapses -- never trusts a single `/status` read as convergence."""
+        elapses -- never trusts a single `/status` read as convergence.
+
+        Real defect found and fixed forward this session: a single
+        transient `/status` read failure (real, live:
+        `httpx.ReadTimeout: timed out` on one 10s-bounded poll, deep into
+        this loop, well within the overall verify budget) previously
+        crashed the whole `verify()` call instead of being treated as
+        "not yet observed, keep polling" -- confirmed live, on a run that
+        had already made real progress through every prior real pipeline
+        step (observe, both real submissions, real remediation) and was
+        only lost on this very last, transient hiccup. `_status()`
+        failures inside this loop are now caught and treated as a
+        non-matching observation, same as a real stage that simply hasn't
+        transitioned yet -- the bounded deadline (not a swallowed
+        exception) is still what ends the loop."""
         self._ensure_open()
         deadline = time.monotonic() + self._verify_timeout
-        observed = self._status()
+
+        def _poll() -> dict[str, Any]:
+            try:
+                return self._status()
+            except Exception:  # noqa: BLE001 -- a transient real network hiccup during polling is not a fatal verify() failure; the bounded deadline below still ends the loop
+                return {}
+
+        observed = _poll()
         while not all(observed.get(key) == value for key, value in expected.items()):
             if time.monotonic() >= deadline:
                 break
             time.sleep(_POLL_INTERVAL_SECONDS)
-            observed = self._status()
+            observed = _poll()
         passed = all(observed.get(key) == value for key, value in expected.items())
         return passed, observed
 
