@@ -1,0 +1,8 @@
+# MESSAGE: every protocol gym capability requires identifier, title, and consequence type.
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+PREFIX dct: <http://purl.org/dc/terms/>
+SELECT ?cap ?missing WHERE {
+  ?cap a sosa:Procedure .
+  VALUES ?missing { dct:identifier dct:title dct:type }
+  FILTER NOT EXISTS { ?cap ?missing ?value }
+}
