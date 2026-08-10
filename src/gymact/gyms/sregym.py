@@ -347,8 +347,19 @@ class SregymEnvironment:
             if not isinstance(command, str) or not command:
                 raise TypeError("payload.command must be a non-empty string")
             assert self._kubectl_client is not None
+            # Real defect found and fixed forward this session: the real
+            # exec_kubectl_cmd_safely MCP tool's schema requires the
+            # argument named `cmd`, not `command` -- confirmed live
+            # (`fastmcp.exceptions.ToolError`: "cmd Missing required
+            # argument" / "command Unexpected keyword argument") and
+            # cross-checked against every other real client in the
+            # vendored sregym checkout (clients/demo, clients/stratus),
+            # all of which already call it with `{"cmd": ...}`. This
+            # module's own `payload["command"]` key name (this class's own
+            # external API) is unaffected -- only the real MCP call's own
+            # argument name changes to match the real tool.
             result = await self._kubectl_client.call_tool(
-                _KUBECTL_TOOL_NAME, {"command": command}
+                _KUBECTL_TOOL_NAME, {"cmd": command}
             )
             after = self._status()
             return {
