@@ -13,6 +13,8 @@ import csv
 from pathlib import Path
 
 import pytest
+from rdflib import Graph, URIRef
+from rdflib.namespace import DCTERMS, RDF
 
 from gymact.gyms.sregym import (
     SREGYM_COMPAT_REVISION,
@@ -63,6 +65,20 @@ def test_sregym_is_a_first_class_builtin_provider() -> None:
 def test_sregym_capability_is_admitted_by_public_semantic_profile() -> None:
     result = ProfileAuthority().validate_capabilities((SREGYM_RUN_CAPABILITY,))
     assert result.conforms is True, result.report_text
+
+
+def test_sregym_runtime_identity_matches_ggen_e2e_graph() -> None:
+    graph = Graph().parse(
+        Path(__file__).parents[1] / "ggen/sregym-e2e-pack/ontology.ttl",
+        format="turtle",
+    )
+    contract = URIRef("urn:gymact:sregym:e2e:contract")
+    capability = URIRef(SREGYM_RUN_CAPABILITY.iri)
+
+    assert str(graph.value(contract, DCTERMS.hasVersion)) == SREGYM_COMPAT_REVISION
+    assert graph.value(contract, DCTERMS.relation) == capability
+    assert (capability, RDF.type, URIRef("http://www.w3.org/ns/sosa/Procedure")) in graph
+    assert graph.value(capability, DCTERMS.type) == URIRef("urn:gymact:consequence:do")
 
 
 def test_sregym_run_is_a_do_capability_and_environment_requires_authority(tmp_path: Path) -> None:
