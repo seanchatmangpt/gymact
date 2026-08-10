@@ -1,0 +1,14 @@
+pub const SELECT_HAS_AMBIENT_DO_AUTHORITY: bool = false;
+pub const CONSTRUCT_HAS_AMBIENT_DO_AUTHORITY: bool = false;
+pub const MODEL_OUTPUT_HAS_AMBIENT_DO_AUTHORITY: bool = false;
+pub const BRCE_IS_EXCLUSIVE_DO_PATH: bool = true;
+
+pub fn admit_do(authority_evidence_present: bool, receipt_path_present: bool) -> Result<(), &'static str> {
+    if !authority_evidence_present {
+        return Err("REFUSED:AUTHORITY_EVIDENCE_MISSING");
+    }
+    if !receipt_path_present {
+        return Err("REFUSED:UNRECEIPTED_ACTUATION");
+    }
+    Ok(())
+}
