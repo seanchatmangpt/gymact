@@ -64,6 +64,16 @@ grep -Fq '"teardown"' "$PROJECT/src/sregym_e2e_contract.rs"
 grep -Fq "package gymact:sregym-e2e@0.1.0;" "$PROJECT/wit/sregym-e2e.wit"
 grep -Fq "interface sregym-e2e-verifier" "$PROJECT/wit/sregym-e2e.wit"
 
+RECEIPT_VERIFY="$SCRATCH/receipt-verify.json"
+(
+    cd "$PROJECT"
+    "$GGEN_BIN" receipt verify > "$RECEIPT_VERIFY"
+)
+grep -Fq '"valid": true' "$RECEIPT_VERIFY"
+grep -Fq '"outputs": 3' "$RECEIPT_VERIFY"
+grep -Fq '"signed": true' "$RECEIPT_VERIFY"
+grep -Fq '"signature_valid": true' "$RECEIPT_VERIFY"
+
 (
     cd "$PROJECT"
     "$RUSTC_BIN" --edition 2021 --test tests/sregym_e2e_contract_proof.rs \
@@ -80,6 +90,14 @@ AFTER="$SCRATCH/after.sha256"
     sha256sum "${GENERATED[@]}" > "$AFTER"
 )
 cmp "$BEFORE" "$AFTER"
+
+RECEIPT_HISTORY="$SCRATCH/receipt-history.json"
+(
+    cd "$PROJECT"
+    "$GGEN_BIN" receipt history > "$RECEIPT_HISTORY"
+)
+grep -Fq '"valid": true' "$RECEIPT_HISTORY"
+grep -Fq '"records": 2' "$RECEIPT_HISTORY"
 
 cat > "$PROJECT/ontology.ttl" <<'EOF'
 @prefix dct: <http://purl.org/dc/terms/> .
@@ -107,4 +125,4 @@ grep -Fq "010_contract" "$SABOTAGE_LOG" || {
 )
 cmp "$BEFORE" "$AFTER"
 
-echo "sregym-e2e-pack: ALIVE — real ggen sync, generated Rust/WIT, rustc proof, idempotency, and gate refusal all passed"
+echo "sregym-e2e-pack: ALIVE — real ggen sync, signed receipt chain, generated Rust/WIT, rustc proof, idempotency, and gate refusal all passed"
