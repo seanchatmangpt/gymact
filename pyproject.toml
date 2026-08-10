@@ -55,6 +55,13 @@ cube = [
   "cube-standard[docker]; python_version >= '3.12'",
   "counter-cube; python_version >= '3.12'",
 ]
+# A generic, gym-agnostic DSPy ReAct agent (src/gymact/dspy_agent.py) usable
+# to Chicago-style exercise any real GymAct provider's capability surface --
+# not benchmark-specific, no downstream (autofde-lab or otherwise) knowledge.
+# Optional because dspy pulls a real LLM-client dependency graph unrelated to
+# the kernel; gated at import time via `pytest.importorskip("dspy")`, never
+# mocked when genuinely absent.
+dspy = ["dspy>=3.3,<4"]
 
 [tool.uv]
 # browsergym-core==0.14.3 hard-pins playwright==1.44, which pins

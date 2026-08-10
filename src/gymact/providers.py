@@ -44,19 +44,32 @@ class EnvironmentProvider(Protocol):
 MEMORY_CAPABILITIES = (
     Capability(
         iri="urn:gymact:memory:capability:set",
-        title="Set a value in the bounded memory world",
+        # `Capability` has no payload-schema field; naming the real required
+        # payload keys directly in the title is the only generic way a
+        # caller with no MemoryProvider-specific knowledge (e.g. a generic
+        # tool-calling agent) can discover them. Found real and necessary
+        # via `gymact.dspy_agent`'s live-LM test: an untitled-schema tool
+        # call guessed `{"counter": 1}` instead of the real
+        # `{"key": "counter", "value": 1}` shape.
+        title=(
+            "Set a value in the bounded memory world. "
+            'Payload: {"key": <str>, "value": <any>}.'
+        ),
         consequence=Consequence.DO,
         binding="set",
     ),
     Capability(
         iri="urn:gymact:memory:capability:delete",
-        title="Delete a value from the bounded memory world",
+        title="Delete a value from the bounded memory world. Payload: {\"key\": <str>}.",
         consequence=Consequence.DO,
         binding="delete",
     ),
     Capability(
         iri="urn:gymact:memory:capability:increment",
-        title="Increment a numeric value in the bounded memory world",
+        title=(
+            "Increment a numeric value in the bounded memory world. "
+            "Payload: {\"key\": <str>, \"amount\": <number, default 1>}."
+        ),
         consequence=Consequence.DO,
         binding="increment",
     ),
