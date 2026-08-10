@@ -1,0 +1,4 @@
+[pack]
+name = "togaf-gym-pack"
+version = "0.1.0"
+description = "Manufacture a TOGAF-aligned enterprise-architecture gym from a public-ontology ABox; TOGAF terms remain SKOS classifications, not a local TBox."
