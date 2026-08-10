@@ -1,0 +1,23 @@
+# MESSAGE: exactly the ten admitted public ADM phase labels must be present.
+# Any row is a missing or unexpected SKOS notation.
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT ?notation ?problem WHERE {
+  {
+    VALUES ?notation { "Preliminary" "Requirements" "A" "B" "C" "D" "E" "F" "G" "H" }
+    FILTER NOT EXISTS {
+      ?phase a skos:Concept ;
+        skos:inScheme <urn:gymact:togaf:scheme:adm-phase> ;
+        skos:notation ?notation .
+    }
+    BIND("missing" AS ?problem)
+  }
+  UNION
+  {
+    ?phase a skos:Concept ;
+      skos:inScheme <urn:gymact:togaf:scheme:adm-phase> ;
+      skos:notation ?notation .
+    FILTER(?notation NOT IN ("Preliminary", "Requirements", "A", "B", "C", "D", "E", "F", "G", "H"))
+    BIND("unexpected" AS ?problem)
+  }
+}
+ORDER BY ?problem ?notation

@@ -1,0 +1,11 @@
+[project]
+name = "gymact-togaf-gym"
+
+[ontology]
+source = "../../ggen/togaf-gym-pack/ontology.ttl"
+
+[packs]
+togaf-gym-pack = { path = "../../ggen/togaf-gym-pack" }
+
+[templates]
+dir = "templates"
