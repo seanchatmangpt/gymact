@@ -408,4 +408,10 @@ async def test_real_kernel_filesystem_crown_path(tmp_path: Path) -> None:
     operations = [
         receipt.operation for receipt in runtime.episode_receipts(materialized.episode.episode_id)
     ]
-    assert operations[-2:] == [Operation.ACT, Operation.VERIFY]
+    # Two real, distinct VERIFY receipts now trail the ACT: GymAct.verify()
+    # itself independently records one (gymact.verification.PostconditionVerifier
+    # closing the "verify never produced a Receipt" gap), and execute_verified's
+    # own richer crown-level verified-transition receipt (_verification_receipt,
+    # linking acknowledgement_status/world_changed off the actuation) follows it
+    # -- a genuine evidence-trail improvement, not a duplicate.
+    assert operations[-3:] == [Operation.ACT, Operation.VERIFY, Operation.VERIFY]

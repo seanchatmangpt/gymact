@@ -44,6 +44,7 @@ from gymact.models import (
 from gymact.ocel import receipts_to_ocel
 from gymact.providers import Environment, EnvironmentProvider
 from gymact.semantic import ProfileAuthority
+from gymact.verification import DictSubsetVerifier, PostconditionVerifier
 
 T = TypeVar("T")
 
@@ -85,6 +86,7 @@ class GymAct:
         authority_resolver: AuthorityResolver | None = None,
         limits: RuntimeLimits | None = None,
         receipt_ledger: ReceiptLedger | None = None,
+        verifier: PostconditionVerifier | None = None,
     ) -> None:
         self._providers: dict[str, EnvironmentProvider] = {}
         self._episodes: dict[str, _EpisodeState] = {}
@@ -94,6 +96,7 @@ class GymAct:
         self._teardown_receipts: dict[str, Receipt] = {}
         self._receipts: dict[str, list[Receipt]] = {}
         self._authority = authority_resolver or DenyAuthorityResolver()
+        self._verifier: PostconditionVerifier = verifier or DictSubsetVerifier()
         self.limits = limits or RuntimeLimits()
         self.ledger = receipt_ledger or MemoryReceiptLedger()
         self._verifications: list[VerificationResult] = []
@@ -749,16 +752,38 @@ class GymAct:
             )
 
     async def verify(self, episode_id: str, expected: dict[str, Any]) -> VerificationResult:
-        """Independently evaluate expected partial state against the environment."""
+        """Independently evaluate expected partial state against the environment.
+
+        The provider's own `Environment.verify(expected)` is still called and its
+        report is still returned as `observed`/for divergence detection, but its
+        `passed` boolean is never trusted as the result: `self._verifier` (an
+        injected `PostconditionVerifier`, defaulting to `DictSubsetVerifier`,
+        never the provider itself) independently judges `expected` against a
+        fresh, kernel-triggered `observe()` read. This is what makes
+        `VerificationResult`'s own "independent predicate result" claim true --
+        see `gymact.verification` for the full rationale.
+
+        A real Receipt is now recorded for every verify() call (previously none
+        was), carrying `verified`/`verification_id`/`reason` -- closing the OCEL
+        evidence gap where no gym's real `verify` operation ever produced an
+        event. If the provider's own self-report disagrees with the independent
+        judgment, that divergence is real, positive evidence of a dishonest or
+        buggy provider and is appended to the Receipt's `reason`, never silently
+        discarded.
+        """
         self._ensure_input(expected)
         state = self._state(episode_id)
         async with state.lock:
-            passed, observed = await self._bounded(
+            provider_passed, observed = await self._bounded(
                 self.limits.verify_timeout_s,
                 "VERIFICATION_TIMEOUT",
                 lambda: state.environment.verify(expected),
             )
             self._ensure_state(observed)
+            observation = await self._observe_unlocked(state)
+            passed, reason = self._verifier.judge(expected, observation.state)
+            if provider_passed != passed:
+                reason = f"{reason};PROVIDER_VERIFY_DIVERGENCE:provider_reported={provider_passed}"
             result = VerificationResult(
                 episode_id=episode_id,
                 passed=passed,
@@ -767,6 +792,18 @@ class GymAct:
                 state_digest=digest(observed),
             )
             self._verifications.append(result)
+            self._record(
+                Receipt(
+                    episode_id=episode_id,
+                    operation=Operation.VERIFY,
+                    standing=Standing.ALIVE if passed else Standing.UNCERTAIN,
+                    subject_ref=state.environment.environment_id,
+                    verification_id=result.verification_id,
+                    verified=passed,
+                    post_state_digest=result.state_digest,
+                    reason=reason,
+                )
+            )
             return result
 
     async def checkpoint(self, episode_id: str) -> dict[str, Any]:
