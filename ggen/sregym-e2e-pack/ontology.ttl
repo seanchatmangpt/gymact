@@ -1,0 +1,88 @@
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix sosa: <http://www.w3.org/ns/sosa/> .
+
+# ABox only: no GymAct-owned classes or properties are declared here.
+# The pack records the exact compatibility subject and the evidence contract
+# that ggen compiles into Rust/WIT. Execution authority remains outside ggen.
+<urn:gymact:sregym:e2e:contract>
+    a prov:Entity ;
+    dct:identifier "sregym-e2e" ;
+    dct:title "SREGym GymAct end-to-end evidence contract" ;
+    dct:source <https://github.com/SREGym/SREGym> ;
+    dct:hasVersion "ba07faf1a322f9b6d4a279643bb796aa2f36f64b" ;
+    dct:conformsTo <urn:gymact:profile:v26.8.7> ;
+    dct:relation <urn:gymact:sregym:capability:run> ;
+    dct:hasPart <urn:gymact:sregym:e2e:expected-solved>,
+                <urn:gymact:sregym:e2e:receipt-sequence> ;
+    dct:requires <urn:gymact:sregym:e2e:evidence:authority-admitted>,
+                 <urn:gymact:sregym:e2e:evidence:native-result-artifact-read>,
+                 <urn:gymact:sregym:e2e:evidence:ocel-schema-valid>,
+                 <urn:gymact:sregym:e2e:evidence:replay-conformant> .
+
+<urn:gymact:sregym:capability:run>
+    a sosa:Procedure ;
+    dct:title "sregym.run" ;
+    dct:type <urn:gymact:consequence:do> .
+
+<urn:gymact:sregym:e2e:expected-solved>
+    a prov:Entity ;
+    dct:identifier "solved" ;
+    rdf:value true .
+
+<urn:gymact:sregym:e2e:receipt-sequence>
+    a rdf:Seq ;
+    rdf:_1 <urn:gymact:operation:materialize> ;
+    rdf:_2 <urn:gymact:operation:act> ;
+    rdf:_3 <urn:gymact:operation:verify> ;
+    rdf:_4 <urn:gymact:operation:teardown> .
+
+<urn:gymact:operation:materialize>
+    a skos:Concept ;
+    skos:prefLabel "materialize" .
+
+<urn:gymact:operation:act>
+    a skos:Concept ;
+    skos:prefLabel "act" .
+
+<urn:gymact:operation:verify>
+    a skos:Concept ;
+    skos:prefLabel "verify" .
+
+<urn:gymact:operation:teardown>
+    a skos:Concept ;
+    skos:prefLabel "teardown" .
+
+<urn:gymact:sregym:e2e:evidence:authority-admitted>
+    a prov:Entity ;
+    dct:identifier "authority-admitted" ;
+    dct:title "An explicit BRCE execution grant was admitted for the exact SREGym subject" .
+
+<urn:gymact:sregym:e2e:evidence:native-result-artifact-read>
+    a prov:Entity ;
+    dct:identifier "native-result-artifact-read" ;
+    dct:title "SREGym native result artifact was read rather than replaced by a GymAct score" .
+
+<urn:gymact:sregym:e2e:evidence:ocel-schema-valid>
+    a prov:Entity ;
+    dct:identifier "ocel-schema-valid" ;
+    dct:title "Episode OCEL 2.0 log passed schema validation" .
+
+<urn:gymact:sregym:e2e:evidence:replay-conformant>
+    a prov:Entity ;
+    dct:identifier "replay-conformant" ;
+    dct:title "Episode receipt sequence passed conformant replay" .
+
+<urn:gymact:sregym:e2e:wit-package>
+    a prov:Entity ;
+    dct:identifier "gymact:sregym-e2e@0.1.0" .
+
+<urn:gymact:sregym:e2e:wit-interface>
+    a prov:Entity ;
+    dct:identifier "sregym-e2e-verifier" .
+
+<urn:gymact:sregym:e2e:wit-world>
+    a prov:Entity ;
+    dct:identifier "sregym-e2e-world" .
