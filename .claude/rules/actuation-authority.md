@@ -73,8 +73,45 @@ invariant. Full suite confirmed deterministic across two consecutive runs after 
   `test_production_surfaces.py`) — none of which were part of the original named gap; its default
   remains `False`, still an open, unaudited item.
 
+## Closed gap: `GymAct.verify()` trusted a provider's own self-reported verdict (2026-08-10)
+
+`GymAct.verify()` (`src/gymact/kernel.py`) used to call `state.environment.verify(expected)`
+and return whatever `(passed, observed)` tuple the provider itself computed as the real
+result. The provider — the exact thing being graded — both produced the observation and
+rendered the verdict, with only a size/timeout bound as a backstop. Confirmed concretely: a
+provider's `verify()` (e.g. `vendor_benchmarks.py`, `sregym.py`) could return `passed=True`
+unconditionally regardless of `expected`, and nothing downstream would catch it.
+
+**Fixed**: an injected `gymact.verification.PostconditionVerifier` (mirroring
+`AuthorityResolver`'s already-proven externalization) now renders the actual verdict. The
+provider's own `verify()` report is still collected — as an audit signal, not discarded — and
+if it disagrees with the independent judgment, that divergence is recorded on the resulting
+Receipt (`PROVIDER_VERIFY_DIVERGENCE:provider_reported=<bool>`), turning a dishonest provider's
+lie into real, positive evidence instead of silently trusting it. `verify()` now also records a
+real `Receipt`/OCEL event for the first time — previously no gym's real `verify` operation ever
+produced one at all.
+
+## Documented invariant: `observe()` must be an independent read, never an `actuate()` echo
+
+Not a code gap (no current provider violates this), but an explicit contract for every future
+`Environment` implementation: `observe()` must genuinely re-query external state through its
+own channel (a separate subprocess/API/file read) — never simply return `actuate()`'s own
+self-reported effect dict. If `observe()` merely echoes what `actuate()` claimed happened, the
+`PostconditionVerifier` fix above still independently judges `expected` against `observed`, but
+`observed` itself would be unaudited provider narration, and the whole verification boundary
+degrades back to self-certification one level down.
+
+`gymact.gyms.kubernetes_reconciliation.KubernetesReconciliationProvider` is the reference
+pattern: `verify()` polls real cluster-observed state (`kubectl get pod -o json`'s
+`.status.phase`) independent of `kubectl apply`'s own exit code — read that provider's
+docstring/tests when building a new gym. This is a code-review checklist item, not a
+mechanically-enforceable check: there is no generic way to prove a provider's `observe()`
+re-queries reality rather than replaying cached state, stated honestly as a limit rather than
+papered over.
+
 ## See also
 
 - `.claude/rules/ontology.md` — ODRL/EARL/PROV terms this invariant is built from
 - `.claude/rules/explore-exploit.md` — this invariant applies identically in lab and prod
 - `.claude/rules/ocel-standing.md` — the "name the real gap" discipline this section follows
+- `src/gymact/verification.py` — the `PostconditionVerifier` module this section documents

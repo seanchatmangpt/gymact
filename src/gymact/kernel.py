@@ -15,6 +15,7 @@ from uuid import uuid4
 
 import anyio
 
+from gymact.agent import AllowAllCapabilityScope, CapabilityScope
 from gymact.authority import AuthorityResolver, DenyAuthorityResolver
 from gymact.evidence import (
     EvidenceRecord,
@@ -44,6 +45,7 @@ from gymact.models import (
 from gymact.ocel import receipts_to_ocel
 from gymact.providers import Environment, EnvironmentProvider
 from gymact.semantic import ProfileAuthority
+from gymact.verification import DictSubsetVerifier, PostconditionVerifier
 
 T = TypeVar("T")
 
@@ -85,6 +87,8 @@ class GymAct:
         authority_resolver: AuthorityResolver | None = None,
         limits: RuntimeLimits | None = None,
         receipt_ledger: ReceiptLedger | None = None,
+        verifier: PostconditionVerifier | None = None,
+        capability_scope: CapabilityScope | None = None,
     ) -> None:
         self._providers: dict[str, EnvironmentProvider] = {}
         self._episodes: dict[str, _EpisodeState] = {}
@@ -94,6 +98,8 @@ class GymAct:
         self._teardown_receipts: dict[str, Receipt] = {}
         self._receipts: dict[str, list[Receipt]] = {}
         self._authority = authority_resolver or DenyAuthorityResolver()
+        self._verifier: PostconditionVerifier = verifier or DictSubsetVerifier()
+        self._capability_scope: CapabilityScope = capability_scope or AllowAllCapabilityScope()
         self.limits = limits or RuntimeLimits()
         self.ledger = receipt_ledger or MemoryReceiptLedger()
         self._verifications: list[VerificationResult] = []
@@ -234,6 +240,7 @@ class GymAct:
                     capability_ref="urn:gymact:operation:materialize",
                     authority_ref=intent.authority_ref,
                     idempotency_key=intent.idempotency_key,
+                    principal=intent.principal,
                     reason="IDEMPOTENCY_KEY_CONFLICT",
                 )
                 return self._materialization_result(
@@ -265,6 +272,7 @@ class GymAct:
                             subject_ref=subject_ref,
                             capability_ref="urn:gymact:operation:materialize",
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             reason=exc.code,
                         ),
                     ),
@@ -286,6 +294,7 @@ class GymAct:
                             capability_ref="urn:gymact:operation:materialize",
                             authority_ref=intent.authority_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             reason="UNKNOWN_PROVIDER",
                         ),
                     ),
@@ -316,6 +325,7 @@ class GymAct:
                             capability_ref="urn:gymact:operation:materialize",
                             authority_ref=intent.authority_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             reason=exc.code,
                         ),
                     ),
@@ -337,6 +347,7 @@ class GymAct:
                             authority_ref=intent.authority_ref,
                             authority_evidence_ref=authority.evidence_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             reason=authority.reason,
                         ),
                     ),
@@ -364,6 +375,7 @@ class GymAct:
                             authority_ref=intent.authority_ref,
                             authority_evidence_ref=authority.evidence_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             reason=exc.code,
                         ),
                     ),
@@ -384,6 +396,7 @@ class GymAct:
                             authority_ref=intent.authority_ref,
                             authority_evidence_ref=authority.evidence_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             error_digest=self._error_digest(exc),
                             reason=f"PROVIDER_ERROR:{type(exc).__name__}",
                         ),
@@ -426,6 +439,7 @@ class GymAct:
                             authority_ref=intent.authority_ref,
                             authority_evidence_ref=authority.evidence_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             error_digest=None
                             if isinstance(exc, BoundaryBlocked)
                             else self._error_digest(exc),
@@ -463,6 +477,7 @@ class GymAct:
                         authority_ref=intent.authority_ref,
                         authority_evidence_ref=authority.evidence_ref,
                         idempotency_key=intent.idempotency_key,
+                        principal=intent.principal,
                         post_state_digest=observation.state_digest,
                     ),
                 ),
@@ -545,6 +560,7 @@ class GymAct:
                             capability_ref=intent.capability,
                             authority_ref=intent.authority_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             pre_state_digest=before.state_digest,
                             post_state_digest=before.state_digest,
                             reason="IDEMPOTENCY_KEY_CONFLICT",
@@ -570,6 +586,7 @@ class GymAct:
                             subject_ref=state.environment.environment_id,
                             capability_ref=intent.capability,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             pre_state_digest=before.state_digest,
                             post_state_digest=before.state_digest,
                             reason=exc.code,
@@ -595,6 +612,7 @@ class GymAct:
                             capability_ref=intent.capability,
                             authority_ref=intent.authority_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             pre_state_digest=before.state_digest,
                             post_state_digest=before.state_digest,
                             reason="UNKNOWN_CAPABILITY",
@@ -617,9 +635,35 @@ class GymAct:
                             capability_ref=capability.iri,
                             authority_ref=intent.authority_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             pre_state_digest=before.state_digest,
                             post_state_digest=before.state_digest,
                             reason="READ_CAPABILITY_IS_NOT_ACTUATION",
+                        ),
+                    ),
+                )
+            if not self._capability_scope.permits(
+                principal=intent.principal, capability_ref=capability.iri
+            ):
+                return self._actuation_result(
+                    intent_digest=intent_digest,
+                    key=key,
+                    result=ActuationResult(
+                        accepted=False,
+                        standing=Standing.REFUSED,
+                        observation=before,
+                        receipt=Receipt(
+                            episode_id=intent.episode_id,
+                            operation=Operation.ACT,
+                            standing=Standing.REFUSED,
+                            subject_ref=state.environment.environment_id,
+                            capability_ref=capability.iri,
+                            authority_ref=intent.authority_ref,
+                            idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
+                            pre_state_digest=before.state_digest,
+                            post_state_digest=before.state_digest,
+                            reason="CAPABILITY_NOT_IN_SCOPE",
                         ),
                     ),
                 )
@@ -650,6 +694,7 @@ class GymAct:
                             capability_ref=capability.iri,
                             authority_ref=intent.authority_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             pre_state_digest=before.state_digest,
                             post_state_digest=before.state_digest,
                             reason=exc.code,
@@ -674,6 +719,7 @@ class GymAct:
                             authority_ref=intent.authority_ref,
                             authority_evidence_ref=authority.evidence_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             pre_state_digest=before.state_digest,
                             post_state_digest=before.state_digest,
                             reason=authority.reason,
@@ -715,6 +761,7 @@ class GymAct:
                             authority_ref=intent.authority_ref,
                             authority_evidence_ref=authority.evidence_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             pre_state_digest=before.state_digest,
                             post_state_digest=after.state_digest,
                             error_digest=None
@@ -742,6 +789,7 @@ class GymAct:
                         authority_ref=intent.authority_ref,
                         authority_evidence_ref=authority.evidence_ref,
                         idempotency_key=intent.idempotency_key,
+                        principal=intent.principal,
                         pre_state_digest=before.state_digest,
                         post_state_digest=after.state_digest,
                     ),
@@ -749,16 +797,38 @@ class GymAct:
             )
 
     async def verify(self, episode_id: str, expected: dict[str, Any]) -> VerificationResult:
-        """Independently evaluate expected partial state against the environment."""
+        """Independently evaluate expected partial state against the environment.
+
+        The provider's own `Environment.verify(expected)` is still called and its
+        report is still returned as `observed`/for divergence detection, but its
+        `passed` boolean is never trusted as the result: `self._verifier` (an
+        injected `PostconditionVerifier`, defaulting to `DictSubsetVerifier`,
+        never the provider itself) independently judges `expected` against a
+        fresh, kernel-triggered `observe()` read. This is what makes
+        `VerificationResult`'s own "independent predicate result" claim true --
+        see `gymact.verification` for the full rationale.
+
+        A real Receipt is now recorded for every verify() call (previously none
+        was), carrying `verified`/`verification_id`/`reason` -- closing the OCEL
+        evidence gap where no gym's real `verify` operation ever produced an
+        event. If the provider's own self-report disagrees with the independent
+        judgment, that divergence is real, positive evidence of a dishonest or
+        buggy provider and is appended to the Receipt's `reason`, never silently
+        discarded.
+        """
         self._ensure_input(expected)
         state = self._state(episode_id)
         async with state.lock:
-            passed, observed = await self._bounded(
+            provider_passed, observed = await self._bounded(
                 self.limits.verify_timeout_s,
                 "VERIFICATION_TIMEOUT",
                 lambda: state.environment.verify(expected),
             )
             self._ensure_state(observed)
+            observation = await self._observe_unlocked(state)
+            passed, reason = self._verifier.judge(expected, observation.state)
+            if provider_passed != passed:
+                reason = f"{reason};PROVIDER_VERIFY_DIVERGENCE:provider_reported={provider_passed}"
             result = VerificationResult(
                 episode_id=episode_id,
                 passed=passed,
@@ -767,6 +837,18 @@ class GymAct:
                 state_digest=digest(observed),
             )
             self._verifications.append(result)
+            self._record(
+                Receipt(
+                    episode_id=episode_id,
+                    operation=Operation.VERIFY,
+                    standing=Standing.ALIVE if passed else Standing.UNCERTAIN,
+                    subject_ref=state.environment.environment_id,
+                    verification_id=result.verification_id,
+                    verified=passed,
+                    post_state_digest=result.state_digest,
+                    reason=reason,
+                )
+            )
             return result
 
     async def checkpoint(self, episode_id: str) -> dict[str, Any]:
