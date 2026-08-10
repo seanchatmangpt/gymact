@@ -1,0 +1,43 @@
+%% StandingEvidence / CrownReceipt: what "100%" looks like as a concrete data
+%% structure, not a phase name. Every field must be a real digest of real
+%% state -- a missing or fabricated one refuses admission at sota_claim().
+flowchart LR
+    subgraph SUBJECT["Subject"]
+        S1["exact SREGym revision\nba07faf1a322f9b6d4a279643bb796aa2f36f64b"]
+        S2["exact problem_id\ne.g. misconfig_app_hotel_res"]
+        S1 --> S3["subject_digest"]
+        S2 --> S3
+    end
+
+    subgraph EXPERIMENT["Experiment"]
+        E1["real agent_name\n(NOT 'debug' -- a driver that\nactually reasons and submits)"]
+        E2["judge_model_id, config"]
+        E1 --> E3["experiment_digest"]
+        E2 --> E3
+    end
+
+    subgraph RECEIPT["Receipt"]
+        R1["materialize -> act -> verify -> teardown\nreal Receipt sequence"]
+        R2["act.reason contains\n'solved=True' from native CSV"]
+        R1 --> R3["receipt_digest"]
+        R2 --> R3
+    end
+
+    subgraph VERIFIER["Verifier"]
+        V1["PostconditionVerifier.judge()\nindependent of provider's own report"]
+        V2["DishonestEnvironment-class check:\nwould this catch a lying provider?"]
+        V1 --> V3["verifier_digest"]
+        V2 --> V3
+    end
+
+    SUBJECT --> SE["StandingEvidence"]
+    EXPERIMENT --> SE
+    RECEIPT --> SE
+    VERIFIER --> SE
+
+    SE --> RP["replay_verified\n= validate_ocel_log() passes\nAND ConformanceChecker().check()\nreports conformant=True"]
+    RP -->|"True"| ADMIT(["FrontierResult.admit()\nsucceeds"])
+    RP -->|"False or absent"| REFUSE(["SotaAdmissionError:\nSOTA_REPLAY_NOT_VERIFIED"])
+
+    style ADMIT stroke-width:2px
+    style REFUSE stroke-dasharray: 4 3

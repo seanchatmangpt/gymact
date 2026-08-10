@@ -1,0 +1,44 @@
+%% Real state as of this session, not aspirational. Green = actually verified
+%% today. Amber = exists but unexercised for a real attempt. Red = confirmed
+%% blocking defect, named exactly, not "TBD".
+flowchart TD
+    classDef done fill:none,stroke:#2f7a4f,stroke-width:2px,color:currentColor
+    classDef blocked fill:none,stroke:#b23a2f,stroke-width:2px,stroke-dasharray:4 3,color:currentColor
+    classDef pending fill:none,stroke:#b8862f,stroke-width:2px,color:currentColor
+
+    A["Real SREGym checkout,\nexact revision pinned"]:::done
+    B["Real k8s cluster (colima),\nRBAC intact, auto-starts"]:::done
+    C["SregymVendorProvider:\nmaterialize/observe/actuate/teardown\nreal end-to-end (run_kubectl DO)"]:::done
+    D["Real GROQ_API_KEY,\njudge preflight passes"]:::done
+
+    E["submit_diagnosis / submit_mitigation\ncapabilities exist, real MCP tools"]:::pending
+    F["'debug' agent_name:\nproves plumbing only --\nnever reasons, never submits"]:::pending
+
+    G["autofde_lab_dspy driver:\nModuleNotFoundError: No module\nnamed 'driver' at import,\nline 43 of driver.py"]:::blocked
+    H["autofde_lab_planner driver:\nmodule does not exist on disk\nat all in the vendored checkout"]:::blocked
+
+    I["A real diagnosis attempt\n(agent reasons, calls\nsubmit_diagnosis for real)"]:::blocked
+    J["A real mitigation attempt\n(agent calls\nsubmit_mitigation for real)"]:::blocked
+    K["Native CSV: Diagnosis.success\nAND Mitigation.success = True\nfor one real problem"]:::blocked
+
+    L["OCEL log for a solved\nsregym episode\n(reports/ocel/sregym-*/)"]:::blocked
+    M["StandingEvidence /\nCrownReceipt constructed\nfor that episode"]:::blocked
+    N["N real solved episodes\nacross distinct problems\n(one point != a frontier)"]:::blocked
+    O["Published SREGym baseline\nnumbers collected for\nthe same metric space"]:::blocked
+    P(["SOTA claim admitted"]):::blocked
+
+    A --> C
+    B --> C
+    D --> C
+    C --> E
+    E --> F
+    F -.->|"blocks real attempts"| I
+    G -.->|"blocks"| I
+    H -.->|"blocks"| I
+    I --> J
+    J --> K
+    K --> L
+    L --> M
+    M --> N
+    N --> O
+    O --> P

@@ -1,0 +1,18 @@
+%% Read bottom-up: this is the actual dependency order, derived by working
+%% backwards from the SOTA claim to what's blocking it right now. Step 1 is
+%% the next concrete action, not the first item chronologically attempted.
+flowchart BT
+    classDef next fill:none,stroke:#b8862f,stroke-width:3px,color:currentColor
+    classDef later fill:none,stroke:currentColor,stroke-width:1px,color:currentColor
+
+    S1["1. Diagnose driver.py's real import:\ncheck sys.path / cwd the conductor\nlaunches autofde_lab_dspy with vs.\nwhat 'import driver' expects"]:::next
+    S2["2. Fix or route around it:\neither patch the import, or point\nagent_name at a working driver"]:::later
+    S3["3. Run ONE real attempt:\nreal diagnosis + real mitigation,\nsame misconfig_app_hotel_res problem"]:::later
+    S4["4. Confirm solved=True on the\nreal act event, independent verify()\nagrees, real OCEL log validates\nand replays conformant"]:::later
+    S5["5. Construct one real\nStandingEvidence / CrownReceipt\nfrom that episode -- no fields\nfabricated, admit() must pass"]:::later
+    S6["6. Repeat for a real spread of\nproblems (sregym-lite suite),\nnot one lucky pass"]:::later
+    S7["7. Build the real FrontierResult\nset: pareto_frontier() over the\nN admitted StandingEvidence points"]:::later
+    S8["8. Collect the actual published\nSREGym baseline numbers for the\nsame metric space (same units,\nsame problem set)"]:::later
+    S9(["9. dominates() / metrics_dominate():\nreal comparison, admitted or refused --\nthe answer is allowed to be 'not yet'"]):::later
+
+    S9 --> S8 --> S7 --> S6 --> S5 --> S4 --> S3 --> S2 --> S1

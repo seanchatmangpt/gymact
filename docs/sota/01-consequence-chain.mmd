@@ -1,0 +1,25 @@
+%% What SOTA 100% actually requires, mapped onto GymAct's own consequence law:
+%% request accepted != world changed != objective verified != benchmark scored
+%% Read top to bottom: each stage is a real, separate claim: the stage above it
+%% passing does NOT imply the stage below it is true.
+flowchart TD
+    A["Materialize intent\nMaterializationIntent(provider='sregym', ...)"] -->|"admitted?"| B{"request accepted"}
+    B -->|"real checkout pinned,\ncluster reachable"| C["Act: submit_diagnosis / submit_mitigation\nvia real MCP tool calls"]
+    C -->|"actuation returns"| D{"world changed"}
+    D -->|"conductor state\nactually mutated"| E["verify(): PostconditionVerifier\njudges observed vs expected\nindependent of provider's own report"]
+    E -->|"independent judge agrees"| F{"objective verified"}
+    F -->|"real Diagnosis.success AND\nMitigation.success, not process\nreturncode alone"| G["Native SREGym CSV read directly,\nnot summarized by GymAct"]
+    G --> H{"benchmark scored"}
+    H -->|"solved=True on the\nreal act event's own attributes"| I["Episode OCEL 2.0 log:\nvalidate_ocel_log() schema-valid"]
+    I --> J["ConformanceChecker().check():\nreplay reproduces the real\nmaterialize->act->verify->teardown\nsequence in recorded order"]
+    J -->|"replay_verified = True"| K["StandingEvidence bound:\nsubject + experiment + receipt +\nverifier digests, all real"]
+    K --> L["FrontierResult admitted:\nsota.sota_claim() accepts it"]
+    L --> M{"dominates(candidate, baseline)\nor metrics_dominate() on the\nsame declared metric space"}
+    M -->|"weakly better in all,\nstrictly better in one"| N(["SOTA claim admitted"])
+
+    style B fill:none,stroke:currentColor
+    style D fill:none,stroke:currentColor
+    style F fill:none,stroke:currentColor
+    style H fill:none,stroke:currentColor
+    style M fill:none,stroke:currentColor
+    style N stroke-width:2px
