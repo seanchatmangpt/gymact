@@ -23,10 +23,9 @@ time, not imported -- this repo must not depend on `autofde-lab`):
 <judge_model_id>, "--problem", <problem_id>, "--agent-timeout",
 <wall_clock_timeout_s>]`, with `AGENT_API_BASE`/`AGENT_API_KEY` env vars when
 a judge API base/key placeholder is configured. `agent_name` defaults to
-`autofde_lab_dspy` (config key `config.agent_name`), the only sregym client
-with a real driver on disk in the sibling repo as of this session --
-`autofde_lab_planner`'s driver module does not exist there, confirmed via a
-real failed subprocess.
+`"debug"` (config key `config.agent_name`), a pre-existing `agents.yaml`
+entry that pauses and keeps the conductor alive for external driving --
+see `_build_argv`'s own docstring below for the full rationale.
 
 SREGym's real MCP/HTTP surface (per the sibling repo's own cited
 investigation): a `kubectl-mcp` server at `MCP_SERVER_PORT` (default 9954),

@@ -2,7 +2,7 @@
 
 GymAct treats [SREGym](https://github.com/SREGym/SREGym) as the first benchmark gym with an explicit end-to-end support contract.
 
-Compatibility baseline is admitted through the shared `vendor_benchmarks.py` exact-pin machinery (`VENDOR_SPECS["sregym"]`), not a standalone constant — see `_audit_spec`/`VendorSpec` in `gymact.gyms.vendor_benchmarks`.
+Compatibility baseline is admitted through the shared `vendor_benchmarks.py` exact-pin machinery (`_audit_spec`/`VendorSpec`), not a standalone constant. The pin itself is constructed locally in `gymact.gyms.sregym` (its own module-level `_SPEC = VendorSpec(...)`) rather than sourced from `vendor_benchmarks.VENDOR_REVISIONS`/`VENDOR_SPECS`, which is an exact, lock-derived corpus that does not contain a `"sregym"` entry — see the comment above `_SPEC` in `gymact.gyms.sregym` for why.
 
 ## Support contract
 
