@@ -23,6 +23,33 @@ jobs:
       matrix:
         python: ["3.11", "3.12", "3.13"]
     env:
+      # ERRC audit finding (2026-08-09): this job's tests route real,
+      # Chicago-style LOCAL_GYM standings through
+      # `gymact.standing.require_standing`, which fails hard (not a silent
+      # skip) unless a missing real collaborator is explicitly named here.
+      # "*" remains the blanket allow-list because most LOCAL_GYM standings
+      # in this suite (sregym, swegym, mcp-client-session, inspect-evals,
+      # cube-counter, cube-container-counter, ggen, ggen-legacy, wasm4pm)
+      # need external toolchains/services (conda envs, API keys, an MCP
+      # server, a Rust/ggen toolchain, ...) this job does not stand up, and
+      # narrowing the wildcard to a hand-picked subset without auditing each
+      # of those independently would silently flip currently-degrading
+      # standings into hard CI failures. Two specific standings this audit
+      # DID resolve to real infra instead of a degrade (see the "Provision
+      # real kubectl+kind cluster" and Terraform steps below):
+      # LOCAL_GYM:kubernetes-reconciliation and
+      # LOCAL_GYM:terraform-docker-apply now run for real against a real
+      # local `kind` cluster and a real `terraform`/`tofu` binary against
+      # this runner's already-running Docker daemon -- `require_standing`
+      # short-circuits on `available=True` before ever consulting this env
+      # var, so these two no longer degrade here at all.
+      # LOCAL_GYM:terraform-plan is a real, permanent, out-of-repo gap: it
+      # requires `~/autofde-lab/vendor/gyms/terragoat`, a git submodule of a
+      # separate lab repository this workflow does not check out (see
+      # `.claude/rules/explore-exploit.md` on the lab/gymact boundary) --
+      # cloning an entire second private repository into this job is out of
+      # scope for this workflow, so it remains an intentionally-named,
+      # visible skip, covered by the "*" wildcard above.
       GYMACT_ALLOW_DEGRADED_STANDINGS: "*"
     steps:
       - name: Checkout exact subject
@@ -47,6 +74,33 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
           cache: pip
+
+      # ERRC-audit fix (a): give `tests/test_kubernetes_reconciliation.py`'s
+      # `LOCAL_GYM:kubernetes-reconciliation` standing a real, reachable
+      # local Kubernetes cluster instead of degrading it. `helm/kind-action`
+      # installs real `kubectl` + real `kind` and creates a real single-node
+      # `kind` cluster, writing a real kubeconfig context -- no mock, no
+      # simulated API server. This is a well-known, low-overhead action
+      # (typically well under a minute) and needs no nested virtualization:
+      # `kind` runs its "nodes" as containers on the runner's existing
+      # Docker daemon, which GitHub-hosted ubuntu-24.04 runners already run.
+      - name: Provision real kubectl + kind cluster
+        uses: helm/kind-action@v1
+        with:
+          install_only: false
+
+      # ERRC-audit fix (a): give `tests/test_terraform_docker_apply.py`'s
+      # `LOCAL_GYM:terraform-docker-apply` and
+      # `tests/test_terraform_plan.py`'s `LOCAL_GYM:terraform-plan` (the
+      # binary half of its two-part gap) a real `terraform` binary on PATH.
+      # `terraform-docker-apply` additionally needs a reachable local Docker
+      # daemon, which this runs against directly -- GitHub-hosted
+      # ubuntu-24.04 runners already run `dockerd` with no extra
+      # provisioning, so no separate "start Docker" step is needed here.
+      - name: Provision real terraform binary
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
 
       - name: Install package and verification tools
         shell: bash

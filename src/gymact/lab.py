@@ -8,13 +8,15 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Iterable
 from enum import StrEnum
-from typing import Any, Iterable, Self
+from typing import Any, Self
 
 from pydantic import Field, model_validator
 
 from gymact.action_contract import ActionDefinition, ObservationConfidence, SubjectRef
 from gymact.models import FrozenModel, Standing
+from gymact.sota import metrics_dominate
 
 
 class ProviderFamily(StrEnum):
@@ -91,42 +93,54 @@ class ProviderBenchmarkRecord(FrozenModel):
     receipt_ref: str = Field(min_length=1)
 
 
-def _dominates(left: ProviderBenchmarkRecord, right: ProviderBenchmarkRecord) -> bool:
-    """Return True when left is no worse on all objectives and better on at least one."""
-    l = left.metrics
-    r = right.metrics
-    no_worse = (
-        l.wall_time_s <= r.wall_time_s
-        and l.monetary_cost <= r.monetary_cost
-        and l.memory_bytes <= r.memory_bytes
-        and l.failure_probability <= r.failure_probability
-        and l.human_interventions <= r.human_interventions
-        and l.model_tokens <= r.model_tokens
-        and l.quality >= r.quality
-        and _CONFIDENCE_RANK[l.verification_confidence]
-        >= _CONFIDENCE_RANK[r.verification_confidence]
-    )
-    strictly_better = (
-        l.wall_time_s < r.wall_time_s
-        or l.monetary_cost < r.monetary_cost
-        or l.memory_bytes < r.memory_bytes
-        or l.failure_probability < r.failure_probability
-        or l.human_interventions < r.human_interventions
-        or l.model_tokens < r.model_tokens
-        or l.quality > r.quality
-        or _CONFIDENCE_RANK[l.verification_confidence]
-        > _CONFIDENCE_RANK[r.verification_confidence]
-    )
-    return no_worse and strictly_better
+def _normalized_metrics(record: ProviderBenchmarkRecord) -> dict[str, float]:
+    """Project `TransitionMetrics` into the larger-is-better metric space
+    `sota.metrics_dominate` expects (cost/latency/etc. dimensions negated)."""
+    m = record.metrics
+    return {
+        "wall_time_s": -m.wall_time_s,
+        "monetary_cost": -m.monetary_cost,
+        "memory_bytes": -float(m.memory_bytes),
+        "quality": m.quality,
+        "failure_probability": -m.failure_probability,
+        "human_interventions": -float(m.human_interventions),
+        "model_tokens": -float(m.model_tokens),
+        "verification_confidence": float(_CONFIDENCE_RANK[m.verification_confidence]),
+    }
 
 
-def pareto_frontier(records: Iterable[ProviderBenchmarkRecord]) -> tuple[ProviderBenchmarkRecord, ...]:
+def pareto_frontier(
+    records: Iterable[ProviderBenchmarkRecord],
+) -> tuple[ProviderBenchmarkRecord, ...]:
+    """Nondominated frontier over `ProviderBenchmarkRecord`'s 8 fixed metrics.
+
+    This reuses `sota.metrics_dominate` — the same weakly-better-in-all/
+    strictly-better-in-one algebra `sota.dominates`/`sota.pareto_frontier` use —
+    instead of reimplementing the comparison.
+
+    It deliberately does NOT go through `sota.dominates`/`sota.FrontierResult`,
+    because `ProviderBenchmarkRecord` cannot currently construct a genuine
+    `sota.StandingEvidence`: it carries a single opaque `receipt_ref` string and
+    a self-reported `Standing` enum, but no `verifier_digest` (independent
+    verifier identity) and no `replay_verified` boolean distinct from that
+    self-reported `Standing`. Synthesizing those fields from `environment`/
+    `result` would be fabricating a binding this record does not actually carry
+    (see `.claude/rules/ocel-standing.md`: a self-reported standing is not the
+    same claim as a replay-verified one). Until `ProviderBenchmarkRecord` gains
+    real receipt/replay-verifier binding fields, `pareto_frontier` here selects
+    on metrics only and does NOT pass through `StandingEvidence.admit()` — so a
+    caller relying on this function for a standing-qualified selection must
+    additionally filter records by `result in {Standing.ALIVE, Standing.ADOPTED}`
+    itself (as `EmpiricalProviderIndex.query` below already does).
+    """
     candidates = tuple(records)
+    normalized = {id(candidate): _normalized_metrics(candidate) for candidate in candidates}
     return tuple(
         candidate
         for candidate in candidates
         if not any(
-            other is not candidate and _dominates(other, candidate)
+            other is not candidate
+            and metrics_dominate(normalized[id(other)], normalized[id(candidate)])
             for other in candidates
         )
     )
