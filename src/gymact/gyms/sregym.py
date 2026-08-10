@@ -160,8 +160,8 @@ def _build_argv(
     ]
 
 
-_CLIENT_CONNECT_RETRIES = 5
-_CLIENT_CONNECT_RETRY_DELAY_SECONDS = 2.0
+_CLIENT_CONNECT_RETRIES = 10
+_CLIENT_CONNECT_RETRY_DELAY_SECONDS = 3.0
 
 
 async def _connect_with_retry(client_factory, *, label: str) -> Any:
@@ -187,21 +187,33 @@ async def _connect_with_retry(client_factory, *, label: str) -> Any:
     though this function's own retry loop had reported success). A fresh
     `Client` object per attempt is the only real-connection-shaped fix here;
     reusing a once-failed async-context-manager instance is not a safe
-    assumption to make about a third-party client."""
-    last_error: Exception | None = None
+    assumption to make about a third-party client.
+
+    Budget widened this session (5 attempts/2s -> 10 attempts/3s, 10s -> 30s
+    total) after a real live trial exhausted the original 5x2s budget with
+    NO zombie port-forward present and a genuinely fast (~69s total)
+    `__init__` -- real evidence the gap between a port-forward becoming
+    TCP-acceptable and the pod-side MCP server actually completing a real
+    handshake can exceed 10s under this session's real, accumulated cluster
+    load. Every real per-attempt error is now collected (not just the
+    final one) so a recurrence is diagnosable from the raised message alone,
+    without a second manual repro."""
+    attempt_errors: list[str] = []
     for attempt in range(1, _CLIENT_CONNECT_RETRIES + 1):
         client = client_factory()
         try:
             await client.__aenter__()
             return client
         except Exception as exc:  # noqa: BLE001 -- real connection failures come in several real exception types (RuntimeError, ConnectError, ...)
-            last_error = exc
+            attempt_errors.append(f"attempt {attempt}: {type(exc).__name__}: {exc}")
             if attempt < _CLIENT_CONNECT_RETRIES:
                 await asyncio.sleep(_CLIENT_CONNECT_RETRY_DELAY_SECONDS)
     raise RuntimeError(
         f"real MCP client {label!r} failed to connect after "
-        f"{_CLIENT_CONNECT_RETRIES} real attempts: {last_error!r}"
-    ) from last_error
+        f"{_CLIENT_CONNECT_RETRIES} real attempts over "
+        f"{_CLIENT_CONNECT_RETRIES * _CLIENT_CONNECT_RETRY_DELAY_SECONDS:.0f}s total: "
+        + " | ".join(attempt_errors)
+    )
 
 
 @contextlib.asynccontextmanager

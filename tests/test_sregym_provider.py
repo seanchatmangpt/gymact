@@ -196,6 +196,20 @@ class ConnectWithRetryTests(unittest.TestCase):
         self.assertIn("test-label", str(ctx.exception))
         self.assertEqual(factory.built_count, _CLIENT_CONNECT_RETRIES)
 
+    def test_final_error_message_names_every_real_attempt_individually(self):
+        """Real regression coverage for the diagnosability improvement made
+        this cycle: a recurrence of the real connection-timing gap found
+        live must be diagnosable from the raised message alone (every real
+        per-attempt error present), not just a summary of the last one."""
+        from gymact.gyms.sregym import _CLIENT_CONNECT_RETRIES
+
+        factory = _FakeFlakyClientFactory(fail_times=_CLIENT_CONNECT_RETRIES + 5)
+        with self.assertRaises(RuntimeError) as ctx:
+            asyncio.run(_connect_with_retry(factory, label="test-label"))
+        message = str(ctx.exception)
+        for attempt in range(1, _CLIENT_CONNECT_RETRIES + 1):
+            self.assertIn(f"attempt {attempt}:", message)
+
 
 class TcpPortReachableTests(unittest.TestCase):
     """Real regression test for the readiness-race defect found and fixed
