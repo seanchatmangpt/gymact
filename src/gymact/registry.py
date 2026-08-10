@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from gymact.gyms.sregym import SREGYM_RUN_CAPABILITY, SREGymProvider
 from gymact.local_providers import (
     FILESYSTEM_CAPABILITIES,
     GIT_CAPABILITIES,
@@ -20,6 +21,7 @@ _BUILTINS = {
     "http-json": (HTTPJSONProvider, HTTP_JSON_CAPABILITIES),
     "memory": (MemoryProvider, MEMORY_CAPABILITIES),
     "sqlite": (SQLiteProvider, SQLITE_CAPABILITIES),
+    "sregym": (SREGymProvider, (SREGYM_RUN_CAPABILITY,)),
 }
 
 
