@@ -30,11 +30,18 @@ def test_protocol_gym_pack_owns_at_least_ten_normal_outputs() -> None:
 
 
 def test_protocol_gym_consumer_names_canonical_pack_and_ontology() -> None:
+    # Not a literal "../../..." path: the installed ggen CLI's config
+    # validator refuses any ontology.source/packs.path value containing ".."
+    # as path traversal (FM-CONFIG-003) -- ontology.ttl and protocol-gym-pack
+    # are real relative symlinks into ../../ggen/protocol-gym-pack instead.
     manifest = (CONSUMER / "ggen.toml").read_text()
-    assert 'source = "../../ggen/protocol-gym-pack/ontology.ttl"' in manifest
-    assert 'protocol-gym-pack = { path = "../../ggen/protocol-gym-pack" }' in manifest
+    assert 'source = "ontology.ttl"' in manifest
+    assert 'protocol-gym-pack = { path = "protocol-gym-pack" }' in manifest
     assert not (CONSUMER / "pack").exists()
-    assert not (CONSUMER / "ontology.ttl").exists()
+    assert (CONSUMER / "ontology.ttl").is_symlink()
+    assert (CONSUMER / "protocol-gym-pack").is_symlink()
+    assert (CONSUMER / "ontology.ttl").resolve() == PACK / "ontology.ttl"
+    assert (CONSUMER / "protocol-gym-pack").resolve() == PACK
 
 
 def test_protocol_gym_fixture_is_public_vocabulary_abox() -> None:

@@ -2,10 +2,17 @@
 name = "gymact-togaf-gym"
 
 [ontology]
-source = "../../ggen/togaf-gym-pack/ontology.ttl"
+# Not a literal "../../..." path: the installed ggen CLI's config validator
+# refuses any ontology.source/packs.path value containing ".." as path
+# traversal (FM-CONFIG-003), even for a value that resolves to a real,
+# intended file. `ontology.ttl` and `togaf-gym-pack` below are real relative
+# symlinks (git-tracked) into ../../ggen/togaf-gym-pack, matching the same
+# symlink convention `ggen/codebase-gym-pack/ontology/` already uses to reuse
+# files from outside a pack directory without a traversal string in config.
+source = "ontology.ttl"
 
 [packs]
-togaf-gym-pack = { path = "../../ggen/togaf-gym-pack" }
+togaf-gym-pack = { path = "togaf-gym-pack" }
 
 [templates]
 dir = "templates"

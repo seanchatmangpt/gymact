@@ -70,7 +70,7 @@ def _data_graph() -> Graph:
 
 def _combined_graph() -> Graph:
     graph = _data_graph()
-    graph.parse(PACK / "shapes.ttl", format="turtle")
+    graph.parse(CONSUMER / "shapes.ttl", format="turtle")
     return graph
 
 
@@ -195,7 +195,7 @@ def test_gates_refuse_semantic_regressions() -> None:
 def test_shacl_courts_admit_canonical_graph_and_refuse_missing_trace() -> None:
     pyshacl = pytest.importorskip("pyshacl")
     data = _data_graph()
-    shapes = Graph().parse(PACK / "shapes.ttl", format="turtle")
+    shapes = Graph().parse(CONSUMER / "shapes.ttl", format="turtle")
     conforms, _, report = pyshacl.validate(data, shacl_graph=shapes)
     assert conforms, report
 
@@ -215,9 +215,48 @@ def test_ggen_templates_are_projection_only() -> None:
     assert len(targets) == len(set(targets))
     assert all("generated" not in target.lower() for target in targets)
     assert all(not (CONSUMER / target).exists() for target in targets)
+    # Not a literal "../../..." path: the installed ggen CLI's config
+    # validator refuses any ontology.source/packs.path value containing ".."
+    # as path traversal (FM-CONFIG-003) -- ontology.ttl and togaf-gym-pack
+    # are real relative symlinks into ../../ggen/togaf-gym-pack instead.
     manifest = (CONSUMER / "ggen.toml").read_text()
-    assert 'source = "../../ggen/togaf-gym-pack/ontology.ttl"' in manifest
-    assert 'togaf-gym-pack = { path = "../../ggen/togaf-gym-pack" }' in manifest
+    assert 'source = "ontology.ttl"' in manifest
+    assert 'togaf-gym-pack = { path = "togaf-gym-pack" }' in manifest
+    assert (CONSUMER / "ontology.ttl").is_symlink()
+    assert (CONSUMER / "togaf-gym-pack").is_symlink()
+    assert (CONSUMER / "ontology.ttl").resolve() == PACK / "ontology.ttl"
+    assert (CONSUMER / "togaf-gym-pack").resolve() == PACK
+
+
+@pytest.mark.skipif(
+    shutil.which("ggen") is None, reason="no `ggen` binary found on PATH for local execution"
+)
+def test_ggen_sync_run_against_the_real_installed_binary_manufactures_the_projection(
+    tmp_path: Path,
+) -> None:
+    """Real local coverage this pack previously had none of: the pinned-CI-only
+    test above never runs outside GitHub Actions, and this pack's own
+    committed `rust/togaf_gym/` consumer was never actually exercised by a
+    real `ggen sync run` before the path-traversal/shapes.ttl fixes above --
+    both real, local defects that this test (via `shutil.which("ggen")`
+    gating, not the CI-pinned-version download) would have caught."""
+    workspace = tmp_path / "workspace"
+    pack_copy = workspace / "ggen" / "togaf-gym-pack"
+    consumer_copy = workspace / "rust" / "togaf_gym"
+    pack_copy.parent.mkdir(parents=True)
+    consumer_copy.parent.mkdir(parents=True)
+    shutil.copytree(PACK, pack_copy)
+    shutil.copytree(CONSUMER, consumer_copy, symlinks=True)
+
+    result = subprocess.run(
+        ["ggen", "sync", "run"], cwd=consumer_copy, capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stderr
+    for target in _targets():
+        assert (consumer_copy / target).is_file()
+    generated = (consumer_copy / "src" / "lib.rs").read_text()
+    assert generated.count("ArchitectureTask {") == 11
+    assert "togaf.80.phase-h" in generated
 
 
 def test_ggen_v26_8_8_manufactures_ephemeral_projection_on_ci_313(tmp_path: Path) -> None:
