@@ -139,10 +139,15 @@ class SregymEnvironmentStartupErrorMessageTests(unittest.TestCase):
 
 class SregymBuildArgvAgentNameTests(unittest.TestCase):
     """Real string assertions on `_build_argv`'s agent_name threading -- no
-    subprocess needed. Regression coverage for the real, confirmed defect:
-    `vendor/gyms/sregym/clients/autofde_lab_planner/driver.py` does not
-    exist on disk in the sibling autofde-lab checkout, while
-    `vendor/gyms/sregym/clients/autofde_lab_dspy/driver.py` does."""
+    subprocess needed. Regression coverage for THREE real, empirically
+    disproven hypotheses this session, in order: `autofde_lab_planner`
+    (driver module missing on disk), `autofde_lab_dspy` (real driver, but
+    runs to completion and exits -- SregymEnvironment never gets external
+    control), `--use-external-harness` (exits immediately after fault
+    injection). `"debug"` (a real, pre-existing agents.yaml no-op,
+    `signal.pause()`) is the confirmed-live-working default: the conductor
+    stays up, real HTTP `/status` answered `{"stage":"diagnosis"}` while it
+    ran, waiting for this module's own `actuate()` to submit externally."""
 
     def test_explicit_agent_name_is_threaded_into_argv(self):
         argv = _build_argv(
@@ -154,13 +159,13 @@ class SregymBuildArgvAgentNameTests(unittest.TestCase):
         self.assertIn("--agent", argv)
         self.assertEqual(argv[argv.index("--agent") + 1], "autofde_lab_dspy")
 
-    def test_default_agent_name_is_autofde_lab_dspy(self):
+    def test_default_agent_name_is_debug(self):
         argv = _build_argv(
             judge_model_id="openai/gemma-4-26b-a4b-it",
             problem_id="misconfig_app_hotel_res",
             wall_clock_timeout_s=600,
         )
-        self.assertEqual(argv[argv.index("--agent") + 1], "autofde_lab_dspy")
+        self.assertEqual(argv[argv.index("--agent") + 1], "debug")
 
     def test_autofde_lab_planner_remains_explicitly_selectable(self):
         """The missing driver module is a real, independent defect in the
@@ -181,11 +186,11 @@ class SregymResolveMaterializeConfigTests(unittest.TestCase):
     without needing a live cluster, a real pinned checkout, or a real
     subprocess -- exercises the exact pure function `materialize()` calls."""
 
-    def test_default_config_threads_autofde_lab_dspy_into_argv(self):
+    def test_default_config_threads_debug_into_argv(self):
         argv, env, resolved = _resolve_materialize_argv_and_env(
             scenario="misconfig_app_hotel_res", config={}
         )
-        self.assertEqual(argv[argv.index("--agent") + 1], "autofde_lab_dspy")
+        self.assertEqual(argv[argv.index("--agent") + 1], "debug")
         self.assertIsInstance(env, dict)
         self.assertTrue(resolved["requires_authority"])
 

@@ -99,7 +99,7 @@ SREGYM_CAPABILITIES = (
 
 def _build_argv(
     *,
-    agent_name: str = "autofde_lab_dspy",
+    agent_name: str = "debug",
     judge_model_id: str,
     problem_id: str,
     wall_clock_timeout_s: int,
@@ -109,16 +109,41 @@ def _build_argv(
     autofde-lab repo (read, not imported -- this module has no dependency on
     that package).
 
-    `agent_name` defaults to `autofde_lab_dspy`, not `autofde_lab_planner`:
-    confirmed this session that
-    `vendor/gyms/sregym/clients/autofde_lab_planner/driver.py` does not exist
-    on disk in the sibling autofde-lab checkout (a real subprocess against it
-    fails with `No module named clients.autofde_lab_planner.driver`), while
-    `vendor/gyms/sregym/clients/autofde_lab_dspy/driver.py` does exist (a
-    real Groq-only DSPy driver built in that repo). `autofde_lab_planner`
-    remains a valid explicit value for callers who want it -- the missing
-    module is a real, independent problem in the sibling repo, not something
-    to hide by removing the option here."""
+    `agent_name` defaults to `"debug"` -- NOT `autofde_lab_dspy`, and NOT
+    `--use-external-harness` either. Both were tried and empirically
+    disproven live this session, in order:
+
+    1. `autofde_lab_planner`: `vendor/gyms/sregym/clients/autofde_lab_planner/
+       driver.py` does not exist on disk in the sibling autofde-lab checkout
+       (`No module named clients.autofde_lab_planner.driver`).
+    2. `autofde_lab_dspy`: the driver exists and runs, but `main.py` launches
+       it, waits for it to run its OWN complete internal benchmark loop to
+       conclusion, then tears the whole process down -- `SregymEnvironment`
+       never gets a chance to drive anything externally; by the time it polls
+       again the subprocess has already exited (confirmed live: `returncode=0`,
+       full `"Benchmark complete!"` trace in stdout).
+    3. `--use-external-harness`: deploys the fault, then exits the whole
+       process immediately (`"Fault injected... exit for external harness"`
+       followed immediately by `"Finished server process"`) -- also does not
+       stay alive.
+    4. `"debug"` (this default): a real, pre-existing `agents.yaml` entry
+       (`kickoff_command: python -c "import signal; signal.pause()"`) that
+       does nothing. Confirmed live: the conductor deploys the fault, launches
+       `debug` (which just pauses), and the outer `while
+       conductor.submission_stage != "done":` loop in `main.py` keeps the
+       conductor's real HTTP API alive and responsive
+       (`curl http://127.0.0.1:8000/status` returned real
+       `{"stage":"diagnosis"}` while this was running) -- waiting for an
+       EXTERNAL caller (this module's `actuate()`, via `submit_diagnosis`/
+       `submit_mitigation`) to flip that stage. This is the real, working
+       persistent-server pattern `SregymEnvironment` was designed for.
+
+    `autofde_lab_planner`/`autofde_lab_dspy`/`--use-external-harness` remain
+    reachable by passing `agent_name` explicitly for callers who want a
+    self-contained one-shot benchmark run instead of external MCP-mediated
+    control -- the point of this default is which mode matches THIS module's
+    own `observe()`/`actuate()`/`verify()` design, not that the others are
+    wrong for their own purpose."""
     return [
         ".venv/bin/python",
         "main.py",
@@ -393,7 +418,7 @@ def _resolve_materialize_argv_and_env(
     (`_build_env`/`_build_full_subprocess_env`). Returns `(argv, env,
     resolved)` where `resolved` carries every other value `materialize()`
     needs to construct `SregymEnvironment` (ports, timeouts, requires_authority)."""
-    agent_name = config.get("agent_name", "autofde_lab_dspy")
+    agent_name = config.get("agent_name", "debug")
     if not isinstance(agent_name, str) or not agent_name:
         raise TypeError("config.agent_name must be a non-empty string")
     judge_model_id = config.get("judge_model_id", "openai/gemma-4-26b-a4b-it")
