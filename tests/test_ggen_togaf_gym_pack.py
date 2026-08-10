@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
-import re
 import shutil
 import stat
 import subprocess
 import sys
 import tarfile
+import tomllib
 import urllib.request
 from pathlib import Path
 
@@ -17,7 +18,7 @@ from rdflib.namespace import OWL, RDF, RDFS, SKOS
 
 ROOT = Path(__file__).resolve().parents[1]
 PACK = ROOT / "ggen" / "togaf-gym-pack"
-CONSUMER = ROOT / "rust" / "togaf_gym"
+COURTS = PACK / "courts" / "shapes.ttl"
 PPLAN = Namespace("http://purl.org/net/p-plan#")
 PROV = Namespace("http://www.w3.org/ns/prov#")
 DCT = Namespace("http://purl.org/dc/terms/")
@@ -31,7 +32,6 @@ LOCAL = "urn:gymact:togaf:"
 PROFILE = URIRef(f"{LOCAL}profile")
 PHASE_SCHEME = URIRef(f"{LOCAL}scheme:adm-phase")
 TASK_SCHEME = URIRef(f"{LOCAL}scheme:task-family")
-_TO = re.compile(r'^to: "([^"]+)"$', re.MULTILINE)
 
 _EXPECTED_PHASES = {
     "Preliminary",
@@ -57,6 +57,11 @@ _EXPECTED_TASKS = {
     "togaf.70.phase-g",
     "togaf.80.phase-h",
 }
+_EXPECTED_TARGETS = (
+    "consumer/togaf-gym/src/lib.rs",
+    "consumer/togaf-gym/wit/gymact-togaf-gym.wit",
+    "consumer/togaf-gym/docs/compiled-reference.md",
+)
 _GGEN_URL = (
     "https://github.com/seanchatmangpt/ggen/releases/download/v26.8.8/"
     "ggen-x86_64-unknown-linux-gnu.tar.gz"
@@ -70,7 +75,7 @@ def _data_graph() -> Graph:
 
 def _combined_graph() -> Graph:
     graph = _data_graph()
-    graph.parse(PACK / "shapes.ttl", format="turtle")
+    graph.parse(COURTS, format="turtle")
     return graph
 
 
@@ -79,13 +84,33 @@ def _gate_rows(graph: Graph, name: str) -> list[tuple[object, ...]]:
     return [tuple(row) for row in graph.query(query)]
 
 
-def _targets() -> tuple[str, ...]:
-    targets = []
-    for template in sorted((PACK / "templates").glob("*.tmpl")):
-        match = _TO.search(template.read_text())
-        assert match is not None
-        targets.append(match.group(1))
-    return tuple(targets)
+def _config() -> dict[str, object]:
+    with (PACK / "ggen.toml").open("rb") as stream:
+        return tomllib.load(stream)
+
+
+def _ggen_binary(tmp_path: Path) -> Path:
+    supplied = os.environ.get("GGEN_BIN")
+    if supplied:
+        executable = Path(supplied).resolve()
+        assert executable.is_file(), executable
+        return executable
+
+    if os.environ.get("GITHUB_ACTIONS") != "true" or sys.version_info[:2] != (3, 13):
+        pytest.skip("set GGEN_BIN locally; CI downloads the pinned ggen toolchain on Python 3.13")
+
+    archive = tmp_path / "ggen.tar.gz"
+    urllib.request.urlretrieve(_GGEN_URL, archive)
+    assert hashlib.sha256(archive.read_bytes()).hexdigest() == _GGEN_SHA256
+    toolchain = tmp_path / "toolchain"
+    toolchain.mkdir()
+    with tarfile.open(archive, "r:gz") as tar:
+        tar.extractall(toolchain, filter="data")
+    executables = [path for path in toolchain.rglob("ggen") if path.is_file()]
+    assert len(executables) == 1
+    executable = executables[0]
+    executable.chmod(executable.stat().st_mode | stat.S_IXUSR)
+    return executable
 
 
 def test_togaf_alignment_is_public_vocabulary_abox() -> None:
@@ -192,64 +217,130 @@ def test_gates_refuse_semantic_regressions() -> None:
     assert _gate_rows(graph, "030_projection_contract.rq")
 
 
-def test_shacl_courts_admit_canonical_graph_and_refuse_missing_trace() -> None:
-    pyshacl = pytest.importorskip("pyshacl")
-    data = _data_graph()
-    shapes = Graph().parse(PACK / "shapes.ttl", format="turtle")
-    conforms, _, report = pyshacl.validate(data, shacl_graph=shapes)
-    assert conforms, report
 
-    requirement = URIRef(f"{LOCAL}req:continuity")
-    data.remove((requirement, OSLC_RM.specifiedBy, None))
-    conforms, _, _ = pyshacl.validate(data, shacl_graph=shapes)
-    assert not conforms
+def test_ggen_manifest_is_self_contained_and_projection_only() -> None:
+    config = _config()
+    ontology = config["ontology"]
+    assert ontology["source"] == "ontology.ttl"
+    assert ontology["imports"] == ["courts/shapes.ttl"]
+    assert ".." not in ontology["source"]
+    assert all(".." not in path for path in ontology["imports"])
 
-
-def test_ggen_templates_are_projection_only() -> None:
-    targets = _targets()
-    assert targets == (
-        "src/lib.rs",
-        "docs/compiled-reference.md",
-        "wit/gymact-togaf-gym.wit",
-    )
+    rules = config["generation"]["rules"]
+    targets = tuple(rule["output_file"] for rule in rules)
+    assert targets == _EXPECTED_TARGETS
     assert len(targets) == len(set(targets))
     assert all("generated" not in target.lower() for target in targets)
-    assert all(not (CONSUMER / target).exists() for target in targets)
-    manifest = (CONSUMER / "ggen.toml").read_text()
-    assert 'source = "../../ggen/togaf-gym-pack/ontology.ttl"' in manifest
-    assert 'togaf-gym-pack = { path = "../../ggen/togaf-gym-pack" }' in manifest
+    assert all(not (PACK / target).exists() for target in targets)
+    templates = (PACK / "templates").glob("*.tmpl")
+    assert all(not template.read_text().startswith("---") for template in templates)
+    assert not (PACK / "shapes.ttl").exists()
 
 
-def test_ggen_v26_8_8_manufactures_ephemeral_projection_on_ci_313(tmp_path: Path) -> None:
-    if os.environ.get("GITHUB_ACTIONS") != "true" or sys.version_info[:2] != (3, 13):
-        pytest.skip("pinned ggen toolchain capsule executes on the GitHub Python 3.13 leg")
 
-    archive = tmp_path / "ggen.tar.gz"
-    urllib.request.urlretrieve(_GGEN_URL, archive)
-    assert hashlib.sha256(archive.read_bytes()).hexdigest() == _GGEN_SHA256
+def test_ggen_v26_8_8_manufactures_ephemeral_projection_and_receipt(tmp_path: Path) -> None:
+    executable = _ggen_binary(tmp_path)
+    version = subprocess.run(
+        [str(executable), "--version"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    assert version == "ggen 26.8.8"
 
-    toolchain = tmp_path / "toolchain"
-    toolchain.mkdir()
-    with tarfile.open(archive, "r:gz") as tar:
-        tar.extractall(toolchain, filter="data")
-    executables = [path for path in toolchain.rglob("ggen") if path.is_file()]
-    assert len(executables) == 1
-    executable = executables[0]
-    executable.chmod(executable.stat().st_mode | stat.S_IXUSR)
-
-    workspace = tmp_path / "workspace"
-    pack_copy = workspace / "ggen" / "togaf-gym-pack"
-    consumer_copy = workspace / "rust" / "togaf_gym"
-    pack_copy.parent.mkdir(parents=True)
-    consumer_copy.parent.mkdir(parents=True)
+    pack_copy = tmp_path / "togaf-gym-pack"
     shutil.copytree(PACK, pack_copy)
-    shutil.copytree(CONSUMER, consumer_copy)
 
-    subprocess.run([str(executable), "sync", "run"], cwd=consumer_copy, check=True)
-    for target in _targets():
-        assert (consumer_copy / target).is_file()
-    receipt = consumer_copy / ".ggen-v2" / "receipt.json"
+    shacl = subprocess.run(
+        [
+            str(executable),
+            "graph",
+            "validate",
+            "--files",
+            "ontology.ttl",
+            "--shapes",
+            "courts/shapes.ttl",
+        ],
+        cwd=pack_copy,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert '"shapes_conform": true' in shacl.stdout
+
+    negative = Graph().parse(pack_copy / "ontology.ttl", format="turtle")
+    requirement = URIRef(f"{LOCAL}req:continuity")
+    negative.remove((requirement, OSLC_RM.specifiedBy, None))
+    negative.serialize(pack_copy / "invalid-requirement.ttl", format="turtle")
+    refused = subprocess.run(
+        [
+            str(executable),
+            "graph",
+            "validate",
+            "--files",
+            "invalid-requirement.ttl",
+            "--shapes",
+            "courts/shapes.ttl",
+        ],
+        cwd=pack_copy,
+        capture_output=True,
+        text=True,
+    )
+    assert refused.returncode != 0
+    assert "SHACL validation failed" in refused.stderr
+    (pack_copy / "invalid-requirement.ttl").unlink()
+
+    first = subprocess.run(
+        [str(executable), "sync", "run"],
+        cwd=pack_copy,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert '"graph_hash_hex"' in first.stdout
+    first_outputs = {
+        target: (pack_copy / target).read_bytes() for target in _EXPECTED_TARGETS
+    }
+    first_receipt = json.loads((pack_copy / ".ggen-v2/receipt.json").read_text())
+
+    second = subprocess.run(
+        [str(executable), "sync", "run"],
+        cwd=pack_copy,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert '"graph_hash_hex"' in second.stdout
+    for target in _EXPECTED_TARGETS:
+        assert (pack_copy / target).is_file()
+        assert (pack_copy / target).read_bytes() == first_outputs[target]
+
+    receipt = pack_copy / ".ggen-v2" / "receipt.json"
     assert receipt.is_file() and receipt.stat().st_size > 0
-    generated = (consumer_copy / "src" / "lib.rs").read_text()
+    second_receipt = json.loads(receipt.read_text())
+    for observed in (first_receipt, second_receipt):
+        assert observed["record"]["schema"] == "ggen-receipt/v2"
+        assert observed["record"]["v2"]["standing_ceiling"] == "Green"
+        assert observed["payload"]["closure"]["actuator"] == "ggen@26.8.8"
+
+    # Replay preserves admitted graph, closure, and artifact bytes while the receipt
+    # chain records that the second actuation skipped unchanged projections.
+    assert first_receipt["payload"]["graph_hash"] == second_receipt["payload"]["graph_hash"]
+    assert first_receipt["payload"]["closure"] == second_receipt["payload"]["closure"]
+    assert first_receipt["payload"]["outputs"] == second_receipt["payload"]["outputs"]
+    assert set(first_receipt["payload"]["decisions"].values()) == {"written"}
+    assert all(
+        decision.startswith("skipped: unchanged")
+        for decision in second_receipt["payload"]["decisions"].values()
+    )
+    assert (
+        second_receipt["record"]["prev_chain_hash_hex"]
+        == first_receipt["record"]["chain_hash_hex"]
+    )
+    assert second_receipt["record"]["v2"]["equivalence"]["source"] == "Equivalent"
+    assert second_receipt["record"]["v2"]["equivalence"]["config"] == "Equivalent"
+
+    generated = (pack_copy / "consumer/togaf-gym/src/lib.rs").read_text()
     assert generated.count("ArchitectureTask {") == 11
     assert "togaf.80.phase-h" in generated
+    assert generated.count("AdmPhase {") == 11

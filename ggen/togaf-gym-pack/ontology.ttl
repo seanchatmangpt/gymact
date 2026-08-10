@@ -1,144 +1,99 @@
-# GymAct TOGAF public-ontology alignment ABox.
-#
-# Searched/reused vocabularies: W3C PROF, PROV-O, ORG, SKOS, DCAT,
-# DCTERMS, ODRL; P-PLAN; OASIS OSLC RM. SHACL/EARL courts are in
-# shapes.ttl. No local OWL/RDFS class/property is required.
-#
-# Source fence: this graph does not reproduce TOGAF definitions, diagrams,
-# templates, or body text. Public Open Group pages are provenance only.
-
+# GymAct TOGAF alignment: public ontologies own semantics; local IRIs are ABox/SKOS only.
+@prefix t: <urn:gymact:togaf:> .
 @prefix dcat: <http://www.w3.org/ns/dcat#> .
 @prefix dct: <http://purl.org/dc/terms/> .
 @prefix odrl: <http://www.w3.org/ns/odrl/2/> .
 @prefix org: <http://www.w3.org/ns/org#> .
-@prefix oslc_rm: <http://open-services.net/ns/rm#> .
+@prefix rm: <http://open-services.net/ns/rm#> .
 @prefix pplan: <http://purl.org/net/p-plan#> .
 @prefix prof: <http://www.w3.org/ns/dx/prof/> .
 @prefix prov: <http://www.w3.org/ns/prov#> .
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 
-<urn:gymact:togaf:profile>
-    a prof:Profile, prov:Entity ;
-    dct:identifier "gymact-togaf-public-ontology-profile" ;
-    dct:title "GymAct TOGAF public-ontology alignment profile"@en ;
-    dct:description "Independent public-vocabulary alignment used as the admitted source for the GymAct enterprise-architecture projection."@en ;
-    dct:conformsTo <https://publications.opengroup.org/standards/togaf> ;
-    prof:isProfileOf
-        <http://www.w3.org/ns/prov#>,
-        <http://www.w3.org/ns/org#>,
-        <http://www.w3.org/2004/02/skos/core#>,
-        <http://purl.org/net/p-plan#>,
-        <http://open-services.net/ns/rm#>,
-        <http://www.w3.org/ns/dcat#>,
-        <http://www.w3.org/ns/odrl/2/> ;
-    prov:hadPrimarySource
-        <urn:gymact:togaf:source:standard-index>,
-        <urn:gymact:togaf:source:public-adm> .
+t:profile a prof:Profile, prov:Entity ;
+  dct:identifier "gymact-togaf-public-ontology-profile" ;
+  dct:title "GymAct TOGAF public-ontology alignment profile"@en ;
+  dct:conformsTo <https://publications.opengroup.org/standards/togaf> ;
+  prof:isProfileOf <http://www.w3.org/ns/prov#>, <http://www.w3.org/ns/org#>,
+    <http://www.w3.org/2004/02/skos/core#>, <http://purl.org/net/p-plan#>,
+    <http://open-services.net/ns/rm#>, <http://www.w3.org/ns/dcat#>,
+    <http://www.w3.org/ns/odrl/2/> ;
+  prov:hadPrimarySource t:source:standard, t:source:adm .
+t:source:standard a dcat:Resource, prov:Entity ; dct:identifier "TOGAF-10" ;
+  dcat:landingPage <https://publications.opengroup.org/standards/togaf> .
+t:source:adm a dcat:Resource, prov:Entity ; dct:identifier "OPEN-GROUP-PUBLIC-ADM-PHASE-LABELS" ;
+  dcat:landingPage <https://www.opengroup.org/soa/source-book/togaf/p4.htm> .
 
-<urn:gymact:togaf:source:standard-index>
-    a dcat:Resource, prov:Entity ;
-    dct:identifier "TOGAF-10" ;
-    dct:title "The TOGAF Standard, 10th Edition standard index"@en ;
-    dcat:landingPage <https://publications.opengroup.org/standards/togaf> .
+t:scheme:adm-phase a skos:ConceptScheme ; prov:hadPrimarySource t:source:adm .
+t:phase:preliminary a skos:Concept ; skos:inScheme t:scheme:adm-phase ; skos:notation "Preliminary" ; skos:prefLabel "Preliminary Phase"@en ; prov:hadPrimarySource t:source:adm .
+t:phase:requirements a skos:Concept ; skos:inScheme t:scheme:adm-phase ; skos:notation "Requirements" ; skos:prefLabel "Architecture Requirements Management"@en ; prov:hadPrimarySource t:source:adm .
+t:phase:a a skos:Concept ; skos:inScheme t:scheme:adm-phase ; skos:notation "A" ; skos:prefLabel "Architecture Vision"@en ; prov:hadPrimarySource t:source:adm .
+t:phase:b a skos:Concept ; skos:inScheme t:scheme:adm-phase ; skos:notation "B" ; skos:prefLabel "Business Architecture"@en ; prov:hadPrimarySource t:source:adm .
+t:phase:c a skos:Concept ; skos:inScheme t:scheme:adm-phase ; skos:notation "C" ; skos:prefLabel "Information Systems Architectures"@en ; prov:hadPrimarySource t:source:adm .
+t:phase:d a skos:Concept ; skos:inScheme t:scheme:adm-phase ; skos:notation "D" ; skos:prefLabel "Technology Architecture"@en ; prov:hadPrimarySource t:source:adm .
+t:phase:e a skos:Concept ; skos:inScheme t:scheme:adm-phase ; skos:notation "E" ; skos:prefLabel "Opportunities and Solutions"@en ; prov:hadPrimarySource t:source:adm .
+t:phase:f a skos:Concept ; skos:inScheme t:scheme:adm-phase ; skos:notation "F" ; skos:prefLabel "Migration Planning"@en ; prov:hadPrimarySource t:source:adm .
+t:phase:g a skos:Concept ; skos:inScheme t:scheme:adm-phase ; skos:notation "G" ; skos:prefLabel "Implementation Governance"@en ; prov:hadPrimarySource t:source:adm .
+t:phase:h a skos:Concept ; skos:inScheme t:scheme:adm-phase ; skos:notation "H" ; skos:prefLabel "Architecture Change Management"@en ; prov:hadPrimarySource t:source:adm .
 
-<urn:gymact:togaf:source:public-adm>
-    a dcat:Resource, prov:Entity ;
-    dct:identifier "OPEN-GROUP-PUBLIC-ADM-PHASE-LABELS" ;
-    dct:title "Open Group public ADM phase overview"@en ;
-    dcat:landingPage <https://www.opengroup.org/soa/source-book/togaf/p4.htm> .
+t:scheme:task-family a skos:ConceptScheme .
+t:task-family:capability a skos:Concept ; skos:inScheme t:scheme:task-family ; skos:prefLabel "Architecture capability"@en .
+t:task-family:requirements a skos:Concept ; skos:inScheme t:scheme:task-family ; skos:prefLabel "Requirements traceability"@en .
+t:task-family:vision a skos:Concept ; skos:inScheme t:scheme:task-family ; skos:prefLabel "Architecture vision"@en .
+t:task-family:business a skos:Concept ; skos:inScheme t:scheme:task-family ; skos:prefLabel "Business baseline-to-target"@en .
+t:task-family:information-systems a skos:Concept ; skos:inScheme t:scheme:task-family ; skos:prefLabel "Information-systems baseline-to-target"@en .
+t:task-family:technology a skos:Concept ; skos:inScheme t:scheme:task-family ; skos:prefLabel "Technology baseline-to-target"@en .
+t:task-family:options a skos:Concept ; skos:inScheme t:scheme:task-family ; skos:prefLabel "Opportunity and solution portfolio"@en .
+t:task-family:migration a skos:Concept ; skos:inScheme t:scheme:task-family ; skos:prefLabel "Migration planning"@en .
+t:task-family:governance a skos:Concept ; skos:inScheme t:scheme:task-family ; skos:prefLabel "Implementation conformance"@en .
+t:task-family:change a skos:Concept ; skos:inScheme t:scheme:task-family ; skos:prefLabel "Architecture change"@en .
 
-<urn:gymact:togaf:source:license-boundary>
-    a dcat:Resource, prov:Entity ;
-    dct:title "TOGAF Standard, 10th Edition licensing boundary"@en ;
-    dcat:landingPage <https://www.opengroup.org/togaf-standard-10th-edition-downloads> .
+t:domain:business a skos:Concept ; skos:prefLabel "Business"@en .
+t:domain:data a skos:Concept ; skos:prefLabel "Data"@en .
+t:domain:application a skos:Concept ; skos:prefLabel "Application"@en .
+t:domain:technology a skos:Concept ; skos:prefLabel "Technology"@en .
+t:artifact-kind:baseline a skos:Concept ; skos:prefLabel "Baseline architecture"@en .
+t:artifact-kind:target a skos:Concept ; skos:prefLabel "Target architecture"@en .
+t:artifact-kind:vision a skos:Concept ; skos:prefLabel "Architecture vision"@en .
+t:artifact-kind:options a skos:Concept ; skos:prefLabel "Solution options"@en .
+t:artifact-kind:roadmap a skos:Concept ; skos:prefLabel "Migration roadmap"@en .
+t:artifact-kind:conformance a skos:Concept ; skos:prefLabel "Conformance evidence"@en .
+t:artifact-kind:change a skos:Concept ; skos:prefLabel "Architecture change"@en .
 
-<urn:gymact:togaf:scheme:adm-phase>
-    a skos:ConceptScheme ;
-    dct:title "TOGAF ADM phase labels used by GymAct"@en ;
-    prov:hadPrimarySource <urn:gymact:togaf:source:public-adm> ;
-    skos:hasTopConcept
-        <urn:gymact:togaf:phase:preliminary>,
-        <urn:gymact:togaf:phase:requirements>,
-        <urn:gymact:togaf:phase:a>,
-        <urn:gymact:togaf:phase:b>,
-        <urn:gymact:togaf:phase:c>,
-        <urn:gymact:togaf:phase:d>,
-        <urn:gymact:togaf:phase:e>,
-        <urn:gymact:togaf:phase:f>,
-        <urn:gymact:togaf:phase:g>,
-        <urn:gymact:togaf:phase:h> .
+t:enterprise:northstar a org:FormalOrganization, prov:Agent ; org:hasUnit t:org:architecture-office, t:org:architecture-board .
+t:org:architecture-office a org:OrganizationalUnit, prov:Agent ; org:unitOf t:enterprise:northstar .
+t:org:architecture-board a org:OrganizationalUnit, prov:Agent ; org:unitOf t:enterprise:northstar .
+t:role:enterprise-architect a org:Role, skos:Concept .
+t:agent:lead-architect a prov:Agent .
+t:membership:lead-architect a org:Membership ; org:organization t:org:architecture-office ; org:member t:agent:lead-architect ; org:role t:role:enterprise-architect .
 
-<urn:gymact:togaf:phase:preliminary> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:adm-phase> ; skos:notation "Preliminary" ; skos:prefLabel "Preliminary Phase"@en ; prov:hadPrimarySource <urn:gymact:togaf:source:public-adm> .
-<urn:gymact:togaf:phase:requirements> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:adm-phase> ; skos:notation "Requirements" ; skos:prefLabel "Architecture Requirements Management"@en ; prov:hadPrimarySource <urn:gymact:togaf:source:public-adm> .
-<urn:gymact:togaf:phase:a> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:adm-phase> ; skos:notation "A" ; skos:prefLabel "Architecture Vision"@en ; prov:hadPrimarySource <urn:gymact:togaf:source:public-adm> .
-<urn:gymact:togaf:phase:b> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:adm-phase> ; skos:notation "B" ; skos:prefLabel "Business Architecture"@en ; prov:hadPrimarySource <urn:gymact:togaf:source:public-adm> .
-<urn:gymact:togaf:phase:c> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:adm-phase> ; skos:notation "C" ; skos:prefLabel "Information Systems Architectures"@en ; prov:hadPrimarySource <urn:gymact:togaf:source:public-adm> .
-<urn:gymact:togaf:phase:d> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:adm-phase> ; skos:notation "D" ; skos:prefLabel "Technology Architecture"@en ; prov:hadPrimarySource <urn:gymact:togaf:source:public-adm> .
-<urn:gymact:togaf:phase:e> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:adm-phase> ; skos:notation "E" ; skos:prefLabel "Opportunities and Solutions"@en ; prov:hadPrimarySource <urn:gymact:togaf:source:public-adm> .
-<urn:gymact:togaf:phase:f> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:adm-phase> ; skos:notation "F" ; skos:prefLabel "Migration Planning"@en ; prov:hadPrimarySource <urn:gymact:togaf:source:public-adm> .
-<urn:gymact:togaf:phase:g> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:adm-phase> ; skos:notation "G" ; skos:prefLabel "Implementation Governance"@en ; prov:hadPrimarySource <urn:gymact:togaf:source:public-adm> .
-<urn:gymact:togaf:phase:h> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:adm-phase> ; skos:notation "H" ; skos:prefLabel "Architecture Change Management"@en ; prov:hadPrimarySource <urn:gymact:togaf:source:public-adm> .
+t:req:continuity a rm:Requirement, prov:Entity ; dct:identifier "REQ-001" ; dct:title "Regional service continuity"@en ; rm:specifiedBy t:architecture:target ; rm:validatedBy t:oracle:requirements .
+t:req:residency a rm:Requirement, prov:Entity ; dct:identifier "REQ-002" ; dct:title "Regulated-data residency"@en ; rm:specifiedBy t:architecture:target ; rm:validatedBy t:oracle:requirements .
+t:req:latency a rm:Requirement, prov:Entity ; dct:identifier "REQ-003" ; dct:title "Interactive-channel latency"@en ; rm:specifiedBy t:architecture:target ; rm:validatedBy t:oracle:requirements .
+t:req:cost a rm:Requirement, prov:Entity ; dct:identifier "REQ-004" ; dct:title "Bounded operating cost"@en ; rm:specifiedBy t:architecture:target ; rm:validatedBy t:oracle:requirements .
 
-<urn:gymact:togaf:scheme:architecture-domain> a skos:ConceptScheme ; dct:title "Enterprise architecture domains"@en ; skos:hasTopConcept <urn:gymact:togaf:domain:business>, <urn:gymact:togaf:domain:data>, <urn:gymact:togaf:domain:application>, <urn:gymact:togaf:domain:technology> .
-<urn:gymact:togaf:domain:business> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:architecture-domain> ; skos:prefLabel "Business"@en ; skos:related <urn:gymact:togaf:phase:b> .
-<urn:gymact:togaf:domain:data> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:architecture-domain> ; skos:prefLabel "Data"@en ; skos:related <urn:gymact:togaf:phase:c> .
-<urn:gymact:togaf:domain:application> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:architecture-domain> ; skos:prefLabel "Application"@en ; skos:related <urn:gymact:togaf:phase:c> .
-<urn:gymact:togaf:domain:technology> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:architecture-domain> ; skos:prefLabel "Technology"@en ; skos:related <urn:gymact:togaf:phase:d> .
+t:architecture:baseline a dcat:Resource, prov:Entity ; dct:type t:artifact-kind:baseline .
+t:artifact:vision a dcat:Resource, prov:Entity ; dct:type t:artifact-kind:vision ; prov:wasDerivedFrom t:architecture:baseline .
+t:architecture:business-target a dcat:Resource, prov:Entity ; dct:type t:domain:business ; prov:wasDerivedFrom t:architecture:baseline .
+t:architecture:data-target a dcat:Resource, prov:Entity ; dct:type t:domain:data ; prov:wasDerivedFrom t:architecture:baseline .
+t:architecture:application-target a dcat:Resource, prov:Entity ; dct:type t:domain:application ; prov:wasDerivedFrom t:architecture:baseline .
+t:architecture:technology-target a dcat:Resource, prov:Entity ; dct:type t:domain:technology ; prov:wasDerivedFrom t:architecture:baseline .
+t:architecture:target a dcat:Resource, prov:Entity ; dct:type t:artifact-kind:target ; prov:wasDerivedFrom t:architecture:baseline, t:architecture:business-target, t:architecture:data-target, t:architecture:application-target, t:architecture:technology-target .
+t:artifact:options a dcat:Resource, prov:Entity ; dct:type t:artifact-kind:options ; prov:wasDerivedFrom t:architecture:target .
+t:artifact:roadmap a dcat:Resource, prov:Entity ; dct:type t:artifact-kind:roadmap ; prov:wasDerivedFrom t:artifact:options .
+t:artifact:conformance a dcat:Resource, prov:Entity ; dct:type t:artifact-kind:conformance ; prov:wasDerivedFrom t:architecture:target .
+t:artifact:change a dcat:Resource, prov:Entity ; dct:type t:artifact-kind:change ; prov:wasDerivedFrom t:artifact:conformance .
 
-<urn:gymact:togaf:scheme:artifact-kind> a skos:ConceptScheme ; dct:title "Architecture artifact roles"@en .
-<urn:gymact:togaf:artifact-kind:baseline> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:artifact-kind> ; skos:prefLabel "Baseline architecture"@en .
-<urn:gymact:togaf:artifact-kind:target> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:artifact-kind> ; skos:prefLabel "Target architecture"@en .
-<urn:gymact:togaf:artifact-kind:vision> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:artifact-kind> ; skos:prefLabel "Architecture vision"@en .
-<urn:gymact:togaf:artifact-kind:options> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:artifact-kind> ; skos:prefLabel "Solution options"@en .
-<urn:gymact:togaf:artifact-kind:roadmap> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:artifact-kind> ; skos:prefLabel "Migration roadmap"@en .
-<urn:gymact:togaf:artifact-kind:conformance> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:artifact-kind> ; skos:prefLabel "Conformance evidence"@en .
-<urn:gymact:togaf:artifact-kind:change> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:artifact-kind> ; skos:prefLabel "Architecture change"@en .
+t:policy:governance a odrl:Set, prov:Entity ; odrl:uid t:policy:governance ;
+  odrl:permission [ a odrl:Permission ; odrl:target t:architecture:target ; odrl:action odrl:use ; odrl:assigner t:org:architecture-board ; odrl:assignee t:org:architecture-office ] .
 
-<urn:gymact:togaf:scheme:task-family> a skos:ConceptScheme ; dct:title "GymAct architecture task families"@en .
-<urn:gymact:togaf:task-family:capability> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:task-family> ; skos:prefLabel "Architecture capability"@en .
-<urn:gymact:togaf:task-family:requirements> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:task-family> ; skos:prefLabel "Requirements traceability"@en .
-<urn:gymact:togaf:task-family:vision> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:task-family> ; skos:prefLabel "Architecture vision"@en .
-<urn:gymact:togaf:task-family:business> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:task-family> ; skos:prefLabel "Business baseline-to-target"@en .
-<urn:gymact:togaf:task-family:information-systems> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:task-family> ; skos:prefLabel "Information-systems baseline-to-target"@en .
-<urn:gymact:togaf:task-family:technology> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:task-family> ; skos:prefLabel "Technology baseline-to-target"@en .
-<urn:gymact:togaf:task-family:options> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:task-family> ; skos:prefLabel "Opportunity and solution portfolio"@en .
-<urn:gymact:togaf:task-family:migration> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:task-family> ; skos:prefLabel "Migration planning"@en .
-<urn:gymact:togaf:task-family:governance> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:task-family> ; skos:prefLabel "Implementation conformance"@en .
-<urn:gymact:togaf:task-family:change> a skos:Concept ; skos:inScheme <urn:gymact:togaf:scheme:task-family> ; skos:prefLabel "Architecture change"@en .
-
-<urn:gymact:togaf:enterprise:northstar> a org:FormalOrganization, prov:Agent ; skos:prefLabel "Northstar Retail Group"@en ; org:hasUnit <urn:gymact:togaf:org:architecture-office>, <urn:gymact:togaf:org:architecture-board> .
-<urn:gymact:togaf:org:architecture-office> a org:OrganizationalUnit, prov:Agent ; skos:prefLabel "Architecture Office"@en ; org:unitOf <urn:gymact:togaf:enterprise:northstar> .
-<urn:gymact:togaf:org:architecture-board> a org:OrganizationalUnit, prov:Agent ; skos:prefLabel "Architecture Board"@en ; org:unitOf <urn:gymact:togaf:enterprise:northstar> .
-<urn:gymact:togaf:role:enterprise-architect> a org:Role, skos:Concept ; skos:prefLabel "Enterprise architect"@en .
-<urn:gymact:togaf:agent:lead-architect> a prov:Agent ; skos:prefLabel "Lead enterprise architect"@en .
-<urn:gymact:togaf:membership:lead-architect> a org:Membership ; org:organization <urn:gymact:togaf:org:architecture-office> ; org:member <urn:gymact:togaf:agent:lead-architect> ; org:role <urn:gymact:togaf:role:enterprise-architect> .
-
-<urn:gymact:togaf:req:continuity> a oslc_rm:Requirement, prov:Entity ; dct:identifier "REQ-001" ; dct:title "Regional service continuity"@en ; oslc_rm:specifiedBy <urn:gymact:togaf:architecture:target> ; oslc_rm:validatedBy <urn:gymact:togaf:oracle:requirements> .
-<urn:gymact:togaf:req:residency> a oslc_rm:Requirement, prov:Entity ; dct:identifier "REQ-002" ; dct:title "Regulated-data residency"@en ; oslc_rm:specifiedBy <urn:gymact:togaf:architecture:target> ; oslc_rm:validatedBy <urn:gymact:togaf:oracle:requirements> .
-<urn:gymact:togaf:req:latency> a oslc_rm:Requirement, prov:Entity ; dct:identifier "REQ-003" ; dct:title "Interactive-channel latency"@en ; oslc_rm:specifiedBy <urn:gymact:togaf:architecture:target> ; oslc_rm:validatedBy <urn:gymact:togaf:oracle:requirements> .
-<urn:gymact:togaf:req:cost> a oslc_rm:Requirement, prov:Entity ; dct:identifier "REQ-004" ; dct:title "Bounded operating cost"@en ; oslc_rm:specifiedBy <urn:gymact:togaf:architecture:target> ; oslc_rm:validatedBy <urn:gymact:togaf:oracle:requirements> .
-
-<urn:gymact:togaf:architecture:baseline> a dcat:Resource, prov:Entity ; dct:title "Northstar baseline architecture"@en ; dct:type <urn:gymact:togaf:artifact-kind:baseline> .
-<urn:gymact:togaf:artifact:vision> a dcat:Resource, prov:Entity ; dct:title "Northstar architecture vision"@en ; dct:type <urn:gymact:togaf:artifact-kind:vision> ; prov:wasDerivedFrom <urn:gymact:togaf:architecture:baseline> .
-<urn:gymact:togaf:architecture:business-target> a dcat:Resource, prov:Entity ; dct:title "Northstar business target"@en ; dct:type <urn:gymact:togaf:domain:business> ; prov:wasDerivedFrom <urn:gymact:togaf:architecture:baseline> .
-<urn:gymact:togaf:architecture:data-target> a dcat:Resource, prov:Entity ; dct:title "Northstar data target"@en ; dct:type <urn:gymact:togaf:domain:data> ; prov:wasDerivedFrom <urn:gymact:togaf:architecture:baseline> .
-<urn:gymact:togaf:architecture:application-target> a dcat:Resource, prov:Entity ; dct:title "Northstar application target"@en ; dct:type <urn:gymact:togaf:domain:application> ; prov:wasDerivedFrom <urn:gymact:togaf:architecture:baseline> .
-<urn:gymact:togaf:architecture:technology-target> a dcat:Resource, prov:Entity ; dct:title "Northstar technology target"@en ; dct:type <urn:gymact:togaf:domain:technology> ; prov:wasDerivedFrom <urn:gymact:togaf:architecture:baseline> .
-<urn:gymact:togaf:architecture:target> a dcat:Resource, prov:Entity ; dct:title "Northstar integrated target architecture"@en ; dct:type <urn:gymact:togaf:artifact-kind:target> ; prov:wasDerivedFrom <urn:gymact:togaf:architecture:baseline>, <urn:gymact:togaf:architecture:business-target>, <urn:gymact:togaf:architecture:data-target>, <urn:gymact:togaf:architecture:application-target>, <urn:gymact:togaf:architecture:technology-target> .
-<urn:gymact:togaf:artifact:options> a dcat:Resource, prov:Entity ; dct:title "Northstar solution option portfolio"@en ; dct:type <urn:gymact:togaf:artifact-kind:options> ; prov:wasDerivedFrom <urn:gymact:togaf:architecture:target> .
-<urn:gymact:togaf:artifact:roadmap> a dcat:Resource, prov:Entity ; dct:title "Northstar migration roadmap"@en ; dct:type <urn:gymact:togaf:artifact-kind:roadmap> ; prov:wasDerivedFrom <urn:gymact:togaf:artifact:options> .
-<urn:gymact:togaf:artifact:conformance> a dcat:Resource, prov:Entity ; dct:title "Northstar implementation conformance evidence"@en ; dct:type <urn:gymact:togaf:artifact-kind:conformance> ; prov:wasDerivedFrom <urn:gymact:togaf:architecture:target> .
-<urn:gymact:togaf:artifact:change> a dcat:Resource, prov:Entity ; dct:title "Northstar architecture change proposal"@en ; dct:type <urn:gymact:togaf:artifact-kind:change> ; prov:wasDerivedFrom <urn:gymact:togaf:artifact:conformance> .
-
-<urn:gymact:togaf:policy:governance> a odrl:Set, prov:Entity ; odrl:uid <urn:gymact:togaf:policy:governance> ; dct:title "Architecture governance permission"@en ; odrl:permission [ a odrl:Permission ; odrl:target <urn:gymact:togaf:architecture:target> ; odrl:action odrl:use ; odrl:assigner <urn:gymact:togaf:org:architecture-board> ; odrl:assignee <urn:gymact:togaf:org:architecture-office> ] .
-
-<urn:gymact:togaf:task:preliminary> a pplan:Plan, prov:Plan ; dct:identifier "togaf.00.preliminary" ; dct:title "Establish the architecture capability"@en ; dct:type <urn:gymact:togaf:task-family:capability> ; dct:conformsTo <urn:gymact:togaf:profile> ; dct:subject <urn:gymact:togaf:enterprise:northstar> ; dct:requires <urn:gymact:togaf:oracle:preliminary> ; prov:wasDerivedFrom <urn:gymact:togaf:phase:preliminary> ; prov:hadPrimarySource <urn:gymact:togaf:source:public-adm> .
-<urn:gymact:togaf:task:requirements> a pplan:Plan, prov:Plan ; dct:identifier "togaf.01.requirements" ; dct:title "Close requirement traceability"@en ; dct:type <urn:gymact:togaf:task-family:requirements> ; dct:conformsTo <urn:gymact:togaf:profile> ; dct:subject <urn:gymact:togaf:req:continuity>, <urn:gymact:togaf:req:residency>, <urn:gymact:togaf:req:latency>, <urn:gymact:togaf:req:cost> ; dct:requires <urn:gymact:togaf:oracle:requirements> ; prov:wasDerivedFrom <urn:gymact:togaf:phase:requirements> ; prov:hadPrimarySource <urn:gymact:togaf:source:public-adm> .
-<urn:gymact:togaf:task:a> a pplan:Plan, prov:Plan ; dct:identifier "togaf.10.phase-a" ; dct:title "Manufacture an architecture vision"@en ; dct:type <urn:gymact:togaf:task-family:vision> ; dct:conformsTo <urn:gymact:togaf:profile> ; dct:subject <urn:gymact:togaf:artifact:vision> ; dct:requires <urn:gymact:togaf:oracle:a> ; prov:wasDerivedFrom <urn:gymact:togaf:phase:a> ; prov:hadPrimarySource <urn:gymact:togaf:source:public-adm> .
-<urn:gymact:togaf:task:b> a pplan:Plan, prov:Plan ; dct:identifier "togaf.20.phase-b" ; dct:title "Transform the business architecture"@en ; dct:type <urn:gymact:togaf:task-family:business> ; dct:conformsTo <urn:gymact:togaf:profile> ; dct:subject <urn:gymact:togaf:architecture:business-target> ; dct:requires <urn:gymact:togaf:oracle:b> ; prov:wasDerivedFrom <urn:gymact:togaf:phase:b> ; prov:hadPrimarySource <urn:gymact:togaf:source:public-adm> .
-<urn:gymact:togaf:task:c> a pplan:Plan, prov:Plan ; dct:identifier "togaf.30.phase-c" ; dct:title "Transform data and application architectures"@en ; dct:type <urn:gymact:togaf:task-family:information-systems> ; dct:conformsTo <urn:gymact:togaf:profile> ; dct:subject <urn:gymact:togaf:architecture:data-target>, <urn:gymact:togaf:architecture:application-target> ; dct:requires <urn:gymact:togaf:oracle:c> ; prov:wasDerivedFrom <urn:gymact:togaf:phase:c> ; prov:hadPrimarySource <urn:gymact:togaf:source:public-adm> .
-<urn:gymact:togaf:task:d> a pplan:Plan, prov:Plan ; dct:identifier "togaf.40.phase-d" ; dct:title "Transform the technology architecture"@en ; dct:type <urn:gymact:togaf:task-family:technology> ; dct:conformsTo <urn:gymact:togaf:profile> ; dct:subject <urn:gymact:togaf:architecture:technology-target> ; dct:requires <urn:gymact:togaf:oracle:d> ; prov:wasDerivedFrom <urn:gymact:togaf:phase:d> ; prov:hadPrimarySource <urn:gymact:togaf:source:public-adm> .
-<urn:gymact:togaf:task:e> a pplan:Plan, prov:Plan ; dct:identifier "togaf.50.phase-e" ; dct:title "Preserve a solution option portfolio"@en ; dct:type <urn:gymact:togaf:task-family:options> ; dct:conformsTo <urn:gymact:togaf:profile> ; dct:subject <urn:gymact:togaf:artifact:options> ; dct:requires <urn:gymact:togaf:oracle:e> ; prov:wasDerivedFrom <urn:gymact:togaf:phase:e> ; prov:hadPrimarySource <urn:gymact:togaf:source:public-adm> .
-<urn:gymact:togaf:task:f> a pplan:Plan, prov:Plan ; dct:identifier "togaf.60.phase-f" ; dct:title "Manufacture a migration roadmap"@en ; dct:type <urn:gymact:togaf:task-family:migration> ; dct:conformsTo <urn:gymact:togaf:profile> ; dct:subject <urn:gymact:togaf:artifact:roadmap> ; dct:requires <urn:gymact:togaf:oracle:f> ; prov:wasDerivedFrom <urn:gymact:togaf:phase:f> ; prov:hadPrimarySource <urn:gymact:togaf:source:public-adm> .
-<urn:gymact:togaf:task:g> a pplan:Plan, prov:Plan ; dct:identifier "togaf.70.phase-g" ; dct:title "Prove implementation conformance"@en ; dct:type <urn:gymact:togaf:task-family:governance> ; dct:conformsTo <urn:gymact:togaf:profile> ; dct:subject <urn:gymact:togaf:artifact:conformance>, <urn:gymact:togaf:policy:governance> ; dct:requires <urn:gymact:togaf:oracle:g> ; prov:wasDerivedFrom <urn:gymact:togaf:phase:g> ; prov:hadPrimarySource <urn:gymact:togaf:source:public-adm> .
-<urn:gymact:togaf:task:h> a pplan:Plan, prov:Plan ; dct:identifier "togaf.80.phase-h" ; dct:title "Evaluate an architecture change"@en ; dct:type <urn:gymact:togaf:task-family:change> ; dct:conformsTo <urn:gymact:togaf:profile> ; dct:subject <urn:gymact:togaf:artifact:change> ; dct:requires <urn:gymact:togaf:oracle:h> ; prov:wasDerivedFrom <urn:gymact:togaf:phase:h> ; prov:hadPrimarySource <urn:gymact:togaf:source:public-adm> .
+t:task:preliminary a pplan:Plan, prov:Plan ; dct:identifier "togaf.00.preliminary" ; dct:title "Establish the architecture capability"@en ; dct:type t:task-family:capability ; dct:conformsTo t:profile ; dct:subject t:enterprise:northstar ; dct:requires t:oracle:preliminary ; prov:wasDerivedFrom t:phase:preliminary ; prov:hadPrimarySource t:source:adm .
+t:task:requirements a pplan:Plan, prov:Plan ; dct:identifier "togaf.01.requirements" ; dct:title "Close requirement traceability"@en ; dct:type t:task-family:requirements ; dct:conformsTo t:profile ; dct:subject t:req:continuity, t:req:residency, t:req:latency, t:req:cost ; dct:requires t:oracle:requirements ; prov:wasDerivedFrom t:phase:requirements ; prov:hadPrimarySource t:source:adm .
+t:task:a a pplan:Plan, prov:Plan ; dct:identifier "togaf.10.phase-a" ; dct:title "Manufacture an architecture vision"@en ; dct:type t:task-family:vision ; dct:conformsTo t:profile ; dct:subject t:artifact:vision ; dct:requires t:oracle:a ; prov:wasDerivedFrom t:phase:a ; prov:hadPrimarySource t:source:adm .
+t:task:b a pplan:Plan, prov:Plan ; dct:identifier "togaf.20.phase-b" ; dct:title "Transform the business architecture"@en ; dct:type t:task-family:business ; dct:conformsTo t:profile ; dct:subject t:architecture:business-target ; dct:requires t:oracle:b ; prov:wasDerivedFrom t:phase:b ; prov:hadPrimarySource t:source:adm .
+t:task:c a pplan:Plan, prov:Plan ; dct:identifier "togaf.30.phase-c" ; dct:title "Transform data and application architectures"@en ; dct:type t:task-family:information-systems ; dct:conformsTo t:profile ; dct:subject t:architecture:data-target, t:architecture:application-target ; dct:requires t:oracle:c ; prov:wasDerivedFrom t:phase:c ; prov:hadPrimarySource t:source:adm .
+t:task:d a pplan:Plan, prov:Plan ; dct:identifier "togaf.40.phase-d" ; dct:title "Transform the technology architecture"@en ; dct:type t:task-family:technology ; dct:conformsTo t:profile ; dct:subject t:architecture:technology-target ; dct:requires t:oracle:d ; prov:wasDerivedFrom t:phase:d ; prov:hadPrimarySource t:source:adm .
+t:task:e a pplan:Plan, prov:Plan ; dct:identifier "togaf.50.phase-e" ; dct:title "Preserve a solution option portfolio"@en ; dct:type t:task-family:options ; dct:conformsTo t:profile ; dct:subject t:artifact:options ; dct:requires t:oracle:e ; prov:wasDerivedFrom t:phase:e ; prov:hadPrimarySource t:source:adm .
+t:task:f a pplan:Plan, prov:Plan ; dct:identifier "togaf.60.phase-f" ; dct:title "Manufacture a migration roadmap"@en ; dct:type t:task-family:migration ; dct:conformsTo t:profile ; dct:subject t:artifact:roadmap ; dct:requires t:oracle:f ; prov:wasDerivedFrom t:phase:f ; prov:hadPrimarySource t:source:adm .
+t:task:g a pplan:Plan, prov:Plan ; dct:identifier "togaf.70.phase-g" ; dct:title "Prove implementation conformance"@en ; dct:type t:task-family:governance ; dct:conformsTo t:profile ; dct:subject t:artifact:conformance, t:policy:governance ; dct:requires t:oracle:g ; prov:wasDerivedFrom t:phase:g ; prov:hadPrimarySource t:source:adm .
+t:task:h a pplan:Plan, prov:Plan ; dct:identifier "togaf.80.phase-h" ; dct:title "Evaluate an architecture change"@en ; dct:type t:task-family:change ; dct:conformsTo t:profile ; dct:subject t:artifact:change ; dct:requires t:oracle:h ; prov:wasDerivedFrom t:phase:h ; prov:hadPrimarySource t:source:adm .

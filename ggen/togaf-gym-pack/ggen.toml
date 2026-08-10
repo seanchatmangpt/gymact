@@ -1,0 +1,51 @@
+[project]
+name = "gymact-togaf-gym"
+version = "0.1.0"
+description = "Project the admitted TOGAF-aligned public ontology graph into an enterprise-architecture gym"
+authors = ["GymAct"]
+license = "MIT"
+
+[ontology]
+source = "ontology.ttl"
+imports = ["courts/shapes.ttl"]
+
+[ontology.prefixes]
+dct = "http://purl.org/dc/terms/"
+pplan = "http://purl.org/net/p-plan#"
+prov = "http://www.w3.org/ns/prov#"
+skos = "http://www.w3.org/2004/02/skos/core#"
+sh = "http://www.w3.org/ns/shacl#"
+
+[validation]
+gates = [
+  "gates/010_no_custom_tbox.rq",
+  "gates/020_adm_phase_set.rq",
+  "gates/030_projection_contract.rq",
+]
+
+[generation]
+output_dir = "."
+
+[[generation.rules]]
+name = "rust-task-catalog"
+query = { file = "queries/model.rq" }
+template = { file = "templates/lib.rs.tmpl" }
+output_file = "consumer/togaf-gym/src/lib.rs"
+skip_empty = false
+mode = "Overwrite"
+
+[[generation.rules]]
+name = "wit-gym-contract"
+query = { file = "queries/model.rq" }
+template = { file = "templates/togaf.wit.tmpl" }
+output_file = "consumer/togaf-gym/wit/gymact-togaf-gym.wit"
+skip_empty = false
+mode = "Overwrite"
+
+[[generation.rules]]
+name = "compiled-semantic-reference"
+query = { file = "queries/model.rq" }
+template = { file = "templates/reference.md.tmpl" }
+output_file = "consumer/togaf-gym/docs/compiled-reference.md"
+skip_empty = false
+mode = "Overwrite"
