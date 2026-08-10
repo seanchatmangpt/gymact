@@ -310,6 +310,55 @@ class VerifyResilienceTests(unittest.TestCase):
         self.assertEqual(observed, {})
 
 
+class ActuateStatusResilienceTests(unittest.TestCase):
+    """Real regression test for the defect found and fixed forward this
+    session, via an actual live trial: `actuate()`'s own `before`/`after`
+    status bookkeeping called `self._status()` directly -- a single real
+    transient `httpx.ReadTimeout` there (confirmed live, on
+    `submit_diagnosis`'s `before = self._status()` call, on a run that had
+    already made real progress through the concurrent observe block) crashed
+    the WHOLE `actuate()` call, discarding a real, independent action.
+    Reuses `VerifyResilienceTests`' own real fixture pattern (a real
+    `SregymEnvironment` via `object.__new__`, pointed at a real, genuinely
+    unreachable port) so every real `_status()` call inside `actuate()`
+    really does raise a real connection error."""
+
+    def _real_closed_port(self) -> int:
+        import socket as _socket
+
+        probe = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+        probe.close()
+        return port
+
+    def test_safe_status_never_raises_on_a_real_unreachable_status_endpoint(self):
+        from gymact.gyms.sregym import SregymEnvironment
+
+        env = object.__new__(SregymEnvironment)
+        env._closed = False
+        env._api_base = f"http://127.0.0.1:{self._real_closed_port()}"
+        # The real point of this test: this call must complete and return a
+        # real, honest {} -- never raise -- before the fix, every real
+        # /status attempt raised a real httpx.ConnectError that propagated
+        # straight out of the caller (actuate()).
+        result = env._safe_status()
+        self.assertEqual(result, {})
+
+    def test_status_itself_still_raises_unchanged(self):
+        """`_status()` (the real, non-degraded call) must still raise on a
+        real unreachable endpoint -- only `_safe_status()` degrades. This
+        guards against the fix accidentally silencing `_status()` itself,
+        which other real callers (e.g. `observe()`) still rely on raising."""
+        from gymact.gyms.sregym import SregymEnvironment
+
+        env = object.__new__(SregymEnvironment)
+        env._closed = False
+        env._api_base = f"http://127.0.0.1:{self._real_closed_port()}"
+        with self.assertRaises(Exception):
+            env._status()
+
+
 class TeardownKillsProcessGroupTests(unittest.TestCase):
     """Real regression test for the defect found and fixed forward this
     session (cycle 10): `main.py` spawns its own child `kubectl

@@ -473,6 +473,28 @@ class SregymEnvironment:
         response.raise_for_status()
         return response.json()
 
+    def _safe_status(self) -> dict[str, Any]:
+        """Real defect found and fixed forward this session, via an actual
+        live trial: `actuate()`'s own `before`/`after` bookkeeping calls
+        `self._status()` directly -- a single, real, transient
+        `httpx.ReadTimeout` there (confirmed live: `submit_diagnosis`'s
+        `before = self._status()` call) crashed the WHOLE `actuate()` call,
+        discarding a real, independent action (a real kubectl/submit MCP
+        tool call) that may have succeeded or was about to run, purely
+        because its surrounding diagnostic status snapshot failed. This is
+        the exact same class of defect an earlier session already fixed for
+        `verify()`'s own polling loop (a transient status-read failure must
+        degrade to an honest `{}` non-answer, never crash the real, larger
+        operation it's wrapped around) -- `actuate()`'s `before`/`after`
+        snapshots never got that same resilience. Fixed here: any real
+        exception from `_status()` degrades to a real, honest `{}` (an
+        explicit non-answer, matching `verify()`'s own established
+        contract), never propagates and aborts the real action underway."""
+        try:
+            return self._status()
+        except Exception:
+            return {}
+
     async def observe(self) -> dict[str, Any]:
         self._ensure_open()
         return self._status()
@@ -480,7 +502,7 @@ class SregymEnvironment:
     async def actuate(self, capability: Capability, payload: dict[str, Any]) -> dict[str, Any]:
         self._ensure_open()
         binding = capability.binding
-        before = self._status()
+        before = self._safe_status()
         if binding == "run_kubectl":
             command = payload.get("command")
             if not isinstance(command, str) or not command:
@@ -500,7 +522,7 @@ class SregymEnvironment:
                 lambda: Client(self._kubectl_mcp_url), label="kubectl_client"
             ) as kubectl_client:
                 result = await kubectl_client.call_tool(_KUBECTL_TOOL_NAME, {"cmd": command})
-            after = self._status()
+            after = self._safe_status()
             return {
                 "before": before,
                 "after": after,
@@ -529,14 +551,14 @@ class SregymEnvironment:
                 lambda: Client(self._submit_mcp_url), label="submit_client"
             ) as submit_client:
                 result = await submit_client.call_tool("submit", {"ans": ans})
-            after = self._status()
+            after = self._safe_status()
             return {
                 "before": before,
                 "after": after,
                 "result_text": [block.model_dump(mode="json") for block in result.content],
             }
         if binding in ("observe_cluster_state", "get_benchmark_status"):
-            return {"before": before, "after": self._status()}
+            return {"before": before, "after": self._safe_status()}
         raise ValueError(f"unsupported sregym binding: {binding}")
 
     async def verify(self, expected: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
