@@ -163,7 +163,7 @@ _CLIENT_CONNECT_RETRIES = 5
 _CLIENT_CONNECT_RETRY_DELAY_SECONDS = 2.0
 
 
-async def _connect_with_retry(client: Client, *, label: str) -> None:
+async def _connect_with_retry(client_factory, *, label: str) -> Any:
     """Real, bounded retry around a real `fastmcp.Client.__aenter__()` call.
 
     Real gap found and fixed forward this session: `__init__`'s own
@@ -175,12 +175,24 @@ async def _connect_with_retry(client: Client, *, label: str) -> None:
     still failed with `RuntimeError: Client failed to connect: All
     connection attempts failed`. A bounded retry at the actual point of use
     is the correct fix, not a stronger pre-check (no pre-check can fully
-    predict a later real handshake's success)."""
+    predict a later real handshake's success).
+
+    Takes a `client_factory` (builds a FRESH `Client` per attempt), not a
+    single pre-built client -- a real, second defect found immediately after
+    the first retry fix landed: retrying `__aenter__()` on the SAME
+    already-failed `Client` instance left it in a broken internal state
+    (confirmed live: `RuntimeError: Client is not connected. Use the 'async
+    with client:' context manager first.` on the very next real use, even
+    though this function's own retry loop had reported success). A fresh
+    `Client` object per attempt is the only real-connection-shaped fix here;
+    reusing a once-failed async-context-manager instance is not a safe
+    assumption to make about a third-party client."""
     last_error: Exception | None = None
     for attempt in range(1, _CLIENT_CONNECT_RETRIES + 1):
+        client = client_factory()
         try:
             await client.__aenter__()
-            return
+            return client
         except Exception as exc:  # noqa: BLE001 -- real connection failures come in several real exception types (RuntimeError, ConnectError, ...)
             last_error = exc
             if attempt < _CLIENT_CONNECT_RETRIES:
@@ -346,13 +358,13 @@ class SregymEnvironment:
 
     async def _ensure_clients_open(self) -> None:
         if self._kubectl_client is None:
-            client = Client(self._kubectl_mcp_url)
-            await _connect_with_retry(client, label="kubectl_client")
-            self._kubectl_client = client
+            self._kubectl_client = await _connect_with_retry(
+                lambda: Client(self._kubectl_mcp_url), label="kubectl_client"
+            )
         if self._submit_client is None:
-            client = Client(self._submit_mcp_url)
-            await _connect_with_retry(client, label="submit_client")
-            self._submit_client = client
+            self._submit_client = await _connect_with_retry(
+                lambda: Client(self._submit_mcp_url), label="submit_client"
+            )
 
     def _ensure_open(self) -> None:
         if self._closed:

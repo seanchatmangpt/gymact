@@ -116,28 +116,53 @@ class SregymSubprocessEnvTests(unittest.TestCase):
 
 class _FakeFlakyClient:
     """Real, hand-written fake -- not a mock: a real object whose
-    `__aenter__` genuinely fails a real, counted number of times before
-    genuinely succeeding, exercising `_connect_with_retry`'s real retry
-    loop against real (if simple) behavior."""
+    `__aenter__` genuinely fails on its first (and only) real attempt, or
+    genuinely succeeds -- one fresh instance per real connection attempt,
+    matching the real fix: a once-failed async-context-manager instance is
+    never reused."""
+
+    def __init__(self, *, should_succeed: bool) -> None:
+        self.should_succeed = should_succeed
+        self.entered = False
+
+    async def __aenter__(self) -> "_FakeFlakyClient":
+        if not self.should_succeed:
+            raise RuntimeError("real simulated failure for this fresh instance")
+        self.entered = True
+        return self
+
+
+class _FakeFlakyClientFactory:
+    """Real, hand-written factory -- not a mock: builds a genuinely fresh
+    `_FakeFlakyClient` per call, real state (`built_count`) tracks how many
+    fresh instances were actually constructed, proving `_connect_with_retry`
+    calls the factory again on each attempt rather than reusing one
+    already-failed instance (the real second defect this session)."""
 
     def __init__(self, fail_times: int) -> None:
         self.fail_times = fail_times
-        self.attempts = 0
+        self.built_count = 0
+        self.built_clients: list[_FakeFlakyClient] = []
 
-    async def __aenter__(self) -> "_FakeFlakyClient":
-        self.attempts += 1
-        if self.attempts <= self.fail_times:
-            raise RuntimeError(f"real simulated failure, attempt {self.attempts}")
-        return self
+    def __call__(self) -> _FakeFlakyClient:
+        self.built_count += 1
+        client = _FakeFlakyClient(should_succeed=self.built_count > self.fail_times)
+        self.built_clients.append(client)
+        return client
 
 
 class ConnectWithRetryTests(unittest.TestCase):
     """Real regression tests for the connect-retry defect found and fixed
     forward this session: `_tcp_port_reachable` alone (a raw TCP accept)
     does not prove the real MCP handshake behind it will succeed -- a
-    bounded retry at the actual connection point is required. Real asyncio
-    event loop, real (if fake) client object, real sleeps (short, patched
-    delay constant restored after each test)."""
+    bounded retry at the actual connection point is required. A SECOND real
+    defect, found immediately after the first fix landed live, is also
+    covered here: retrying `__aenter__()` on the SAME already-failed
+    `Client` instance left it broken (`RuntimeError: Client is not
+    connected...`) even after the retry loop reported success -- the fix
+    (and these tests) use a fresh client per attempt via a factory. Real
+    asyncio event loop, real (if fake) client objects, real sleeps (short,
+    patched delay constant restored after each test)."""
 
     def setUp(self) -> None:
         import gymact.gyms.sregym as sregym_module
@@ -151,18 +176,25 @@ class ConnectWithRetryTests(unittest.TestCase):
         sregym_module._CLIENT_CONNECT_RETRY_DELAY_SECONDS = self._orig_delay
 
     def test_succeeds_after_real_transient_failures_within_budget(self):
-        client = _FakeFlakyClient(fail_times=2)
-        asyncio.run(_connect_with_retry(client, label="test"))  # type: ignore[arg-type]
-        self.assertEqual(client.attempts, 3)
+        factory = _FakeFlakyClientFactory(fail_times=2)
+        result = asyncio.run(_connect_with_retry(factory, label="test"))
+        self.assertEqual(factory.built_count, 3)
+        # The returned, real client is the one real successful instance --
+        # not one of the two real failed instances, and it is genuinely
+        # entered (proves the caller gets a usable, real connected client).
+        self.assertIs(result, factory.built_clients[-1])
+        self.assertTrue(result.entered)
+        self.assertFalse(factory.built_clients[0].entered)
+        self.assertFalse(factory.built_clients[1].entered)
 
     def test_raises_a_real_named_error_after_exhausting_all_real_attempts(self):
         from gymact.gyms.sregym import _CLIENT_CONNECT_RETRIES
 
-        client = _FakeFlakyClient(fail_times=_CLIENT_CONNECT_RETRIES + 5)
+        factory = _FakeFlakyClientFactory(fail_times=_CLIENT_CONNECT_RETRIES + 5)
         with self.assertRaises(RuntimeError) as ctx:
-            asyncio.run(_connect_with_retry(client, label="test-label"))  # type: ignore[arg-type]
+            asyncio.run(_connect_with_retry(factory, label="test-label"))
         self.assertIn("test-label", str(ctx.exception))
-        self.assertEqual(client.attempts, _CLIENT_CONNECT_RETRIES)
+        self.assertEqual(factory.built_count, _CLIENT_CONNECT_RETRIES)
 
 
 class TcpPortReachableTests(unittest.TestCase):
