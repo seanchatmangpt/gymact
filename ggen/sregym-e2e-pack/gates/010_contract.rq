@@ -21,6 +21,12 @@ SELECT ?violation WHERE {
   }
   UNION
   {
+    <urn:gymact:sregym:e2e:contract> dct:hasVersion ?revision_a, ?revision_b .
+    FILTER(?revision_a != ?revision_b)
+    BIND("revision-not-single-valued" AS ?violation)
+  }
+  UNION
+  {
     FILTER NOT EXISTS {
       <urn:gymact:sregym:capability:run>
         a sosa:Procedure ;
