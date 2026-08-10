@@ -48,12 +48,12 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
-import time
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 from gymact.models import Capability, Consequence
+from gymact.polling import poll_until, poll_until_async
 
 _MAX_CAPTURED_OUTPUT = 8000
 _DEFAULT_INIT_TIMEOUT_SECONDS = 300.0
@@ -296,14 +296,18 @@ class TerraformDockerApplyEnvironment:
         `terraform apply`/`destroy`'s exit code alone as convergence
         evidence."""
         self._ensure_open()
-        deadline = time.monotonic() + self._verify_timeout
-        observed = await self.observe()
-        while not all(observed.get(key) == value for key, value in expected.items()):
-            if time.monotonic() >= deadline:
-                break
-            time.sleep(_POLL_INTERVAL_SECONDS)
+        observed: dict[str, Any] = {}
+
+        async def _check() -> bool:
+            nonlocal observed
             observed = await self.observe()
-        passed = all(observed.get(key) == value for key, value in expected.items())
+            return all(observed.get(key) == value for key, value in expected.items())
+
+        passed = await poll_until_async(
+            _check,
+            timeout_seconds=self._verify_timeout,
+            interval_seconds=_POLL_INTERVAL_SECONDS,
+        )
         return passed, observed
 
     async def checkpoint(self) -> dict[str, Any]:
@@ -339,15 +343,13 @@ class TerraformDockerApplyEnvironment:
             self._state["destroy_stdout"] = completed.stdout[-_MAX_CAPTURED_OUTPUT:]
             self._state["destroy_stderr"] = completed.stderr[-_MAX_CAPTURED_OUTPUT:]
 
-            deadline = time.monotonic() + self._destroy_timeout
-            container = _docker_container_json(self._container_name)
-            while container is not None:
-                if time.monotonic() >= deadline:
-                    break
-                time.sleep(_POLL_INTERVAL_SECONDS)
-                container = _docker_container_json(self._container_name)
+            gone = poll_until(
+                lambda: _docker_container_json(self._container_name) is None,
+                timeout_seconds=self._destroy_timeout,
+                interval_seconds=_POLL_INTERVAL_SECONDS,
+            )
 
-            if container is not None:
+            if not gone:
                 raise RuntimeError(
                     f"terraform destroy reported returncode={completed.returncode} but "
                     f"container {self._container_name!r} is still present per real "

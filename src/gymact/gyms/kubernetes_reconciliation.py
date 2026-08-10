@@ -29,11 +29,11 @@ from __future__ import annotations
 
 import json
 import subprocess
-import time
 from typing import Any
 from uuid import uuid4
 
 from gymact.models import Capability, Consequence
+from gymact.polling import poll_until
 
 _MAX_CAPTURED_OUTPUT = 4000
 _DEFAULT_NAMESPACE = "default"
@@ -245,14 +245,18 @@ class KubernetesReconciliationEnvironment:
         bounded timeout elapses -- never trusts a prior `kubectl apply`'s
         exit code as convergence evidence by itself."""
         self._ensure_open()
-        deadline = time.monotonic() + self._verify_timeout
-        observed = self._state()
-        while not all(observed.get(key) == value for key, value in expected.items()):
-            if time.monotonic() >= deadline:
-                break
-            time.sleep(_POLL_INTERVAL_SECONDS)
+        observed: dict[str, Any] = {}
+
+        def _check() -> bool:
+            nonlocal observed
             observed = self._state()
-        passed = all(observed.get(key) == value for key, value in expected.items())
+            return all(observed.get(key) == value for key, value in expected.items())
+
+        passed = poll_until(
+            _check,
+            timeout_seconds=self._verify_timeout,
+            interval_seconds=_POLL_INTERVAL_SECONDS,
+        )
         return passed, observed
 
     async def checkpoint(self) -> dict[str, Any]:
@@ -283,11 +287,11 @@ class KubernetesReconciliationEnvironment:
             # Poll real cluster-observed state until the pod is really gone,
             # bounded by _teardown_timeout -- a real deletion confirmation,
             # not just kubectl delete's exit code.
-            deadline = time.monotonic() + self._teardown_timeout
-            while _get_pod_json(self._pod_name, self._namespace) is not None:
-                if time.monotonic() >= deadline:
-                    break
-                time.sleep(_POLL_INTERVAL_SECONDS)
+            poll_until(
+                lambda: _get_pod_json(self._pod_name, self._namespace) is None,
+                timeout_seconds=self._teardown_timeout,
+                interval_seconds=_POLL_INTERVAL_SECONDS,
+            )
         finally:
             self._closed = True
 
