@@ -43,6 +43,7 @@ import asyncio
 import contextlib
 import json
 import os
+import signal
 import socket
 import subprocess
 import time
@@ -370,6 +371,17 @@ class SregymEnvironment:
         # run_native() launches native vendor commands -- but kept alive
         # rather than communicate()-and-discard, since this trial needs a
         # persistent session across many calls.
+        # Real defect found and fixed forward this session (cycle 10): main.py
+        # spawns its own child `kubectl port-forward svc/mcp-server ...`
+        # process. Without `start_new_session=True` that grandchild is NOT in
+        # the same process group as `self._process`, so `teardown()`'s
+        # `self._process.terminate()`/`kill()` only ever signals the direct
+        # child -- the port-forward survives as a real, live orphan, confirmed
+        # repeatedly this session (found and killed 3 separate times across
+        # cycle 9 alone, each time discovered via `ps aux` before relaunching
+        # a trial). `start_new_session=True` puts the whole subprocess tree in
+        # its own process group so `teardown()` can signal the group, not just
+        # the one PID it holds a handle to.
         self._process = subprocess.Popen(
             argv,
             cwd=root,
@@ -377,6 +389,7 @@ class SregymEnvironment:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
+            start_new_session=True,
         )
 
         deadline = time.monotonic() + startup_timeout_seconds
@@ -577,11 +590,34 @@ class SregymEnvironment:
             # No persistent client state to close anymore -- every real
             # actuate() call already opened, used, and closed its own
             # client via _open_client_with_retry.
-            self._process.terminate()
+            #
+            # Real defect fixed forward this session (cycle 10): signal the
+            # WHOLE process group (`self._process` was started with
+            # `start_new_session=True`), not just the one PID captured by
+            # `self._process`, so main.py's own `kubectl port-forward` child
+            # is actually reaped here instead of surviving as a real orphan.
+            # `os.killpg` on a pgid that's already gone raises `ProcessLookupError`
+            # -- swallowed, since that only means the whole group already exited.
+            pgid = None
+            try:
+                pgid = os.getpgid(self._process.pid)
+            except ProcessLookupError:
+                pass
+            if pgid is not None:
+                try:
+                    os.killpg(pgid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
             try:
                 self._process.wait(timeout=self._teardown_timeout)
             except subprocess.TimeoutExpired:
-                self._process.kill()
+                if pgid is not None:
+                    try:
+                        os.killpg(pgid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                else:
+                    self._process.kill()
                 self._process.wait(timeout=10.0)
         finally:
             self._closed = True

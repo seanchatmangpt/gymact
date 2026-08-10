@@ -310,6 +310,78 @@ class VerifyResilienceTests(unittest.TestCase):
         self.assertEqual(observed, {})
 
 
+class TeardownKillsProcessGroupTests(unittest.TestCase):
+    """Real regression test for the defect found and fixed forward this
+    session (cycle 10): `main.py` spawns its own child `kubectl
+    port-forward` process; without `start_new_session=True` at launch,
+    `teardown()`'s `self._process.terminate()`/`kill()` only ever signals
+    the ONE direct-child PID it holds, leaving that grandchild alive as a
+    real, live orphan -- confirmed repeatedly this session (found and
+    killed via real `ps aux` 3 separate times across cycle 9 alone). This
+    test builds a REAL subprocess tree (`sh -c` spawning a real `sleep`
+    grandchild, launched with `start_new_session=True` exactly as
+    `SregymEnvironment.__init__` now does) and asserts `teardown()` leaves
+    NEITHER the parent NOR the grandchild alive -- no mock, no simulated
+    process, real PIDs checked with `os.kill(pid, 0)`."""
+
+    def _pid_is_alive(self, pid: int) -> bool:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+        return True
+
+    def test_teardown_kills_grandchild_process_not_just_direct_child(self):
+        import subprocess as _subprocess
+
+        from gymact.gyms.sregym import SregymEnvironment
+
+        # Real parent shell that spawns a real grandchild `sleep` and prints
+        # the grandchild's own real PID so the test can check it directly --
+        # exactly the shape of main.py spawning `kubectl port-forward`.
+        proc = _subprocess.Popen(
+            ["sh", "-c", "sleep 120 & echo $!; wait"],
+            stdout=_subprocess.PIPE,
+            stderr=_subprocess.PIPE,
+            text=True,
+            start_new_session=True,
+        )
+        assert proc.stdout is not None
+        grandchild_pid_line = proc.stdout.readline().strip()
+        self.assertTrue(grandchild_pid_line.isdigit(), grandchild_pid_line)
+        grandchild_pid = int(grandchild_pid_line)
+        self.addCleanup(proc.stdout.close)
+        if proc.stderr is not None:
+            self.addCleanup(proc.stderr.close)
+
+        self.assertTrue(self._pid_is_alive(proc.pid), "parent should be alive before teardown")
+        self.assertTrue(self._pid_is_alive(grandchild_pid), "real grandchild should be alive before teardown")
+
+        env = object.__new__(SregymEnvironment)
+        env._closed = False
+        env._process = proc
+        env._teardown_timeout = 5.0
+
+        asyncio.run(env.teardown())
+
+        # Give the real kernel a moment to reap both.
+        import time as _time
+
+        deadline = _time.monotonic() + 5.0
+        while _time.monotonic() < deadline and (
+            self._pid_is_alive(proc.pid) or self._pid_is_alive(grandchild_pid)
+        ):
+            _time.sleep(0.1)
+
+        self.assertFalse(self._pid_is_alive(proc.pid), "parent must be dead after teardown")
+        self.assertFalse(
+            self._pid_is_alive(grandchild_pid),
+            "real grandchild must be dead after teardown -- this is the orphan this fix targets",
+        )
+
+
 class SregymEnvironmentStartupErrorMessageTests(unittest.TestCase):
     """Real regression test for the diagnostic-loss defect found and fixed
     forward this session: the RuntimeError raised when the real subprocess
