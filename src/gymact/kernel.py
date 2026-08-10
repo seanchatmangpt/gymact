@@ -15,6 +15,7 @@ from uuid import uuid4
 
 import anyio
 
+from gymact.agent import AllowAllCapabilityScope, CapabilityScope
 from gymact.authority import AuthorityResolver, DenyAuthorityResolver
 from gymact.evidence import (
     EvidenceRecord,
@@ -87,6 +88,7 @@ class GymAct:
         limits: RuntimeLimits | None = None,
         receipt_ledger: ReceiptLedger | None = None,
         verifier: PostconditionVerifier | None = None,
+        capability_scope: CapabilityScope | None = None,
     ) -> None:
         self._providers: dict[str, EnvironmentProvider] = {}
         self._episodes: dict[str, _EpisodeState] = {}
@@ -97,6 +99,7 @@ class GymAct:
         self._receipts: dict[str, list[Receipt]] = {}
         self._authority = authority_resolver or DenyAuthorityResolver()
         self._verifier: PostconditionVerifier = verifier or DictSubsetVerifier()
+        self._capability_scope: CapabilityScope = capability_scope or AllowAllCapabilityScope()
         self.limits = limits or RuntimeLimits()
         self.ledger = receipt_ledger or MemoryReceiptLedger()
         self._verifications: list[VerificationResult] = []
@@ -237,6 +240,7 @@ class GymAct:
                     capability_ref="urn:gymact:operation:materialize",
                     authority_ref=intent.authority_ref,
                     idempotency_key=intent.idempotency_key,
+                    principal=intent.principal,
                     reason="IDEMPOTENCY_KEY_CONFLICT",
                 )
                 return self._materialization_result(
@@ -268,6 +272,7 @@ class GymAct:
                             subject_ref=subject_ref,
                             capability_ref="urn:gymact:operation:materialize",
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             reason=exc.code,
                         ),
                     ),
@@ -289,6 +294,7 @@ class GymAct:
                             capability_ref="urn:gymact:operation:materialize",
                             authority_ref=intent.authority_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             reason="UNKNOWN_PROVIDER",
                         ),
                     ),
@@ -319,6 +325,7 @@ class GymAct:
                             capability_ref="urn:gymact:operation:materialize",
                             authority_ref=intent.authority_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             reason=exc.code,
                         ),
                     ),
@@ -340,6 +347,7 @@ class GymAct:
                             authority_ref=intent.authority_ref,
                             authority_evidence_ref=authority.evidence_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             reason=authority.reason,
                         ),
                     ),
@@ -367,6 +375,7 @@ class GymAct:
                             authority_ref=intent.authority_ref,
                             authority_evidence_ref=authority.evidence_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             reason=exc.code,
                         ),
                     ),
@@ -387,6 +396,7 @@ class GymAct:
                             authority_ref=intent.authority_ref,
                             authority_evidence_ref=authority.evidence_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             error_digest=self._error_digest(exc),
                             reason=f"PROVIDER_ERROR:{type(exc).__name__}",
                         ),
@@ -429,6 +439,7 @@ class GymAct:
                             authority_ref=intent.authority_ref,
                             authority_evidence_ref=authority.evidence_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             error_digest=None
                             if isinstance(exc, BoundaryBlocked)
                             else self._error_digest(exc),
@@ -466,6 +477,7 @@ class GymAct:
                         authority_ref=intent.authority_ref,
                         authority_evidence_ref=authority.evidence_ref,
                         idempotency_key=intent.idempotency_key,
+                        principal=intent.principal,
                         post_state_digest=observation.state_digest,
                     ),
                 ),
@@ -548,6 +560,7 @@ class GymAct:
                             capability_ref=intent.capability,
                             authority_ref=intent.authority_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             pre_state_digest=before.state_digest,
                             post_state_digest=before.state_digest,
                             reason="IDEMPOTENCY_KEY_CONFLICT",
@@ -573,6 +586,7 @@ class GymAct:
                             subject_ref=state.environment.environment_id,
                             capability_ref=intent.capability,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             pre_state_digest=before.state_digest,
                             post_state_digest=before.state_digest,
                             reason=exc.code,
@@ -598,6 +612,7 @@ class GymAct:
                             capability_ref=intent.capability,
                             authority_ref=intent.authority_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             pre_state_digest=before.state_digest,
                             post_state_digest=before.state_digest,
                             reason="UNKNOWN_CAPABILITY",
@@ -620,9 +635,35 @@ class GymAct:
                             capability_ref=capability.iri,
                             authority_ref=intent.authority_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             pre_state_digest=before.state_digest,
                             post_state_digest=before.state_digest,
                             reason="READ_CAPABILITY_IS_NOT_ACTUATION",
+                        ),
+                    ),
+                )
+            if not self._capability_scope.permits(
+                principal=intent.principal, capability_ref=capability.iri
+            ):
+                return self._actuation_result(
+                    intent_digest=intent_digest,
+                    key=key,
+                    result=ActuationResult(
+                        accepted=False,
+                        standing=Standing.REFUSED,
+                        observation=before,
+                        receipt=Receipt(
+                            episode_id=intent.episode_id,
+                            operation=Operation.ACT,
+                            standing=Standing.REFUSED,
+                            subject_ref=state.environment.environment_id,
+                            capability_ref=capability.iri,
+                            authority_ref=intent.authority_ref,
+                            idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
+                            pre_state_digest=before.state_digest,
+                            post_state_digest=before.state_digest,
+                            reason="CAPABILITY_NOT_IN_SCOPE",
                         ),
                     ),
                 )
@@ -653,6 +694,7 @@ class GymAct:
                             capability_ref=capability.iri,
                             authority_ref=intent.authority_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             pre_state_digest=before.state_digest,
                             post_state_digest=before.state_digest,
                             reason=exc.code,
@@ -677,6 +719,7 @@ class GymAct:
                             authority_ref=intent.authority_ref,
                             authority_evidence_ref=authority.evidence_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             pre_state_digest=before.state_digest,
                             post_state_digest=before.state_digest,
                             reason=authority.reason,
@@ -718,6 +761,7 @@ class GymAct:
                             authority_ref=intent.authority_ref,
                             authority_evidence_ref=authority.evidence_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
                             pre_state_digest=before.state_digest,
                             post_state_digest=after.state_digest,
                             error_digest=None
@@ -745,6 +789,7 @@ class GymAct:
                         authority_ref=intent.authority_ref,
                         authority_evidence_ref=authority.evidence_ref,
                         idempotency_key=intent.idempotency_key,
+                        principal=intent.principal,
                         pre_state_digest=before.state_digest,
                         post_state_digest=after.state_digest,
                     ),

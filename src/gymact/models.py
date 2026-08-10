@@ -108,6 +108,9 @@ class AuthorityRequest(CanonicalInputModel):
     capability_ref: str
     payload: dict[str, Any] = Field(default_factory=dict)
     authority_ref: str | None = None
+    #: Caller-supplied identity reference (typically a `prov:Agent` IRI), never
+    #: resolved or authenticated by gymact itself -- see `gymact.agent`.
+    principal: str | None = None
 
 
 class AuthorityDecision(FrozenModel):
@@ -125,6 +128,9 @@ class MaterializationIntent(CanonicalInputModel):
     scenario: str | None = None
     config: dict[str, Any] = Field(default_factory=dict)
     authority_ref: str | None = None
+    #: Caller-supplied identity reference (typically a `prov:Agent` IRI), never
+    #: resolved or authenticated by gymact itself -- see `gymact.agent`.
+    principal: str | None = None
     idempotency_key: str = Field(default_factory=lambda: uuid4().hex)
     operation: Literal[Operation.MATERIALIZE] = Operation.MATERIALIZE
 
@@ -136,6 +142,9 @@ class ActuationIntent(CanonicalInputModel):
     capability: str
     payload: dict[str, Any] = Field(default_factory=dict)
     authority_ref: str | None = None
+    #: Caller-supplied identity reference (typically a `prov:Agent` IRI), never
+    #: resolved or authenticated by gymact itself -- see `gymact.agent`.
+    principal: str | None = None
     idempotency_key: str = Field(default_factory=lambda: uuid4().hex)
     operation: Literal[Operation.ACT] = Operation.ACT
 
