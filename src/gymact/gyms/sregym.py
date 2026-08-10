@@ -15,14 +15,18 @@ Admission reuses `vendor_benchmarks.py`'s existing exact-pin machinery
 (`audit_vendor`/`_audit_spec`/`VendorSpec`/`VENDOR_REVISIONS["sregym"]`)
 rather than re-implementing pin-checking here.
 
-Real argv/env shape: this module builds the `autofde_lab_planner` invocation
-the same way `~/autofde-lab/src/autofde_lab/sota/materialize_sregym.py`'s
+Real argv/env shape: this module builds the sregym client invocation the same
+way `~/autofde-lab/src/autofde_lab/sota/materialize_sregym.py`'s
 `materialize_sregym_autofde_lab_planner_invocation()` does (read at design
 time, not imported -- this repo must not depend on `autofde-lab`):
-`[".venv/bin/python", "main.py", "--agent", "autofde_lab_planner", "--model",
+`[".venv/bin/python", "main.py", "--agent", <agent_name>, "--model",
 <judge_model_id>, "--problem", <problem_id>, "--agent-timeout",
 <wall_clock_timeout_s>]`, with `AGENT_API_BASE`/`AGENT_API_KEY` env vars when
-a judge API base/key placeholder is configured.
+a judge API base/key placeholder is configured. `agent_name` defaults to
+`autofde_lab_dspy` (config key `config.agent_name`), the only sregym client
+with a real driver on disk in the sibling repo as of this session --
+`autofde_lab_planner`'s driver module does not exist there, confirmed via a
+real failed subprocess.
 
 SREGym's real MCP/HTTP surface (per the sibling repo's own cited
 investigation): a `kubectl-mcp` server at `MCP_SERVER_PORT` (default 9954),
@@ -95,6 +99,7 @@ SREGYM_CAPABILITIES = (
 
 def _build_argv(
     *,
+    agent_name: str = "autofde_lab_dspy",
     judge_model_id: str,
     problem_id: str,
     wall_clock_timeout_s: int,
@@ -102,12 +107,23 @@ def _build_argv(
     """Real argv shape, matching
     `materialize_sregym_autofde_lab_planner_invocation()` in the sibling
     autofde-lab repo (read, not imported -- this module has no dependency on
-    that package)."""
+    that package).
+
+    `agent_name` defaults to `autofde_lab_dspy`, not `autofde_lab_planner`:
+    confirmed this session that
+    `vendor/gyms/sregym/clients/autofde_lab_planner/driver.py` does not exist
+    on disk in the sibling autofde-lab checkout (a real subprocess against it
+    fails with `No module named clients.autofde_lab_planner.driver`), while
+    `vendor/gyms/sregym/clients/autofde_lab_dspy/driver.py` does exist (a
+    real Groq-only DSPy driver built in that repo). `autofde_lab_planner`
+    remains a valid explicit value for callers who want it -- the missing
+    module is a real, independent problem in the sibling repo, not something
+    to hide by removing the option here."""
     return [
         ".venv/bin/python",
         "main.py",
         "--agent",
-        "autofde_lab_planner",
+        agent_name,
         "--model",
         judge_model_id,
         "--problem",
@@ -358,6 +374,76 @@ class SregymEnvironment:
         return self._process.poll() is not None
 
 
+def _resolve_materialize_argv_and_env(
+    *, scenario: str | None, config: dict[str, Any]
+) -> tuple[list[str], dict[str, str], dict[str, Any]]:
+    """Pure config-resolution step of `SregymVendorProvider.materialize()`,
+    extracted so argv/env construction is directly unit-testable without a
+    real pinned checkout, a real subprocess, or a live cluster -- matching
+    this module's existing pattern of small testable functions
+    (`_build_env`/`_build_full_subprocess_env`). Returns `(argv, env,
+    resolved)` where `resolved` carries every other value `materialize()`
+    needs to construct `SregymEnvironment` (ports, timeouts, requires_authority)."""
+    agent_name = config.get("agent_name", "autofde_lab_dspy")
+    if not isinstance(agent_name, str) or not agent_name:
+        raise TypeError("config.agent_name must be a non-empty string")
+    judge_model_id = config.get("judge_model_id", "openai/gemma-4-26b-a4b-it")
+    if not isinstance(judge_model_id, str) or not judge_model_id:
+        raise TypeError("config.judge_model_id must be a non-empty string")
+    problem_id = config.get("problem_id", scenario or "misconfig_app_hotel_res")
+    if not isinstance(problem_id, str) or not problem_id:
+        raise TypeError("config.problem_id must be a non-empty string")
+    wall_clock_timeout_s = config.get("wall_clock_timeout_s", 600)
+    if isinstance(wall_clock_timeout_s, bool) or not isinstance(wall_clock_timeout_s, int):
+        raise TypeError("config.wall_clock_timeout_s must be an int")
+    judge_api_base = config.get("judge_api_base")
+    if judge_api_base is not None and not isinstance(judge_api_base, str):
+        raise TypeError("config.judge_api_base must be a string or None")
+    judge_api_key_placeholder = config.get("judge_api_key_placeholder")
+    if judge_api_key_placeholder is not None and not isinstance(
+        judge_api_key_placeholder, str
+    ):
+        raise TypeError("config.judge_api_key_placeholder must be a string or None")
+    mcp_server_port = config.get("mcp_server_port", _DEFAULT_MCP_SERVER_PORT)
+    if isinstance(mcp_server_port, bool) or not isinstance(mcp_server_port, int):
+        raise TypeError("config.mcp_server_port must be an int")
+    api_port = config.get("api_port", _DEFAULT_API_PORT)
+    if isinstance(api_port, bool) or not isinstance(api_port, int):
+        raise TypeError("config.api_port must be an int")
+    startup_timeout_seconds = config.get(
+        "startup_timeout_seconds", _DEFAULT_STARTUP_TIMEOUT_SECONDS
+    )
+    verify_timeout_seconds = config.get(
+        "verify_timeout_seconds", _DEFAULT_VERIFY_TIMEOUT_SECONDS
+    )
+    teardown_timeout_seconds = config.get(
+        "teardown_timeout_seconds", _DEFAULT_TEARDOWN_TIMEOUT_SECONDS
+    )
+    requires_authority = config.get("requires_authority", True)
+    if not isinstance(requires_authority, bool):
+        raise TypeError("config.requires_authority must be a boolean")
+
+    argv = _build_argv(
+        agent_name=agent_name,
+        judge_model_id=judge_model_id,
+        problem_id=problem_id,
+        wall_clock_timeout_s=int(wall_clock_timeout_s),
+    )
+    env = _build_env(
+        judge_api_base=judge_api_base,
+        judge_api_key_placeholder=judge_api_key_placeholder,
+    )
+    resolved = {
+        "mcp_server_port": int(mcp_server_port),
+        "api_port": int(api_port),
+        "startup_timeout_seconds": float(startup_timeout_seconds),
+        "verify_timeout_seconds": float(verify_timeout_seconds),
+        "teardown_timeout_seconds": float(teardown_timeout_seconds),
+        "requires_authority": requires_authority,
+    }
+    return argv, env, resolved
+
+
 class SregymVendorProvider:
     """GymAct `EnvironmentProvider` that materializes real `SregymEnvironment`
     instances against a real, exact-pinned `sregym` checkout.
@@ -384,52 +470,8 @@ class SregymVendorProvider:
         if audit.standing != "PARTIAL_ALIVE":
             raise VendorAdmissionError(audit.reason, str(audit.root))
 
-        judge_model_id = config.get("judge_model_id", "openai/gemma-4-26b-a4b-it")
-        if not isinstance(judge_model_id, str) or not judge_model_id:
-            raise TypeError("config.judge_model_id must be a non-empty string")
-        problem_id = config.get("problem_id", scenario or "misconfig_app_hotel_res")
-        if not isinstance(problem_id, str) or not problem_id:
-            raise TypeError("config.problem_id must be a non-empty string")
-        wall_clock_timeout_s = config.get("wall_clock_timeout_s", 600)
-        if isinstance(wall_clock_timeout_s, bool) or not isinstance(
-            wall_clock_timeout_s, int
-        ):
-            raise TypeError("config.wall_clock_timeout_s must be an int")
-        judge_api_base = config.get("judge_api_base")
-        if judge_api_base is not None and not isinstance(judge_api_base, str):
-            raise TypeError("config.judge_api_base must be a string or None")
-        judge_api_key_placeholder = config.get("judge_api_key_placeholder")
-        if judge_api_key_placeholder is not None and not isinstance(
-            judge_api_key_placeholder, str
-        ):
-            raise TypeError("config.judge_api_key_placeholder must be a string or None")
-        mcp_server_port = config.get("mcp_server_port", _DEFAULT_MCP_SERVER_PORT)
-        if isinstance(mcp_server_port, bool) or not isinstance(mcp_server_port, int):
-            raise TypeError("config.mcp_server_port must be an int")
-        api_port = config.get("api_port", _DEFAULT_API_PORT)
-        if isinstance(api_port, bool) or not isinstance(api_port, int):
-            raise TypeError("config.api_port must be an int")
-        startup_timeout_seconds = config.get(
-            "startup_timeout_seconds", _DEFAULT_STARTUP_TIMEOUT_SECONDS
-        )
-        verify_timeout_seconds = config.get(
-            "verify_timeout_seconds", _DEFAULT_VERIFY_TIMEOUT_SECONDS
-        )
-        teardown_timeout_seconds = config.get(
-            "teardown_timeout_seconds", _DEFAULT_TEARDOWN_TIMEOUT_SECONDS
-        )
-        requires_authority = config.get("requires_authority", True)
-        if not isinstance(requires_authority, bool):
-            raise TypeError("config.requires_authority must be a boolean")
-
-        argv = _build_argv(
-            judge_model_id=judge_model_id,
-            problem_id=problem_id,
-            wall_clock_timeout_s=int(wall_clock_timeout_s),
-        )
-        env = _build_env(
-            judge_api_base=judge_api_base,
-            judge_api_key_placeholder=judge_api_key_placeholder,
+        argv, env, resolved = _resolve_materialize_argv_and_env(
+            scenario=scenario, config=config
         )
 
         loop = asyncio.get_running_loop()
@@ -439,11 +481,11 @@ class SregymVendorProvider:
                 root=audit.root,
                 argv=argv,
                 env=env,
-                mcp_server_port=int(mcp_server_port),
-                api_port=int(api_port),
-                startup_timeout_seconds=float(startup_timeout_seconds),
-                verify_timeout_seconds=float(verify_timeout_seconds),
-                teardown_timeout_seconds=float(teardown_timeout_seconds),
-                requires_authority=requires_authority,
+                mcp_server_port=resolved["mcp_server_port"],
+                api_port=resolved["api_port"],
+                startup_timeout_seconds=resolved["startup_timeout_seconds"],
+                verify_timeout_seconds=resolved["verify_timeout_seconds"],
+                teardown_timeout_seconds=resolved["teardown_timeout_seconds"],
+                requires_authority=resolved["requires_authority"],
             ),
         )

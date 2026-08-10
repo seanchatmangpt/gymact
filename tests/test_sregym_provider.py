@@ -21,7 +21,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from gymact.gyms.sregym import SREGYM_CAPABILITIES, SregymVendorProvider, _build_full_subprocess_env
+from gymact.gyms.sregym import (
+    SREGYM_CAPABILITIES,
+    SregymVendorProvider,
+    _build_argv,
+    _build_full_subprocess_env,
+    _resolve_materialize_argv_and_env,
+)
 from gymact.gyms.vendor_benchmarks import VendorAdmissionError, VendorSpec, _audit_spec
 
 
@@ -93,6 +99,72 @@ class SregymSubprocessEnvTests(unittest.TestCase):
         # A real, always-present env var on any POSIX process -- proves
         # os.environ's real content actually made it into the result.
         self.assertIn("PATH", result)
+
+
+class SregymBuildArgvAgentNameTests(unittest.TestCase):
+    """Real string assertions on `_build_argv`'s agent_name threading -- no
+    subprocess needed. Regression coverage for the real, confirmed defect:
+    `vendor/gyms/sregym/clients/autofde_lab_planner/driver.py` does not
+    exist on disk in the sibling autofde-lab checkout, while
+    `vendor/gyms/sregym/clients/autofde_lab_dspy/driver.py` does."""
+
+    def test_explicit_agent_name_is_threaded_into_argv(self):
+        argv = _build_argv(
+            agent_name="autofde_lab_dspy",
+            judge_model_id="openai/gemma-4-26b-a4b-it",
+            problem_id="misconfig_app_hotel_res",
+            wall_clock_timeout_s=600,
+        )
+        self.assertIn("--agent", argv)
+        self.assertEqual(argv[argv.index("--agent") + 1], "autofde_lab_dspy")
+
+    def test_default_agent_name_is_autofde_lab_dspy(self):
+        argv = _build_argv(
+            judge_model_id="openai/gemma-4-26b-a4b-it",
+            problem_id="misconfig_app_hotel_res",
+            wall_clock_timeout_s=600,
+        )
+        self.assertEqual(argv[argv.index("--agent") + 1], "autofde_lab_dspy")
+
+    def test_autofde_lab_planner_remains_explicitly_selectable(self):
+        """The missing driver module is a real, independent defect in the
+        sibling repo -- this module must not remove the ability to request
+        `autofde_lab_planner` explicitly."""
+        argv = _build_argv(
+            agent_name="autofde_lab_planner",
+            judge_model_id="openai/gemma-4-26b-a4b-it",
+            problem_id="misconfig_app_hotel_res",
+            wall_clock_timeout_s=600,
+        )
+        self.assertEqual(argv[argv.index("--agent") + 1], "autofde_lab_planner")
+
+
+class SregymResolveMaterializeConfigTests(unittest.TestCase):
+    """Proves `SregymVendorProvider.materialize()`'s real config-resolution
+    step threads `agent_name` from `config` into the constructed argv,
+    without needing a live cluster, a real pinned checkout, or a real
+    subprocess -- exercises the exact pure function `materialize()` calls."""
+
+    def test_default_config_threads_autofde_lab_dspy_into_argv(self):
+        argv, env, resolved = _resolve_materialize_argv_and_env(
+            scenario="misconfig_app_hotel_res", config={}
+        )
+        self.assertEqual(argv[argv.index("--agent") + 1], "autofde_lab_dspy")
+        self.assertIsInstance(env, dict)
+        self.assertTrue(resolved["requires_authority"])
+
+    def test_config_agent_name_overrides_default_in_argv(self):
+        argv, _env, _resolved = _resolve_materialize_argv_and_env(
+            scenario="misconfig_app_hotel_res",
+            config={"agent_name": "autofde_lab_planner"},
+        )
+        self.assertEqual(argv[argv.index("--agent") + 1], "autofde_lab_planner")
+
+    def test_invalid_agent_name_type_is_rejected(self):
+        with self.assertRaises(TypeError):
+            _resolve_materialize_argv_and_env(
+                scenario=None, config={"agent_name": 123}
+            )
 
 
 class SregymProviderAdmissionTests(unittest.TestCase):
