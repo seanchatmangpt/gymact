@@ -7,6 +7,15 @@
 # ABox only: no GymAct-owned classes or properties are declared here.
 # The pack records the exact compatibility subject and the evidence contract
 # that ggen compiles into Rust/WIT. Execution authority remains outside ggen.
+#
+# `dct:relation` was retargeted from `urn:gymact:sregym:capability:run` to
+# `capability:submit_mitigation` when the Python provider changed from a
+# CLI-wrapping `SREGymProvider` (single `run` capability) to the persistent-
+# MCP-session `SregymVendorProvider` (5 real capabilities; no `run` binding
+# exists on it). This is a provider swap, not a semantic redesign:
+# `submit_mitigation` is the DO capability whose successful invocation
+# represents a completed benchmark attempt, matching the old `run`
+# capability's role in this contract.
 <urn:gymact:sregym:e2e:contract>
     a prov:Entity ;
     dct:identifier "sregym-e2e" ;
@@ -14,7 +23,7 @@
     dct:source <https://github.com/SREGym/SREGym> ;
     dct:hasVersion "ba07faf1a322f9b6d4a279643bb796aa2f36f64b" ;
     dct:conformsTo <urn:gymact:profile:v26.8.7> ;
-    dct:relation <urn:gymact:sregym:capability:run> ;
+    dct:relation <urn:gymact:sregym:capability:submit_mitigation> ;
     dct:hasPart <urn:gymact:sregym:e2e:expected-solved>,
                 <urn:gymact:sregym:e2e:receipt-sequence> ;
     dct:requires <urn:gymact:sregym:e2e:evidence:authority-admitted>,
@@ -22,9 +31,9 @@
                  <urn:gymact:sregym:e2e:evidence:ocel-schema-valid>,
                  <urn:gymact:sregym:e2e:evidence:replay-conformant> .
 
-<urn:gymact:sregym:capability:run>
+<urn:gymact:sregym:capability:submit_mitigation>
     a sosa:Procedure ;
-    dct:title "sregym.run" ;
+    dct:title "sregym.submit_mitigation" ;
     dct:type <urn:gymact:consequence:do> .
 
 <urn:gymact:sregym:e2e:expected-solved>

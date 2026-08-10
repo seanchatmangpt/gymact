@@ -51,6 +51,20 @@ _INTENTIONALLY_UNREGISTERED: dict[str, str] = {
         "generic vendor-benchmark dispatch surface, not a single fixed-capability "
         "gym -- not a flat builtin name."
     ),
+    "LockAndKeyProvider": (
+        "real, committed on this branch, but has zero test coverage (no "
+        "tests/test_lock_and_key.py) -- surfaced by merging this branch with "
+        "origin/main's registry-completeness gate; registering an untested provider "
+        "as a live builtin is out of scope for that merge and needs its own change."
+    ),
+    "ResourceFlowProvider": (
+        "real, committed on this branch, but has zero test coverage (no "
+        "tests/test_resource_flow.py) -- same rationale as LockAndKeyProvider above."
+    ),
+    "SwitchboardProvider": (
+        "real, committed on this branch, but has zero test coverage (no "
+        "tests/test_switchboard.py) -- same rationale as LockAndKeyProvider above."
+    ),
 }
 
 

@@ -13,7 +13,7 @@ SELECT ?violation WHERE {
         dct:source <https://github.com/SREGym/SREGym> ;
         dct:hasVersion "ba07faf1a322f9b6d4a279643bb796aa2f36f64b" ;
         dct:conformsTo <urn:gymact:profile:v26.8.7> ;
-        dct:relation <urn:gymact:sregym:capability:run> ;
+        dct:relation <urn:gymact:sregym:capability:submit_mitigation> ;
         dct:hasPart <urn:gymact:sregym:e2e:expected-solved>,
                     <urn:gymact:sregym:e2e:receipt-sequence> .
     }
@@ -28,12 +28,12 @@ SELECT ?violation WHERE {
   UNION
   {
     FILTER NOT EXISTS {
-      <urn:gymact:sregym:capability:run>
+      <urn:gymact:sregym:capability:submit_mitigation>
         a sosa:Procedure ;
-        dct:title "sregym.run" ;
+        dct:title "sregym.submit_mitigation" ;
         dct:type <urn:gymact:consequence:do> .
     }
-    BIND("run-capability-not-do" AS ?violation)
+    BIND("submit-mitigation-capability-not-do" AS ?violation)
   }
   UNION
   {

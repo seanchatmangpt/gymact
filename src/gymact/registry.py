@@ -20,7 +20,7 @@ from gymact.gyms.mcp_client_session import (
 )
 from gymact.gyms.multicloud import CAPABILITY_REGISTRY as MULTICLOUD_CAPABILITIES
 from gymact.gyms.multicloud import MulticloudProvider
-from gymact.gyms.sregym import SREGYM_RUN_CAPABILITY, SREGymProvider
+from gymact.gyms.sregym import SREGYM_CAPABILITIES, SregymVendorProvider
 from gymact.gyms.swegym import SWEGYM_EVALUATE_CAPABILITY, SWEGymProvider
 from gymact.gyms.terraform_docker_apply import (
     TERRAFORM_DOCKER_APPLY_CAPABILITIES,
@@ -77,7 +77,7 @@ _BUILTINS = {
     "memory": (MemoryProvider, MEMORY_CAPABILITIES),
     "multicloud": (MulticloudProvider, MULTICLOUD_CAPABILITIES),
     "sqlite": (SQLiteProvider, SQLITE_CAPABILITIES),
-    "sregym": (SREGymProvider, (SREGYM_RUN_CAPABILITY,)),
+    "sregym": (SregymVendorProvider, SREGYM_CAPABILITIES),
     "swegym": (SWEGymProvider, (SWEGYM_EVALUATE_CAPABILITY,)),
     "terraform-docker-apply": (
         TerraformDockerApplyProvider,

@@ -55,7 +55,7 @@ for path in "${GENERATED[@]}"; do
 done
 
 grep -Fq "ba07faf1a322f9b6d4a279643bb796aa2f36f64b" "$PROJECT/src/sregym_e2e_contract.rs"
-grep -Fq "urn:gymact:sregym:capability:run" "$PROJECT/src/sregym_e2e_contract.rs"
+grep -Fq "urn:gymact:sregym:capability:submit_mitigation" "$PROJECT/src/sregym_e2e_contract.rs"
 grep -Fq '"solved"' "$PROJECT/src/sregym_e2e_contract.rs"
 grep -Fq '"materialize"' "$PROJECT/src/sregym_e2e_contract.rs"
 grep -Fq '"act"' "$PROJECT/src/sregym_e2e_contract.rs"
