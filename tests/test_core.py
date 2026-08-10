@@ -490,16 +490,23 @@ async def test_real_episode_produces_a_valid_ocel_log_and_writes_the_conformance
     await runtime.teardown(episode.episode_id)
 
     receipts = runtime.episode_receipts(episode.episode_id)
-    # materialize, act (delete), act (increment), teardown all go through
-    # _emit; verify() does NOT (it returns a VerificationResult, not a
-    # Receipt -- there is no receipted "verify" event in the real runtime
-    # today). So the real, in-order operation sequence is exactly this:
-    assert [r.operation.value for r in receipts] == ["materialize", "act", "act", "teardown"]
+    # materialize, act (delete), act (increment), verify, teardown all go
+    # through _emit -- verify() now independently records a real Receipt too
+    # (gymact.verification.PostconditionVerifier), closing what used to be a
+    # real gap: no receipted "verify" event in the runtime. So the real,
+    # in-order operation sequence is exactly this:
+    assert [r.operation.value for r in receipts] == [
+        "materialize",
+        "act",
+        "act",
+        "verify",
+        "teardown",
+    ]
 
     log = runtime.episode_ocel_log(episode.episode_id)
     validate_ocel_log(log)  # raises on any real schema violation
     assert len(log["events"]) == len(receipts)
-    assert {e["type"] for e in log["events"]} == {"materialize", "act", "teardown"}
+    assert {e["type"] for e in log["events"]} == {"materialize", "act", "verify", "teardown"}
 
     fixture_path = Path(__file__).parent / "fixtures" / "real_episode.ocel.json"
     written_log, digest = write_ocel_log(fixture_path, receipts)

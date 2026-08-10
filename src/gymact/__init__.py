@@ -220,6 +220,7 @@ from gymact.transport import (
     normalize_candidate,
     protocol_equivalent,
 )
+from gymact.verification import DictSubsetVerifier, PostconditionVerifier
 
 __all__ = [
     "ActionDefinition",
@@ -266,6 +267,7 @@ __all__ = [
     "DecisionPhase",
     "DecisionResolution",
     "DenyAuthorityResolver",
+    "DictSubsetVerifier",
     "DifferentialVerdict",
     "DifferentialVerification",
     "ERRCItem",
@@ -324,6 +326,7 @@ __all__ = [
     "PossibilityObjectKind",
     "PossibilityPath",
     "PossibilityRDFValidation",
+    "PostconditionVerifier",
     "PreparedAction",
     "ProblemSignature",
     "ProductionGymAct",
