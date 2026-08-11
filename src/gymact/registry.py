@@ -13,6 +13,7 @@ from gymact.gyms.kubernetes_reconciliation import (
     KUBERNETES_RECONCILIATION_CAPABILITIES,
     KubernetesReconciliationProvider,
 )
+from gymact.gyms.lock_and_key import LOCK_AND_KEY_CAPABILITIES, LockAndKeyProvider
 from gymact.gyms.mcp_client_session import (
     MCP_CALL_TOOL_CAPABILITY,
     MCP_LIST_TOOLS_CAPABILITY,
@@ -20,8 +21,10 @@ from gymact.gyms.mcp_client_session import (
 )
 from gymact.gyms.multicloud import CAPABILITY_REGISTRY as MULTICLOUD_CAPABILITIES
 from gymact.gyms.multicloud import MulticloudProvider
+from gymact.gyms.resource_flow import RESOURCE_FLOW_CAPABILITIES, ResourceFlowProvider
 from gymact.gyms.sregym import SREGYM_CAPABILITIES, SregymVendorProvider
 from gymact.gyms.swegym import SWEGYM_EVALUATE_CAPABILITY, SWEGymProvider
+from gymact.gyms.switchboard import SWITCHBOARD_CAPABILITIES, SwitchboardProvider
 from gymact.gyms.terraform_docker_apply import (
     TERRAFORM_DOCKER_APPLY_CAPABILITIES,
     TerraformDockerApplyProvider,
@@ -70,15 +73,18 @@ _BUILTINS = {
         KubernetesReconciliationProvider,
         KUBERNETES_RECONCILIATION_CAPABILITIES,
     ),
+    "lock-and-key": (LockAndKeyProvider, LOCK_AND_KEY_CAPABILITIES),
     "mcp-client-session": (
         McpClientSessionProvider,
         (MCP_LIST_TOOLS_CAPABILITY, MCP_CALL_TOOL_CAPABILITY),
     ),
     "memory": (MemoryProvider, MEMORY_CAPABILITIES),
     "multicloud": (MulticloudProvider, MULTICLOUD_CAPABILITIES),
+    "resource-flow": (ResourceFlowProvider, RESOURCE_FLOW_CAPABILITIES),
     "sqlite": (SQLiteProvider, SQLITE_CAPABILITIES),
     "sregym": (SregymVendorProvider, SREGYM_CAPABILITIES),
     "swegym": (SWEGymProvider, (SWEGYM_EVALUATE_CAPABILITY,)),
+    "switchboard": (SwitchboardProvider, SWITCHBOARD_CAPABILITIES),
     "terraform-docker-apply": (
         TerraformDockerApplyProvider,
         TERRAFORM_DOCKER_APPLY_CAPABILITIES,
