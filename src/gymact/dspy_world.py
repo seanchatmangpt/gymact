@@ -1,7 +1,7 @@
 """DSPy ReAct navigation over :mod:`gymact.world`.
 
-This module is intentionally domain-free.  The model receives only the lawful
-moves manufactured by a ``WorldRuntime``.  Effect moves still terminate at the
+This module is intentionally domain-free. The model receives only the lawful
+moves manufactured by a ``WorldRuntime``. Effect moves still terminate at the
 runtime's injected consequence port (normally ``BRCEEffectPort`` in production),
 so ReAct chooses/navigates but never gains ambient DO authority.
 """
@@ -62,18 +62,27 @@ class WorldReActAgent:
             original = tool
             name = getattr(tool, "name", "world_tool")
 
-            async def traced(arguments: dict[str, Any] | None = None, *, _tool: Any = original) -> Any:
+            async def traced(
+                arguments: dict[str, Any] | None = None,
+                *,
+                _tool: Any = original,
+            ) -> Any:
                 result = await _tool.acall(arguments=arguments)
-                steps.append(WorldAgentStep(tool_name=getattr(_tool, "name", name), result=result))
+                tool_name = getattr(_tool, "name", "world_tool")
+                steps.append(WorldAgentStep(tool_name=tool_name, result=result))
                 return result
 
-            traced.__doc__ = getattr(original, "desc", None) or getattr(original, "__doc__", None)
+            traced.__doc__ = getattr(original, "desc", None) or getattr(
+                original, "__doc__", None
+            )
             wrapped_tools.append(dspy.Tool(traced, name=name))
 
         class NavigateWorld(dspy.Signature):
-            """Accomplish a goal by navigating only the lawful affordances exposed
-            by the bounded world.  Never invent a hidden tool or treat a planned
-            effect as an observed consequence."""
+            """Accomplish a goal by navigating only lawful world affordances.
+
+            Never invent a hidden tool or treat a planned effect as an observed
+            consequence.
+            """
 
             goal: str = dspy.InputField(desc="the bounded world goal")
             available_moves: str = dspy.InputField(
