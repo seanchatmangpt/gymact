@@ -38,6 +38,7 @@ from gymact.dspy_agent import (  # noqa: E402
     _collect_string_leaves,
 )
 from gymact.gyms.sregym import SregymVendorProvider  # noqa: E402
+from gymact.limits import RuntimeLimits  # noqa: E402
 from tests.test_sregym_provider import (  # noqa: E402
     _real_sregym_checkout_ready as _real_sregym_ready,
 )
@@ -211,7 +212,19 @@ class TestGymActReActAgentOverRealSregym:
 
     @pytest.mark.filterwarnings("ignore::pytest.PytestUnraisableExceptionWarning")
     async def test_agent_runs_a_real_kubectl_command_through_sregym(self):
-        gym = GymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
+        # Real defect found and fixed forward this session (also fixed in
+        # scripts/run_dspy_sregym_diagnosis.py): `RuntimeLimits`'s default
+        # `materialize_timeout_s` (60s) wraps the whole `provider.
+        # materialize()` call in `anyio.fail_after`, but sregym's own
+        # startup poll (`gymact.polling.poll_until`) uses a real BLOCKING
+        # `time.sleep()`, never yielding to the event loop -- the real
+        # subprocess/cluster startup reliably takes well over 60s, so the
+        # kernel retroactively declared MATERIALIZATION_TIMEOUT after the
+        # environment had already, successfully, finished starting.
+        gym = GymAct(
+            authority_resolver=AllowListAuthorityResolver({AUTHORITY}),
+            limits=RuntimeLimits(materialize_timeout_s=300.0),
+        )
         gym.register_provider(SregymVendorProvider())
         materialization = await gym.materialize(
             MaterializationIntent(

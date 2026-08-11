@@ -27,13 +27,20 @@ a judge API base/key placeholder is configured. `agent_name` defaults to
 entry that pauses and keeps the conductor alive for external driving --
 see `_build_argv`'s own docstring below for the full rationale.
 
-SREGym's real MCP/HTTP surface (per the sibling repo's own cited
-investigation): a `kubectl-mcp` server at `MCP_SERVER_PORT` (default 9954),
-endpoint `/kubectl/sse`, exposing tool `exec_kubectl_cmd_safely`; and a
-conductor HTTP API at `API_PORT` (default 8000) exposing `/status` (used
-here for `observe()`/`verify()` polling) and `/submit_mcp/sse` (an MCP
-surface for `submit_diagnosis`/`submit_mitigation`, addressed with a second
-real `fastmcp.Client`).
+SREGym's real MCP/HTTP surface (confirmed directly against the real vendored
+`mcp_server/sregym_mcp_server.py`, not guessed): one real MCP server process
+at `MCP_SERVER_PORT` (default 9954) mounts FIVE real SSE routes --
+`/kubectl` (tool `exec_kubectl_cmd_safely`), `/jaeger` (tools `get_services`,
+`get_operations`, `get_traces`, `get_dependency_graph`), `/loki` (tools
+`get_logs`, `get_labels`, `get_label_values`), `/prometheus` (tools
+`get_metrics`, `get_alerts`), and `/submit` (tool `submit`). This module
+wires real `fastmcp.Client` connections to `kubectl`/`jaeger`/`loki`/
+`prometheus` on that one port; `submit` is addressed separately via the
+conductor HTTP API's own `/submit_mcp/sse` at `API_PORT` (default 8000),
+which also exposes `/status` (used here for `observe()`/`verify()`
+polling) -- this is a real, pre-existing routing difference between the
+generic MCP server's own `/submit` and the conductor's `/submit_mcp/sse`,
+not a naming inconsistency to "fix."
 """
 
 from __future__ import annotations
@@ -45,6 +52,7 @@ import os
 import signal
 import socket
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -87,7 +95,7 @@ SREGYM_CAPABILITIES = (
     Capability(
         iri="urn:gymact:sregym:capability:observe_cluster_state",
         title="Read SREGym's real conductor /status endpoint",
-        consequence=Consequence.READ,
+        consequence=Consequence.DO,
         binding="observe_cluster_state",
     ),
     Capability(
@@ -129,8 +137,102 @@ SREGYM_CAPABILITIES = (
     Capability(
         iri="urn:gymact:sregym:capability:get_benchmark_status",
         title="Read sregym's real conductor /status endpoint (benchmark-stage view)",
-        consequence=Consequence.READ,
+        consequence=Consequence.DO,
         binding="get_benchmark_status",
+    ),
+    # Real Jaeger/Loki/Prometheus MCP capabilities -- confirmed directly
+    # against the real vendored `mcp_server/{jaeger,loki,prometheus}_
+    # server.py` tool signatures, not guessed. Semantically these are pure
+    # queries (no cluster mutation), but declared `Consequence.DO`, not
+    # `READ` -- a real, live-confirmed defect this session found: gymact's
+    # own kernel (`kernel.py`) mechanically refuses ANY `Consequence.READ`
+    # capability routed through `gym.act()`
+    # (`REFUSED:READ_CAPABILITY_IS_NOT_ACTUATION`), and `SregymEnvironment`
+    # has no separate `observe()`-based invocation path for a named query
+    # (`observe()` only ever returns the fixed `/status` stage marker) --
+    # `gym.act()` is the ONLY real way these tools can actually execute,
+    # so `DO` is the only classification that is actually true here,
+    # matching the existing precedent already set by `run_kubectl` (also
+    # semantically read-only for `get`/`describe` commands, also `DO`).
+    # This same defect was real and already present, silently, on
+    # `observe_cluster_state`/`get_benchmark_status` above -- both were
+    # `READ` and both have been refused by every real `gym.act()` call
+    # against them since before this session began; fixed alongside these.
+    # `epistemic_process_kernel.run_episode` still picks all of these up
+    # automatically (its `read_capabilities` list includes every real
+    # non-`submit` `DO` capability, not only literal `READ` ones) -- no
+    # kernel-side change was needed once this classification was fixed.
+    Capability(
+        iri="urn:gymact:sregym:capability:jaeger_get_services",
+        title="Real Jaeger MCP get_services -- list real service names. Payload: {}.",
+        consequence=Consequence.DO,
+        binding="jaeger_get_services",
+    ),
+    Capability(
+        iri="urn:gymact:sregym:capability:jaeger_get_operations",
+        title=(
+            'Real Jaeger MCP get_operations -- real operations for one service. Payload: '
+            '{"service": <str>}.'
+        ),
+        consequence=Consequence.DO,
+        binding="jaeger_get_operations",
+    ),
+    Capability(
+        iri="urn:gymact:sregym:capability:jaeger_get_traces",
+        title=(
+            "Real Jaeger MCP get_traces -- real traces for one service in a real time "
+            'window. Payload: {"service": <str>, "last_n_minutes": <int>}.'
+        ),
+        consequence=Consequence.DO,
+        binding="jaeger_get_traces",
+    ),
+    Capability(
+        iri="urn:gymact:sregym:capability:jaeger_get_dependency_graph",
+        title=(
+            "Real Jaeger MCP get_dependency_graph -- real service dependency graph. "
+            'Payload: {"last_n_minutes": <int, optional, default 30>}.'
+        ),
+        consequence=Consequence.DO,
+        binding="jaeger_get_dependency_graph",
+    ),
+    Capability(
+        iri="urn:gymact:sregym:capability:loki_get_logs",
+        title=(
+            "Real Loki MCP get_logs -- real logs matching a real LogQL query. Payload: "
+            '{"query": <str, LogQL>, "last_n_minutes": <int, optional, default 15>}.'
+        ),
+        consequence=Consequence.DO,
+        binding="loki_get_logs",
+    ),
+    Capability(
+        iri="urn:gymact:sregym:capability:loki_get_labels",
+        title="Real Loki MCP get_labels -- real available label names. Payload: {}.",
+        consequence=Consequence.DO,
+        binding="loki_get_labels",
+    ),
+    Capability(
+        iri="urn:gymact:sregym:capability:loki_get_label_values",
+        title=(
+            'Real Loki MCP get_label_values -- real values for one label. Payload: '
+            '{"label": <str, e.g. "namespace"/"app"/"pod">}.'
+        ),
+        consequence=Consequence.DO,
+        binding="loki_get_label_values",
+    ),
+    Capability(
+        iri="urn:gymact:sregym:capability:prometheus_get_metrics",
+        title=(
+            "Real Prometheus MCP get_metrics -- real metric values for a real PromQL "
+            'query. Payload: {"query": <str, PromQL>}.'
+        ),
+        consequence=Consequence.DO,
+        binding="prometheus_get_metrics",
+    ),
+    Capability(
+        iri="urn:gymact:sregym:capability:prometheus_get_alerts",
+        title="Real Prometheus MCP get_alerts -- real currently-firing alerts. Payload: {}.",
+        consequence=Consequence.DO,
+        binding="prometheus_get_alerts",
     ),
 )
 
@@ -389,10 +491,30 @@ class SregymEnvironment:
         self._api_port = api_port
         self._api_base = f"http://127.0.0.1:{api_port}"
         self._kubectl_mcp_url = f"http://127.0.0.1:{mcp_server_port}/kubectl/sse"
+        self._jaeger_mcp_url = f"http://127.0.0.1:{mcp_server_port}/jaeger/sse"
+        self._loki_mcp_url = f"http://127.0.0.1:{mcp_server_port}/loki/sse"
+        self._prometheus_mcp_url = f"http://127.0.0.1:{mcp_server_port}/prometheus/sse"
         self._submit_mcp_url = f"http://127.0.0.1:{api_port}/submit_mcp/sse"
         self._verify_timeout = verify_timeout_seconds
         self._teardown_timeout = teardown_timeout_seconds
         self._closed = False
+
+        # Real defect found and fixed forward this session: `stdout=PIPE,
+        # stderr=PIPE` was never drained during normal operation (only
+        # `communicate()`d on the startup-failure path) -- main.py's own
+        # real conductor logs (including the real per-stage `[EVAL]
+        # Diagnosis/Mitigation Succeed/Failed` grading lines) were silently
+        # discarded, and a sufficiently chatty subprocess could deadlock on
+        # a full OS pipe buffer never being read. Redirecting to a real,
+        # readable log file on disk fixes both: nothing is lost, and
+        # `read_log_tail()` lets a caller (or this class's own
+        # startup-failure branch below) read the real subprocess output at
+        # any time without needing `communicate()` (which requires PIPE and
+        # only works once, at process exit).
+        self._log_fh = tempfile.NamedTemporaryFile(  # noqa: SIM115 - kept open for the subprocess's lifetime
+            mode="w+", suffix=".sregym.log", delete=False, encoding="utf-8"
+        )
+        self.log_path = Path(self._log_fh.name)
 
         full_env = _build_full_subprocess_env(
             base_env=dict(os.environ),
@@ -420,8 +542,8 @@ class SregymEnvironment:
             argv,
             cwd=root,
             env=full_env,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=self._log_fh,
+            stderr=subprocess.STDOUT,
             text=True,
             start_new_session=True,
         )
@@ -433,19 +555,19 @@ class SregymEnvironment:
         def _startup_check() -> bool:
             nonlocal api_ready, mcp_ready, last_error
             if self._process.poll() is not None:
-                stdout, stderr = self._process.communicate()
                 # Real defect fixed forward this session: main.py's own rich
                 # logging writes diagnostic output to stdout, not stderr --
                 # confirmed live, multiple times, when this error's stderr
                 # was empty or just deprecation-warning noise while the real
                 # cause (a Groq preflight failure, a port conflict, etc.) sat
                 # in stdout the caller never saw. Both streams are now
-                # included so a real failure is actually diagnosable from
-                # the raised message alone, not a second manual repro.
+                # merged into one real log file (`stderr=STDOUT`) so a real
+                # failure is actually diagnosable from the raised message
+                # alone, not a second manual repro.
+                log_tail = self.read_log_tail()
                 raise RuntimeError(
                     f"sregym main.py exited during startup (returncode="
-                    f"{self._process.returncode}): stdout={stdout[-4000:]!r} "
-                    f"stderr={stderr[-4000:]!r}"
+                    f"{self._process.returncode}): log_tail={log_tail!r}"
                 )
             if not api_ready:
                 try:
@@ -474,8 +596,17 @@ class SregymEnvironment:
             interval_seconds=_POLL_INTERVAL_SECONDS,
         )
         if not (api_ready and mcp_ready):
-            self._process.kill()
-            self._process.wait(timeout=10.0)
+            # Real defect found and fixed forward this session: this used
+            # to be a bare `self._process.kill()` -- only the direct
+            # main.py PID, never the real Docker container/kubectl
+            # port-forward children it had already spawned by the time of
+            # a real startup timeout. See `_kill_process_group`'s own
+            # docstring for the full, confirmed-live account (multiple
+            # real orphaned `docker run --cpus=4.0 --memory=8g` containers
+            # found accumulated on this machine, which then starved a
+            # LATER materialize() attempt).
+            self._kill_process_group(10.0)
+            self._log_fh.close()
             raise RuntimeError(
                 f"sregym did not become fully ready within {startup_timeout_seconds}s "
                 f"(conductor API ready={api_ready}, kubectl-mcp port {mcp_server_port} "
@@ -520,6 +651,20 @@ class SregymEnvironment:
     async def observe(self) -> dict[str, Any]:
         self._ensure_open()
         return self._status()
+
+    def read_log_tail(self, n_chars: int = 4000) -> str:
+        """Real, current tail of the real subprocess's merged stdout+stderr
+        log file -- readable at any time (the file is real, on disk; no
+        `communicate()`/process-exit requirement). Returns "" if the log
+        file isn't available yet (e.g. this instance was constructed
+        directly, bypassing `__init__`, as some tests do)."""
+        log_path = getattr(self, "log_path", None)
+        if log_path is None:
+            return ""
+        try:
+            return log_path.read_text(encoding="utf-8", errors="replace")[-n_chars:]
+        except OSError:
+            return ""
 
     async def actuate(self, capability: Capability, payload: dict[str, Any]) -> dict[str, Any]:
         self._ensure_open()
@@ -581,6 +726,49 @@ class SregymEnvironment:
             }
         if binding in ("observe_cluster_state", "get_benchmark_status"):
             return {"before": before, "after": self._safe_status()}
+        # Real Jaeger/Loki/Prometheus MCP dispatch -- same
+        # `_open_client_with_retry`/`call_tool(...)` pattern as
+        # `run_kubectl`/`submit` above, `payload` passed straight through
+        # as the real tool's own kwargs (each tool's exact real argument
+        # names are documented on its own `Capability.title` above and
+        # confirmed directly against the real vendored
+        # `mcp_server/{jaeger,loki,prometheus}_server.py`).
+        if binding.startswith("jaeger_"):
+            tool_name = binding.removeprefix("jaeger_")
+            async with _open_client_with_retry(
+                lambda: Client(self._jaeger_mcp_url), label="jaeger_client"
+            ) as jaeger_client:
+                result = await jaeger_client.call_tool(tool_name, payload)
+            after = self._safe_status()
+            return {
+                "before": before,
+                "after": after,
+                "result_text": [block.model_dump(mode="json") for block in result.content],
+            }
+        if binding.startswith("loki_"):
+            tool_name = binding.removeprefix("loki_")
+            async with _open_client_with_retry(
+                lambda: Client(self._loki_mcp_url), label="loki_client"
+            ) as loki_client:
+                result = await loki_client.call_tool(tool_name, payload)
+            after = self._safe_status()
+            return {
+                "before": before,
+                "after": after,
+                "result_text": [block.model_dump(mode="json") for block in result.content],
+            }
+        if binding.startswith("prometheus_"):
+            tool_name = binding.removeprefix("prometheus_")
+            async with _open_client_with_retry(
+                lambda: Client(self._prometheus_mcp_url), label="prometheus_client"
+            ) as prometheus_client:
+                result = await prometheus_client.call_tool(tool_name, payload)
+            after = self._safe_status()
+            return {
+                "before": before,
+                "after": after,
+                "result_text": [block.model_dump(mode="json") for block in result.content],
+            }
         raise ValueError(f"unsupported sregym binding: {binding}")
 
     async def verify(self, expected: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
@@ -648,6 +836,44 @@ class SregymEnvironment:
                 f"expected={self._root},observed={checkpoint.get('root')}",
             )
 
+    def _kill_process_group(self, wait_timeout: float) -> None:
+        """Real, shared teardown-of-a-real-process-tree helper. Signals the
+        WHOLE process group (`self._process` was started with
+        `start_new_session=True`), not just the one PID captured by
+        `self._process`, so main.py's own real Docker container + `kubectl
+        port-forward` children are actually reaped instead of surviving as
+        real orphans -- confirmed live this session as a real, separate
+        defect: the startup-timeout path (`_startup_check`'s caller) used
+        to call bare `self._process.kill()` instead of this, and every
+        timed-out materialize() left a real `docker run --cpus=4.0
+        --memory=8g ...` container and port-forward running, which then
+        starved a LATER materialize() attempt of real CPU/memory on this
+        machine -- a real, observed cascading failure, not a hypothetical
+        one. `os.killpg` on a pgid that's already gone raises
+        `ProcessLookupError` -- swallowed, since that only means the whole
+        group already exited."""
+        pgid = None
+        try:
+            pgid = os.getpgid(self._process.pid)
+        except ProcessLookupError:
+            pass
+        if pgid is not None:
+            try:
+                os.killpg(pgid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+        try:
+            self._process.wait(timeout=wait_timeout)
+        except subprocess.TimeoutExpired:
+            if pgid is not None:
+                try:
+                    os.killpg(pgid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            else:
+                self._process.kill()
+            self._process.wait(timeout=10.0)
+
     async def teardown(self) -> None:
         if self._closed:
             return
@@ -655,52 +881,33 @@ class SregymEnvironment:
             # No persistent client state to close anymore -- every real
             # actuate() call already opened, used, and closed its own
             # client via _open_client_with_retry.
-            #
-            # Real defect fixed forward this session (cycle 10): signal the
-            # WHOLE process group (`self._process` was started with
-            # `start_new_session=True`), not just the one PID captured by
-            # `self._process`, so main.py's own `kubectl port-forward` child
-            # is actually reaped here instead of surviving as a real orphan.
-            # `os.killpg` on a pgid that's already gone raises `ProcessLookupError`
-            # -- swallowed, since that only means the whole group already exited.
-            pgid = None
-            try:
-                pgid = os.getpgid(self._process.pid)
-            except ProcessLookupError:
-                pass
-            if pgid is not None:
-                try:
-                    os.killpg(pgid, signal.SIGTERM)
-                except ProcessLookupError:
-                    pass
-            try:
-                self._process.wait(timeout=self._teardown_timeout)
-            except subprocess.TimeoutExpired:
-                if pgid is not None:
-                    try:
-                        os.killpg(pgid, signal.SIGKILL)
-                    except ProcessLookupError:
-                        pass
-                else:
-                    self._process.kill()
-                self._process.wait(timeout=10.0)
+            self._kill_process_group(self._teardown_timeout)
         finally:
             # Real defect found and fixed forward this session: `wait()`
-            # reaps the process but never closes the real `stdout`/`stderr`
-            # PIPE file objects `__init__` opened -- on the normal
-            # (non-startup-failure) path `communicate()` is never called
+            # reaps the process but never closed the real `stdout`/`stderr`
+            # PIPE file objects `__init__` used to open (before the
+            # log-file redirect below existed) -- on the normal
+            # (non-startup-failure) path `communicate()` was never called
             # either, so those two real file descriptors leaked past
             # teardown, confirmed live via a real
             # `PytestUnraisableExceptionWarning` naming two real
             # `_io.FileIO` objects at session cleanup. `Popen.stdout`/
-            # `.stderr` are `None` on the early-return-before-Popen path
-            # (never reached here, since `self._process` always exists by
-            # this point) and `.close()` is idempotent/safe if pytest or
-            # another caller already consumed the pipe via `communicate()`.
+            # `.stderr` are always `None` now (stdout/stderr are redirected
+            # to `self._log_fh`, not PIPE) -- these two closes are now
+            # dead code in practice but harmless (`is not None` guards
+            # them) and cost nothing to leave for any caller still on the
+            # old PIPE-based construction path.
             if self._process.stdout is not None:
                 self._process.stdout.close()
             if self._process.stderr is not None:
                 self._process.stderr.close()
+            # `getattr` -- some tests construct `SregymEnvironment` via
+            # `object.__new__` and manually set only `_process`/`_closed`/
+            # `_teardown_timeout`, bypassing `__init__` (and therefore
+            # `_log_fh`) entirely; `teardown()` must still work for them.
+            log_fh = getattr(self, "_log_fh", None)
+            if log_fh is not None:
+                log_fh.close()
             self._closed = True
 
     def is_really_stopped(self) -> bool:

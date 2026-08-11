@@ -40,13 +40,24 @@ if _dspy is not None:
         scores near 100. Compare field by field -- do not just eyeball
         overall similarity."""
 
-        # Typed as real dict[str, Any] fields (not str + hand-rolled
-        # json.dumps) -- dspy.Signature is itself a pydantic.BaseModel
-        # subclass, so a structural type annotation here is coerced and
-        # validated by DSPy/Pydantic directly, matching dspy.ai's own
-        # guidance to prefer structural types over string-encoded blobs so
-        # silent shape mismatches surface as validation warnings instead of
-        # being swallowed by a stringify/parse round trip.
+        # `dict[str, Any]` is a real, known, NOT-fully-resolved limitation
+        # here -- flagged honestly, not accommodated as a design choice.
+        # `Any` accepts everything, so Pydantic cannot actually validate
+        # against it; a prior version of this docstring claimed "structural
+        # typing catches a shape mismatch," which is false for `Any` as the
+        # value type (confirmed live: a real `dspy.predict.predict` WARNING
+        # already fires -- "Type mismatch for field 'expected'...
+        # incompatible" -- against a genuinely nested real test fixture,
+        # `{"nested": {"a": 1}}`, even with this exact annotation already in
+        # place). The real fix -- a proper recursive JSON-value type
+        # (`str | int | float | bool | None | list[JSONValue] |
+        # dict[str, JSONValue]`), which WOULD be genuinely structural and
+        # matches this field's real domain (arbitrary, possibly-nested
+        # state; a flat scalar-only dict would be dishonest to that real
+        # domain, not just verbose) -- was attempted and reverted: it
+        # crashes Pydantic's schema generation inside `dspy.Signature`'s own
+        # metaclass with infinite recursion. Left as a real, named, open gap
+        # rather than a claimed non-benefit.
         expected: dict[str, Any] = _dspy.InputField(
             desc="real expected state subset the actor claims is satisfied"
         )

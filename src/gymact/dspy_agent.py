@@ -44,11 +44,85 @@ caller explicitly says otherwise for a specific, named binding.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
+
+from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
     from gymact.kernel import GymAct
     from gymact.models import Capability, Observation
+
+
+class HypothesisState(StrEnum):
+    """Real, three-valued epistemic state for one candidate hypothesis --
+    `UNKNOWN` is not the same claim as `REFUTED`, and `SUPPORTED` is not the
+    same claim as `PROVEN`. A hypothesis starts `UNKNOWN` and only moves to
+    `SUPPORTED`/`REFUTED` on real, cited evidence, never a default. Generic,
+    gym-agnostic -- reusable by any gym-specific Signature that needs
+    explicit multi-hypothesis tracking instead of a single free-text
+    "did you consider an alternative" nudge."""
+
+    UNKNOWN = "unknown"
+    SUPPORTED = "supported"
+    REFUTED = "refuted"
+
+
+class HypothesisLedger(BaseModel):
+    """One candidate explanation and the real evidence that moved it to its
+    current state -- keeps a multi-hypothesis reasoning process visible and
+    checkable, instead of collapsing straight to a single final guess. Real,
+    gym-agnostic Pydantic model: any gym-specific DSPy Signature can use
+    `list[HypothesisLedger]` as an output field."""
+
+    hypothesis: str = Field(description="the real, specific candidate explanation")
+    # NOTE: an earlier version of this model also carried a free-text
+    # `evidence: str` field alongside `evidence_ids`/`reasoning` below.
+    # Removed after a real, live run showed the model writing its entire
+    # justification into that free-text field while leaving `evidence_ids`
+    # empty for every hypothesis -- a redundant field for the same content
+    # gave the model somewhere easier to write, at the cost of the one
+    # field grounding actually depends on. `evidence_ids` is now the ONLY
+    # place to cite evidence; `reasoning` is the only place to narrate.
+    evidence_ids: list[str] = Field(
+        default_factory=list,
+        description="real typed Fact IDs (see gymact.epistemic_kernel.Fact), copied VERBATIM "
+        "from the ids you were given -- never invented, never a value or description. This is "
+        "the ONLY field grounding is checked against; do not put citations anywhere else. "
+        "MUST be non-empty once state is SUPPORTED or REFUTED -- a conclusion with no cited "
+        "fact id is refused, no matter how detailed the reasoning text is. Empty only while "
+        "state is UNKNOWN.",
+    )
+    reasoning: str = Field(
+        default="",
+        description="a real, verbose, multi-sentence, step-by-step explanation -- required "
+        "structure, once state is SUPPORTED or REFUTED (not requested only on retry -- do "
+        "this the first time): (1) state the EXACT predicate this hypothesis claims, i.e. "
+        "what would have to be true of a fact's value for this specific hypothesis to be "
+        "correct; (2) for EACH id listed in evidence_ids, referred to by its exact id, state "
+        "that fact's actual value and explicitly say whether it evaluates that exact "
+        "predicate or a different, merely-adjacent one; (3) state what a genuine "
+        "counter-example would look like, and whether the cited facts actually rule it out. "
+        "A short, conclusory sentence covering only one of these three is not acceptable. "
+        "This field exists because a real, live run showed the model reach a wrong REFUTED "
+        "verdict by citing evidence that never actually addressed the hypothesis's predicate; "
+        "writing out all three steps explicitly, every time, is the check against that -- not "
+        "a length target to hit, a real chain of connected claims to state.",
+    )
+    state: HypothesisState = HypothesisState.UNKNOWN
+
+    # NOTE: a hard Pydantic `model_validator` enforcing a `reasoning`
+    # length floor here was tried and reverted after a real, live run:
+    # DSPy's JSON adapter calls `TypeAdapter(...).validate_python(...)`
+    # directly inside its own parse step, with no retry-on-ValidationError
+    # around a nested output model -- a raised `ValidationError` there
+    # crashes the whole `react.acall()`, it does not trigger a re-prompt.
+    # The real, working enforcement point for this requirement is
+    # `gymact.epistemic_kernel.admit_diagnosis`'s own `INSUFFICIENT_
+    # REASONING` check, which runs AFTER a successful parse and feeds a
+    # real refusal back through this repo's own retry-on-refusal loop
+    # (`dspy_sregym_agent.run_diagnosis`) instead of raising into a
+    # library internal that cannot recover from it.
 
 
 class UngroundedActuationRefused(ValueError):
@@ -134,6 +208,24 @@ def _assert_payload_is_grounded(
     ungrounded = tuple(sorted(proposed - grounded_facts))
     if ungrounded:
         raise UngroundedActuationRefused(capability_ref, ungrounded)
+
+
+async def verify_after_actuation(
+    gym: Any, episode_id: str, expected: dict[str, Any]
+) -> dict[str, Any]:
+    """Real "verify convergence, not command success": calls the kernel's
+    own `gym.verify()` (an independent `PostconditionVerifier` judgment
+    over freshly-observed state, never the actuator's own self-report --
+    see `gymact.verification`) and returns its real, checkable result.
+    Generic, gym-agnostic -- works for any gym with a real verifier wired
+    into its `GymAct` instance (every `GymAct` has one; the default
+    `DictSubsetVerifier` still gives a real, independent judgment).
+    Deliberately opt-in per actuation call, not automatic: not every DO
+    capability has a meaningful `expected` state to check against (e.g. a
+    free-form submission with no live, observable "did this converge"
+    signal) -- a caller only pays for this when it supplies `expected`."""
+    result = await gym.verify(episode_id, expected)
+    return {"verify_passed": result.passed, "verify_observed": result.observed}
 
 
 @dataclass
@@ -234,7 +326,10 @@ class GymActReActAgent:
         for capability in self._do_capabilities():
 
             def make_actuator(cap: Capability) -> Any:
-                async def actuate_tool(payload: dict[str, Any] | None = None) -> dict[str, Any]:
+                async def actuate_tool(
+                    payload: dict[str, Any] | None = None,
+                    expected: dict[str, Any] | None = None,
+                ) -> dict[str, Any]:
                     from gymact.models import ActuationIntent
 
                     real_payload = payload or {}
@@ -252,22 +347,37 @@ class GymActReActAgent:
                             authority_ref=self._authority_ref,
                         )
                     )
-                    outcome = {
+                    outcome: dict[str, Any] = {
                         "accepted": result.accepted,
                         "standing": result.standing.value,
                         "reason": result.receipt.reason,
                     }
+                    if result.accepted:
+                        await self._refresh_observation()
+                        # Real "verify convergence, not command success":
+                        # only runs when the caller supplied `expected` --
+                        # `accepted=True` alone is the actuator's OWN
+                        # report, never trusted as proof the world actually
+                        # changed as intended.
+                        if expected:
+                            outcome.update(
+                                await verify_after_actuation(
+                                    self._gym, self._episode_id, expected
+                                )
+                            )
                     steps.append(
                         AgentStep(tool_name=cap.binding, payload=real_payload, result=outcome)
                     )
-                    if result.accepted:
-                        await self._refresh_observation()
                     return outcome
 
                 actuate_tool.__doc__ = (
                     f"{cap.title} (real DO capability {cap.iri!r}). "
                     "Every string value in payload must already appear, verbatim, "
-                    "in the most recent real observe() output -- never invent one."
+                    "in the most recent real observe() output -- never invent one. "
+                    "Optionally pass `expected` (a partial state you predict will hold "
+                    "after this call) to get a real, independent verify_passed result back "
+                    "instead of just trusting `accepted` -- accepted only means the "
+                    "actuation mechanism ran, not that the world changed as intended."
                 )
                 return actuate_tool
 

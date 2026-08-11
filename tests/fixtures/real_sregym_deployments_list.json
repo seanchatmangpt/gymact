@@ -1,0 +1,239 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "items": [
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "annotations": {
+          "deployment.kubernetes.io/revision": "1",
+          "kompose.cmd": "kompose convert",
+          "kompose.version": "1.22.0 (955b78124)",
+          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{\"kompose.cmd\":\"kompose convert\",\"kompose.version\":\"1.22.0 (955b78124)\"},\"creationTimestamp\":null,\"labels\":{\"io.kompose.service\":\"consul\"},\"name\":\"consul\",\"namespace\":\"hotel-reservation\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"io.kompose.service\":\"consul\"}},\"strategy\":{},\"template\":{\"metadata\":{\"annotations\":{\"kompose.cmd\":\"kompose convert\",\"kompose.version\":\"1.22.0 (955b78124)\",\"sidecar.istio.io/statsInclusionPrefixes\":\"cluster.outbound,cluster_manager,listener_manager,http_mixer_filter,tcp_mixer_filter,server,cluster.xds-grp,listener,connection_manager\",\"sidecar.istio.io/statsInclusionRegexps\":\"http.*\"},\"creationTimestamp\":null,\"labels\":{\"io.kompose.service\":\"consul\"}},\"spec\":{\"containers\":[{\"image\":\"hashicorp/consul:1.22.3\",\"imagePullPolicy\":\"IfNotPresent\",\"name\":\"consul\",\"ports\":[{\"containerPort\":8300},{\"containerPort\":8400},{\"containerPort\":8500},{\"containerPort\":53,\"protocol\":\"UDP\"}],\"resources\":{\"limits\":{\"cpu\":\"1000m\"},\"requests\":{\"cpu\":\"100m\"}}}],\"restartPolicy\":\"Always\"}}},\"status\":{}}\n"
+        },
+        "creationTimestamp": "2026-08-10T20:05:28Z",
+        "generation": 1,
+        "labels": {
+          "io.kompose.service": "consul"
+        },
+        "name": "consul",
+        "namespace": "hotel-reservation",
+        "resourceVersion": "101698",
+        "uid": "6fdcc182-faa1-4e59-949e-9f35d2178a01"
+      },
+      "spec": {
+        "progressDeadlineSeconds": 600,
+        "replicas": 1,
+        "revisionHistoryLimit": 10,
+        "selector": {
+          "matchLabels": {
+            "io.kompose.service": "consul"
+          }
+        },
+        "strategy": {
+          "rollingUpdate": {
+            "maxSurge": "25%",
+            "maxUnavailable": "25%"
+          },
+          "type": "RollingUpdate"
+        },
+        "template": {
+          "metadata": {
+            "annotations": {
+              "kompose.cmd": "kompose convert",
+              "kompose.version": "1.22.0 (955b78124)",
+              "sidecar.istio.io/statsInclusionPrefixes": "cluster.outbound,cluster_manager,listener_manager,http_mixer_filter,tcp_mixer_filter,server,cluster.xds-grp,listener,connection_manager",
+              "sidecar.istio.io/statsInclusionRegexps": "http.*"
+            },
+            "labels": {
+              "io.kompose.service": "consul"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "image": "hashicorp/consul:1.22.3",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "consul",
+                "ports": [
+                  {
+                    "containerPort": 8300,
+                    "protocol": "TCP"
+                  },
+                  {
+                    "containerPort": 8400,
+                    "protocol": "TCP"
+                  },
+                  {
+                    "containerPort": 8500,
+                    "protocol": "TCP"
+                  },
+                  {
+                    "containerPort": 53,
+                    "protocol": "UDP"
+                  }
+                ],
+                "resources": {
+                  "limits": {
+                    "cpu": "1"
+                  },
+                  "requests": {
+                    "cpu": "100m"
+                  }
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File"
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "restartPolicy": "Always",
+            "schedulerName": "default-scheduler",
+            "securityContext": {},
+            "terminationGracePeriodSeconds": 30
+          }
+        }
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastTransitionTime": "2026-08-10T20:05:28Z",
+            "lastUpdateTime": "2026-08-10T20:05:28Z",
+            "message": "Deployment does not have minimum availability.",
+            "reason": "MinimumReplicasUnavailable",
+            "status": "False",
+            "type": "Available"
+          },
+          {
+            "lastTransitionTime": "2026-08-10T20:05:28Z",
+            "lastUpdateTime": "2026-08-10T20:05:28Z",
+            "message": "ReplicaSet \"consul-85cbcf7d79\" is progressing.",
+            "reason": "ReplicaSetUpdated",
+            "status": "True",
+            "type": "Progressing"
+          }
+        ],
+        "observedGeneration": 1,
+        "replicas": 1,
+        "terminatingReplicas": 0,
+        "unavailableReplicas": 1,
+        "updatedReplicas": 1
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "annotations": {
+          "deployment.kubernetes.io/revision": "1",
+          "kompose.cmd": "kompose convert",
+          "kompose.version": "1.22.0 (955b78124)",
+          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{\"kompose.cmd\":\"kompose convert\",\"kompose.version\":\"1.22.0 (955b78124)\"},\"creationTimestamp\":null,\"labels\":{\"io.kompose.service\":\"frontend\"},\"name\":\"frontend\",\"namespace\":\"hotel-reservation\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"io.kompose.service\":\"frontend\"}},\"strategy\":{},\"template\":{\"metadata\":{\"annotations\":{\"kompose.cmd\":\"kompose convert\",\"kompose.version\":\"1.22.0 (955b78124)\",\"sidecar.istio.io/statsInclusionPrefixes\":\"cluster.outbound,cluster_manager,listener_manager,http_mixer_filter,tcp_mixer_filter,server,cluster.xds-grp,listener,connection_manager\",\"sidecar.istio.io/statsInclusionRegexps\":\"http.*\"},\"creationTimestamp\":null,\"labels\":{\"io.kompose.service\":\"frontend\"}},\"spec\":{\"containers\":[{\"command\":[\"frontend\"],\"env\":[{\"name\":\"JAEGER_SAMPLE_RATIO\",\"value\":\"1\"}],\"image\":\"ghcr.io/sregym/hotel-reservation:latest\",\"imagePullPolicy\":\"IfNotPresent\",\"name\":\"hotel-reserv-frontend\",\"ports\":[{\"containerPort\":5000}],\"resources\":{\"limits\":{\"cpu\":\"1000m\"},\"requests\":{\"cpu\":\"100m\"}}}],\"restartPolicy\":\"Always\"}}},\"status\":{}}\n"
+        },
+        "creationTimestamp": "2026-08-10T20:05:28Z",
+        "generation": 1,
+        "labels": {
+          "io.kompose.service": "frontend"
+        },
+        "name": "frontend",
+        "namespace": "hotel-reservation",
+        "resourceVersion": "101714",
+        "uid": "6fc9cb21-7843-4656-9c77-36cf00efb4a1"
+      },
+      "spec": {
+        "progressDeadlineSeconds": 600,
+        "replicas": 1,
+        "revisionHistoryLimit": 10,
+        "selector": {
+          "matchLabels": {
+            "io.kompose.service": "frontend"
+          }
+        },
+        "strategy": {
+          "rollingUpdate": {
+            "maxSurge": "25%",
+            "maxUnavailable": "25%"
+          },
+          "type": "RollingUpdate"
+        },
+        "template": {
+          "metadata": {
+            "annotations": {
+              "kompose.cmd": "kompose convert",
+              "kompose.version": "1.22.0 (955b78124)",
+              "sidecar.istio.io/statsInclusionPrefixes": "cluster.outbound,cluster_manager,listener_manager,http_mixer_filter,tcp_mixer_filter,server,cluster.xds-grp,listener,connection_manager",
+              "sidecar.istio.io/statsInclusionRegexps": "http.*"
+            },
+            "labels": {
+              "io.kompose.service": "frontend"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "command": [
+                  "frontend"
+                ],
+                "env": [
+                  {
+                    "name": "JAEGER_SAMPLE_RATIO",
+                    "value": "1"
+                  }
+                ],
+                "image": "ghcr.io/sregym/hotel-reservation:latest",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "hotel-reserv-frontend",
+                "ports": [
+                  {
+                    "containerPort": 5000,
+                    "protocol": "TCP"
+                  }
+                ],
+                "resources": {
+                  "limits": {
+                    "cpu": "1"
+                  },
+                  "requests": {
+                    "cpu": "100m"
+                  }
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File"
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "restartPolicy": "Always",
+            "schedulerName": "default-scheduler",
+            "securityContext": {},
+            "terminationGracePeriodSeconds": 30
+          }
+        }
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastTransitionTime": "2026-08-10T20:05:28Z",
+            "lastUpdateTime": "2026-08-10T20:05:28Z",
+            "message": "Deployment does not have minimum availability.",
+            "reason": "MinimumReplicasUnavailable",
+            "status": "False",
+            "type": "Available"
+          },
+          {
+            "lastTransitionTime": "2026-08-10T20:05:28Z",
+            "lastUpdateTime": "2026-08-10T20:05:28Z",
+            "message": "ReplicaSet \"frontend-55956dd8c7\" is progressing.",
+            "reason": "ReplicaSetUpdated",
+            "status": "True",
+            "type": "Progressing"
+          }
+        ],
+        "observedGeneration": 1,
+        "replicas": 1,
+        "terminatingReplicas": 0,
+        "unavailableReplicas": 1,
+        "updatedReplicas": 1
+      }
+    }
+  ]
+}
