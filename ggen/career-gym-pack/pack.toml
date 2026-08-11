@@ -1,0 +1,4 @@
+[pack]
+name = "career-gym-pack"
+version = "0.2.0"
+description = "Fortune-5 ATS interoperability profile over Schema.org, PROV-O, P-PLAN, ODRL, SKOS, OWL-Time, W3C Verifiable Credentials, ESCO and O*NET; no CareerGym-owned TBox."

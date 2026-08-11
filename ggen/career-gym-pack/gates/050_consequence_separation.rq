@@ -1,0 +1,21 @@
+# MESSAGE: CareerGym must preserve intent != observed consequence.
+PREFIX cg: <urn:gymact:careergym:>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX schema: <https://schema.org/>
+SELECT ?problem WHERE {
+  {
+    FILTER NOT EXISTS {
+      cg:jobApplication a schema:ApplyAction, prov:Activity ;
+        schema:actionStatus schema:PotentialActionStatus .
+    }
+    BIND("application-intent-must-remain-potential" AS ?problem)
+  }
+  UNION
+  {
+    FILTER NOT EXISTS {
+      cg:sendResumeIntent a schema:SendAction, prov:Activity ;
+        schema:actionStatus schema:PotentialActionStatus .
+    }
+    BIND("send-intent-must-remain-potential" AS ?problem)
+  }
+}

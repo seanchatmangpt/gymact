@@ -1,0 +1,37 @@
+# MESSAGE: CareerGym profile must carry the minimum executable career-world basis.
+PREFIX cg: <urn:gymact:careergym:>
+PREFIX p-plan: <http://purl.org/net/p-plan#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX schema: <https://schema.org/>
+SELECT ?problem WHERE {
+  {
+    FILTER NOT EXISTS { cg:careerPlan a p-plan:Plan . }
+    BIND("missing-plan" AS ?problem)
+  }
+  UNION
+  {
+    FILTER NOT EXISTS { cg:currentResume a schema:CreativeWork, prov:Entity . }
+    BIND("missing-resume-artifact" AS ?problem)
+  }
+  UNION
+  {
+    FILTER NOT EXISTS { ?posting a schema:JobPosting . }
+    BIND("missing-job-posting" AS ?problem)
+  }
+  UNION
+  {
+    FILTER NOT EXISTS { cg:sendResumeIntent a schema:SendAction, prov:Activity . }
+    BIND("missing-authority-bound-send-intent" AS ?problem)
+  }
+  UNION
+  {
+    {
+      SELECT (COUNT(?step) AS ?stepCount) WHERE {
+        ?step a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan .
+      }
+    }
+    FILTER(?stepCount < 15)
+    BIND(CONCAT("insufficient-process-steps:", STR(?stepCount)) AS ?problem)
+  }
+}
+ORDER BY ?problem
