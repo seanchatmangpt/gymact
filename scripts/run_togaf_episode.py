@@ -1,24 +1,19 @@
 #!/usr/bin/env python3
-"""Run one real TOGAF Preliminary/Requirements Management episode end to end
-and write a real OCEL 2.0 log at reports/ocel/togaf/episode.ocel.json.
+"""Run one real, full 10-phase TOGAF ADM episode -- including a real Phase H
+change-request loop-back and recovery -- end to end, and write a real OCEL
+2.0 log at reports/ocel/togaf/episode.ocel.json.
 
-This is the v26.8.11 M1 driver from
-docs/prd/v26.8.11-togaf-fortune5-adm-gym.md: register the real
-`TogafProvider`, materialize, actuate both real capabilities in order
-(establish -> submit all four requirement subjects), independently verify
-`goal_reached`, teardown, and persist the log -- the same
-materialize/act/verify/teardown/write_ocel_log sequence
-`scripts/discover_and_actuate.py` and `tests/test_ocel.py`'s
-`_run_real_counter_episode()` already use for other gyms.
+The provider is compiled by `gymact.gyms.ontology_gym.OntologyDrivenProvider`
+directly from `ggen/togaf-gym-pack/ontology.ttl`'s ten real `pplan:Plan`
+task instances (see `gymact.gyms.togaf.build_togaf_provider`) -- this
+script drives the generated topology, it does not hand-code any phase.
 
 A successful `GymAct.act()` never sets `Receipt.reason` (a real, documented
 kernel-level gap -- see the comment above `_ACT_REASON_KERNEL_GAP_SUBJECTS`
-in tests/test_ocel_standing.py), so no real act event could otherwise carry
-`solved=True` evidence. This script follows the same fix
-`discover_and_actuate.py` already applies: attach the real, independently
-observed `goal_reached` truth onto a *copy* of the final act receipt's
-`reason` field before appending it to the log, so the OCEL log itself -- not
-this script's stdout -- carries that evidence.
+in tests/test_ocel_standing.py), so the real, independently observed
+goal_reached truth is attached via `model_copy` onto a copy of the final
+recovery act's receipt before persisting -- the same pattern
+scripts/discover_and_actuate.py already established for `solved`.
 
 Usage:
     uv run python scripts/run_togaf_episode.py
@@ -32,24 +27,28 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent
-from gymact.gyms.togaf import (
-    CAPABILITY_ESTABLISH,
-    CAPABILITY_SUBMIT,
-    REQUIREMENT_SUBJECTS,
-    TogafProvider,
-)
+from gymact import GymAct, MaterializationIntent
+from gymact.gyms.ontology_gym import TieredAuthorityResolver, capability_iri
+from gymact.gyms.togaf import build_togaf_provider
 from gymact.models import ActuationIntent
 from gymact.ocel import write_ocel_log
 
 REPORTS_DIR = Path(__file__).parent.parent / "reports" / "ocel"
-AUTHORITY = "urn:gymact:authority:togaf-m1-episode"
+STANDARD_REF = "urn:gymact:authority:togaf-episode-standard"
+GOVERNANCE_REF = "urn:gymact:authority:togaf-episode-governance"
 
 
 async def run() -> None:
-    gym = GymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
-    gym.register_provider(TogafProvider())
+    provider = build_togaf_provider()
+    resolver = TieredAuthorityResolver(
+        elevated_capabilities=provider.elevated_capability_iris(),
+        standard_ref=STANDARD_REF,
+        elevated_ref=GOVERNANCE_REF,
+    )
+    gym = GymAct(authority_resolver=resolver)
+    gym.register_provider(provider)
     receipts = []
+    log_path = REPORTS_DIR / "togaf" / "episode.ocel.json"
 
     materialization = await gym.materialize(
         MaterializationIntent(provider="togaf", config={})
@@ -57,63 +56,73 @@ async def run() -> None:
     receipts.append(materialization.receipt)
     if not materialization.accepted or materialization.episode is None:
         print(f"togaf: materialization refused: {materialization.receipt.reason}")
-        log, digest = write_ocel_log(REPORTS_DIR / "togaf" / "episode.ocel.json", receipts)
+        log, digest = write_ocel_log(log_path, receipts)
         print(f"togaf: {len(log['events'])} events, sha256={digest}")
         return
 
     episode_id = materialization.episode.episode_id
 
-    establish_result = await gym.act(
-        ActuationIntent(
-            episode_id=episode_id,
-            capability=CAPABILITY_ESTABLISH,
-            authority_ref=AUTHORITY,
-        )
-    )
-    receipts.append(establish_result.receipt)
-    if not establish_result.accepted:
-        print(f"togaf: establish refused: {establish_result.receipt.reason}")
-        receipts.append(await gym.teardown(episode_id, authority_ref=AUTHORITY))
-        log, digest = write_ocel_log(REPORTS_DIR / "togaf" / "episode.ocel.json", receipts)
-        print(f"togaf: {len(log['events'])} events, sha256={digest}")
-        return
-
-    final_submit_result = None
-    for requirement in REQUIREMENT_SUBJECTS:
-        submit_result = await gym.act(
+    async def act_one(*, iri: str, subject: str | None, ref: str) -> bool:
+        payload = {"subject": subject} if subject is not None else {}
+        result = await gym.act(
             ActuationIntent(
-                episode_id=episode_id,
-                capability=CAPABILITY_SUBMIT,
-                payload={"requirement": requirement},
-                authority_ref=AUTHORITY,
+                episode_id=episode_id, capability=iri, payload=payload, authority_ref=ref
             )
         )
-        final_submit_result = submit_result
-        if requirement != REQUIREMENT_SUBJECTS[-1]:
-            receipts.append(submit_result.receipt)
-        if not submit_result.accepted:
-            print(f"togaf: submit({requirement}) refused: {submit_result.receipt.reason}")
-            receipts.append(await gym.teardown(episode_id, authority_ref=AUTHORITY))
-            log, digest = write_ocel_log(REPORTS_DIR / "togaf" / "episode.ocel.json", receipts)
-            print(f"togaf: {len(log['events'])} events, sha256={digest}")
-            return
+        receipts.append(result.receipt)
+        if not result.accepted:
+            print(f"togaf: act refused: {iri} subject={subject}: {result.receipt.reason}")
+        return result.accepted
+
+    tasks = provider.tasks()
+    for task in tasks:
+        ref = GOVERNANCE_REF if task.family in provider.elevated_task_families else STANDARD_REF
+        iri = capability_iri(provider_name="togaf", task=task)
+        if len(task.subjects) == 1:
+            if not await act_one(iri=iri, subject=None, ref=ref):
+                receipts.append(await gym.teardown(episode_id, authority_ref=GOVERNANCE_REF))
+                log, digest = write_ocel_log(log_path, receipts)
+                print(f"togaf: {len(log['events'])} events, sha256={digest}")
+                return
+        else:
+            for subject in task.subjects:
+                if not await act_one(iri=iri, subject=subject, ref=ref):
+                    receipts.append(
+                        await gym.teardown(episode_id, authority_ref=GOVERNANCE_REF)
+                    )
+                    log, digest = write_ocel_log(log_path, receipts)
+                    print(f"togaf: {len(log['events'])} events, sha256={digest}")
+                    return
+
+    # Phase H just cleared Requirements Management's facts as a real side
+    # effect (task_family "change" resets task_family "requirements", per
+    # gymact/gyms/togaf.py's configuration) -- recover by resubmitting them.
+    requirements_task = tasks[1]
+    assert requirements_task.family == "requirements"
+    requirements_iri = capability_iri(provider_name="togaf", task=requirements_task)
+    recovery_accepted = True
+    for subject in requirements_task.subjects:
+        recovery_accepted = await act_one(iri=requirements_iri, subject=subject, ref=STANDARD_REF)
+        if not recovery_accepted:
+            break
+
+    if not recovery_accepted:
+        receipts.append(await gym.teardown(episode_id, authority_ref=GOVERNANCE_REF))
+        log, digest = write_ocel_log(log_path, receipts)
+        print(f"togaf: {len(log['events'])} events, sha256={digest}")
+        return
 
     verification = await gym.verify(episode_id, {"goal_reached": True})
     print(f"togaf: verify_passed={verification.passed}")
 
-    # Attach the real, independently observed goal_reached truth onto a copy
-    # of the final act receipt, the same pattern discover_and_actuate.py uses
-    # for `solved` -- real evidence, embedded on the OCEL log's own act event,
-    # not narrated only in this script's stdout.
-    assert final_submit_result is not None
-    receipt_with_solved = final_submit_result.receipt.model_copy(
+    receipt_with_solved = receipts.pop().model_copy(
         update={"reason": f"solved={verification.passed}"}
     )
     receipts.append(receipt_with_solved)
 
-    receipts.append(await gym.teardown(episode_id, authority_ref=AUTHORITY))
+    receipts.append(await gym.teardown(episode_id, authority_ref=GOVERNANCE_REF))
 
-    log, digest = write_ocel_log(REPORTS_DIR / "togaf" / "episode.ocel.json", receipts)
+    log, digest = write_ocel_log(log_path, receipts)
     print(f"togaf: {len(log['events'])} events, sha256={digest}")
 
 

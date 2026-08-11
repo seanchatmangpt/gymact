@@ -65,6 +65,23 @@ _INTENTIONALLY_UNREGISTERED: dict[str, str] = {
         "real, committed on this branch, but has zero test coverage (no "
         "tests/test_switchboard.py) -- same rationale as LockAndKeyProvider above."
     ),
+    "OpaqueProcedureProvider": (
+        "capabilities are constructed per-instance from materialize()-time config "
+        "(hidden_steps), not a fixed module-level tuple -- same static-capabilities-"
+        "tuple mismatch as VendorBenchmarkProvider/OntologyDrivenProvider below, "
+        "found and named while adding the latter's allowlist entry (this gap "
+        "pre-dates and is unrelated to that work; confirmed via `git stash`)."
+    ),
+    "OntologyDrivenProvider": (
+        "generic ontology-driven compiler (gymact.gyms.ontology_gym), not a single "
+        "fixed-capability gym itself -- same rationale as VendorBenchmarkProvider "
+        "above. Requires per-domain configuration (pack_dir, task-family sets) at "
+        "construction time, so it isn't zero-arg-instantiable the way _BUILTINS "
+        "expects, and its capabilities are derived dynamically from a pack's "
+        "ontology.ttl at materialize() time, not a static module-level tuple. The "
+        "real, concrete instance (gymact.gyms.togaf.build_togaf_provider) is a "
+        "function, not a class, so it is not flagged by this file's AST scan at all."
+    ),
 }
 
 
