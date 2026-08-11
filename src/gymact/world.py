@@ -1,19 +1,19 @@
 """Domain-free Python affordances for bounded executable worlds.
 
-The public ontology remains the semantic authority.  This module provides the
+The public ontology remains the semantic authority. This module provides the
 Python execution-facing side of that boundary: ordinary Pydantic objects whose
 decorated methods are classified as observation, construction, consequence
 intent, or proof affordances.
 
 The decorators and metaclass deliberately contain no benchmark, cloud,
-Kubernetes, career, ATS, or other domain vocabulary.  A new domain should add
+Kubernetes, career, ATS, or other domain vocabulary. A new domain should add
 objects/profile data, not a new Python execution primitive.
 
 Consequence law
 ---------------
-An ``@effect`` method is *only* an intent constructor.  Calling it cannot
-perform a consequence.  ``WorldRuntime.invoke`` routes the resulting
-``EffectIntent`` through an injected ``EffectPort``.  Production callers can
+An ``@effect`` method is *only* an intent constructor. Calling it cannot
+perform a consequence. ``WorldRuntime.invoke`` routes the resulting
+``EffectIntent`` through an injected ``EffectPort``. Production callers can
 use ``BRCEEffectPort`` so DSPy/ReAct receives navigation affordances but never
 ambient execution authority.
 """
@@ -23,7 +23,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable, Mapping
 from enum import StrEnum
 from inspect import Parameter, isawaitable, signature
-from typing import TYPE_CHECKING, Any, ClassVar, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol, get_type_hints, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 
 
 class AffordanceKind(StrEnum):
-    """Universal execution roles.  None are domain-specific."""
+    """Universal execution roles. None are domain-specific."""
 
     SENSE = "sense"
     CONSTRUCT = "construct"
@@ -41,7 +41,7 @@ class AffordanceKind(StrEnum):
 
 
 class EffectIntent(BaseModel):
-    """Constructed consequential intent.  It is not authority or consequence."""
+    """Constructed consequential intent. It is not authority or consequence."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -138,12 +138,13 @@ def proof(fn: Callable[..., Any]) -> Callable[..., Any]:
 
 def _input_model(owner_name: str, method_name: str, fn: Callable[..., Any]) -> type[BaseModel]:
     fields: dict[str, tuple[Any, Any]] = {}
+    hints = get_type_hints(fn)
     for name, parameter in signature(fn).parameters.items():
         if name in {"self", "cls"}:
             continue
         if parameter.kind in {Parameter.VAR_POSITIONAL, Parameter.VAR_KEYWORD}:
             raise TypeError(f"AFFORDANCE_VARIADIC_REFUSED:{owner_name}.{method_name}")
-        annotation = Any if parameter.annotation is Parameter.empty else parameter.annotation
+        annotation = hints.get(name, Any)
         default = ... if parameter.default is Parameter.empty else parameter.default
         fields[name] = (annotation, default)
     return create_model(f"{owner_name}_{method_name}_Input", **fields)
@@ -214,7 +215,7 @@ class BRCEEffectPort:
     """Adapter from generic world effects to GymAct's existing BRCE-only DO path.
 
     The request factory owns admission-specific facts (subject revision, grant,
-    expected effect, policy revision).  This adapter owns no domain semantics
+    expected effect, policy revision). This adapter owns no domain semantics
     and does not manufacture authority.
     """
 
