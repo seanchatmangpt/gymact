@@ -8,8 +8,8 @@ regression is directly testable.
 
 from __future__ import annotations
 
-from gymact.epistemic_dspy import EvidenceLinkProposal
-from gymact.epistemic_process_kernel import _admit_links, next_kernel_action
+from gymact.epistemic_dspy import CandidateClaim, EvidenceLinkProposal
+from gymact.epistemic_process_kernel import _admit_claims, _admit_links, next_kernel_action
 
 
 def test_one_supported_zero_unknown_reaches_closure():
@@ -115,6 +115,84 @@ class TestAdmitLinks:
 
     def test_empty_links_list_admits_nothing_and_refuses_nothing(self):
         admitted, refused_reasons = _admit_links([], {"fact:real"})
+
+        assert admitted == []
+        assert refused_reasons == []
+
+
+class TestAdmitClaims:
+    """Real, Chicago-style tests for `_admit_claims` -- the sibling of
+    `_admit_links` above, structurally enacting the same van der Aalst
+    "No AI Without PI!" (arXiv:2508.00116) requirement that a
+    process-intelligence query answer be "based on process mining
+    computations rather than guessing": a `CandidateClaim` citing an
+    observation id no real Discriminate call actually produced is
+    refused, never silently kept. Pure, deterministic Python -- no LLM,
+    no mocks. Real `CandidateClaim` construction throughout (a plain
+    Pydantic `BaseModel` -- only `CandidateClaimExtractor`, the DSPy
+    module that PRODUCES claims, needs a live LM; constructing a
+    `CandidateClaim` instance directly does not).
+
+    This class closes the real, found test-coverage gap named in
+    `TestAdmitLinks`'s own docstring above: the `REFUSED:UNGROUNDED_CLAIM`
+    refusal previously lived inline inside `run_episode`'s real
+    `dspy.context(lm=lm)` block and had zero direct test coverage."""
+
+    def test_claim_citing_only_real_observation_ids_is_admitted(self):
+        claim = CandidateClaim(
+            subject="pod:web-1",
+            predicate="status",
+            value="CrashLoopBackOff",
+            source_observation_ids=["obs:0"],
+            rationale="the real kubectl output directly reports this status",
+        )
+
+        admitted, refused_reasons = _admit_claims([claim], {"obs:0"})
+
+        assert admitted == [claim]
+        assert refused_reasons == []
+
+    def test_claim_citing_a_fabricated_observation_id_is_refused(self):
+        claim = CandidateClaim(
+            subject="pod:web-1",
+            predicate="status",
+            value="CrashLoopBackOff",
+            source_observation_ids=["obs:fabricated"],
+            rationale="claims support from an observation that was never actually made",
+        )
+
+        admitted, refused_reasons = _admit_claims([claim], {"obs:0"})
+
+        assert admitted == []
+        assert len(refused_reasons) == 1
+        assert "REFUSED:UNGROUNDED_CLAIM" in refused_reasons[0]
+
+    def test_mixed_real_and_fabricated_claims_partition_correctly(self):
+        grounded = CandidateClaim(
+            subject="pod:web-1",
+            predicate="status",
+            value="CrashLoopBackOff",
+            source_observation_ids=["obs:0"],
+            rationale="a real observation that genuinely reports this status",
+        )
+        ungrounded = CandidateClaim(
+            subject="pod:web-2",
+            predicate="status",
+            value="Running",
+            source_observation_ids=["obs:does-not-exist"],
+            rationale="cites an observation id no real Discriminate call ever produced",
+        )
+
+        admitted, refused_reasons = _admit_claims(
+            [grounded, ungrounded], {"obs:0"}
+        )
+
+        assert admitted == [grounded]
+        assert len(refused_reasons) == 1
+        assert "REFUSED:UNGROUNDED_CLAIM" in refused_reasons[0]
+
+    def test_empty_claims_list_admits_nothing_and_refuses_nothing(self):
+        admitted, refused_reasons = _admit_claims([], {"obs:0"})
 
         assert admitted == []
         assert refused_reasons == []

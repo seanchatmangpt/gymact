@@ -171,6 +171,36 @@ def _admit_links(
     return admitted, refused_reasons
 
 
+def _admit_claims(
+    claims: list[Any], real_obs_ids: set[str]
+) -> tuple[list[Any], list[str]]:
+    """Real referential-integrity check over `CandidateClaim`s -- the same
+    discipline `_admit_links` applies to `fact_id`, applied here to
+    `source_observation_ids`. A claim citing an observation id no real
+    Discriminate call actually produced is refused, not admitted on the
+    LM's own say-so.
+
+    This is the same structural requirement van der Aalst's "No AI Without
+    PI!" (arXiv:2508.00116) names for process-intelligence-grounded AI: an
+    answer with no real, linked grounding is inadmissible, not merely
+    discouraged. The paper's own words, describing the failure mode this
+    function's refusal prevents: "just sending textually encoded process
+    variants or DFGs to the GenAI is enough to generate answers, but these
+    are not very reliable." See `tests/test_epistemic_process_kernel_
+    chicago.py::TestAdmitClaims` for real, direct coverage of this
+    refusal."""
+    admitted = []
+    refused_reasons = []
+    for claim in claims:
+        if set(claim.source_observation_ids) <= real_obs_ids:
+            admitted.append(claim)
+        else:
+            refused_reasons.append(
+                "REFUSED:UNGROUNDED_CLAIM -- source_observation_ids not all real"
+            )
+    return admitted, refused_reasons
+
+
 def _compute_state(hypothesis_id: str, grounded_links: list[Any]) -> str:
     """The real, deterministic state-computation rule -- the concrete
     answer to `epistemic_dspy.py`'s own design rule that DSPy never emits
@@ -483,21 +513,24 @@ async def run_episode(
                 )
             # Same "No AI Without PI!" (arXiv:2508.00116) grounding
             # requirement as `_admit_links` above, applied to claim
-            # extraction: a claim citing an observation id no real
-            # Discriminate call actually produced is refused, not admitted
-            # on the LM's own say-so.
+            # extraction via `_admit_claims`.
             real_obs_ids = set(observations.keys())
-            for claim in claims_pred.claims:
-                if not set(claim.source_observation_ids) <= real_obs_ids:
-                    steps.append(
-                        KernelStep(
-                            kind="claim_refused",
-                            payload={"subject": claim.subject, "predicate": claim.predicate},
-                            result="REFUSED:UNGROUNDED_CLAIM -- source_observation_ids "
-                            "not all real",
-                        )
+            admitted_claims, refused_claim_reasons = _admit_claims(
+                list(claims_pred.claims), real_obs_ids
+            )
+            admitted_claim_ids = {id(c) for c in admitted_claims}
+            refused_claims = [
+                c for c in claims_pred.claims if id(c) not in admitted_claim_ids
+            ]
+            for claim, reason in zip(refused_claims, refused_claim_reasons, strict=True):
+                steps.append(
+                    KernelStep(
+                        kind="claim_refused",
+                        payload={"subject": claim.subject, "predicate": claim.predicate},
+                        result=reason,
                     )
-                    continue
+                )
+            for claim in admitted_claims:
                 fact = Fact(
                     id=f"fact:{next_fact_id}",
                     subject=claim.subject,
