@@ -1,4 +1,4 @@
 [pack]
 name = "togaf-gym-pack"
 version = "0.1.0"
-description = "Manufacture a TOGAF-aligned enterprise-architecture gym from a public-ontology ABox; TOGAF terms remain SKOS classifications, not a local TBox."
+description = "Manufacture a TOGAF-aligned enterprise-architecture gym from a public-ontology ABox; TOGAF terms remain SKOS classifications, not a local TBox. Projects lib.rs/reference.md/togaf.wit only -- no cargo.toml.tmpl, by design: GymAct's real TOGAF gym implementation is Python-native (gymact.gyms.togaf, per .claude/rules/python-native.md), and this pack is a non-executing Rust/WIT Gall-checkpoint projection (.claude/rules/ggen-boundary.md), not an independently buildable crate. See README.md's 'Gym surface' section for the exact generated-surface list."

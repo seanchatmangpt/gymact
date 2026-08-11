@@ -81,3 +81,10 @@ playground.py
 # Claude Code worktree/scheduler scratch state -- never part of a real commit
 .claude/worktrees/
 .claude/scheduled_tasks.lock
+
+# Rust (ggen-generated crates under rust/*)
+/rust/*/target/
+/rust/*/Cargo.lock
+/rust/*/.ggen/
+/rust/*/.ggen-v2/
+/rust/*/ggen.lock

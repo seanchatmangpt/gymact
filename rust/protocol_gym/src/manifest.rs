@@ -1,1 +1,3 @@
-pub const SUBJECTS: &[&str] = &["protocol-gym-fixture"];
+pub const SUBJECTS: &[&str] = &[
+"protocol-gym-fixture",
+];

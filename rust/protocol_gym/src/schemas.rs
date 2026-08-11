@@ -1,1 +1,4 @@
-pub const CAPABILITY_BINDINGS: &[&str] = &["do", "read"];
+pub const CAPABILITY_BINDINGS: &[&str] = &[
+"do",
+"read",
+];
