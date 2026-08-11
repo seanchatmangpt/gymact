@@ -132,6 +132,26 @@ ggen-bridge-check:
     done
     echo "ggen-bridge-check: OK — all 4 expected files generated"
 
+# ggen-gates-check — NOT part of `all`: runs every ggen/*/gates/*.rq SPARQL
+# gate against its own pack's ontology.ttl via rdflib. Unlike
+# ggen-bridge-check, this needs no external `ggen` binary — it re-implements
+# ggen's own ASK/SELECT-empty-passes gate contract directly (see
+# scripts/run_sparql_gates.py's module docstring). Read-only verification,
+# closes the gap that every pack's gates/*.rq file was real and checked-in
+# but nothing in this repo actually executed any of them.
+ggen-gates-check:
+    uv run python scripts/run_sparql_gates.py
+
+# ocel-standing — NOT part of `all`: human-facing batch report over
+# reports/ocel/, per .claude/rules/ocel-standing.md ("useful as a
+# human-facing batch report ... it is not banned, it is just not a
+# substitute for a direct-state test assertion"). The real gate is
+# tests/test_ocel_standing.py, already exercised by `just test`; this target
+# only makes the existing script easier to find and run for a cross-subject
+# standing overview.
+ocel-standing:
+    uv run python scripts/ocel_standing.py reports/ocel
+
 # job: container — Build and probe production container
 #
 # One shebang script for the whole recipe: `just` only honors `#!/...` as the
