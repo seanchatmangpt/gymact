@@ -8,24 +8,17 @@ so ReAct chooses/navigates but never gains ambient DO authority.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from gymact.world import WorldRuntime
 
 
 @dataclass
-class WorldAgentStep:
-    tool_name: str
-    result: Any
-
-
-@dataclass
 class WorldAgentResult:
     outcome: str
     goal_accomplished: bool = False
-    steps: list[WorldAgentStep] = field(default_factory=list)
 
 
 class WorldReActAgent:
@@ -55,27 +48,6 @@ class WorldReActAgent:
         """Navigate only moves currently exposed by the world."""
 
         dspy = self._dspy
-        steps: list[WorldAgentStep] = []
-        wrapped_tools: list[Any] = []
-
-        for tool in self._world.dspy_tools():
-            original = tool
-            name = getattr(tool, "name", "world_tool")
-
-            async def traced(
-                arguments: dict[str, Any] | None = None,
-                *,
-                _tool: Any = original,
-            ) -> Any:
-                result = await _tool.acall(arguments=arguments)
-                tool_name = getattr(_tool, "name", "world_tool")
-                steps.append(WorldAgentStep(tool_name=tool_name, result=result))
-                return result
-
-            traced.__doc__ = getattr(original, "desc", None) or getattr(
-                original, "__doc__", None
-            )
-            wrapped_tools.append(dspy.Tool(traced, name=name))
 
         class NavigateWorld(dspy.Signature):
             """Accomplish a goal by navigating only lawful world affordances.
@@ -100,7 +72,11 @@ class WorldReActAgent:
             f"schema={move.input_schema!r}"
             for move in self._world.moves()
         )
-        react = dspy.ReAct(NavigateWorld, tools=wrapped_tools, max_iters=self._max_iters)
+        react = dspy.ReAct(
+            NavigateWorld,
+            tools=self._world.dspy_tools(),
+            max_iters=self._max_iters,
+        )
         lm = dspy.LM(self._model_id, max_tokens=16000)
         with dspy.context(lm=lm):
             prediction = await react.acall(goal=goal, available_moves=move_text)
@@ -108,5 +84,4 @@ class WorldReActAgent:
         return WorldAgentResult(
             outcome=prediction.outcome,
             goal_accomplished=bool(prediction.goal_accomplished),
-            steps=steps,
         )
