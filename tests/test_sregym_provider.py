@@ -716,13 +716,33 @@ class SregymProviderAdmissionTests(unittest.TestCase):
         self.assertEqual(
             bindings,
             {
+                # Core conductor/kubectl surface.
                 "observe_cluster_state",
                 "run_kubectl",
                 "submit_diagnosis",
                 "submit_mitigation",
                 "get_benchmark_status",
+                # Real Jaeger MCP query capabilities (vendored
+                # `mcp_server/jaeger_server.py` tool signatures).
+                "jaeger_get_services",
+                "jaeger_get_operations",
+                "jaeger_get_traces",
+                "jaeger_get_dependency_graph",
+                # Real Loki MCP query capabilities (vendored
+                # `mcp_server/loki_server.py` tool signatures).
+                "loki_get_logs",
+                "loki_get_labels",
+                "loki_get_label_values",
+                # Real Prometheus MCP query capabilities (vendored
+                # `mcp_server/prometheus_server.py` tool signatures).
+                "prometheus_get_metrics",
+                "prometheus_get_alerts",
             },
         )
+        # Every real binding present on SREGYM_CAPABILITIES must appear in the
+        # set above -- this catches drift in either direction without relying
+        # solely on a hand-typed literal.
+        self.assertEqual(len(bindings), len(SREGYM_CAPABILITIES))
 
     def test_wrong_revision_is_refused_before_materialization(self):
         """Matches `test_vendor_benchmarks.py`'s

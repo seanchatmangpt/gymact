@@ -260,11 +260,21 @@ class FrameScenario(dspy.Signature):
     Do not invent observations. This is semantic framing only.
     """
 
-    scenario: str = dspy.InputField()
-    admitted_facts: list[Fact] = dspy.InputField()
-    known_constraints: list[Constraint] = dspy.InputField()
+    scenario: str = dspy.InputField(
+        desc="the raw unstructured incident/architecture/certification text to frame"
+    )
+    admitted_facts: list[Fact] = dspy.InputField(
+        desc="facts already admitted by the kernel; use only to disambiguate framing, "
+        "never as license to select a provider or remediation"
+    )
+    known_constraints: list[Constraint] = dspy.InputField(
+        desc="constraints already known to the kernel before framing"
+    )
 
-    frame: ScenarioFrame = dspy.OutputField()
+    frame: ScenarioFrame = dspy.OutputField(
+        desc="provider-neutral desired predicates, candidate constraints, and unresolved "
+        "terms extracted from scenario"
+    )
 
 
 class ExtractCandidateClaims(dspy.Signature):
@@ -275,10 +285,17 @@ class ExtractCandidateClaims(dspy.Signature):
     candidates only; the kernel decides whether they become Facts.
     """
 
-    observation_text_by_id: dict[str, str] = dspy.InputField()
-    existing_facts: list[Fact] = dspy.InputField()
+    observation_text_by_id: dict[str, str] = dspy.InputField(
+        desc="observation_id -> raw unstructured observation text to extract claims from"
+    )
+    existing_facts: list[Fact] = dspy.InputField(
+        desc="facts already admitted by the kernel, to avoid re-extracting duplicates"
+    )
 
-    claims: list[CandidateClaim] = dspy.OutputField()
+    claims: list[CandidateClaim] = dspy.OutputField(
+        desc="candidate claims, each citing at least one source_observation_id verbatim "
+        "from observation_text_by_id"
+    )
 
 
 class GenerateHypothesisPortfolio(dspy.Signature):
@@ -291,11 +308,16 @@ class GenerateHypothesisPortfolio(dspy.Signature):
     falsifiers and distinct predicted observations.
     """
 
-    goal: Goal = dspy.InputField()
-    facts: list[Fact] = dspy.InputField()
-    constraints: list[Constraint] = dspy.InputField()
+    goal: Goal = dspy.InputField(desc="the desired state this diagnosis must explain a gap toward")
+    facts: list[Fact] = dspy.InputField(desc="facts already admitted by the kernel")
+    constraints: list[Constraint] = dspy.InputField(
+        desc="laws/invariants/policies the hypotheses must remain consistent with"
+    )
 
-    hypotheses: list[HypothesisProposal] = dspy.OutputField()
+    hypotheses: list[HypothesisProposal] = dspy.OutputField(
+        desc="a diverse portfolio of candidate causal explanations, each with its own "
+        "distinct falsifier and predicted_predicates"
+    )
 
 
 class MapEvidenceToHypotheses(dspy.Signature):
@@ -320,11 +342,19 @@ class MapEvidenceToHypotheses(dspy.Signature):
     incompatible with it.
     """
 
-    hypotheses: list[AdmittedHypothesis] = dspy.InputField()
-    facts: list[Fact] = dspy.InputField()
-    constraints: list[Constraint] = dspy.InputField()
+    hypotheses: list[AdmittedHypothesis] = dspy.InputField(
+        desc="kernel-admitted hypotheses, each with its own real predicted_predicates "
+        "and falsifier to test facts against"
+    )
+    facts: list[Fact] = dspy.InputField(desc="facts already admitted by the kernel")
+    constraints: list[Constraint] = dspy.InputField(
+        desc="laws/invariants/policies relevant to judging evidence relations"
+    )
 
-    mapping: EvidenceMapping = dspy.OutputField()
+    mapping: EvidenceMapping = dspy.OutputField(
+        desc="proposed SUPPORTS/CONTRADICTS/NON_DIAGNOSTIC links between facts and "
+        "hypotheses, plus any unresolved epistemic obligations"
+    )
 
 
 class ProposeDiscriminatingReads(dspy.Signature):
@@ -337,13 +367,23 @@ class ProposeDiscriminatingReads(dspy.Signature):
     real cost, latency, risk, and expected information gain.
     """
 
-    goal: Goal = dspy.InputField()
-    facts: list[Fact] = dspy.InputField()
-    hypotheses: list[AdmittedHypothesis] = dspy.InputField()
-    obligations: list[EpistemicObligation] = dspy.InputField()
-    read_capabilities: list[Capability] = dspy.InputField()
+    goal: Goal = dspy.InputField(desc="the desired state driving which unknowns matter")
+    facts: list[Fact] = dspy.InputField(desc="facts already admitted by the kernel")
+    hypotheses: list[AdmittedHypothesis] = dspy.InputField(
+        desc="surviving kernel-admitted hypotheses the reads should discriminate between"
+    )
+    obligations: list[EpistemicObligation] = dspy.InputField(
+        desc="unresolved epistemic obligations naming what must still be observed"
+    )
+    read_capabilities: list[Capability] = dspy.InputField(
+        desc="the ONLY lawful READ capabilities available; reference capability_id "
+        "verbatim, never invent a provider command"
+    )
 
-    candidates: list[ReadCandidate] = dspy.OutputField()
+    candidates: list[ReadCandidate] = dspy.OutputField(
+        desc="candidate READ intents, each explaining why_discriminating and which "
+        "hypotheses it partitions"
+    )
 
 
 class CommitDiagnosis(dspy.Signature):
@@ -355,11 +395,17 @@ class CommitDiagnosis(dspy.Signature):
     whether causal commitment is allowed.
     """
 
-    goal: Goal = dspy.InputField()
-    facts: list[Fact] = dspy.InputField()
-    hypotheses: list[AdmittedHypothesis] = dspy.InputField()
+    goal: Goal = dspy.InputField(desc="the desired state the diagnosis must explain a gap toward")
+    facts: list[Fact] = dspy.InputField(desc="facts already admitted by the kernel")
+    hypotheses: list[AdmittedHypothesis] = dspy.InputField(
+        desc="kernel-computed hypotheses; only ones whose state is SUPPORTED may be "
+        "selected into the diagnosis"
+    )
 
-    diagnosis: DiagnosisCandidate = dspy.OutputField()
+    diagnosis: DiagnosisCandidate = dspy.OutputField(
+        desc="a causal commitment built only from SUPPORTED hypotheses, naming any "
+        "unresolved competitors rather than silently dropping them"
+    )
 
 
 class ConstructPlanPortfolio(dspy.Signature):
@@ -371,13 +417,23 @@ class ConstructPlanPortfolio(dspy.Signature):
     predicates for every plan. Do not select or execute a winner.
     """
 
-    goal: Goal = dspy.InputField()
-    diagnosis: DiagnosisCandidate = dspy.InputField()
-    facts: list[Fact] = dspy.InputField()
-    constraints: list[Constraint] = dspy.InputField()
-    do_capabilities: list[Capability] = dspy.InputField()
+    goal: Goal = dspy.InputField(desc="the desired state every plan must satisfy")
+    diagnosis: DiagnosisCandidate = dspy.InputField(
+        desc="the admitted diagnosis every plan must remediate"
+    )
+    facts: list[Fact] = dspy.InputField(desc="facts already admitted by the kernel")
+    constraints: list[Constraint] = dspy.InputField(
+        desc="hard constraints every plan must preserve"
+    )
+    do_capabilities: list[Capability] = dspy.InputField(
+        desc="the ONLY lawful DO capabilities available; reference capability_id "
+        "verbatim, never invent a raw shell/provider command"
+    )
 
-    plans: list[CandidatePlan] = dspy.OutputField()
+    plans: list[CandidatePlan] = dspy.OutputField(
+        desc="several reversible candidate plans, each with expected effects, rollback, "
+        "and verification predicates; do not select a winner"
+    )
 
 
 class InterpretVerificationEvidence(dspy.Signature):
@@ -388,11 +444,22 @@ class InterpretVerificationEvidence(dspy.Signature):
     integrity, convergence, safety/regression criteria, and receipt evidence.
     """
 
-    expected_predicates: list[str] = dspy.InputField()
-    post_action_facts: list[Fact] = dspy.InputField()
-    safety_constraints: list[Constraint] = dspy.InputField()
+    expected_predicates: list[str] = dspy.InputField(
+        desc="the explicit predicates the selected plan committed to satisfying"
+    )
+    post_action_facts: list[Fact] = dspy.InputField(
+        desc="facts admitted by the kernel after actuation, to check against "
+        "expected_predicates"
+    )
+    safety_constraints: list[Constraint] = dspy.InputField(
+        desc="hard constraints post-action facts must not violate"
+    )
 
-    assessment: VerificationAssessment = dspy.OutputField()
+    assessment: VerificationAssessment = dspy.OutputField(
+        desc="which expected_predicates are satisfied/violated/unknown given "
+        "post_action_facts, grounded in supporting_fact_ids; does not itself grant "
+        "VERIFIED standing"
+    )
 
 
 class ExplainReceipt(dspy.Signature):
@@ -400,12 +467,21 @@ class ExplainReceipt(dspy.Signature):
     verification records. Explanation has no authority to change standing.
     """
 
-    diagnosis: DiagnosisCandidate = dspy.InputField()
-    selected_plan: CandidatePlan = dspy.InputField()
-    execution_fact_ids: list[str] = dspy.InputField()
-    verification: VerificationAssessment = dspy.InputField()
+    diagnosis: DiagnosisCandidate = dspy.InputField(desc="the admitted diagnosis to explain")
+    selected_plan: CandidatePlan = dspy.InputField(
+        desc="the plan the kernel actually selected and actuated"
+    )
+    execution_fact_ids: list[str] = dspy.InputField(
+        desc="fact ids the kernel admitted while actuating selected_plan"
+    )
+    verification: VerificationAssessment = dspy.InputField(
+        desc="the kernel's already-computed verification assessment for this run"
+    )
 
-    explanation: ReceiptExplanation = dspy.OutputField()
+    explanation: ReceiptExplanation = dspy.OutputField(
+        desc="a human-readable summary of the causal result and any residual "
+        "uncertainty, grounded only in the already-admitted records given"
+    )
 
 
 # ---------------------------------------------------------------------------

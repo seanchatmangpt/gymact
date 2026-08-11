@@ -152,6 +152,18 @@ ggen-gates-check:
 ocel-standing:
     uv run python scripts/ocel_standing.py reports/ocel
 
+# capability-manifest — NOT part of `all`: a reporting artifact for
+# downstream consumers (e.g. autofde-lab's own capability allowlist), not a
+# build-blocking check. Closes a real follow-up ~/ggen/packs/
+# domain-capability-pack's own pack.toml names as out of scope for that
+# pack: a generated, checkable source of truth for gymact's real capability
+# surface, so a hand-copied downstream allowlist has something real to
+# diff against instead of drifting silently (the exact drift that pack
+# found: an allowlist's own comment claiming 5 sregym capabilities exist
+# when the real source has grown to 14).
+capability-manifest:
+    uv run python scripts/capability_manifest.py
+
 # job: container — Build and probe production container
 #
 # One shebang script for the whole recipe: `just` only honors `#!/...` as the

@@ -148,7 +148,16 @@ def _admit_links(
     the same discipline `epistemic_kernel.admit_diagnosis` applied to
     `evidence_ids`, relocated to where this design puts state computation.
     A link citing a fact_id not in the real fact store is refused, not
-    silently kept."""
+    silently kept.
+
+    This is the same structural requirement van der Aalst's "No AI Without
+    PI!" (arXiv:2508.00116) names for process-intelligence-grounded AI: an
+    answer with no real, linked grounding is inadmissible, not merely
+    discouraged. The paper's own words, describing the failure mode this
+    function's refusal prevents: "just sending textually encoded process
+    variants or DFGs to the GenAI is enough to generate answers, but these
+    are not very reliable." See `tests/test_epistemic_process_kernel_
+    chicago.py::TestAdmitLinks` for real, direct coverage of this refusal."""
     admitted = []
     refused_reasons = []
     for link in links:
@@ -472,6 +481,11 @@ async def run_episode(
                 claims_pred = extractor(
                     observation_text_by_id=observations, existing_facts=facts
                 )
+            # Same "No AI Without PI!" (arXiv:2508.00116) grounding
+            # requirement as `_admit_links` above, applied to claim
+            # extraction: a claim citing an observation id no real
+            # Discriminate call actually produced is refused, not admitted
+            # on the LM's own say-so.
             real_obs_ids = set(observations.keys())
             for claim in claims_pred.claims:
                 if not set(claim.source_observation_ids) <= real_obs_ids:
@@ -634,12 +648,23 @@ async def explain_episode(
         concretely investigate next, and why -- tied to the real facts
         given, not generic advice that would apply to any incident."""
 
-        goal: Goal = dspy.InputField()
-        hypotheses: list[AdmittedHypothesis] = dspy.InputField()
-        facts: list[Fact] = dspy.InputField()
-        admitted: bool = dspy.InputField()
-        admission_reason: str = dspy.InputField()
-        rounds_used: int = dspy.InputField()
+        goal: Goal = dspy.InputField(desc="the desired state the episode was pursuing")
+        hypotheses: list[AdmittedHypothesis] = dspy.InputField(
+            desc="the real hypotheses considered during the episode, kernel-computed state "
+            "included"
+        )
+        facts: list[Fact] = dspy.InputField(
+            desc="the real facts gathered and admitted during the episode"
+        )
+        admitted: bool = dspy.InputField(
+            desc="whether the kernel actually admitted a diagnosis for this episode"
+        )
+        admission_reason: str = dspy.InputField(
+            desc="the kernel's real, specific reason the episode was admitted or refused"
+        )
+        rounds_used: int = dspy.InputField(
+            desc="how many real discrimination/evidence rounds the episode actually used"
+        )
         lesson: str = dspy.OutputField(
             desc="a real, structured mentoring narrative grounded only in the given "
             "hypotheses/facts/admission_reason -- never fabricated"

@@ -1040,10 +1040,21 @@ class SregymDiagnosisAgent:
             that is a later, separate step; this step only establishes
             what is actually true."""
 
-            deployment_configs: dict[str, Any] = dspy.InputField()
-            warning_events: dict[str, Any] = dspy.InputField()
-            category_theories: list[CategoryCheck] = dspy.InputField()
-            field_outlier_flags: list[FieldOutlierResult] = dspy.InputField()
+            deployment_configs: dict[str, Any] = dspy.InputField(
+                desc="the real, already-fetched structural config of every deployment in "
+                "the namespace"
+            )
+            warning_events: dict[str, Any] = dspy.InputField(
+                desc="the real, already-fetched recent Kubernetes Warning events for the "
+                "namespace"
+            )
+            category_theories: list[CategoryCheck] = dspy.InputField(
+                desc="each fault category's independent specialist-panel finding, to "
+                "cross-check facts against"
+            )
+            field_outlier_flags: list[FieldOutlierResult] = dspy.InputField(
+                desc="per-field majority/outlier votes across peer deployments"
+            )
             normalized_facts: list[str] = dspy.OutputField(
                 desc="plain semantic facts, each traceable to a specific real evidence value"
             )
