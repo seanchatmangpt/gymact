@@ -107,6 +107,26 @@ ggen-bridge-check:
         echo "  and either add target/release/ to PATH or set GGEN_BIN to its exact path." >&2
         exit 2
     fi
+    # Version pin check: warn, don't fail. This repo pins a known-working
+    # local-dev ggen version in .ggen-version (currently 26.8.8, the same
+    # version tests/test_ggen_togaf_gym_pack.py's CI leg pins via
+    # _GGEN_URL/_GGEN_SHA256). A mismatch is deliberately non-fatal here --
+    # unlike "no binary at all" above, we don't yet know whether e.g.
+    # 26.8.6 vs 26.8.8 behavioral differences actually matter for this
+    # bridge-pack projection, so a stricter contributor on a slightly
+    # different (but still-working) ggen build shouldn't be hard-blocked.
+    # Real observed `ggen --version` output on this binary is two lines:
+    #   ggen 26.8.8
+    #   2026-08-11T21:54:03.324613Z  INFO ggen.cli{command=--version version="26.8.8"}: ...
+    # so parse the version off the first line's second field, not the
+    # tracing log line.
+    if [ -f "$(pwd)/.ggen-version" ]; then
+        PINNED_VERSION="$(tr -d '[:space:]' < "$(pwd)/.ggen-version")"
+        INSTALLED_VERSION="$("$GGEN_BIN" --version | head -n1 | awk '{print $2}')"
+        if [ "$INSTALLED_VERSION" != "$PINNED_VERSION" ]; then
+            echo "ggen-bridge-check: WARNING — installed ggen version '$INSTALLED_VERSION' does not match pinned '$PINNED_VERSION' (.ggen-version). Continuing anyway." >&2
+        fi
+    fi
     PACK_ROOT="$(pwd)/ggen/gymact-bridge-pack"
     SCRATCH="$(mktemp -d)"
     trap 'rm -rf "$SCRATCH"' EXIT
@@ -163,6 +183,17 @@ ocel-standing:
 # when the real source has grown to 14).
 capability-manifest:
     uv run python scripts/capability_manifest.py
+
+# observe-independence-check — NOT part of `all`: a coarse, ADVISORY-ONLY
+# static lint (AST-based, source-level) flagging gym `observe()` methods
+# with zero detected real I/O, per .claude/rules/actuation-authority.md's
+# "observe() must be an independent read" section. This is a human-review
+# aid, never a gate -- the in-memory-only pattern it flags is legitimate for
+# genuinely simulated/synthetic worlds (e.g. opaque_procedure.py,
+# multicloud.py) and only a human can judge legitimacy per provider. The
+# script's own exit code is always 0.
+observe-independence-check:
+    uv run python scripts/check_observe_independence.py
 
 # job: container — Build and probe production container
 #

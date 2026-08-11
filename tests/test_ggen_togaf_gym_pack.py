@@ -248,6 +248,16 @@ def test_ggen_sync_run_against_the_real_installed_binary_manufactures_the_projec
     shutil.copytree(PACK, pack_copy)
     shutil.copytree(CONSUMER, consumer_copy, symlinks=True)
 
+    pinned_version = (ROOT / ".ggen-version").read_text().strip()
+    version_result = subprocess.run(
+        ["ggen", "--version"], capture_output=True, text=True, check=True
+    )
+    if pinned_version not in version_result.stdout:
+        pytest.xfail(
+            "installed ggen version does not match .ggen-version pin: "
+            f"pinned={pinned_version!r}, real `ggen --version` stdout={version_result.stdout!r}"
+        )
+
     result = subprocess.run(
         ["ggen", "sync", "run"], cwd=consumer_copy, capture_output=True, text=True
     )
