@@ -1,0 +1,4 @@
+[pack]
+name = "career-gym-pack"
+version = "0.1.0"
+description = "Represent career opportunities and application processes as a public-ontology ABox over Schema.org, PROV-O, P-PLAN, ODRL, SKOS, OWL-Time, and DCTERMS; no CareerGym-owned TBox."
