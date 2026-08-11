@@ -36,7 +36,11 @@ for any existing provider; it only moves who is trusted to compute it.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
+
+from pyshacl import validate as shacl_validate
+from rdflib import Graph
 
 
 def _partial_match(observed: object, expected: object, *, path: str = "") -> list[str]:
@@ -95,3 +99,71 @@ class DictSubsetVerifier:
         if mismatched:
             return False, f"VERIFY_MISMATCH:{','.join(mismatched)}"
         return True, "VERIFIED:SUBSET_MATCH"
+
+
+class ShaclPostconditionVerifier:
+    """Real pyshacl-backed judge for gyms whose observed state is RDF, not a plain dict.
+
+    Models its `shacl_validate(...)` call directly on `gymact.semantic.SemanticProfile.
+    _validate_graph` (`src/gymact/semantic.py`) -- same `pyshacl.validate` entry point, same
+    kwargs shape -- but judges an arbitrary caller-supplied shapes graph against an
+    arbitrary caller-supplied data graph, rather than the fixed profile/GymAct-owned-TBox
+    graph `SemanticProfile` validates.
+
+    `expected` is unused by this verifier: the postcondition being judged is "the observed
+    graph conforms to the constructor-supplied SHACL shapes", not a second dict-shaped
+    expectation layered on top. It is accepted only to satisfy the shared
+    `PostconditionVerifier.judge(expected, observed)` protocol signature.
+
+    `observed` must already be graph-shaped -- either an `rdflib.Graph` itself, or a dict
+    carrying one of:
+      - `observed["graph"]` as an `rdflib.Graph` instance, or
+      - `observed["turtle"]` as a Turtle-serialized `str` this verifier parses.
+
+    This verifier does not invent an auto-mapper from arbitrary dict keys/values into RDF
+    triples -- a provider's `observe()` must do that projection itself (the same "observe()
+    is a real, independent read" contract `.claude/rules/actuation-authority.md` documents),
+    so this verifier is judging real provider-produced facts, not facts it fabricated on the
+    provider's behalf. If `observed` isn't graph-shaped, `judge` refuses cleanly rather than
+    silently degrading to `passed=True` or fabricating triples.
+    """
+
+    def __init__(self, shapes_path: Path | str | Graph) -> None:
+        if isinstance(shapes_path, Graph):
+            self._shapes = shapes_path
+        else:
+            self._shapes = Graph()
+            self._shapes.parse(str(shapes_path), format="turtle")
+
+    @staticmethod
+    def _coerce_data_graph(observed: dict[str, Any]) -> Graph | None:
+        if isinstance(observed, Graph):
+            return observed
+        if not isinstance(observed, dict):
+            return None
+        candidate = observed.get("graph")
+        if isinstance(candidate, Graph):
+            return candidate
+        turtle = observed.get("turtle")
+        if isinstance(turtle, str):
+            graph = Graph()
+            graph.parse(data=turtle, format="turtle")
+            return graph
+        return None
+
+    def judge(self, expected: dict[str, Any], observed: dict[str, Any]) -> tuple[bool, str]:
+        data_graph = self._coerce_data_graph(observed)
+        if data_graph is None:
+            return False, "SHACL_VERIFICATION_REQUIRES_GRAPH_SHAPED_OBSERVED"
+
+        conforms, _, report_text = shacl_validate(
+            data_graph,
+            shacl_graph=self._shapes,
+            inference="rdfs",
+            abort_on_first=False,
+            allow_infos=False,
+            allow_warnings=False,
+        )
+        if not conforms:
+            return False, f"SHACL_VIOLATION:{report_text}"
+        return True, "VERIFIED:SHACL_CONFORMS"
