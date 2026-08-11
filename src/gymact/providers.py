@@ -160,7 +160,7 @@ class MemoryProvider:
         initial = config.get("initial", {})
         if not isinstance(initial, dict):
             raise TypeError("config.initial must be an object")
-        configured = config.get("requires_authority", False)
+        configured = config.get("requires_authority", True)
         if not isinstance(configured, bool):
             raise TypeError("config.requires_authority must be a boolean")
         required = self.requires_authority or configured

@@ -67,11 +67,32 @@ invariant. Full suite confirmed deterministic across two consecutive runs after 
 - `discovered.py` and `browsergym.py` were flipped, found to break tests, and reverted — neither
   was in the audited 8-provider list; `discovered.py` already has dedicated, explicit
   both-ways authority test coverage (`test_discovered_authority.py`).
-- `MemoryProvider` (`src/gymact/providers.py`) was flipped and reverted after it broke ~27 tests
-  across core kernel infrastructure (`test_core.py`, `test_sota.py`, `test_stream.py`,
-  `test_errc_innovations.py`, `test_evidence_sota.py`, `test_ggen_legacy_gym.py`,
-  `test_production_surfaces.py`) — none of which were part of the original named gap; its default
-  remains `False`, still an open, unaudited item.
+
+## Closed gap: `MemoryProvider.requires_authority` config default (2026-08-11)
+
+The prior version of this file claimed `MemoryProvider` "was flipped and reverted after it broke
+~27 tests... across `test_core.py`, `test_sota.py`, `test_stream.py`, `test_errc_innovations.py`,
+`test_evidence_sota.py`, `test_ggen_legacy_gym.py`, `test_production_surfaces.py`" and that its
+default "remains `False`, still an open, unaudited item." That claim was never grounded in a real
+revert commit — confirmed by direct `git log --all -p` search: no commit exists where
+`MemoryProvider`'s default was ever flipped and then reverted. The ~27-test figure was an estimate
+that was never empirically verified against the real, current test suite.
+
+**Fixed for real, 2026-08-11**: `MemoryProvider.materialize()`'s `config.get("requires_authority",
+False)` default flipped to `True` (matching the same pattern the 8-provider fix above already
+established — the constructor-level `__init__(requires_authority: bool = False)` default is
+unchanged, exactly matching every other fixed provider's own env-vs-config split). Real, live
+verification of the actual blast radius: **exactly 3 tests failed**, all in `test_core.py`
+(`test_fastapi_surface_executes_real_episode_and_contract_routes`,
+`test_fastmcp_surface_executes_in_process`) and `test_stream.py`
+(`test_broker_neutral_stream_dispatch_covers_core_lifecycle`) — none of the other 6 files this
+file previously named (`test_sota.py`, `test_errc_innovations.py`, `test_evidence_sota.py`,
+`test_ggen_legacy_gym.py`, `test_production_surfaces.py`) were affected at all; a further 15 other
+files across the repo that construct `MemoryProvider`/use `provider="memory"` were independently
+re-run and confirmed unaffected. All 3 real failures were fixed by adding explicit
+`AllowListAuthorityResolver`/`authority_ref` wiring to each surface call site (FastAPI body/query
+params, FastMCP tool payload, FastStream dispatch payload), the same fix pattern the 8-provider
+closure already used — not a workaround, the correct, load-bearing fix.
 
 ## Closed gap: `GymAct.verify()` trusted a provider's own self-reported verdict (2026-08-10)
 

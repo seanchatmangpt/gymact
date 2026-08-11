@@ -545,7 +545,7 @@ async def test_checkpoint_restore_requires_admitted_authority() -> None:
 
 
 def test_fastapi_surface_executes_real_episode_and_contract_routes() -> None:
-    runtime = GymAct()
+    runtime = GymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
     runtime.register_provider(MemoryProvider())
     client = TestClient(create_app(runtime))
     assert client.get("/health").json()["status"] == "ALIVE"
@@ -576,6 +576,7 @@ def test_fastapi_surface_executes_real_episode_and_contract_routes() -> None:
             "payload": {"key": "x", "value": 2},
             "idempotency_key": "api-set",
             "operation": "act",
+            "authority_ref": AUTHORITY,
         },
     )
     assert action.status_code == 200
@@ -588,10 +589,17 @@ def test_fastapi_surface_executes_real_episode_and_contract_routes() -> None:
     verification = client.post(f"/episodes/{episode_id}/verify", json={"expected": {"x": 2}})
     assert verification.json()["passed"] is True
     restored = client.post(
-        f"/episodes/{episode_id}/restore", json={"checkpoint": checkpoint}
+        f"/episodes/{episode_id}/restore",
+        json={"checkpoint": checkpoint},
+        params={"authority_ref": AUTHORITY},
     ).json()
     assert restored["standing"] == "ALIVE"
-    assert client.delete(f"/episodes/{episode_id}").json()["standing"] == "ALIVE"
+    assert (
+        client.request(
+            "DELETE", f"/episodes/{episode_id}", params={"authority_ref": AUTHORITY}
+        ).json()["standing"]
+        == "ALIVE"
+    )
     assert client.get("/episodes/missing/observations/latest").status_code == 404
     unsupported = client.post(
         "/episodes",
@@ -602,7 +610,7 @@ def test_fastapi_surface_executes_real_episode_and_contract_routes() -> None:
 
 @pytest.mark.asyncio
 async def test_fastmcp_surface_executes_in_process() -> None:
-    runtime = GymAct()
+    runtime = GymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
     runtime.register_provider(MemoryProvider())
     mcp = create_mcp(runtime)
     assert isinstance(mcp, FastMCP)
@@ -638,6 +646,7 @@ async def test_fastmcp_surface_executes_in_process() -> None:
                 "capability": SET_CAPABILITY,
                 "payload": {"key": "x", "value": 3},
                 "idempotency_key": "mcp-set",
+                "authority_ref": AUTHORITY,
             },
         )
         assert action.data["accepted"] is True

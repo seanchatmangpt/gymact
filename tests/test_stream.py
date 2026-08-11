@@ -2,15 +2,16 @@ from __future__ import annotations
 
 import pytest
 
-from gymact import ActuationIntent, GymAct, MemoryProvider
+from gymact import ActuationIntent, AllowListAuthorityResolver, GymAct, MemoryProvider
 from gymact.surfaces.faststream import dispatch_stream_command
 
 SET_CAPABILITY = "urn:gymact:memory:capability:set"
+AUTHORITY = "urn:test:authority"
 
 
 @pytest.mark.asyncio
 async def test_broker_neutral_stream_dispatch_covers_core_lifecycle() -> None:
-    runtime = GymAct()
+    runtime = GymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
     runtime.register_provider(MemoryProvider())
 
     discovered = await dispatch_stream_command(runtime, {"operation": "discover"})
@@ -43,6 +44,7 @@ async def test_broker_neutral_stream_dispatch_covers_core_lifecycle() -> None:
         capability=SET_CAPABILITY,
         payload={"key": "value", "value": 2},
         idempotency_key="stream-set",
+        authority_ref=AUTHORITY,
     )
     actuated = await dispatch_stream_command(
         runtime,
@@ -70,18 +72,25 @@ async def test_broker_neutral_stream_dispatch_covers_core_lifecycle() -> None:
                 capability=SET_CAPABILITY,
                 payload={"key": "value", "value": 3},
                 idempotency_key="stream-set-again",
+                authority_ref=AUTHORITY,
             ).model_dump(mode="json"),
         },
     )
     restored = await dispatch_stream_command(
         runtime,
-        {"operation": "restore", "episode_id": episode_id, "checkpoint": checkpoint},
+        {
+            "operation": "restore",
+            "episode_id": episode_id,
+            "checkpoint": checkpoint,
+            "authority_ref": AUTHORITY,
+        },
     )
     assert restored["result"]["standing"] == "ALIVE"
     assert (await runtime.observe(episode_id)).state == {"value": 2}
 
     torn_down = await dispatch_stream_command(
-        runtime, {"operation": "teardown", "episode_id": episode_id}
+        runtime,
+        {"operation": "teardown", "episode_id": episode_id, "authority_ref": AUTHORITY},
     )
     assert torn_down["result"]["standing"] == "ALIVE"
 
