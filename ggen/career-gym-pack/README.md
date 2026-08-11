@@ -1,36 +1,59 @@
-# CareerGym — public-semantic career world
+# CareerGym — Fortune-5 ATS public-semantic profile
 
-CareerGym models a career process as an executable gym **without inventing a private career ontology**.
+CareerGym models the candidate/recruiting state space as a public-semantic ABox. It does **not** define a private CareerGym TBox.
 
-The canonical source is `ontology.ttl`. Every `urn:gymact:careergym:*` term is an ABox/profile resource, SKOS concept, plan instance, or action/observation identity. Domain meaning is carried by public vocabularies:
+## Public semantic stack
 
-- Schema.org — `Person`, `Organization`, `JobPosting`, `Message`, `CreativeWork`, `SendAction`, locations and addresses.
-- PROV-O — observations, activities, derivation, agents, entities, and plans.
-- P-PLAN — the opportunity-to-close process and ordered steps.
-- ODRL — bounded policy facts around use of the resume artifact.
-- SKOS — skill classifications.
-- OWL-Time — temporal windows.
-- DCTERMS — labels, descriptions, conformance and relations.
+- Schema.org: Person, ProfilePage, JobPosting, ApplyAction, AssessAction, Event, Offer, Message, CreativeWork, Place.
+- PROV-O: evidence, provenance, agents, activities, bundles, derivation.
+- P-PLAN: ordered recruiting/application lifecycle.
+- SKOS: local observed concepts plus mappings to external labor-market taxonomies.
+- ESCO: authoritative occupation/skill Linked Data mapping target.
+- O*NET: US occupation, skills, abilities, activities and task mapping target.
+- W3C Verifiable Credentials: credential envelope for independently verifiable claims.
+- ODRL: consent/use/distribution policy.
+- OWL-Time: retention, response, interview and offer windows.
+- DCTERMS: descriptions, conformance and relations.
 
-## First admitted episode
+## Fortune-5 ATS coverage
 
-The initial ABox captures the 2026-08-10 recruiter observation for two 12-month+ auto-manufacturer contract opportunities: AI Engineer and ML/AI Data Science, on-site in Torrance CA or Marysville OH, with Python/AWS/Docker/AI-ML/data requirements and a recruiter request for a resume.
+The profile carries the interoperable basis needed to project into enterprise ATS families without making any vendor schema canonical:
 
-This is an observation, not proof that either job exists beyond the supplied recruiter message. The manufacturer remains unidentified, so the graph preserves that uncertainty instead of fabricating an employer identity.
+1. candidate identity and deduplication basis;
+2. parser-safe resume artifact separated from source-of-truth evidence;
+3. work/skill/credential provenance;
+4. requisition and job-posting identity;
+5. source/referral provenance;
+6. application lifecycle;
+7. screening and assessment stages;
+8. interview scheduling;
+9. offer/compensation/contingency envelope;
+10. background/onboarding stage;
+11. work-authorization status as UNKNOWN unless observed;
+12. optional demographic/compliance category isolated from matching;
+13. consent, distribution and retention policy;
+14. ESCO/O*NET taxonomy resolution;
+15. vendor projections for Workday, SAP SuccessFactors and Oracle Recruiting;
+16. consequence verification and terminal standing downstream through GymAct/BRCE.
 
-## Process
+## Non-negotiable fences
 
-`careerPlan` is a P-PLAN graph:
+Observed != admitted. Resume parsed != candidate data verified. Application submitted != application received. Interview scheduled != attended. Offer generated != offer accepted.
 
-`observe -> normalize -> match -> preserve options -> admit -> tailor resume -> construct response -> authorized send -> verify -> wait -> schedule -> interview -> follow-up -> offer evaluation -> close`
+Unknown contact, work authorization, demographic, employer, compensation, or credential facts are never inferred.
 
-The plan does not imply that each step must execute. DfCM preserves reversible alternatives before admission; consequential actions remain behind GymAct/BRCE authority.
+A vendor ATS object is a projection of the canonical public graph. Workday/SAP/Oracle field names never become CareerGym semantic authority.
+
+## Current episode
+
+The first ABox preserves the supplied 2026-08-10 recruiter message for two 12-month+ AI/ML/data roles with an unidentified major auto manufacturer in Torrance CA or Marysville OH. Unknown employer/recruiter details remain unknown.
 
 ## Gates
 
-- `010_no_custom_tbox.rq`: any CareerGym-owned class/property/predicate is a violation.
-- `020_profile_basis.rq`: the profile must contain the plan, resume artifact, at least one job posting, a send intent, and the minimum 15-step process basis.
+- `010_no_custom_tbox.rq`: rejects CareerGym-owned classes/properties/predicates.
+- `020_profile_basis.rq`: requires the core candidate/application process.
+- `030_ats_interop_basis.rq`: requires the enterprise ATS projection basis.
+- `040_sensitive_unknowns.rq`: fails if sensitive/work-authorization unknowns are silently converted into asserted values.
+- `050_consequence_separation.rq`: enforces intent != consequence semantics.
 
-## Claim ceiling
-
-Current standing is **PARTIAL_ALIVE** after graph publication only. A real CareerGym episode requires a provider that observes the connected career surfaces, executes only admitted/authorized consequences, emits a schema-valid OCEL 2.0 log, and independently verifies the actual consequence.
+Current standing remains PARTIAL_ALIVE until exact-head execution validates these gates and a real provider produces independently verified OCEL evidence.

@@ -3,44 +3,36 @@
 @prefix odrl: <http://www.w3.org/ns/odrl/2/> .
 @prefix p-plan: <http://purl.org/net/p-plan#> .
 @prefix prov: <http://www.w3.org/ns/prov#> .
-@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix schema: <https://schema.org/> .
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 @prefix time: <http://www.w3.org/2006/time#> .
+@prefix vc: <https://www.w3.org/2018/credentials#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-# CareerGym is intentionally an ABox/profile over public ontologies.
-# No cg:* class or property is declared.
+cg:careerGymProfile a prov:Entity, schema:CreativeWork ;
+  schema:name "CareerGym Fortune-5 ATS interoperability profile" ;
+  dcterms:conformsTo <https://schema.org/>, <http://www.w3.org/ns/prov-o#>,
+    <http://purl.org/net/p-plan#>, <http://www.w3.org/ns/odrl/2/>,
+    <http://www.w3.org/2004/02/skos/core>, <http://www.w3.org/2006/time>,
+    <https://www.w3.org/TR/vc-data-model-2.0/>, <https://esco.ec.europa.eu/>,
+    <https://www.onetcenter.org/> ;
+  schema:description "Public-semantic ABox for candidate identity, evidence, occupations, skills, requisitions, applications, interviews, assessments, offers, consent, retention, provenance, and ATS projections." .
 
-cg:careerGymProfile
-    a prov:Entity, schema:CreativeWork ;
-    schema:name "CareerGym public-semantic profile" ;
-    schema:description "A bounded career-process world model for observing opportunities, constructing application alternatives, executing authorized career actions, and preserving receipts without inventing a private career ontology." ;
-    dcterms:conformsTo <https://schema.org/>,
-        <http://www.w3.org/ns/prov-o#>,
-        <http://purl.org/net/p-plan#>,
-        <http://www.w3.org/ns/odrl/2/>,
-        <http://www.w3.org/2004/02/skos/core>,
-        <http://www.w3.org/2006/time> .
+cg:sean a schema:Person, prov:Agent ;
+  schema:name "Sean Chatman" ;
+  schema:homeLocation cg:pasadena ;
+  schema:url <https://github.com/seanchatmangpt> ;
+  schema:knowsAbout cg:skill-ai-ml, cg:skill-python, cg:skill-aws, cg:skill-docker, cg:skill-kubernetes, cg:skill-data-science .
 
-cg:sean
-    a schema:Person, prov:Agent ;
-    schema:name "Sean Chatman" ;
-    schema:homeLocation [
-        a schema:Place ;
-        schema:name "Pasadena, California"
-    ] ;
-    schema:url <https://github.com/seanchatmangpt> .
+cg:pasadena a schema:Place ; schema:name "Pasadena, California" .
+cg:torrance a schema:Place ; schema:name "Torrance, California" .
+cg:marysville a schema:Place ; schema:name "Marysville, Ohio" .
 
-cg:currentResume
-    a schema:CreativeWork, prov:Entity ;
-    schema:name "Sean Chatman — Principal Forward Deployed Engineer / Agentic AI Architect Resume" ;
-    schema:author cg:sean ;
-    schema:about cg:skill-ai-ml, cg:skill-python, cg:skill-aws, cg:skill-docker, cg:skill-kubernetes, cg:skill-data-science .
-
-cg:skills
-    a skos:ConceptScheme ;
-    skos:prefLabel "CareerGym skill vocabulary" .
+cg:skills a skos:ConceptScheme ; skos:prefLabel "CareerGym observed skill concepts" .
+cg:occupations a skos:ConceptScheme ; skos:prefLabel "CareerGym candidate occupation mappings" .
+cg:atsSystems a skos:ConceptScheme ; skos:prefLabel "Enterprise ATS projection targets" .
+cg:applicationStates a skos:ConceptScheme ; skos:prefLabel "Application lifecycle states" .
+cg:complianceCategories a skos:ConceptScheme ; skos:prefLabel "Sensitive recruiting compliance categories" .
 
 cg:skill-ai-ml a skos:Concept ; skos:inScheme cg:skills ; skos:prefLabel "AI/ML engineering" .
 cg:skill-python a skos:Concept ; skos:inScheme cg:skills ; skos:prefLabel "Python" .
@@ -49,91 +41,142 @@ cg:skill-docker a skos:Concept ; skos:inScheme cg:skills ; skos:prefLabel "Docke
 cg:skill-kubernetes a skos:Concept ; skos:inScheme cg:skills ; skos:prefLabel "Kubernetes" .
 cg:skill-data-science a skos:Concept ; skos:inScheme cg:skills ; skos:prefLabel "Data Science" .
 
-cg:recruiterMessage-2026-08-10
-    a schema:Message, prov:Entity ;
-    schema:recipient cg:sean ;
-    schema:dateReceived "2026-08-10"^^xsd:date ;
-    schema:text "Long-term AI engineer or ML/AI Data Science opportunity; two 12-month+ contract roles with a massive auto manufacturer/brand; on-site Torrance CA or Marysville OH with flex schedule; Python, AWS, Docker, AI/ML and data focused; resume requested to move candidate to top of inbox." ;
-    prov:wasDerivedFrom cg:recruiterObservation-2026-08-10 .
+cg:workday a skos:Concept ; skos:inScheme cg:atsSystems ; skos:prefLabel "Workday Recruiting" .
+cg:successfactors a skos:Concept ; skos:inScheme cg:atsSystems ; skos:prefLabel "SAP SuccessFactors Recruiting" .
+cg:oracle-recruiting a skos:Concept ; skos:inScheme cg:atsSystems ; skos:prefLabel "Oracle Recruiting" .
+cg:greenhouse a skos:Concept ; skos:inScheme cg:atsSystems ; skos:prefLabel "Greenhouse" .
+cg:icims a skos:Concept ; skos:inScheme cg:atsSystems ; skos:prefLabel "iCIMS" .
 
-cg:recruiterObservation-2026-08-10
-    a prov:Activity ;
-    prov:generated cg:recruiterMessage-2026-08-10 ;
-    prov:wasAssociatedWith cg:sean .
+cg:currentResume a schema:CreativeWork, prov:Entity ;
+  schema:name "Sean Chatman — ATS-neutral resume projection" ;
+  schema:author cg:sean ;
+  schema:encodingFormat "text/plain, application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document" ;
+  schema:about cg:skill-ai-ml, cg:skill-python, cg:skill-aws, cg:skill-docker, cg:skill-kubernetes, cg:skill-data-science ;
+  prov:wasDerivedFrom cg:careerEvidenceBundle .
 
-cg:unknownAutoManufacturer
-    a schema:Organization ;
-    schema:name "Unidentified massive auto manufacturer/brand" .
+cg:careerEvidenceBundle a prov:Bundle ;
+  dcterms:title "Career evidence source graph" ;
+  dcterms:description "Source-of-truth evidence bundle; resumes and ATS candidate profiles are projections, not authorities." .
 
-cg:torrance
-    a schema:Place ;
-    schema:name "Torrance, California" ;
-    schema:address [ a schema:PostalAddress ; schema:addressLocality "Torrance" ; schema:addressRegion "CA" ; schema:addressCountry "US" ] .
+cg:credentialEnvelope a vc:VerifiableCredential, prov:Entity ;
+  dcterms:description "Placeholder envelope for independently verifiable credentials; no credential claims are fabricated." ;
+  vc:credentialSubject cg:sean .
 
-cg:marysville
-    a schema:Place ;
-    schema:name "Marysville, Ohio" ;
-    schema:address [ a schema:PostalAddress ; schema:addressLocality "Marysville" ; schema:addressRegion "OH" ; schema:addressCountry "US" ] .
+cg:recruiterMessage-2026-08-10 a schema:Message, prov:Entity ;
+  schema:recipient cg:sean ;
+  schema:dateReceived "2026-08-10"^^xsd:date ;
+  schema:text "Long-term AI engineer or ML/AI Data Science opportunity; two 12-month+ contract roles with a massive auto manufacturer/brand; on-site Torrance CA or Marysville OH with flex schedule; Python, AWS, Docker, AI/ML and data focused; resume requested." .
 
-cg:aiEngineerPosting
-    a schema:JobPosting, prov:Entity ;
-    schema:title "AI Engineer" ;
-    schema:hiringOrganization cg:unknownAutoManufacturer ;
-    schema:employmentType "CONTRACT" ;
-    schema:jobLocation cg:torrance, cg:marysville ;
-    schema:workHours "Flex schedule" ;
-    schema:skills "Python; AWS; Docker; AI/ML engineering; data" ;
-    schema:description "12 month contract+; on-site in Torrance CA or Marysville OH; AI/ML and data focused." ;
-    prov:wasDerivedFrom cg:recruiterMessage-2026-08-10 .
+cg:unknownAutoManufacturer a schema:Organization ;
+  schema:name "Unidentified massive auto manufacturer/brand" .
 
-cg:mlDataSciencePosting
-    a schema:JobPosting, prov:Entity ;
-    schema:title "ML/AI Data Science" ;
-    schema:hiringOrganization cg:unknownAutoManufacturer ;
-    schema:employmentType "CONTRACT" ;
-    schema:jobLocation cg:torrance, cg:marysville ;
-    schema:workHours "Flex schedule" ;
-    schema:skills "Python; AWS; Docker; machine learning; data science" ;
-    schema:description "12 month contract+; on-site in Torrance CA or Marysville OH; ML/AI and data focused." ;
-    prov:wasDerivedFrom cg:recruiterMessage-2026-08-10 .
+cg:aiEngineerPosting a schema:JobPosting, prov:Entity ;
+  schema:title "AI Engineer" ;
+  schema:hiringOrganization cg:unknownAutoManufacturer ;
+  schema:employmentType "CONTRACT" ;
+  schema:jobLocation cg:torrance, cg:marysville ;
+  schema:skills "Python; AWS; Docker; AI/ML engineering; data" ;
+  schema:experienceRequirements "Observed recruiter message did not specify years; UNKNOWN" ;
+  schema:educationRequirements "UNKNOWN" ;
+  schema:qualifications "Python; AWS; Docker; AI/ML engineering; data" ;
+  schema:responsibilities "UNKNOWN" ;
+  prov:wasDerivedFrom cg:recruiterMessage-2026-08-10 .
 
-cg:careerPlan
-    a p-plan:Plan, prov:Plan ;
-    dcterms:title "CareerGym opportunity-to-close process" ;
-    dcterms:description "Observe broadly, preserve multiple lawful opportunity/application paths, admit only evidence-backed actions, execute through explicit authority, verify consequences, and close every admitted object with terminal standing." .
+cg:mlDataSciencePosting a schema:JobPosting, prov:Entity ;
+  schema:title "ML/AI Data Science" ;
+  schema:hiringOrganization cg:unknownAutoManufacturer ;
+  schema:employmentType "CONTRACT" ;
+  schema:jobLocation cg:torrance, cg:marysville ;
+  schema:skills "Python; AWS; Docker; machine learning; data science" ;
+  schema:experienceRequirements "UNKNOWN" ;
+  schema:educationRequirements "UNKNOWN" ;
+  schema:qualifications "Python; AWS; Docker; machine learning; data science" ;
+  schema:responsibilities "UNKNOWN" ;
+  prov:wasDerivedFrom cg:recruiterMessage-2026-08-10 .
 
-cg:step-observe a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; dcterms:title "Observe opportunity and context" .
-cg:step-normalize a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-observe ; dcterms:title "Normalize job, organization, location, compensation, contract, and recruiter facts" .
-cg:step-match a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-normalize ; dcterms:title "Construct evidence-backed skill and experience correspondence" .
-cg:step-options a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-match ; dcterms:title "Preserve reversible application/resume/message alternatives" .
-cg:step-admit a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-options ; dcterms:title "Admit a closure-capable application path" .
-cg:step-resume a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-admit ; dcterms:title "Construct role-specific resume projection from admitted evidence" .
-cg:step-message a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-resume ; dcterms:title "Construct recruiter response" .
-cg:step-send a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-message ; dcterms:title "Execute authorized send/submission" .
-cg:step-verify a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-send ; dcterms:title "Observe delivery/application consequence independently" .
-cg:step-wait a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-verify ; dcterms:title "Represent external waiting dependency without creating human WIP" .
-cg:step-schedule a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-wait ; dcterms:title "Schedule recruiter/interview event when invited" .
-cg:step-interview a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-schedule ; dcterms:title "Prepare and execute interview episode" .
-cg:step-followup a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-interview ; dcterms:title "Execute evidence-backed follow-up" .
-cg:step-offer a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-followup ; dcterms:title "Evaluate offer/terms as a decision space" .
-cg:step-close a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-offer ; dcterms:title "Close opportunity with terminal standing and receipt" .
+cg:atsCandidateProfile a schema:ProfilePage, prov:Entity ;
+  schema:mainEntity cg:sean ;
+  schema:about cg:sean ;
+  prov:wasDerivedFrom cg:careerEvidenceBundle ;
+  dcterms:description "Vendor-neutral candidate profile projection carrying identity, contact/location facts when observed, employment evidence, skills, credentials, source, consent, and application relationships." .
 
-cg:applicationPolicy
-    a odrl:Policy ;
-    odrl:permission [
-        a odrl:Permission ;
-        odrl:target cg:currentResume ;
-        odrl:action odrl:use
-    ] .
+cg:jobApplication a schema:ApplyAction, prov:Activity ;
+  schema:agent cg:sean ;
+  schema:object cg:aiEngineerPosting ;
+  schema:actionStatus schema:PotentialActionStatus ;
+  prov:used cg:currentResume, cg:atsCandidateProfile .
 
-cg:sendResumeIntent
-    a schema:SendAction, prov:Activity ;
-    schema:agent cg:sean ;
-    schema:object cg:currentResume ;
-    schema:recipient cg:unknownAutoManufacturer ;
-    schema:actionStatus schema:PotentialActionStatus ;
-    prov:used cg:aiEngineerPosting, cg:mlDataSciencePosting .
+cg:sourceRecruiter a prov:Entity, schema:Message ;
+  dcterms:description "Recruiter-sourced opportunity; recruiter identity remains UNKNOWN until observed." ;
+  prov:wasDerivedFrom cg:recruiterMessage-2026-08-10 .
 
-cg:responseWindow
-    a time:Interval ;
-    time:hasBeginning [ a time:Instant ; time:inXSDDate "2026-08-10"^^xsd:date ] .
+cg:applicationConsentPolicy a odrl:Policy ;
+  odrl:permission [ a odrl:Permission ; odrl:target cg:currentResume ; odrl:action odrl:use ] ;
+  odrl:prohibition [ a odrl:Prohibition ; odrl:target cg:currentResume ; odrl:action odrl:distribute ] .
+
+cg:retentionWindow a time:Interval ;
+  dcterms:description "ATS retention period is employer/jurisdiction specific and remains UNKNOWN until observed." .
+
+cg:eeoData a prov:Entity ;
+  dcterms:description "Sensitive voluntary demographic/compliance data category. No values are inferred or populated. Must remain isolated from matching/ranking unless a lawful compliance process explicitly requires it." .
+
+cg:workAuthorization a prov:Entity ;
+  dcterms:description "Work authorization/sponsorship status UNKNOWN; never infer from nationality, location, name, or history." .
+
+cg:assessment a schema:AssessAction, prov:Activity ;
+  schema:agent cg:unknownAutoManufacturer ;
+  schema:object cg:sean ;
+  schema:actionStatus schema:PotentialActionStatus ;
+  dcterms:description "Optional employer assessment stage; no assessment is asserted to exist." .
+
+cg:backgroundCheck a prov:Activity ;
+  dcterms:description "Potential post-conditional-offer background-check process. No check is asserted and no sensitive result is stored here." .
+
+cg:interviewEvent a schema:Event, prov:Entity ;
+  schema:name "Potential interview" ;
+  schema:eventStatus schema:EventScheduled ;
+  dcterms:description "Placeholder only; no date/time is asserted until invitation is observed." .
+
+cg:offer a schema:Offer, prov:Entity ;
+  schema:itemOffered cg:aiEngineerPosting ;
+  dcterms:description "Potential offer object. Compensation, benefits, start date, contingencies, and acceptance authority remain UNKNOWN until observed." .
+
+cg:careerPlan a p-plan:Plan, prov:Plan ;
+  dcterms:title "Fortune-5 ATS opportunity-to-close process" .
+
+cg:step-observe a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; dcterms:title "Observe source and requisition" .
+cg:step-identity a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-observe ; dcterms:title "Resolve candidate identity without fabricating missing contact facts" .
+cg:step-normalize a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-identity ; dcterms:title "Normalize requisition, organization, location, contract and source" .
+cg:step-taxonomy a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-normalize ; dcterms:title "Map occupations and skills to ESCO/O*NET candidates" .
+cg:step-evidence a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-taxonomy ; dcterms:title "Bind claims to provenance and credentials" .
+cg:step-options a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-evidence ; dcterms:title "Preserve ATS/resume/application alternatives" .
+cg:step-admit a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-options ; dcterms:title "Admit closure-capable application path" .
+cg:step-project a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-admit ; dcterms:title "Project ATS-neutral candidate profile and parser-safe resume" .
+cg:step-consent a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-project ; dcterms:title "Establish consent, use and retention policy" .
+cg:step-apply a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-consent ; dcterms:title "Authorized submit/apply" .
+cg:step-verify-application a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-apply ; dcterms:title "Verify ATS/recruiter receipt independently" .
+cg:step-screen a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-verify-application ; dcterms:title "Track recruiter/ATS screening state" .
+cg:step-assess a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-screen ; dcterms:title "Assessment if required" .
+cg:step-interview a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-assess ; dcterms:title "Interview sequence" .
+cg:step-offer a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-interview ; dcterms:title "Offer, compensation and contingencies" .
+cg:step-background a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-offer ; dcterms:title "Background/onboarding checks if lawful and required" .
+cg:step-close a p-plan:Step ; p-plan:isStepOfPlan cg:careerPlan ; p-plan:isPrecededBy cg:step-background ; dcterms:title "Terminal standing and receipt" .
+
+cg:escoMapping a prov:Activity ;
+  prov:used cg:aiEngineerPosting, cg:mlDataSciencePosting, cg:skills ;
+  dcterms:description "Resolve exact ESCO v1.2.1 occupation/skill URIs through the authoritative API; preserve candidate mappings until admitted." .
+
+cg:onetMapping a prov:Activity ;
+  prov:used cg:aiEngineerPosting, cg:mlDataSciencePosting, cg:skills ;
+  dcterms:description "Resolve O*NET-SOC occupations, skills, abilities, work activities and tasks; preserve evidence and version." .
+
+cg:workdayProjection a prov:Activity ; prov:used cg:atsCandidateProfile ; dcterms:description "Projection target for Workday candidate/application fields; do not assume parser-specific fields beyond observed integration contract." .
+cg:successFactorsProjection a prov:Activity ; prov:used cg:atsCandidateProfile ; dcterms:description "Projection target for SuccessFactors candidate-profile standardization and resume parsing." .
+cg:oracleProjection a prov:Activity ; prov:used cg:atsCandidateProfile ; dcterms:description "Projection target for Oracle Recruiting candidate/application records." .
+
+cg:sendResumeIntent a schema:SendAction, prov:Activity ;
+  schema:agent cg:sean ;
+  schema:object cg:currentResume ;
+  schema:recipient cg:unknownAutoManufacturer ;
+  schema:actionStatus schema:PotentialActionStatus ;
+  prov:used cg:aiEngineerPosting, cg:mlDataSciencePosting .

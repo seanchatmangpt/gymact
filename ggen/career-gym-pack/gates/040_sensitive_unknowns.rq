@@ -1,0 +1,13 @@
+# MESSAGE: Sensitive candidate facts must remain explicitly unknown unless observed.
+PREFIX cg: <urn:gymact:careergym:>
+PREFIX dct: <http://purl.org/dc/terms/>
+SELECT ?subject ?problem WHERE {
+  VALUES (?subject ?needle ?problem) {
+    (cg:workAuthorization "UNKNOWN" "work-authorization-not-explicitly-unknown")
+    (cg:eeoData "No values are inferred or populated" "sensitive-compliance-data-not-fenced")
+  }
+  FILTER NOT EXISTS {
+    ?subject dct:description ?description .
+    FILTER(CONTAINS(STR(?description), ?needle))
+  }
+}
