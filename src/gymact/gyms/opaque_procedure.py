@@ -74,7 +74,10 @@ class OpaqueProcedureEnvironment:
 
     async def observe(self) -> dict[str, Any]:
         self._ensure_open()
-        return {"facts": sorted(self._state)}
+        return {
+            "facts": sorted(self._state),
+            "goal_reached": self._goal_facts <= self._state,
+        }
 
     async def actuate(
         self, capability: Capability, payload: dict[str, Any]
