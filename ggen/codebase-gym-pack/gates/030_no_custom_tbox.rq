@@ -1,0 +1,20 @@
+# MESSAGE: CodebaseProvider gym must remain public-vocabulary ABox/SKOS/SHACL only.
+# Any row means a local TBox declaration or local predicate leaked in.
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?term ?problem WHERE {
+  {
+    ?term a ?kind .
+    VALUES ?kind { owl:Class owl:ObjectProperty owl:DatatypeProperty rdfs:Class rdf:Property }
+    FILTER(STRSTARTS(STR(?term), "urn:gymact:codebase:"))
+    BIND("local-tbox" AS ?problem)
+  }
+  UNION
+  {
+    ?s ?term ?o .
+    FILTER(STRSTARTS(STR(?term), "urn:gymact:codebase:"))
+    BIND("local-predicate" AS ?problem)
+  }
+}
+ORDER BY ?term ?problem
