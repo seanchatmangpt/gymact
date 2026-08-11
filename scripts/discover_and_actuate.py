@@ -29,6 +29,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 import fastmcp
 
 from gymact import GymAct, MaterializationIntent
+from gymact.gyms import vendor_benchmarks
 from gymact.gyms.discovered import GenericDiscoveredProvider
 from gymact.models import ActuationIntent
 from gymact.ocel import write_ocel_log
@@ -118,6 +119,61 @@ async def _run_subject(slug: str, path: Path) -> None:
     gym = GymAct()
     gym.register_provider(GenericDiscoveredProvider())
     receipts = []
+
+    # Vendor-pinned subjects (slug is a key in VENDOR_REVISIONS) have a real,
+    # existing audit (`vendor_benchmarks.audit_vendor`) that already
+    # distinguishes "checkout missing" / "wrong revision" / "git unavailable"
+    # from a genuinely ready checkout. Running the LLM-proposed subprocess
+    # probe against a missing/mispinned checkout would just reproduce a
+    # ModuleNotFoundError (or similar) with strictly less information than
+    # the audit already has, and bury the real signal inside a free-text
+    # stderr snippet. So for these subjects, audit first and short-circuit
+    # before ever proposing/running a probe command -- but only when the
+    # audit itself reports the checkout is not actually ready
+    # (`standing != "PARTIAL_ALIVE"`, `audit_vendor`'s own ready state); a
+    # ready checkout proceeds through the existing LLM-proposed-probe flow
+    # unchanged.
+    if slug in vendor_benchmarks.VENDOR_REVISIONS:
+        audit = vendor_benchmarks.audit_vendor(slug, root=path)
+        if audit.standing != "PARTIAL_ALIVE":
+            m = await gym.materialize(
+                MaterializationIntent(
+                    provider="discovered",
+                    config={
+                        "subject": slug,
+                        "command": ["true"],
+                        "cwd": "/tmp",
+                        "success_markers": [f"__gymact_vendor_audit_marker_{slug}__"],
+                    },
+                )
+            )
+            receipts.append(m.receipt)
+            if m.accepted:
+                episode_id = m.episode.episode_id
+                act_result = await gym.act(
+                    ActuationIntent(
+                        episode_id=episode_id,
+                        capability="urn:gymact:discovered:capability:run",
+                    )
+                )
+                audit_marker = f"VENDOR_AUDIT:{audit.standing}:{audit.reason}"
+                receipt_with_audit = act_result.receipt.model_copy(
+                    update={
+                        "reason": (
+                            f"{act_result.receipt.reason}; {audit_marker}"
+                            if act_result.receipt.reason
+                            else audit_marker
+                        )
+                    }
+                )
+                receipts.append(receipt_with_audit)
+                receipts.append(await gym.teardown(episode_id))
+            log, digest = write_ocel_log(log_path, receipts)
+            print(
+                f"{slug}: vendor audit short-circuit -- "
+                f"standing={audit.standing} reason={audit.reason} -- {digest}"
+            )
+            return
 
     if not probe or not probe.get("exists"):
         m = await gym.materialize(
