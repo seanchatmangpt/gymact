@@ -152,8 +152,25 @@ def load_aws_topology(*, partition: str = "aws") -> CloudTopology:
         for code, body in real_partition.get("regions", {}).items()
     )
     services = tuple(CloudService(provider="aws", name=name) for name in real_partition.get("services", {}))
+    # Corrected 2026-08-12, found by a real, independent validator
+    # (`cloud_topology_validation.py`) re-deriving these counts a second
+    # way and diffing: a service's real `endpoints` dict in botocore's raw
+    # data is keyed by more than real geographic region codes -- it also
+    # carries real endpoint-alias keys (FIPS-compliance endpoints like
+    # `us-east-1-fips`, the `aws-global` pseudo-region for global services,
+    # ECR's `dkr-*`/`api-*` regional variants, ...). 229 of the real 263
+    # distinct endpoint keys observed across all AWS services are these
+    # aliases, not real regions -- `service_region_availability` previously
+    # included all of them unfiltered, so `services_in_region(<real code>)`
+    # was correct but `service_region_availability` itself claimed
+    # availability in codes that don't exist in `regions` at all (a real,
+    # dangling reference the independent validator's structural check
+    # catches). Filtered here to real region codes only -- the dropped
+    # alias keys are a real, different, currently-unmodeled concept
+    # (endpoint variants), not thrown away as noise.
+    real_region_codes = frozenset(real_partition.get("regions", {}).keys())
     availability: dict[str, tuple[str, ...]] = {
-        name: tuple(sorted(body.get("endpoints", {}).keys()))
+        name: tuple(sorted(k for k in body.get("endpoints", {}).keys() if k in real_region_codes))
         for name, body in real_partition.get("services", {}).items()
     }
     return CloudTopology(
