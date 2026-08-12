@@ -21,8 +21,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      MARKETPLACE_SHA: a5bd949c7cd1413ef3462ee8ac8afd01daa25ac7
-      LEGACY_SHA: 54689bc820852aa8f84d55a95d0f1b92ad5dc8ac
+      MARKETPLACE_SHA: 0b5cf33183eba31a5f335250f6d384c6af73611f
+      LEGACY_SHA: 48e7d768b997e33816f4f2a77c33ba7f99cbac6b
       CREATE_SHA: 866f04848b2e6517a73ba814667c8d910b31a6da
       GGEN_SHA: 5c6548e1dc58deecfae4fdbb81c019ca1f5cc67a
     steps:
@@ -67,6 +67,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Install exact Legacy native-digest verifier
+        run: python -m pip install -r subjects/ggen-legacy/requirements-connection.txt
 
       - name: Admit Connection v1 and refuse ambient DO
         run: |
