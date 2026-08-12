@@ -13,6 +13,13 @@ reports/
 *.xls*
 *.zip*
 data/
+# Exception: src/gymact/gyms/data/ holds real, bundled, dated snapshots
+# (Azure/GCP cloud topology, gymact.gyms.cloud_topology) that are part of
+# the shipped package, not generated/local scratch data -- must be
+# tracked, or the bundled-snapshot design silently breaks on a fresh
+# clone (tests would fail with "real snapshot missing").
+!src/gymact/gyms/data/
+!src/gymact/gyms/data/*.json
 
 # direnv
 .envrc

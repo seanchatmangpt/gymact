@@ -1,0 +1,205 @@
+{
+  "source_url": "https://www.gstatic.com/ipranges/cloud.json",
+  "source_sync_token": "1786543872576",
+  "source_creation_time": "2026-08-12T07:11:12.576043",
+  "fetched_at": "2026-08-12T21:26:16.946429+00:00",
+  "regions": [
+    "africa-south1",
+    "asia-east1",
+    "asia-east2",
+    "asia-northeast1",
+    "asia-northeast2",
+    "asia-northeast3",
+    "asia-south1",
+    "asia-south2",
+    "asia-southeast1",
+    "asia-southeast2",
+    "asia-southeast3",
+    "australia-southeast1",
+    "australia-southeast2",
+    "europe-central2",
+    "europe-north1",
+    "europe-north2",
+    "europe-southwest1",
+    "europe-west1",
+    "europe-west10",
+    "europe-west12",
+    "europe-west15",
+    "europe-west2",
+    "europe-west3",
+    "europe-west4",
+    "europe-west6",
+    "europe-west8",
+    "europe-west9",
+    "global",
+    "me-central1",
+    "me-central2",
+    "me-west1",
+    "northamerica-northeast1",
+    "northamerica-northeast2",
+    "northamerica-south1",
+    "southamerica-east1",
+    "southamerica-west1",
+    "us-central1",
+    "us-central2",
+    "us-east1",
+    "us-east4",
+    "us-east5",
+    "us-east7",
+    "us-south1",
+    "us-west1",
+    "us-west2",
+    "us-west3",
+    "us-west4",
+    "us-west8"
+  ],
+  "services": [
+    "Google Cloud"
+  ],
+  "region_services": {
+    "africa-south1": [
+      "Google Cloud"
+    ],
+    "asia-east1": [
+      "Google Cloud"
+    ],
+    "asia-east2": [
+      "Google Cloud"
+    ],
+    "asia-northeast1": [
+      "Google Cloud"
+    ],
+    "asia-northeast2": [
+      "Google Cloud"
+    ],
+    "asia-northeast3": [
+      "Google Cloud"
+    ],
+    "asia-south1": [
+      "Google Cloud"
+    ],
+    "asia-south2": [
+      "Google Cloud"
+    ],
+    "asia-southeast1": [
+      "Google Cloud"
+    ],
+    "asia-southeast2": [
+      "Google Cloud"
+    ],
+    "asia-southeast3": [
+      "Google Cloud"
+    ],
+    "australia-southeast1": [
+      "Google Cloud"
+    ],
+    "australia-southeast2": [
+      "Google Cloud"
+    ],
+    "europe-central2": [
+      "Google Cloud"
+    ],
+    "europe-north1": [
+      "Google Cloud"
+    ],
+    "europe-north2": [
+      "Google Cloud"
+    ],
+    "europe-southwest1": [
+      "Google Cloud"
+    ],
+    "europe-west1": [
+      "Google Cloud"
+    ],
+    "europe-west10": [
+      "Google Cloud"
+    ],
+    "europe-west12": [
+      "Google Cloud"
+    ],
+    "europe-west15": [
+      "Google Cloud"
+    ],
+    "europe-west2": [
+      "Google Cloud"
+    ],
+    "europe-west3": [
+      "Google Cloud"
+    ],
+    "europe-west4": [
+      "Google Cloud"
+    ],
+    "europe-west6": [
+      "Google Cloud"
+    ],
+    "europe-west8": [
+      "Google Cloud"
+    ],
+    "europe-west9": [
+      "Google Cloud"
+    ],
+    "global": [
+      "Google Cloud"
+    ],
+    "me-central1": [
+      "Google Cloud"
+    ],
+    "me-central2": [
+      "Google Cloud"
+    ],
+    "me-west1": [
+      "Google Cloud"
+    ],
+    "northamerica-northeast1": [
+      "Google Cloud"
+    ],
+    "northamerica-northeast2": [
+      "Google Cloud"
+    ],
+    "northamerica-south1": [
+      "Google Cloud"
+    ],
+    "southamerica-east1": [
+      "Google Cloud"
+    ],
+    "southamerica-west1": [
+      "Google Cloud"
+    ],
+    "us-central1": [
+      "Google Cloud"
+    ],
+    "us-central2": [
+      "Google Cloud"
+    ],
+    "us-east1": [
+      "Google Cloud"
+    ],
+    "us-east4": [
+      "Google Cloud"
+    ],
+    "us-east5": [
+      "Google Cloud"
+    ],
+    "us-east7": [
+      "Google Cloud"
+    ],
+    "us-south1": [
+      "Google Cloud"
+    ],
+    "us-west1": [
+      "Google Cloud"
+    ],
+    "us-west2": [
+      "Google Cloud"
+    ],
+    "us-west3": [
+      "Google Cloud"
+    ],
+    "us-west4": [
+      "Google Cloud"
+    ],
+    "us-west8": [
+      "Google Cloud"
+    ]
+  }
+}

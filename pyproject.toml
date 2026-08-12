@@ -44,7 +44,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-gyms = ["gymnasium>=1.0,<2", "pettingzoo>=1.24,<2", "inspect-ai>=0.3.90,<1", "datasets>=3,<4"]
+gyms = ["gymnasium>=1.0,<2", "pettingzoo>=1.24,<2", "inspect-ai>=0.3.90,<1", "datasets>=3,<4", "botocore>=1.40,<2"]
+# botocore: real, official AWS package -- used only for its bundled
+# endpoints.json (gymact.gyms.cloud_topology.load_aws_topology), never for
+# a live AWS API call. No credentials, no network. Declared explicitly
+# here since it was previously only an undeclared transitive dependency.
 # The first real gym bridge target: CUBE's own no-Docker reference benchmark
 # (examples/counter-cube), vendored read-only at
 # ~/autofde-lab/vendor/gyms/cube-standard (a lazy git submodule of that repo,
