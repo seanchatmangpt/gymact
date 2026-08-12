@@ -1,0 +1,58 @@
+# MESSAGE: every cv:CloudProvider individual must carry a complete, renderable policy before
+# the template can echo it -- a missing loaderFunction/independentRecountFunction/
+# hasDegenerateServices would render as an undefined Tera variable (silent blank), and a
+# non-positive staleAfterDays would make every fetch look instantly stale. Any row is a
+# refusal, mirroring shacl-projection-pack's gates/010_shape_validity.rq admission pattern.
+PREFIX cv:  <http://seanchatmangpt.github.io/packs/cloud-topology-validation#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT ?provider ?violation WHERE {
+  {
+    ?provider a cv:CloudProvider .
+    FILTER NOT EXISTS { ?provider cv:providerId ?id }
+    BIND("CloudProvider missing required cv:providerId" AS ?violation)
+  } UNION {
+    ?provider a cv:CloudProvider .
+    FILTER NOT EXISTS { ?provider cv:loaderFunction ?f }
+    BIND("CloudProvider missing required cv:loaderFunction" AS ?violation)
+  } UNION {
+    ?provider a cv:CloudProvider .
+    FILTER NOT EXISTS { ?provider cv:independentRecountFunction ?f }
+    BIND("CloudProvider missing required cv:independentRecountFunction" AS ?violation)
+  } UNION {
+    ?provider a cv:CloudProvider .
+    FILTER NOT EXISTS { ?provider cv:hasDegenerateServices ?d }
+    BIND("CloudProvider missing required cv:hasDegenerateServices" AS ?violation)
+  } UNION {
+    # recountKind=snapshot providers must carry both raw JSON keys; recountKind=live must not
+    # (there is no snapshot file for a live-loaded provider).
+    ?provider a cv:CloudProvider ; cv:recountKind "snapshot" .
+    FILTER NOT EXISTS { ?provider cv:snapshotRegionKey ?r }
+    BIND("recountKind=snapshot CloudProvider missing cv:snapshotRegionKey" AS ?violation)
+  } UNION {
+    ?provider a cv:CloudProvider ; cv:recountKind "snapshot" .
+    FILTER NOT EXISTS { ?provider cv:snapshotServiceKey ?s }
+    BIND("recountKind=snapshot CloudProvider missing cv:snapshotServiceKey" AS ?violation)
+  } UNION {
+    ?provider a cv:CloudProvider ; cv:staleAfterDays ?days .
+    FILTER (?days <= 0)
+    BIND(CONCAT("cv:staleAfterDays must be a positive integer, got ", STR(?days)) AS ?violation)
+  } UNION {
+    # The template renders one shared _STALENESS_THRESHOLD constant (picked via
+    # ORDER BY DESC(?staleAfterDays) LIMIT 1), not a per-provider value -- so every provider
+    # that carries cv:staleAfterDays at all must carry the SAME value, or the rendered
+    # constant would silently apply the wrong threshold to whichever provider lost the pick.
+    ?p1 a cv:CloudProvider ; cv:staleAfterDays ?d1 .
+    ?p2 a cv:CloudProvider ; cv:staleAfterDays ?d2 .
+    FILTER (?p1 != ?p2 && ?d1 != ?d2)
+    BIND(CONCAT("cv:staleAfterDays differs across providers (shared-constant template requires one value): ", STR(?d1), " vs ", STR(?d2)) AS ?violation)
+  } UNION {
+    # Every static ValidationInvariant with appliesToStructural must also carry a reasonCode
+    # UNLESS it is documented as parameterized (no cv:reasonCode triple at all is the real,
+    # intentional marker for "rendered by template f-string logic, not an ontology literal") --
+    # so this gate only refuses a reasonCode that is present but empty, never a genuinely
+    # absent one.
+    ?inv a cv:ValidationInvariant ; cv:reasonCode ?rc .
+    FILTER (STRLEN(?rc) = 0)
+    BIND("ValidationInvariant has an empty cv:reasonCode literal" AS ?violation)
+  }
+}

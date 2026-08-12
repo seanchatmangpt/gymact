@@ -1,0 +1,190 @@
+# Real source of truth for gymact.gyms.cloud_topology_validation's provider policy and
+# structural-invariant vocabulary. Previously this policy lived only in Python prose inside
+# a hand-written module; every fact below was ported 1:1 from that module's real, verified
+# behavior (src/gymact/gyms/cloud_topology_validation.py as it stood before this pack existed
+# -- git history preserves it), not invented fresh. Static, unparameterized reason codes are
+# admitted here as cv:ValidationInvariant individuals; reason codes that must carry a
+# runtime-computed suffix (e.g. "DANGLING_REGION_REFERENCE:<service>-><region>",
+# "REGION_COUNT_MISMATCH:loaded=X,independent=Y") are documented in cv:ValidationInvariant's
+# own rdfs:comment but rendered by the template's Python f-string logic, not iterated from
+# rows -- per pack-authoring-pack's "templates echo, they never synthesize" rule, a value that
+# can only be known at validation runtime (an actual mismatched count) cannot be an ontology
+# literal.
+
+@prefix cv:      <http://seanchatmangpt.github.io/packs/cloud-topology-validation#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# ---------------------------------------------------------------------------
+# Vocabulary (classes + properties)
+# ---------------------------------------------------------------------------
+
+cv:CloudProvider a rdfs:Class ;
+    rdfs:label "CloudProvider" ;
+    rdfs:comment "One of the three real, credential-free cloud providers gymact.gyms.cloud_topology loads: aws, azure, gcp." .
+
+cv:ValidationInvariant a rdfs:Class ;
+    rdfs:label "ValidationInvariant" ;
+    rdfs:comment "A real, named structural-integrity check applied uniformly to every loaded CloudTopology, independent of which provider produced it." .
+
+cv:providerId a rdf:Property ;
+    rdfs:domain cv:CloudProvider ;
+    rdfs:range xsd:string ;
+    rdfs:comment "The literal provider string used throughout cloud_topology.py: 'aws' | 'azure' | 'gcp'." .
+
+cv:loaderFunction a rdf:Property ;
+    rdfs:domain cv:CloudProvider ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Name of the real cloud_topology.py function that loads this provider's topology (load_aws_topology / load_azure_topology / load_gcp_topology). Echoed verbatim into the generated module's import and dispatch -- never synthesized." .
+
+cv:independentRecountFunction a rdf:Property ;
+    rdfs:domain cv:CloudProvider ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Name of the real, SEPARATE re-derivation function this pack's template generates for this provider (e.g. _independent_aws_recount) -- re-parses the same raw source via a distinct code path from the loader under test, per verification.py's injected-judge discipline." .
+
+cv:recountKind a rdf:Property ;
+    rdfs:domain cv:CloudProvider ;
+    rdfs:range xsd:string ;
+    rdfs:comment "'live' (AWS -- re-loads botocore's bundled endpoints.json directly) or 'snapshot' (Azure/GCP -- re-parses the bundled snapshot JSON file directly, keyed by regionKey/serviceKey)." .
+
+cv:snapshotRegionKey a rdf:Property ;
+    rdfs:domain cv:CloudProvider ;
+    rdfs:range xsd:string ;
+    rdfs:comment "For recountKind=snapshot providers: the raw JSON key holding the region list (mirrors _load_snapshot_topology's own region_key parameter)." .
+
+cv:snapshotServiceKey a rdf:Property ;
+    rdfs:domain cv:CloudProvider ;
+    rdfs:range xsd:string ;
+    rdfs:comment "For recountKind=snapshot providers: the raw JSON key holding the service/service-tag list." .
+
+cv:hasDegenerateServices a rdf:Property ;
+    rdfs:domain cv:CloudProvider ;
+    rdfs:range xsd:boolean ;
+    rdfs:comment "True only for gcp: its real, public, credential-free source carries a single degenerate 'Google Cloud' service literal, not a per-service catalog -- ZERO_SERVICES must not fire for this provider. See cloud_topology.py's own module docstring for why this is a real limit, not a bug." .
+
+cv:staleAfterDays a rdf:Property ;
+    rdfs:domain cv:CloudProvider ;
+    rdfs:range xsd:integer ;
+    rdfs:comment "Real, disclosed staleness threshold in days for this provider's bundled snapshot's fetched_at. Absent (no triple) for aws, which is live-loaded every call from the installed botocore package and has no staleness concept." .
+
+cv:spotCheckService a rdf:Property ;
+    rdfs:domain cv:CloudProvider ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Optional real service name for a spot-check: this service must appear in cv:spotCheckRegion. Absent (no triple) means no spot check is rendered for this provider." .
+
+cv:spotCheckRegion a rdf:Property ;
+    rdfs:domain cv:CloudProvider ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Real region code paired with cv:spotCheckService. AWS's real, long-standing pair: s3 / us-east-1." .
+
+cv:reasonCode a rdf:Property ;
+    rdfs:domain cv:ValidationInvariant ;
+    rdfs:range xsd:string ;
+    rdfs:comment "The literal problem string appended to ValidationResult.problems when this invariant is violated -- echoed verbatim by the template, never re-typed by hand in a second location." .
+
+cv:appliesToStructural a rdf:Property ;
+    rdfs:domain cv:ValidationInvariant ;
+    rdfs:range xsd:boolean ;
+    rdfs:comment "True for invariants checked purely against the loaded CloudTopology object (no re-fetch needed); false for invariants that require the independent-recount comparison." .
+
+# ---------------------------------------------------------------------------
+# Individuals: the three real providers, ported 1:1 from cloud_topology_validation.py
+# ---------------------------------------------------------------------------
+
+cv:aws a cv:CloudProvider ;
+    cv:providerId "aws" ;
+    cv:loaderFunction "load_aws_topology" ;
+    cv:independentRecountFunction "_independent_aws_recount" ;
+    cv:recountKind "live" ;
+    cv:hasDegenerateServices false ;
+    cv:spotCheckService "s3" ;
+    cv:spotCheckRegion "us-east-1" .
+    # No cv:staleAfterDays -- live-loaded every call, no staleness concept (matches
+    # _staleness(None) -> (False, ()) in the prior hand-written module).
+
+cv:azure a cv:CloudProvider ;
+    cv:providerId "azure" ;
+    cv:loaderFunction "load_azure_topology" ;
+    cv:independentRecountFunction "_independent_azure_recount" ;
+    cv:recountKind "snapshot" ;
+    cv:snapshotRegionKey "regions" ;
+    cv:snapshotServiceKey "service_tags" ;
+    cv:hasDegenerateServices false ;
+    cv:staleAfterDays 30 .
+
+cv:gcp a cv:CloudProvider ;
+    cv:providerId "gcp" ;
+    cv:loaderFunction "load_gcp_topology" ;
+    cv:independentRecountFunction "_independent_gcp_recount" ;
+    cv:recountKind "snapshot" ;
+    cv:snapshotRegionKey "regions" ;
+    cv:snapshotServiceKey "services" ;
+    cv:hasDegenerateServices true ;
+    cv:staleAfterDays 30 .
+
+# ---------------------------------------------------------------------------
+# Individuals: the static, unparameterized structural invariants
+# ---------------------------------------------------------------------------
+
+cv:DuplicateRegionCode a cv:ValidationInvariant ;
+    rdfs:label "DuplicateRegionCode" ;
+    cv:reasonCode "DUPLICATE_REGION_CODE" ;
+    cv:appliesToStructural true ;
+    rdfs:comment "topology.region_codes() contains a duplicate -- len(codes) != len(set(codes))." .
+
+cv:ZeroRegions a cv:ValidationInvariant ;
+    rdfs:label "ZeroRegions" ;
+    cv:reasonCode "ZERO_REGIONS" ;
+    cv:appliesToStructural true ;
+    rdfs:comment "topology.region_codes() is empty for every real provider, always." .
+
+cv:DuplicateServiceName a cv:ValidationInvariant ;
+    rdfs:label "DuplicateServiceName" ;
+    cv:reasonCode "DUPLICATE_SERVICE_NAME" ;
+    cv:appliesToStructural true ;
+    rdfs:comment "topology.service_names() contains a duplicate." .
+
+cv:ZeroServices a cv:ValidationInvariant ;
+    rdfs:label "ZeroServices" ;
+    cv:reasonCode "ZERO_SERVICES" ;
+    cv:appliesToStructural true ;
+    rdfs:comment "topology.service_names() is empty AND cv:hasDegenerateServices is false for this provider (gcp is the real, documented exception -- see cv:gcp)." .
+
+cv:DanglingRegionReference a cv:ValidationInvariant ;
+    rdfs:label "DanglingRegionReference" ;
+    cv:appliesToStructural true ;
+    rdfs:comment "PARAMETERIZED, not a static reasonCode: rendered as f'DANGLING_REGION_REFERENCE:{service_name}->{region}' for every region referenced in service_region_availability's values that is absent from topology.region_codes(). This is the exact real defect this pack's motivating bug (229 AWS pseudo-region endpoint-alias keys) violated -- see cloud_topology.py's load_aws_topology() fix comment." .
+
+cv:CrossProviderRegion a cv:ValidationInvariant ;
+    rdfs:label "CrossProviderRegion" ;
+    cv:appliesToStructural true ;
+    rdfs:comment "PARAMETERIZED: f'CROSS_PROVIDER_REGION:{region.code}' for any CloudRegion whose .provider != topology.provider." .
+
+cv:CrossProviderService a cv:ValidationInvariant ;
+    rdfs:label "CrossProviderService" ;
+    cv:appliesToStructural true ;
+    rdfs:comment "PARAMETERIZED: f'CROSS_PROVIDER_SERVICE:{svc.name}' for any CloudService whose .provider != topology.provider." .
+
+cv:RegionCountMismatch a cv:ValidationInvariant ;
+    rdfs:label "RegionCountMismatch" ;
+    cv:appliesToStructural false ;
+    rdfs:comment "PARAMETERIZED: f'REGION_COUNT_MISMATCH:loaded={n},independent={m}' when the loader's region count disagrees with the independent recount -- the real, load-bearing check this pack exists to keep durable." .
+
+cv:ServiceCountMismatch a cv:ValidationInvariant ;
+    rdfs:label "ServiceCountMismatch" ;
+    cv:appliesToStructural false ;
+    rdfs:comment "PARAMETERIZED: f'SERVICE_COUNT_MISMATCH:loaded={n},independent={m}'." .
+
+cv:UnparseableFetchedAt a cv:ValidationInvariant ;
+    rdfs:label "UnparseableFetchedAt" ;
+    cv:reasonCode "UNPARSEABLE_FETCHED_AT" ;
+    cv:appliesToStructural false ;
+    rdfs:comment "topology.fetched_at is present but datetime.fromisoformat() rejects it." .
+
+cv:FetchedAtOlderThanThreshold a cv:ValidationInvariant ;
+    rdfs:label "FetchedAtOlderThanThreshold" ;
+    cv:reasonCode "FETCHED_AT_OLDER_THAN_THRESHOLD" ;
+    cv:appliesToStructural false ;
+    rdfs:comment "now - fetched_at exceeds the provider's cv:staleAfterDays." .

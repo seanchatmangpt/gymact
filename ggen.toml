@@ -1,0 +1,18 @@
+[project]
+name = "gymact-cloud-topology-validation"
+
+[ontology]
+# Not a literal "ggen/cloud-topology-validation-pack/ontology.ttl" traversal string: the
+# installed ggen CLI's config validator refuses any ontology.source/packs.path value
+# containing ".." as path traversal (FM-CONFIG-003). `ontology.ttl` and
+# `cloud-topology-validation-pack` below are real relative symlinks (git-tracked) into
+# ggen/cloud-topology-validation-pack, matching the same symlink convention
+# `rust/protocol_gym/ggen.toml` and `ggen/codebase-gym-pack/ontology/` already use to reuse
+# files from outside this consumer's own directory without a traversal string in config.
+source = "ontology.ttl"
+
+[packs]
+cloud-topology-validation-pack = { path = "cloud-topology-validation-pack" }
+
+[templates]
+dir = "templates"
