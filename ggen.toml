@@ -13,6 +13,8 @@ source = "ontology.ttl"
 
 [packs]
 cloud-topology-validation-pack = { path = "cloud-topology-validation-pack" }
+public-ontology-admission-pack = { path = "public-ontology-admission-pack" }
+gymact-registry-pack = { path = "gymact-registry-pack" }
 
 [templates]
 dir = "templates"

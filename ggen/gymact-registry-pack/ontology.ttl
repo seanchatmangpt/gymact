@@ -1,0 +1,139 @@
+# Real source of truth for gymact.registry's built-in provider dict. Ported 1:1 from the
+# pre-ontology hand-written registry.py (git history preserves it) -- every rg:RegisteredProvider
+# individual corresponds exactly to one prior _BUILTINS dict entry, and rg:ExcludedProvider to one
+# prior "NOT registered here (deliberately...)" comment entry. Adding a new gym provider means
+# adding an individual here, not hand-editing registry.py's dict or import block.
+
+@prefix rg:   <http://seanchatmangpt.github.io/packs/gymact-registry#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+rg:RegisteredProvider a rdfs:Class ;
+    rdfs:comment "One real entry in gymact.registry._BUILTINS." .
+rg:ExcludedProvider a rdfs:Class ;
+    rdfs:comment "One real gym Provider class deliberately not registered, with its real reason -- echoed into registry.py's own exclusion comment block, matching tests/test_gym_registration_completeness.py's _INTENTIONALLY_UNREGISTERED allowlist." .
+
+rg:registryKey a rdf:Property ; rdfs:domain rg:RegisteredProvider ; rdfs:range xsd:string .
+rg:providerModule a rdf:Property ; rdfs:domain rg:RegisteredProvider ; rdfs:range xsd:string .
+rg:providerClassName a rdf:Property ; rdfs:domain rg:RegisteredProvider ; rdfs:range xsd:string .
+rg:capabilitiesModule a rdf:Property ; rdfs:domain rg:RegisteredProvider ; rdfs:range xsd:string .
+rg:capabilitiesImportClause a rdf:Property ; rdfs:domain rg:RegisteredProvider ; rdfs:range xsd:string ;
+    rdfs:comment "Raw text following 'import ' in the capabilities from-import (may include 'X as Y' aliasing or a comma-joined multi-name list)." .
+rg:capabilitiesExpr a rdf:Property ; rdfs:domain rg:RegisteredProvider ; rdfs:range xsd:string ;
+    rdfs:comment "Raw Python expression rendered as the dict value's second tuple element." .
+
+rg:excludedClass a rdf:Property ; rdfs:domain rg:ExcludedProvider ; rdfs:range xsd:string .
+rg:exclusionReason a rdf:Property ; rdfs:domain rg:ExcludedProvider ; rdfs:range xsd:string .
+
+# --- Registered providers (alphabetical registryKey, matching prior dict order) ---
+
+rg:p-cloudsim a rg:RegisteredProvider ;
+    rg:registryKey "cloudsim" ; rg:providerModule "gymact.gyms.cloudsim" ; rg:providerClassName "CloudSimProvider" ;
+    rg:capabilitiesModule "gymact.gyms.cloudsim" ; rg:capabilitiesImportClause "CLOUDSIM_CAPABILITIES" ; rg:capabilitiesExpr "CLOUDSIM_CAPABILITIES" .
+
+rg:p-codebase a rg:RegisteredProvider ;
+    rg:registryKey "codebase" ; rg:providerModule "gymact.gyms.codebase" ; rg:providerClassName "CodebaseProvider" ;
+    rg:capabilitiesModule "gymact.gyms.codebase" ; rg:capabilitiesImportClause "CODEBASE_CAPABILITIES" ; rg:capabilitiesExpr "CODEBASE_CAPABILITIES" .
+
+rg:p-cloud-topology a rg:RegisteredProvider ;
+    rg:registryKey "cloud-topology" ; rg:providerModule "gymact.gyms.cloud_topology_gym" ; rg:providerClassName "CloudTopologyProvider" ;
+    rg:capabilitiesModule "gymact.gyms.cloud_topology_gym" ; rg:capabilitiesImportClause "CLOUD_TOPOLOGY_CAPABILITIES" ; rg:capabilitiesExpr "CLOUD_TOPOLOGY_CAPABILITIES" .
+
+rg:p-discovered a rg:RegisteredProvider ;
+    rg:registryKey "discovered" ; rg:providerModule "gymact.gyms.discovered" ; rg:providerClassName "GenericDiscoveredProvider" ;
+    rg:capabilitiesModule "gymact.gyms.discovered" ; rg:capabilitiesImportClause "DISCOVERED_RUN_CAPABILITY" ; rg:capabilitiesExpr "(DISCOVERED_RUN_CAPABILITY,)" .
+
+rg:p-filesystem a rg:RegisteredProvider ;
+    rg:registryKey "filesystem" ; rg:providerModule "gymact.local_providers" ; rg:providerClassName "FilesystemProvider" ;
+    rg:capabilitiesModule "gymact.local_providers" ; rg:capabilitiesImportClause "FILESYSTEM_CAPABILITIES" ; rg:capabilitiesExpr "FILESYSTEM_CAPABILITIES" .
+
+rg:p-ggen a rg:RegisteredProvider ;
+    rg:registryKey "ggen" ; rg:providerModule "gymact.gyms.ggen" ; rg:providerClassName "GgenProvider" ;
+    rg:capabilitiesModule "gymact.gyms.ggen" ; rg:capabilitiesImportClause "GGEN_CAPABILITIES" ; rg:capabilitiesExpr "GGEN_CAPABILITIES" .
+
+rg:p-ggen-legacy a rg:RegisteredProvider ;
+    rg:registryKey "ggen-legacy" ; rg:providerModule "gymact.gyms.ggen_legacy" ; rg:providerClassName "GgenLegacyVerifierProvider" ;
+    rg:capabilitiesModule "gymact.gyms.ggen_legacy" ; rg:capabilitiesImportClause "GGEN_LEGACY_CAPABILITIES" ; rg:capabilitiesExpr "GGEN_LEGACY_CAPABILITIES" .
+
+rg:p-git a rg:RegisteredProvider ;
+    rg:registryKey "git" ; rg:providerModule "gymact.local_providers" ; rg:providerClassName "GitProvider" ;
+    rg:capabilitiesModule "gymact.local_providers" ; rg:capabilitiesImportClause "GIT_CAPABILITIES" ; rg:capabilitiesExpr "GIT_CAPABILITIES" .
+
+rg:p-http-json a rg:RegisteredProvider ;
+    rg:registryKey "http-json" ; rg:providerModule "gymact.network_providers" ; rg:providerClassName "HTTPJSONProvider" ;
+    rg:capabilitiesModule "gymact.network_providers" ; rg:capabilitiesImportClause "HTTP_JSON_CAPABILITIES" ; rg:capabilitiesExpr "HTTP_JSON_CAPABILITIES" .
+
+rg:p-kubernetes-reconciliation a rg:RegisteredProvider ;
+    rg:registryKey "kubernetes-reconciliation" ; rg:providerModule "gymact.gyms.kubernetes_reconciliation" ; rg:providerClassName "KubernetesReconciliationProvider" ;
+    rg:capabilitiesModule "gymact.gyms.kubernetes_reconciliation" ; rg:capabilitiesImportClause "KUBERNETES_RECONCILIATION_CAPABILITIES" ; rg:capabilitiesExpr "KUBERNETES_RECONCILIATION_CAPABILITIES" .
+
+rg:p-lock-and-key a rg:RegisteredProvider ;
+    rg:registryKey "lock-and-key" ; rg:providerModule "gymact.gyms.lock_and_key" ; rg:providerClassName "LockAndKeyProvider" ;
+    rg:capabilitiesModule "gymact.gyms.lock_and_key" ; rg:capabilitiesImportClause "LOCK_AND_KEY_CAPABILITIES" ; rg:capabilitiesExpr "LOCK_AND_KEY_CAPABILITIES" .
+
+rg:p-mcp-client-session a rg:RegisteredProvider ;
+    rg:registryKey "mcp-client-session" ; rg:providerModule "gymact.gyms.mcp_client_session" ; rg:providerClassName "McpClientSessionProvider" ;
+    rg:capabilitiesModule "gymact.gyms.mcp_client_session" ; rg:capabilitiesImportClause "MCP_LIST_TOOLS_CAPABILITY, MCP_CALL_TOOL_CAPABILITY" ; rg:capabilitiesExpr "(MCP_LIST_TOOLS_CAPABILITY, MCP_CALL_TOOL_CAPABILITY)" .
+
+rg:p-memory a rg:RegisteredProvider ;
+    rg:registryKey "memory" ; rg:providerModule "gymact.providers" ; rg:providerClassName "MemoryProvider" ;
+    rg:capabilitiesModule "gymact.providers" ; rg:capabilitiesImportClause "MEMORY_CAPABILITIES" ; rg:capabilitiesExpr "MEMORY_CAPABILITIES" .
+
+rg:p-multicloud a rg:RegisteredProvider ;
+    rg:registryKey "multicloud" ; rg:providerModule "gymact.gyms.multicloud" ; rg:providerClassName "MulticloudProvider" ;
+    rg:capabilitiesModule "gymact.gyms.multicloud" ; rg:capabilitiesImportClause "CAPABILITY_REGISTRY as MULTICLOUD_CAPABILITIES" ; rg:capabilitiesExpr "MULTICLOUD_CAPABILITIES" .
+
+rg:p-resource-flow a rg:RegisteredProvider ;
+    rg:registryKey "resource-flow" ; rg:providerModule "gymact.gyms.resource_flow" ; rg:providerClassName "ResourceFlowProvider" ;
+    rg:capabilitiesModule "gymact.gyms.resource_flow" ; rg:capabilitiesImportClause "RESOURCE_FLOW_CAPABILITIES" ; rg:capabilitiesExpr "RESOURCE_FLOW_CAPABILITIES" .
+
+rg:p-sqlite a rg:RegisteredProvider ;
+    rg:registryKey "sqlite" ; rg:providerModule "gymact.local_providers" ; rg:providerClassName "SQLiteProvider" ;
+    rg:capabilitiesModule "gymact.local_providers" ; rg:capabilitiesImportClause "SQLITE_CAPABILITIES" ; rg:capabilitiesExpr "SQLITE_CAPABILITIES" .
+
+rg:p-sregym a rg:RegisteredProvider ;
+    rg:registryKey "sregym" ; rg:providerModule "gymact.gyms.sregym" ; rg:providerClassName "SregymVendorProvider" ;
+    rg:capabilitiesModule "gymact.gyms.sregym" ; rg:capabilitiesImportClause "SREGYM_CAPABILITIES" ; rg:capabilitiesExpr "SREGYM_CAPABILITIES" .
+
+rg:p-swegym a rg:RegisteredProvider ;
+    rg:registryKey "swegym" ; rg:providerModule "gymact.gyms.swegym" ; rg:providerClassName "SWEGymProvider" ;
+    rg:capabilitiesModule "gymact.gyms.swegym" ; rg:capabilitiesImportClause "SWEGYM_EVALUATE_CAPABILITY" ; rg:capabilitiesExpr "(SWEGYM_EVALUATE_CAPABILITY,)" .
+
+rg:p-switchboard a rg:RegisteredProvider ;
+    rg:registryKey "switchboard" ; rg:providerModule "gymact.gyms.switchboard" ; rg:providerClassName "SwitchboardProvider" ;
+    rg:capabilitiesModule "gymact.gyms.switchboard" ; rg:capabilitiesImportClause "SWITCHBOARD_CAPABILITIES" ; rg:capabilitiesExpr "SWITCHBOARD_CAPABILITIES" .
+
+rg:p-terraform-docker-apply a rg:RegisteredProvider ;
+    rg:registryKey "terraform-docker-apply" ; rg:providerModule "gymact.gyms.terraform_docker_apply" ; rg:providerClassName "TerraformDockerApplyProvider" ;
+    rg:capabilitiesModule "gymact.gyms.terraform_docker_apply" ; rg:capabilitiesImportClause "TERRAFORM_DOCKER_APPLY_CAPABILITIES" ; rg:capabilitiesExpr "TERRAFORM_DOCKER_APPLY_CAPABILITIES" .
+
+rg:p-terraform-plan a rg:RegisteredProvider ;
+    rg:registryKey "terraform-plan" ; rg:providerModule "gymact.gyms.terraform_plan" ; rg:providerClassName "TerraformPlanProvider" ;
+    rg:capabilitiesModule "gymact.gyms.terraform_plan" ; rg:capabilitiesImportClause "TERRAFORM_PLAN_CAPABILITIES" ; rg:capabilitiesExpr "TERRAFORM_PLAN_CAPABILITIES" .
+
+# --- Deliberately excluded (ported 1:1 from registry.py's prior comment block) ---
+
+rg:x-browsergym a rg:ExcludedProvider ;
+    rg:excludedClass "gymact.gyms.browsergym.BrowserGymProvider" ;
+    rg:exclusionReason "top-level `import browsergym.core` / `import gymnasium`, both gated behind the optional \"gyms\" extra -- importing this module with only the base install raises ImportError, so registering it would break a clean `import gymact.registry`." .
+
+rg:x-gymnasium-env a rg:ExcludedProvider ;
+    rg:excludedClass "gymact.gyms.gymnasium_env.GymnasiumProvider" ;
+    rg:exclusionReason "top-level `import gymnasium`, same optional \"gyms\" extra gate as browsergym.py above." .
+
+rg:x-inspect-evals a rg:ExcludedProvider ;
+    rg:excludedClass "gymact.gyms.inspect_evals.InspectEvalsProvider" ;
+    rg:exclusionReason "top-level `from inspect_ai import ...`, gated behind the optional \"gyms\" extra (inspect-ai)." .
+
+rg:x-cube-counter a rg:ExcludedProvider ;
+    rg:excludedClass "gymact.gyms.cube_counter.CubeCounterProvider" ;
+    rg:exclusionReason "top-level `from counter_cube...` wrapped in try/except that re-raises ImportError, gated behind the optional \"cube\" extra (cube-standard/counter-cube, Python >=3.12 only)." .
+
+rg:x-cube-container-counter a rg:ExcludedProvider ;
+    rg:excludedClass "gymact.gyms.cube_container_counter.CubeContainerCounterProvider" ;
+    rg:exclusionReason "top-level `from cube.infra_local import LocalInfraConfig` wrapped in try/except that re-raises ImportError, gated behind the optional \"cube\" extra with Docker." .
+
+rg:x-vendor-benchmarks a rg:ExcludedProvider ;
+    rg:excludedClass "gymact.gyms.vendor_benchmarks.VendorBenchmarkProvider" ;
+    rg:exclusionReason "generic vendor-benchmark dispatch surface, not a single fixed-capability gym -- registered per-vendor benchmark target elsewhere, not as one flat builtin name here." .

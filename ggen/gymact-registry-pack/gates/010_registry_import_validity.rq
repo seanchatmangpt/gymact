@@ -1,0 +1,44 @@
+# MESSAGE: every rg:RegisteredProvider must carry the fields the template needs to render a
+# real, syntactically valid import + dict entry, and no registryKey may repeat (a duplicate
+# dict key would silently shadow an earlier registration). Any row is a refusal.
+PREFIX rg: <http://seanchatmangpt.github.io/packs/gymact-registry#>
+SELECT ?provider ?violation WHERE {
+  {
+    ?provider a rg:RegisteredProvider .
+    FILTER NOT EXISTS { ?provider rg:registryKey ?k }
+    BIND("RegisteredProvider missing rg:registryKey" AS ?violation)
+  } UNION {
+    ?provider a rg:RegisteredProvider .
+    FILTER NOT EXISTS { ?provider rg:providerModule ?m }
+    BIND("RegisteredProvider missing rg:providerModule" AS ?violation)
+  } UNION {
+    ?provider a rg:RegisteredProvider .
+    FILTER NOT EXISTS { ?provider rg:providerClassName ?c }
+    BIND("RegisteredProvider missing rg:providerClassName" AS ?violation)
+  } UNION {
+    ?provider a rg:RegisteredProvider .
+    FILTER NOT EXISTS { ?provider rg:capabilitiesModule ?cm }
+    BIND("RegisteredProvider missing rg:capabilitiesModule" AS ?violation)
+  } UNION {
+    ?provider a rg:RegisteredProvider .
+    FILTER NOT EXISTS { ?provider rg:capabilitiesImportClause ?ic }
+    BIND("RegisteredProvider missing rg:capabilitiesImportClause" AS ?violation)
+  } UNION {
+    ?provider a rg:RegisteredProvider .
+    FILTER NOT EXISTS { ?provider rg:capabilitiesExpr ?ce }
+    BIND("RegisteredProvider missing rg:capabilitiesExpr" AS ?violation)
+  } UNION {
+    ?p1 a rg:RegisteredProvider ; rg:registryKey ?k .
+    ?p2 a rg:RegisteredProvider ; rg:registryKey ?k .
+    FILTER (?p1 != ?p2)
+    BIND(CONCAT("duplicate rg:registryKey: ", ?k) AS ?violation)
+  } UNION {
+    ?e a rg:ExcludedProvider .
+    FILTER NOT EXISTS { ?e rg:excludedClass ?c }
+    BIND("ExcludedProvider missing rg:excludedClass" AS ?violation)
+  } UNION {
+    ?e a rg:ExcludedProvider .
+    FILTER NOT EXISTS { ?e rg:exclusionReason ?r }
+    BIND("ExcludedProvider missing rg:exclusionReason" AS ?violation)
+  }
+}

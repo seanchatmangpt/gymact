@@ -1,0 +1,15 @@
+[pack]
+name = "gymact-registry-pack"
+version = "0.1.0"
+description = """
+Generates gymact.registry (the built-in provider _BUILTINS dict) from real rg:RegisteredProvider
+/ rg:ExcludedProvider ontology facts, ported 1:1 from the pre-ontology hand-written registry.py.
+Motivating defect (found live this session by an adversarial gap-hunt): CloudTopologyProvider was
+added to gyms/cloud_topology_gym.py but never registered here -- registry.py's own completeness
+test (test_every_real_gym_provider_class_is_registered_or_allowlisted) failed for real. A
+hand-maintained dict is exactly the class of defect ggen generation closes: adding a provider
+becomes adding an ontology individual, and the generator cannot "forget" to register it the way a
+human editing two separate files (the gym module and registry.py) can. Same pattern intended for
+autofde-lab's own provider/plugin registry -- not built this session, named as the direct next
+application.
+"""
