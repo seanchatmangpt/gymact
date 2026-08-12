@@ -23,11 +23,6 @@ test version="":
       uv sync --all-extras --group dev
     fi
     py_minor="$(uv run python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
-    # uv's [tool.uv] override-dependencies pins playwright>=1.47,<2 (see
-    # pyproject.toml), which resolves a prebuilt greenlet wheel on every
-    # supported Python (including 3.13) instead of the browsergym-core==0.14.3
-    # default pin (playwright==1.44 -> greenlet==3.0.3, no 3.13 wheel). So
-    # BrowserGym installs and runs identically across the whole matrix now.
     if [[ -f "${AUTOFDE_LAB:-$HOME/autofde-lab}/vendor/gyms/browsergym/browsergym/core/pyproject.toml" ]]; then
       uv pip install -e "${AUTOFDE_LAB:-$HOME/autofde-lab}/vendor/gyms/browsergym/browsergym/core"
     else
@@ -86,46 +81,32 @@ docs:
     uv sync --group dev
     uv run zensical build --clean
 
-# ggen-bridge-check — NOT a CI job, NOT part of `all`: this repo has no
-# Rust toolchain and CI never sets one up (confirmed: none of
-# .github/workflows/*.yml touch rust/cargo/ggen). Requires a real `ggen`
-# binary on PATH (build one from the sibling `ggen` repo:
-# `cargo build --release -p ggen-cli` there, then add its target/release/
-# to PATH, or set GGEN_BIN to its exact path). Proves ggen/gymact-bridge-pack
-# actually generates from ontology/profile.{ttl,shacl.ttl} (real symlinks
-# into src/gymact/ontology/, not a copy) by running a real `ggen sync run`
-# against a scratch consumer project, the same way
-# ~/ggen/crates/ggen-engine/tests/gymact_bridge_pack_e2e.rs does from the
-# Rust side.
+# Exact-head composition court. This exists because multiple individually real
+# branches were merged in one integration round and the resulting composed
+# main contained two real defects that no branch-local claim could rule out.
+# The full test suite also executes this file; this named target makes the
+# standing boundary cheap to run after any local merge/composition operation.
+composition-court:
+    uv run pytest -v tests/test_default_head_composition_court.py
+
+# ggen-bridge-check — NOT a CI job, NOT part of `all`: requires a real `ggen`
+# binary on PATH. The exact version is now a fail-closed manufacturing input,
+# not an advisory convenience: GymAct's pinned CI capsule and marketplace
+# qualification both execute ggen 26.8.11, so another local version is a
+# different subject and cannot inherit their standing.
 ggen-bridge-check:
     #!/usr/bin/env bash
     set -euo pipefail
     GGEN_BIN="${GGEN_BIN:-ggen}"
     if ! command -v "$GGEN_BIN" >/dev/null 2>&1; then
         echo "ggen-bridge-check: no '$GGEN_BIN' binary on PATH." >&2
-        echo "  Build one from the sibling ggen repo (cargo build --release -p ggen-cli)" >&2
-        echo "  and either add target/release/ to PATH or set GGEN_BIN to its exact path." >&2
         exit 2
     fi
-    # Version pin check: warn, don't fail. This repo pins a known-working
-    # local-dev ggen version in .ggen-version (currently 26.8.8, the same
-    # version tests/test_ggen_togaf_gym_pack.py's CI leg pins via
-    # _GGEN_URL/_GGEN_SHA256). A mismatch is deliberately non-fatal here --
-    # unlike "no binary at all" above, we don't yet know whether e.g.
-    # 26.8.6 vs 26.8.8 behavioral differences actually matter for this
-    # bridge-pack projection, so a stricter contributor on a slightly
-    # different (but still-working) ggen build shouldn't be hard-blocked.
-    # Real observed `ggen --version` output on this binary is two lines:
-    #   ggen 26.8.8
-    #   2026-08-11T21:54:03.324613Z  INFO ggen.cli{command=--version version="26.8.8"}: ...
-    # so parse the version off the first line's second field, not the
-    # tracing log line.
-    if [ -f "$(pwd)/.ggen-version" ]; then
-        PINNED_VERSION="$(tr -d '[:space:]' < "$(pwd)/.ggen-version")"
-        INSTALLED_VERSION="$("$GGEN_BIN" --version | head -n1 | awk '{print $2}')"
-        if [ "$INSTALLED_VERSION" != "$PINNED_VERSION" ]; then
-            echo "ggen-bridge-check: WARNING — installed ggen version '$INSTALLED_VERSION' does not match pinned '$PINNED_VERSION' (.ggen-version). Continuing anyway." >&2
-        fi
+    PINNED_VERSION="$(tr -d '[:space:]' < "$(pwd)/.ggen-version")"
+    INSTALLED_VERSION="$("$GGEN_BIN" --version | head -n1 | awk '{print $2}')"
+    if [ "$INSTALLED_VERSION" != "$PINNED_VERSION" ]; then
+        echo "REFUSED:GGEN_VERSION_DRIFT:installed=$INSTALLED_VERSION pinned=$PINNED_VERSION" >&2
+        exit 3
     fi
     PACK_ROOT="$(pwd)/ggen/gymact-bridge-pack"
     SCRATCH="$(mktemp -d)"
@@ -150,57 +131,27 @@ ggen-bridge-check:
     for f in src/gymact_operation_catalog.rs src/gymact_mcp_tools.rs docs/gymact-bridge/reference.md tests/gymact_bridge_operation_catalog_proof.rs; do
         test -s "$SCRATCH/consumer/$f" || { echo "ggen-bridge-check: expected generated file missing: $f" >&2; exit 1; }
     done
-    echo "ggen-bridge-check: OK — all 4 expected files generated"
+    echo "ggen-bridge-check: OK — all 4 expected files generated with ggen $PINNED_VERSION"
 
 # ggen-gates-check — NOT part of `all`: runs every ggen/*/gates/*.rq SPARQL
-# gate against its own pack's ontology.ttl via rdflib. Unlike
-# ggen-bridge-check, this needs no external `ggen` binary — it re-implements
-# ggen's own ASK/SELECT-empty-passes gate contract directly (see
-# scripts/run_sparql_gates.py's module docstring). Read-only verification,
-# closes the gap that every pack's gates/*.rq file was real and checked-in
-# but nothing in this repo actually executed any of them.
+# gate against its own pack's ontology.ttl via rdflib.
 ggen-gates-check:
     uv run python scripts/run_sparql_gates.py
 
-# ocel-standing — NOT part of `all`: human-facing batch report over
-# reports/ocel/, per .claude/rules/ocel-standing.md ("useful as a
-# human-facing batch report ... it is not banned, it is just not a
-# substitute for a direct-state test assertion"). The real gate is
-# tests/test_ocel_standing.py, already exercised by `just test`; this target
-# only makes the existing script easier to find and run for a cross-subject
-# standing overview.
+# ocel-standing — human-facing batch report; the actual gate is pytest.
 ocel-standing:
     uv run python scripts/ocel_standing.py reports/ocel
 
-# capability-manifest — NOT part of `all`: a reporting artifact for
-# downstream consumers (e.g. autofde-lab's own capability allowlist), not a
-# build-blocking check. Closes a real follow-up ~/ggen/packs/
-# domain-capability-pack's own pack.toml names as out of scope for that
-# pack: a generated, checkable source of truth for gymact's real capability
-# surface, so a hand-copied downstream allowlist has something real to
-# diff against instead of drifting silently (the exact drift that pack
-# found: an allowlist's own comment claiming 5 sregym capabilities exist
-# when the real source has grown to 14).
+# capability-manifest — downstream reporting projection, not DO authority.
 capability-manifest:
     uv run python scripts/capability_manifest.py
 
-# observe-independence-check — NOT part of `all`: a coarse, ADVISORY-ONLY
-# static lint (AST-based, source-level) flagging gym `observe()` methods
-# with zero detected real I/O, per .claude/rules/actuation-authority.md's
-# "observe() must be an independent read" section. This is a human-review
-# aid, never a gate -- the in-memory-only pattern it flags is legitimate for
-# genuinely simulated/synthetic worlds (e.g. opaque_procedure.py,
-# multicloud.py) and only a human can judge legitimacy per provider. The
-# script's own exit code is always 0.
+# The raw AST report remains advisory for genuinely simulated worlds. The
+# exact-head composition court hard-fails if any of the five already-proven
+# live external observation providers loses its independent I/O path.
 observe-independence-check:
     uv run python scripts/check_observe_independence.py
 
-# job: container — Build and probe production container
-#
-# One shebang script for the whole recipe: `just` only honors `#!/...` as the
-# recipe's first line — a shebang appearing mid-recipe is treated as a plain
-# comment, and every other line then runs as its own separate `bash -c`
-# invocation with no shared variables (bit us with `$cid` once already).
 container:
     #!/usr/bin/env bash
     set -euo pipefail
