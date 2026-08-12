@@ -15,6 +15,7 @@ source = "ontology.ttl"
 cloud-topology-validation-pack = { path = "cloud-topology-validation-pack" }
 public-ontology-admission-pack = { path = "public-ontology-admission-pack" }
 gymact-registry-pack = { path = "gymact-registry-pack" }
+k8s-resource-catalog-pack = { path = "k8s-resource-catalog-pack" }
 
 [templates]
 dir = "templates"

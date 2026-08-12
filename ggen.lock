@@ -6,8 +6,12 @@ content_hash = "blake3:19e76f5dfaf8bdce3c9f74da67d6330e34b578362f548400b491f2313
 
 [packs.gymact-registry-pack]
 source = "path:gymact-registry-pack"
-content_hash = "blake3:ca128c6777e83ae9cfae3251db39476cb358b7c0286cbe3c5b881cffeffee9ea"
+content_hash = "blake3:7817cf04292b0152059411401c516305eee250ceb715bfae9eb30e42e060add2"
+
+[packs.k8s-resource-catalog-pack]
+source = "path:k8s-resource-catalog-pack"
+content_hash = "blake3:4bedae06316421495827fefb799d6581d7b3d10d3e1df68ddc1a8d476297f25c"
 
 [packs.public-ontology-admission-pack]
 source = "path:public-ontology-admission-pack"
-content_hash = "blake3:e255745741ef31c836ba87084cf22b3b3a103c656e3782d00870be159102f745"
+content_hash = "blake3:422d75a0f9161e1c831e0e754704976aabb85eed4c5fc69fbe6877b88cd5c2f9"

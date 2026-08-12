@@ -21,6 +21,7 @@ from gymact.gyms.ggen import GgenProvider, GGEN_CAPABILITIES
 from gymact.gyms.ggen_legacy import GgenLegacyVerifierProvider, GGEN_LEGACY_CAPABILITIES
 from gymact.local_providers import GitProvider, GIT_CAPABILITIES
 from gymact.network_providers import HTTPJSONProvider, HTTP_JSON_CAPABILITIES
+from gymact.gyms.k8s_resource_gym import K8sResourceProvider, K8S_RESOURCE_CAPABILITIES
 from gymact.gyms.kubernetes_reconciliation import KubernetesReconciliationProvider, KUBERNETES_RECONCILIATION_CAPABILITIES
 from gymact.gyms.lock_and_key import LockAndKeyProvider, LOCK_AND_KEY_CAPABILITIES
 from gymact.gyms.mcp_client_session import McpClientSessionProvider, MCP_LIST_TOOLS_CAPABILITY, MCP_CALL_TOOL_CAPABILITY
@@ -52,6 +53,7 @@ _BUILTINS = {
     "ggen-legacy": (GgenLegacyVerifierProvider, GGEN_LEGACY_CAPABILITIES),
     "git": (GitProvider, GIT_CAPABILITIES),
     "http-json": (HTTPJSONProvider, HTTP_JSON_CAPABILITIES),
+    "k8s-resource": (K8sResourceProvider, K8S_RESOURCE_CAPABILITIES),
     "kubernetes-reconciliation": (KubernetesReconciliationProvider, KUBERNETES_RECONCILIATION_CAPABILITIES),
     "lock-and-key": (LockAndKeyProvider, LOCK_AND_KEY_CAPABILITIES),
     "mcp-client-session": (McpClientSessionProvider, (MCP_LIST_TOOLS_CAPABILITY, MCP_CALL_TOOL_CAPABILITY)),

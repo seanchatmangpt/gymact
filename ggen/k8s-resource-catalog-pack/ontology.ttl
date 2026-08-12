@@ -1,0 +1,69 @@
+# Real source of truth for gymact.gyms.k8s_resource_gym's capability catalog. Ported 1:1
+# from gymact.gyms.k8s_resources's bundled, real Kubernetes OpenAPI snapshot
+# (release-1.31) -- every fact below was extracted from that real, public spec, not
+# invented. Bounded to 6 resource kinds on purpose (see pack.toml); this is a
+# k8s:ResourceKind = SchemaDerived projection, not a native ontology, per this
+# session's PRD/ARD's disclosed-narrowing convention (same as cv:DanglingRegionReference
+# and window_j_measures's own doc this session).
+
+@prefix k8s:  <http://seanchatmangpt.github.io/packs/k8s-resource-catalog#> .
+@prefix cv:   <http://seanchatmangpt.github.io/packs/cloud-topology-validation#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# ---------------------------------------------------------------------------
+# Vocabulary
+# ---------------------------------------------------------------------------
+
+k8s:ResourceKind a rdfs:Class ;
+    rdfs:label "ResourceKind" ;
+    rdfs:comment "One real Kubernetes resource kind, projected from kubernetes/kubernetes's real, public OpenAPI spec -- a SchemaDerived individual, not a native ontology concept." .
+
+k8s:apiVersion a rdf:Property ; rdfs:domain k8s:ResourceKind ; rdfs:range xsd:string ;
+    rdfs:comment "The real apiVersion string this kind's real x-kubernetes-group-version-kind extension declares, e.g. 'v1' or 'apps/v1'." .
+k8s:kindName a rdf:Property ; rdfs:domain k8s:ResourceKind ; rdfs:range xsd:string .
+k8s:requiredField a rdf:Property ; rdfs:domain k8s:ResourceKind ; rdfs:range xsd:string ;
+    rdfs:comment "One field name from this kind's real, nested spec object's own OpenAPI 'required' array. Absent entirely (no triples) for a kind honestly having none at that level -- never a fabricated placeholder." .
+k8s:description a rdf:Property ; rdfs:domain k8s:ResourceKind ; rdfs:range xsd:string ;
+    rdfs:comment "The real description string from the OpenAPI definition, echoed verbatim." .
+k8s:sourceKind a rdf:Property ; rdfs:domain k8s:ResourceKind ; rdfs:range xsd:string ;
+    rdfs:comment "Always the literal 'SchemaDerived' here -- this class is a projection of a JSON OpenAPI schema, not a hand-authored or native RDF/OWL ontology concept." .
+k8s:availableOn a rdf:Property ; rdfs:domain k8s:ResourceKind ; rdfs:range cv:CloudProvider ;
+    rdfs:comment "Real join fact: this resource kind is available via the referenced cloud provider's real managed-Kubernetes offering (EKS/AKS/GKE) -- true for all 6 kinds here since they are core, portable Kubernetes API objects, not a provider-specific differentiator." .
+
+# ---------------------------------------------------------------------------
+# Individuals: the 6 real, in-scope resource kinds (ported from the bundled snapshot)
+# ---------------------------------------------------------------------------
+
+k8s:Pod a k8s:ResourceKind ;
+    k8s:apiVersion "v1" ; k8s:kindName "Pod" ; k8s:sourceKind "SchemaDerived" ;
+    k8s:requiredField "containers" ;
+    k8s:description "Pod is a collection of containers that can run on a host. This resource is created by clients and scheduled onto hosts." ;
+    k8s:availableOn cv:aws, cv:azure, cv:gcp .
+
+k8s:Deployment a k8s:ResourceKind ;
+    k8s:apiVersion "apps/v1" ; k8s:kindName "Deployment" ; k8s:sourceKind "SchemaDerived" ;
+    k8s:requiredField "selector" ; k8s:requiredField "template" ;
+    k8s:description "Deployment enables declarative updates for Pods and ReplicaSets." ;
+    k8s:availableOn cv:aws, cv:azure, cv:gcp .
+
+k8s:Service a k8s:ResourceKind ;
+    k8s:apiVersion "v1" ; k8s:kindName "Service" ; k8s:sourceKind "SchemaDerived" ;
+    k8s:description "Service is a named abstraction of software service consisting of local port that the proxy listens on, and the selector that determines which pods will answer requests sent through the proxy." ;
+    k8s:availableOn cv:aws, cv:azure, cv:gcp .
+
+k8s:ConfigMap a k8s:ResourceKind ;
+    k8s:apiVersion "v1" ; k8s:kindName "ConfigMap" ; k8s:sourceKind "SchemaDerived" ;
+    k8s:description "ConfigMap holds configuration data for pods to consume." ;
+    k8s:availableOn cv:aws, cv:azure, cv:gcp .
+
+k8s:Secret a k8s:ResourceKind ;
+    k8s:apiVersion "v1" ; k8s:kindName "Secret" ; k8s:sourceKind "SchemaDerived" ;
+    k8s:description "Secret holds secret data of a certain type. The total bytes of the values in the Data field must be less than MaxSecretSize bytes." ;
+    k8s:availableOn cv:aws, cv:azure, cv:gcp .
+
+k8s:Namespace a k8s:ResourceKind ;
+    k8s:apiVersion "v1" ; k8s:kindName "Namespace" ; k8s:sourceKind "SchemaDerived" ;
+    k8s:description "Namespace provides a scope for Names. Use of multiple namespaces is optional." ;
+    k8s:availableOn cv:aws, cv:azure, cv:gcp .

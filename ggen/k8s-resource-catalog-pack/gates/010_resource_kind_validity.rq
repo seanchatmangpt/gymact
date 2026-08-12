@@ -1,0 +1,25 @@
+# MESSAGE: every k8s:ResourceKind must carry a real, renderable apiVersion+kindName, and
+# no two ResourceKind individuals may share the same (apiVersion, kindName) pair -- a
+# duplicate would silently shadow a capability row in the generated dict. Any row is a
+# refusal, mirroring cloud-topology-validation-pack's own gate pattern.
+PREFIX k8s: <http://seanchatmangpt.github.io/packs/k8s-resource-catalog#>
+SELECT ?rk ?violation WHERE {
+  {
+    ?rk a k8s:ResourceKind .
+    FILTER NOT EXISTS { ?rk k8s:apiVersion ?v }
+    BIND("ResourceKind missing required k8s:apiVersion" AS ?violation)
+  } UNION {
+    ?rk a k8s:ResourceKind .
+    FILTER NOT EXISTS { ?rk k8s:kindName ?k }
+    BIND("ResourceKind missing required k8s:kindName" AS ?violation)
+  } UNION {
+    ?rk a k8s:ResourceKind .
+    FILTER NOT EXISTS { ?rk k8s:sourceKind ?sk }
+    BIND("ResourceKind missing required k8s:sourceKind" AS ?violation)
+  } UNION {
+    ?r1 a k8s:ResourceKind ; k8s:apiVersion ?v ; k8s:kindName ?k .
+    ?r2 a k8s:ResourceKind ; k8s:apiVersion ?v ; k8s:kindName ?k .
+    FILTER (?r1 != ?r2)
+    BIND(CONCAT("duplicate (apiVersion, kindName): ", ?v, " / ", ?k) AS ?violation)
+  }
+}

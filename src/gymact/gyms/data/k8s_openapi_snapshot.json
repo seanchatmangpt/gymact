@@ -1,0 +1,48 @@
+{
+  "source_url": "https://raw.githubusercontent.com/kubernetes/kubernetes/release-1.31/api/openapi-spec/swagger.json",
+  "source_version": "release-1.31",
+  "fetched_at": "2026-08-12T23:49:55.261903+00:00",
+  "resource_kinds": [
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "requiredFields": [
+        "containers"
+      ],
+      "description": "Pod is a collection of containers that can run on a host. This resource is created by clients and scheduled onto hosts."
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "requiredFields": [
+        "selector",
+        "template"
+      ],
+      "description": "Deployment enables declarative updates for Pods and ReplicaSets."
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "requiredFields": [],
+      "description": "Service is a named abstraction of software service (for example, mysql) consisting of local port (for example 3306) that the proxy listens on, and the selector that determines which pods will answer requests sent through the proxy."
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ConfigMap",
+      "requiredFields": [],
+      "description": "ConfigMap holds configuration data for pods to consume."
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Secret",
+      "requiredFields": [],
+      "description": "Secret holds secret data of a certain type. The total bytes of the values in the Data field must be less than MaxSecretSize bytes."
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "requiredFields": [],
+      "description": "Namespace provides a scope for Names. Use of multiple namespaces is optional."
+    }
+  ]
+}

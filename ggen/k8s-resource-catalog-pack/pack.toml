@@ -1,0 +1,25 @@
+[pack]
+name = "k8s-resource-catalog-pack"
+version = "0.1.0"
+description = """
+Generates gymact.gyms.k8s_resource_gym from real k8s:ResourceKind facts ported from
+gymact.gyms.k8s_resources's bundled Kubernetes OpenAPI snapshot (release-1.31,
+kubernetes/kubernetes's real, public spec) -- 6 real resource kinds
+(Pod/Deployment/Service/ConfigMap/Secret/Namespace), a deliberately bounded slice of
+the real spec's ~635 definitions, disclosed as such rather than presented as the full
+catalog. Every k8s:ResourceKind carries sourceKind="SchemaDerived" (per this session's
+PRD/ARD's disclosed-narrowing convention) -- it is a real projection of a JSON OpenAPI
+schema into RDF, not a native ontology individual, and the ontology says so.
+
+k8s:availableOn joins each ResourceKind to the cv:CloudProvider individuals already
+defined in gymact-registry-pack's ontology.ttl (aws/azure/gcp) -- a real, small,
+named cross-domain fact (their real managed-Kubernetes offerings: EKS/AKS/GKE), not a
+claim that Kubernetes "belongs" to any cloud provider. This is the first real
+cross-pack ontology join in this repo's ggen graph: composing this pack without
+gymact-registry-pack still renders a valid k8s_resource_gym.py (the join facts are
+additive, not load-bearing for the base capability catalog).
+
+Ships one gate (gates/010_resource_kind_validity.rq): every ResourceKind must carry
+apiVersion+kind, and no duplicate (apiVersion, kind) pair may exist -- a duplicate
+would silently shadow a capability row in the generated dict.
+"""

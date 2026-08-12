@@ -47,6 +47,13 @@ try:  # cloud-topology is a real, optional-extra gym (needs botocore)
 except ImportError:  # pragma: no cover -- real UNSUPPORTED environment gate
     _CLOUD_TOPOLOGY_AVAILABLE = False
 
+try:  # k8s-resource needs only the bundled snapshot, always available
+    from .gyms.k8s_resource_gym import K8sResourceProvider
+
+    _K8S_RESOURCE_AVAILABLE = True
+except ImportError:  # pragma: no cover -- real UNSUPPORTED environment gate
+    _K8S_RESOURCE_AVAILABLE = False
+
 __all__ = [
     "REPORTS_DIR",
     "GYM_FACTOR",
@@ -155,6 +162,20 @@ async def _cloud_topology_observe_only(gym: GymAct, ep: str) -> None:
     await gym.observe(ep)
 
 
+async def _k8s_resource_happy_path(gym: GymAct, ep: str) -> None:
+    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:k8s-resource:capability:list_resource_kinds", payload={}))
+
+
+async def _k8s_resource_with_checkpoint_restore(gym: GymAct, ep: str) -> None:
+    checkpoint = await gym.checkpoint(ep)
+    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:k8s-resource:capability:required_fields_for_kind", payload={"kind": "Deployment"}))
+    await gym.restore(ep, checkpoint)
+
+
+async def _k8s_resource_observe_only(gym: GymAct, ep: str) -> None:
+    await gym.observe(ep)
+
+
 def _build_scenarios() -> dict[str, _GymScenario]:
     scenarios: dict[str, _GymScenario] = {
         "memory": _GymScenario(
@@ -200,6 +221,17 @@ def _build_scenarios() -> dict[str, _GymScenario]:
                     "observe_only": _cloud_topology_observe_only,
                 },
             )
+    if _K8S_RESOURCE_AVAILABLE:
+        scenarios["k8s-resource"] = _GymScenario(
+            provider_factory=K8sResourceProvider,
+            config={},
+            scenario=None,
+            variants={
+                "happy_path": _k8s_resource_happy_path,
+                "with_checkpoint_restore": _k8s_resource_with_checkpoint_restore,
+                "observe_only": _k8s_resource_observe_only,
+            },
+        )
     return scenarios
 
 
