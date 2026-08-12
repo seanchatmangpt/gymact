@@ -23,6 +23,11 @@ test version="":
       uv sync --all-extras --group dev
     fi
     py_minor="$(uv run python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+    # uv's [tool.uv] override-dependencies pins playwright>=1.47,<2 (see
+    # pyproject.toml), which resolves a prebuilt greenlet wheel on every
+    # supported Python (including 3.13) instead of the browsergym-core==0.14.3
+    # default pin (playwright==1.44 -> greenlet==3.0.3, no 3.13 wheel). So
+    # BrowserGym installs and runs identically across the whole matrix now.
     if [[ -f "${AUTOFDE_LAB:-$HOME/autofde-lab}/vendor/gyms/browsergym/browsergym/core/pyproject.toml" ]]; then
       uv pip install -e "${AUTOFDE_LAB:-$HOME/autofde-lab}/vendor/gyms/browsergym/browsergym/core"
     else
@@ -81,27 +86,37 @@ docs:
     uv sync --group dev
     uv run zensical build --clean
 
-# Exact-head composition court. This exists because multiple individually real
-# branches were merged in one integration round and the resulting composed
-# main contained two real defects that no branch-local claim could rule out.
-# The full test suite also executes this file; this named target makes the
-# standing boundary cheap to run after any local merge/composition operation.
+# composition-court — named exact-subject court for merge/composition standing.
+# It is also part of the normal pytest suite; this target exists so a local
+# merge can cheaply requalify the exact composed subject before inheriting any
+# branch-local standing.
 composition-court:
     uv run pytest -v tests/test_default_head_composition_court.py
 
-# ggen-bridge-check — NOT a CI job, NOT part of `all`: requires a real `ggen`
-# binary on PATH. The exact version is now a fail-closed manufacturing input,
-# not an advisory convenience: GymAct's pinned CI capsule and marketplace
-# qualification both execute ggen 26.8.11, so another local version is a
-# different subject and cannot inherit their standing.
+# ggen-bridge-check — NOT a CI job, NOT part of `all`: this repo has no
+# Rust toolchain and CI never sets one up (confirmed: none of
+# .github/workflows/*.yml touch rust/cargo/ggen). Requires a real `ggen`
+# binary on PATH (build one from the sibling `ggen` repo:
+# `cargo build --release -p ggen-cli` there, then add its target/release/
+# to PATH, or set GGEN_BIN to its exact path). Proves ggen/gymact-bridge-pack
+# actually generates from ontology/profile.{ttl,shacl.ttl} (real symlinks
+# into src/gymact/ontology/, not a copy) by running a real `ggen sync run`
+# against a scratch consumer project, the same way
+# ~/ggen/crates/ggen-engine/tests/gymact_bridge_pack_e2e.rs historically did
+# from the Rust side.
 ggen-bridge-check:
     #!/usr/bin/env bash
     set -euo pipefail
     GGEN_BIN="${GGEN_BIN:-ggen}"
     if ! command -v "$GGEN_BIN" >/dev/null 2>&1; then
         echo "ggen-bridge-check: no '$GGEN_BIN' binary on PATH." >&2
+        echo "  Build one from the sibling ggen repo and either add target/release/" >&2
+        echo "  to PATH or set GGEN_BIN to its exact path." >&2
         exit 2
     fi
+    # Manufacturer identity is standing-bearing, not advisory. The repository
+    # and CI capsule now pin ggen 26.8.11; another version is a different
+    # subject and must not inherit that qualification.
     PINNED_VERSION="$(tr -d '[:space:]' < "$(pwd)/.ggen-version")"
     INSTALLED_VERSION="$("$GGEN_BIN" --version | head -n1 | awk '{print $2}')"
     if [ "$INSTALLED_VERSION" != "$PINNED_VERSION" ]; then
@@ -134,24 +149,50 @@ ggen-bridge-check:
     echo "ggen-bridge-check: OK — all 4 expected files generated with ggen $PINNED_VERSION"
 
 # ggen-gates-check — NOT part of `all`: runs every ggen/*/gates/*.rq SPARQL
-# gate against its own pack's ontology.ttl via rdflib.
+# gate against its own pack's ontology.ttl via rdflib. Unlike
+# ggen-bridge-check, this needs no external `ggen` binary — it re-implements
+# ggen's own ASK/SELECT-empty-passes gate contract directly (see
+# scripts/run_sparql_gates.py's module docstring). Read-only verification,
+# closes the gap that every pack's gates/*.rq file was real and checked-in
+# but nothing in this repo actually executed any of them.
 ggen-gates-check:
     uv run python scripts/run_sparql_gates.py
 
-# ocel-standing — human-facing batch report; the actual gate is pytest.
+# ocel-standing — NOT part of `all`: human-facing batch report over
+# reports/ocel/, per .claude/rules/ocel-standing.md ("useful as a
+# human-facing batch report ... it is not banned, it is just not a
+# substitute for a direct-state test assertion"). The real gate is
+# tests/test_ocel_standing.py, already exercised by `just test`; this target
+# only makes the existing script easier to find and run for a cross-subject
+# standing overview.
 ocel-standing:
     uv run python scripts/ocel_standing.py reports/ocel
 
-# capability-manifest — downstream reporting projection, not DO authority.
+# capability-manifest — NOT part of `all`: a reporting artifact for
+# downstream consumers (e.g. autofde-lab's own capability allowlist), not a
+# build-blocking check. Closes a real follow-up ~/ggen/packs/
+# domain-capability-pack's own pack.toml names as out of scope for that
+# pack: a generated, checkable source of truth for gymact's real capability
+# surface, so a hand-copied downstream allowlist has something real to
+# diff against instead of drifting silently (the exact drift that pack
+# found: an allowlist's own comment claiming 5 sregym capabilities exist
+# when the real source has grown to 14).
 capability-manifest:
     uv run python scripts/capability_manifest.py
 
-# The raw AST report remains advisory for genuinely simulated worlds. The
-# exact-head composition court hard-fails if any of the five already-proven
-# live external observation providers loses its independent I/O path.
+# observe-independence-check — raw report remains advisory because fully
+# simulated worlds legitimately have no external I/O channel. The exact-head
+# composition court hard-fails if any already-proven live external provider
+# silently loses its independently detectable I/O read path.
 observe-independence-check:
     uv run python scripts/check_observe_independence.py
 
+# job: container — Build and probe production container
+#
+# One shebang script for the whole recipe: `just` only honors `#!/...` as the
+# recipe's first line — a shebang appearing mid-recipe is treated as a plain
+# comment, and every other line then runs as its own separate `bash -c`
+# invocation with no shared variables (bit us with `$cid` once already).
 container:
     #!/usr/bin/env bash
     set -euo pipefail
