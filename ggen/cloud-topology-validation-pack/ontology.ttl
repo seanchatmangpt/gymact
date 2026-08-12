@@ -188,3 +188,52 @@ cv:FetchedAtOlderThanThreshold a cv:ValidationInvariant ;
     cv:reasonCode "FETCHED_AT_OLDER_THAN_THRESHOLD" ;
     cv:appliesToStructural false ;
     rdfs:comment "now - fetched_at exceeds the provider's cv:staleAfterDays." .
+
+# ---------------------------------------------------------------------------
+# gymact.gyms.cloud_topology_gym's real GymAct Capability catalog. Ported 1:1 from that
+# module's hand-written CLOUD_TOPOLOGY_CAPABILITIES tuple (git history preserves the
+# pre-ontology version) -- adding a fifth capability of a genuinely new kind means adding
+# both a cv:GymCapability individual here AND a new branch in
+# templates/cloud_topology_gym.py.tmpl's actuate() dispatch, exactly as adding a new
+# structural invariant would; it does not mean going back to hand-editing the generated
+# .py file.
+# ---------------------------------------------------------------------------
+
+cv:GymCapability a rdfs:Class ;
+    rdfs:label "GymCapability" ;
+    rdfs:comment "One real GymAct Capability this gym exposes -- iri/title/binding echoed verbatim into the generated CLOUD_TOPOLOGY_CAPABILITIES tuple." .
+
+cv:capabilityIri a rdf:Property ;
+    rdfs:domain cv:GymCapability ; rdfs:range xsd:string .
+cv:capabilityTitle a rdf:Property ;
+    rdfs:domain cv:GymCapability ; rdfs:range xsd:string .
+cv:capabilityBinding a rdf:Property ;
+    rdfs:domain cv:GymCapability ; rdfs:range xsd:string ;
+    rdfs:comment "Also the actuate()-dispatch discriminator the template's fixed set of Tera branches switches on." .
+cv:capabilityOrder a rdf:Property ;
+    rdfs:domain cv:GymCapability ; rdfs:range xsd:integer ;
+    rdfs:comment "Rendered tuple/dispatch order -- explicit so it doesn't depend on SPARQL row order being stable across engines." .
+
+cv:cap-list-regions a cv:GymCapability ;
+    cv:capabilityOrder 1 ;
+    cv:capabilityIri "urn:gymact:cloud-topology:capability:list_regions" ;
+    cv:capabilityTitle "List every real region this provider publishes (payload: {})" ;
+    cv:capabilityBinding "list_regions" .
+
+cv:cap-list-services a cv:GymCapability ;
+    cv:capabilityOrder 2 ;
+    cv:capabilityIri "urn:gymact:cloud-topology:capability:list_services" ;
+    cv:capabilityTitle "List every real service/service-tag this provider publishes (payload: {})" ;
+    cv:capabilityBinding "list_services" .
+
+cv:cap-services-in-region a cv:GymCapability ;
+    cv:capabilityOrder 3 ;
+    cv:capabilityIri "urn:gymact:cloud-topology:capability:services_in_region" ;
+    cv:capabilityTitle "List real services available in a given real region (payload: {'region': str})" ;
+    cv:capabilityBinding "services_in_region" .
+
+cv:cap-validate-topology a cv:GymCapability ;
+    cv:capabilityOrder 4 ;
+    cv:capabilityIri "urn:gymact:cloud-topology:capability:validate_topology" ;
+    cv:capabilityTitle "Independently validate this provider's loaded topology via cloud_topology_validation.py (ggen-generated) -- structural invariants + a real recount via a separate code path, never just 'it loaded' (payload: {})" ;
+    cv:capabilityBinding "validate_topology" .

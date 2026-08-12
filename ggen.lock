@@ -2,4 +2,4 @@
 
 [packs.cloud-topology-validation-pack]
 source = "path:cloud-topology-validation-pack"
-content_hash = "blake3:41a87b0940b811d183694e181a286d6b962b14c12dab08b96e4235b211b14fe5"
+content_hash = "blake3:19e76f5dfaf8bdce3c9f74da67d6330e34b578362f548400b491f23132dc58f8"

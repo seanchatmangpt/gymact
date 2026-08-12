@@ -1,3 +1,9 @@
+---
+to: "src/gymact/gyms/cloud_topology_gym.py"
+force: true
+sparql:
+  capabilities: "PREFIX cv: <http://seanchatmangpt.github.io/packs/cloud-topology-validation#> SELECT ?capabilityIri ?capabilityTitle ?capabilityBinding WHERE { ?c a cv:GymCapability ; cv:capabilityIri ?capabilityIri ; cv:capabilityTitle ?capabilityTitle ; cv:capabilityBinding ?capabilityBinding ; cv:capabilityOrder ?capabilityOrder } ORDER BY ?capabilityOrder"
+---
 """Real, read-only gym exposing `gymact.gyms.cloud_topology`'s
 provider-published cloud data as a queryable `Environment` -- so an agent
 with no prior cloud knowledge can ask "what regions/services does this
@@ -31,31 +37,13 @@ from .cloud_topology import CloudTopology, load_topology
 from .cloud_topology_validation import ValidationResult
 
 CLOUD_TOPOLOGY_CAPABILITIES: tuple[Capability, ...] = (
-    Capability(
-        iri="urn:gymact:cloud-topology:capability:list_regions",
-        title="List every real region this provider publishes (payload: {})",
+{% for c in capabilities %}    Capability(
+        iri="{{ c.capabilityIri }}",
+        title="{{ c.capabilityTitle }}",
         consequence=Consequence.READ,
-        binding="list_regions",
+        binding="{{ c.capabilityBinding }}",
     ),
-    Capability(
-        iri="urn:gymact:cloud-topology:capability:list_services",
-        title="List every real service/service-tag this provider publishes (payload: {})",
-        consequence=Consequence.READ,
-        binding="list_services",
-    ),
-    Capability(
-        iri="urn:gymact:cloud-topology:capability:services_in_region",
-        title="List real services available in a given real region (payload: {'region': str})",
-        consequence=Consequence.READ,
-        binding="services_in_region",
-    ),
-    Capability(
-        iri="urn:gymact:cloud-topology:capability:validate_topology",
-        title="Independently validate this provider's loaded topology via cloud_topology_validation.py (ggen-generated) -- structural invariants + a real recount via a separate code path, never just 'it loaded' (payload: {})",
-        consequence=Consequence.READ,
-        binding="validate_topology",
-    ),
-)
+{% endfor %})
 _CAPABILITY_BY_BINDING = {c.binding: c for c in CLOUD_TOPOLOGY_CAPABILITIES}
 
 
@@ -103,18 +91,18 @@ class CloudTopologyEnvironment:
         self._ensure_open()
         before = self._state()
         binding = capability.binding
-        if binding == "list_regions":
+{% for c in capabilities %}{% if c.capabilityBinding == "list_regions" %}        if binding == "list_regions":
             result: Any = list(self._topology.region_codes())
-        elif binding == "list_services":
+{% elif c.capabilityBinding == "list_services" %}        elif binding == "list_services":
             result = list(self._topology.service_names())
-        elif binding == "services_in_region":
+{% elif c.capabilityBinding == "services_in_region" %}        elif binding == "services_in_region":
             region = payload.get("region")
             if not isinstance(region, str) or not region:
                 raise ValueError("payload.region must be a non-empty string")
             result = list(self._topology.services_in_region(region))
-        elif binding == "validate_topology":
+{% elif c.capabilityBinding == "validate_topology" %}        elif binding == "validate_topology":
             result = asdict(self._validate())
-        else:
+{% endif %}{% endfor %}        else:
             raise ValueError(f"unsupported cloud-topology binding: {binding}")
         return {
             "before": before,
