@@ -21,8 +21,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      MARKETPLACE_SHA: 0b5cf33183eba31a5f335250f6d384c6af73611f
-      LEGACY_SHA: 48e7d768b997e33816f4f2a77c33ba7f99cbac6b
+      MARKETPLACE_SHA: a6c2d36323b02a9db5cb02aacaff779155bfb177
+      LEGACY_SHA: b5e6b82e51fbc9e82313d29d5446d220c72309ac
       CREATE_SHA: 866f04848b2e6517a73ba814667c8d910b31a6da
       GGEN_SHA: 5c6548e1dc58deecfae4fdbb81c019ca1f5cc67a
     steps:
