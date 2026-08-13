@@ -203,3 +203,35 @@ def test_full_provider_lifecycle_is_real() -> None:
         await env.teardown()
 
     asyncio.run(_run())
+
+
+def test_required_fields_track_the_real_loaded_snapshot_no_shadow_copy() -> None:
+    """Real regression test for FMEA #2 (RPN 315): `required_fields_for_kind`
+    used to answer from a hand-typed, hardcoded module-level dict instead of
+    the environment's own freshly-`load_k8s_resource_kinds()`-loaded data --
+    a second copy of the same fact that nothing kept in sync. Prove there is
+    no such shadow copy left: every kind's answer must equal exactly what
+    `load_k8s_resource_kinds()` itself reports for that kind, checked
+    independently in this test (not by re-reading the gym's own dispatch
+    table)."""
+    from gymact.gyms.k8s_resources import load_k8s_resource_kinds
+
+    real_kinds = {k.kind: k.required_fields for k in load_k8s_resource_kinds()}
+
+    async def _run() -> dict[str, list[str]]:
+        env = K8sResourceEnvironment()
+        cap = next(c for c in K8S_RESOURCE_CAPABILITIES if c.binding == "required_fields_for_kind")
+        answers = {}
+        for kind in real_kinds:
+            result = await env.actuate(cap, {"kind": kind})
+            answers[kind] = result["result"]
+        await env.teardown()
+        return answers
+
+    answers = asyncio.run(_run())
+    for kind, expected_fields in real_kinds.items():
+        assert answers[kind] == list(expected_fields), (
+            f"{kind}: gym answered {answers[kind]!r} but the real loaded "
+            f"snapshot says {list(expected_fields)!r} -- drift between a "
+            "shadow copy and the real data source"
+        )

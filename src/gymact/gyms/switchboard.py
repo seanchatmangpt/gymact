@@ -156,8 +156,32 @@ class SwitchboardEnvironment:
         }
 
     async def restore(self, checkpoint: dict[str, Any]) -> None:
+        """Restore from a real checkpoint dict -- validated against this
+        environment's own `n_switches` before it becomes live state.
+
+        Real bug found and fixed forward this session (FMEA #1, RPN 324):
+        an unvalidated `checkpoint["switches"]` of the wrong length used to
+        be accepted here unchecked, silently desynchronizing `_switches`
+        from `n_switches`. That corrupted state then crashed the
+        unprotected `observe()` path later: `_state()` -> `_required_on()`
+        indexes into `self._switches` at `self.required`'s indices (which
+        are only guaranteed `< n_switches`), raising an uncaught
+        `IndexError` on the very next `observe()` call -- far from the real
+        root cause (`restore()` accepting bad input). Validating length and
+        element types here, at the actual point of untrusted input, turns
+        that into an immediate, honest `ValueError` instead of a deferred
+        crash on an unrelated read path.
+        """
         self._ensure_open()
-        self._switches = [bool(v) for v in checkpoint["switches"]]
+        switches = checkpoint.get("switches")
+        if not isinstance(switches, list) or len(switches) != self.n_switches:
+            raise ValueError(
+                f"checkpoint.switches must be a list of length {self.n_switches}, "
+                f"got {switches!r}"
+            )
+        if "master" not in checkpoint or "toggles" not in checkpoint:
+            raise ValueError("checkpoint must contain 'master' and 'toggles'")
+        self._switches = [bool(v) for v in switches]
         self._master = bool(checkpoint["master"])
         self._toggles = int(checkpoint["toggles"])
 

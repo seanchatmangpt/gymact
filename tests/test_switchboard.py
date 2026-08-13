@@ -231,3 +231,58 @@ async def test_do_capability_is_refused_without_admitted_authority() -> None:
     assert result.standing is Standing.REFUSED
 
     await gym.teardown(episode_id)
+
+
+async def test_restore_rejects_checkpoint_with_wrong_switch_count() -> None:
+    """Real regression test for FMEA #1 (RPN 324): `restore()` used to
+    accept a `checkpoint["switches"]` of the wrong length unchecked,
+    corrupting `_switches` out of sync with `n_switches`. That corruption
+    then crashed the next `observe()` call with an uncaught `IndexError`
+    from `_required_on()` indexing past the end of the shrunken list --
+    far from `restore()`, the real root cause. Assert on the real,
+    now-immediate failure at the real point of untrusted input, and that
+    a subsequent real `observe()` on the environment does NOT crash."""
+    provider = SwitchboardProvider()
+    env = await provider.materialize(scenario=None, config={"seed": 3, "n_switches": 5})
+
+    bad_checkpoint = {"switches": [True, False], "master": False, "toggles": 0}
+    try:
+        await env.restore(bad_checkpoint)
+        raised = False
+    except ValueError:
+        raised = True
+    assert raised is True, "restore() must reject a checkpoint whose switch count mismatches n_switches"
+
+    # Real proof the fix actually prevents the downstream crash: state is
+    # untouched by the rejected restore, and observe() still works.
+    state = await env.observe()
+    assert state["n_switches"] == 5
+    assert len(env._switches) == 5
+
+    await env.teardown()
+
+
+async def test_restore_accepts_well_formed_checkpoint() -> None:
+    """Real state-based proof the fix doesn't break the legitimate path:
+    a correctly-shaped checkpoint (from a real prior `checkpoint()` call)
+    still restores real state, and the restored environment's `observe()`
+    reflects it accurately."""
+    provider = SwitchboardProvider()
+    env = await provider.materialize(scenario=None, config={"seed": 3, "n_switches": 5})
+
+    await env.actuate(
+        SWITCHBOARD_CAPABILITIES[0],  # toggle_switch
+        {"index": 0},
+    )
+    saved = await env.checkpoint()
+
+    await env.actuate(SWITCHBOARD_CAPABILITIES[0], {"index": 1})
+    mid_state = await env.observe()
+    assert mid_state["switch_1"] is True
+
+    await env.restore(saved)
+    restored_state = await env.observe()
+    assert restored_state["switch_0"] is True
+    assert restored_state["switch_1"] is False
+
+    await env.teardown()

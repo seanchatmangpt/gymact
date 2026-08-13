@@ -46,18 +46,32 @@ K8S_RESOURCE_CAPABILITIES: tuple[Capability, ...] = (
 )
 _CAPABILITY_BY_BINDING = {c.binding: c for c in K8S_RESOURCE_CAPABILITIES}
 
-#: Real, ontology-sourced catalog data -- required-field and
-#: provider-availability facts keyed by kindName, echoed from the ontology's
-#: k8s:requiredField / k8s:availableOn individuals.
-_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
-    "ConfigMap": (),
-    "Deployment": ("selector", "template", ),
-    "Namespace": (),
-    "Pod": ("containers", ),
-    "Secret": (),
-    "Service": (),
-}
-
+#: Real bug found and fixed forward this session (FMEA #2, RPN 315): this
+#: module used to hardcode a second, hand-typed copy of `required_fields`
+#: (and a wholly fabricated, all-identical `_AVAILABLE_ON` table) instead of
+#: reading `K8sResourceKind.required_fields` off the environment's own
+#: freshly-loaded `load_k8s_resource_kinds()` snapshot. That hardcoded copy
+#: happened to match the snapshot at authoring time, but nothing kept it in
+#: sync -- `scripts/refresh_k8s_openapi_snapshot.py` re-fetching a newer
+#: Kubernetes OpenAPI spec would silently desynchronize this dict from the
+#: real data the gym claims to expose, with no test able to catch the drift
+#: (the loader and the dispatch table were never cross-checked against each
+#: other). `required_fields_for_kind` below now reads
+#: `self._by_kind[kind].required_fields` directly off the loaded snapshot --
+#: there is no second copy left to drift.
+#:
+#: `providers_offering_kind` is different: no real per-kind
+#: provider-availability data exists anywhere in this repo (confirmed --
+#: `k8s_openapi_snapshot.json` carries no such field, and no other module
+#: publishes one). The prior `_AVAILABLE_ON` table's "aws, azure, gcp for
+#: every kind" was fabricated, not sourced, so deriving it from a real
+#: loader is not possible without inventing data. Deliberately deferred
+#: this round (see `~/.claude/plans/robust-coalescing-ritchie.md` section 3
+#: "Finish"): the honest fix is either to source a real per-kind managed-K8s
+#: availability dataset (out of scope here) or to remove the capability
+#: outright, not to keep fabricating an answer. Left in place, unchanged,
+#: with this note so the fabrication is visible rather than silently
+#: presented as ontology-sourced fact.
 _AVAILABLE_ON: dict[str, tuple[str, ...]] = {
     "ConfigMap": ("aws", "azure", "gcp", ),
     "Deployment": ("aws", "azure", "gcp", ),
@@ -110,7 +124,7 @@ class K8sResourceEnvironment:
                 raise ValueError("payload.kind must be a non-empty string")
             if kind not in self._by_kind:
                 raise ValueError(f"unknown Kubernetes resource kind: {kind}")
-            result = list(_REQUIRED_FIELDS.get(kind, ()))
+            result = list(self._by_kind[kind].required_fields)
         elif binding == "providers_offering_kind":
             kind = payload.get("kind")
             if not isinstance(kind, str) or not kind:
