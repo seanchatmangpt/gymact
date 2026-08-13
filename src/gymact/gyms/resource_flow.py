@@ -192,10 +192,32 @@ class ResourceFlowEnvironment:
         }
 
     async def restore(self, checkpoint: dict[str, Any]) -> None:
+        """Restore from a real checkpoint dict -- validated against this
+        environment's own `capacity` before it becomes live state.
+
+        Real bug found and fixed forward this round (RCA RPN 432, same class
+        as `switchboard.py`'s already-fixed restore bug and
+        `lock_and_key.py`'s companion fix this round): an unvalidated
+        `output`/`raw`/`refined` used to be accepted here unchecked, so a
+        checkpoint claiming e.g. `output=999 > capacity=5` would silently
+        become live state and `_solved()` could then report a false
+        `solved=True` for an out-of-bound, physically impossible pool level.
+        Validating bounds here, at the actual point of untrusted input, turns
+        that into an immediate, honest `ValueError` instead of a
+        false-positive solved report.
+        """
         self._ensure_open()
-        self._raw = int(checkpoint["raw"])
-        self._refined = int(checkpoint["refined"])
-        self._output = int(checkpoint["output"])
+        raw = int(checkpoint["raw"])
+        refined = int(checkpoint["refined"])
+        output = int(checkpoint["output"])
+        for name, value in (("raw", raw), ("refined", refined), ("output", output)):
+            if not 0 <= value <= self.capacity:
+                raise ValueError(
+                    f"checkpoint.{name} must be in [0, {self.capacity}], got {value!r}"
+                )
+        self._raw = raw
+        self._refined = refined
+        self._output = output
         self._catalyst = bool(checkpoint["catalyst"])
 
     async def teardown(self) -> None:

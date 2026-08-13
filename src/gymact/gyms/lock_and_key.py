@@ -212,9 +212,33 @@ class LockAndKeyEnvironment:
         }
 
     async def restore(self, checkpoint: dict[str, Any]) -> None:
+        """Restore from a real checkpoint dict -- validated against this
+        environment's own `depth`/key domain before it becomes live state.
+
+        Real bug found and fixed forward this round (RCA RPN 432, same class
+        as `switchboard.py`'s already-fixed restore bug): an unvalidated
+        `locks_open`/`held_key` used to be accepted here unchecked, so a
+        checkpoint claiming e.g. `locks_open > depth` or a `held_key` outside
+        `[NO_KEY, depth)` would silently become live state and `_solved()`
+        (`self._locks_open == self.depth`) could then report a false
+        `solved=True` for an unreachable state. Validating bounds here, at
+        the actual point of untrusted input, turns that into an immediate,
+        honest `ValueError` instead of a false-positive solved report.
+        """
         self._ensure_open()
-        self._locks_open = int(checkpoint["locks_open"])
-        self._held = int(checkpoint["held_key"])
+        locks_open = int(checkpoint["locks_open"])
+        held_key = int(checkpoint["held_key"])
+        if not 0 <= locks_open <= self.depth:
+            raise ValueError(
+                f"checkpoint.locks_open must be in [0, {self.depth}], got {locks_open!r}"
+            )
+        if not (held_key == NO_KEY or 0 <= held_key < self.depth):
+            raise ValueError(
+                f"checkpoint.held_key must be {NO_KEY} or in [0, {self.depth}), "
+                f"got {held_key!r}"
+            )
+        self._locks_open = locks_open
+        self._held = held_key
         self._rack_jammed = bool(checkpoint["rack_jammed"])
 
     async def teardown(self) -> None:

@@ -81,7 +81,17 @@ def _reason_attribute(event: dict) -> str | None:
 # one layer down). Closing this for real requires a `kernel.py` Receipt.reason
 # change, which is a repo-kernel-wide decision affecting every provider's
 # actuation path, out of scope for a single-gym integration.
-_ACT_REASON_KERNEL_GAP_SUBJECTS = frozenset({"swegym"})
+# `opaque-procedure` joins this set for the identical kernel-level reason
+# (round-3 GO-list closure): its real episode goes through
+# `DiscoveryProbeRunner`/`ProductionGymAct`, not `GymAct.act()` directly, but
+# hits the same underlying gap -- `replay.goal_reached is True` is real,
+# schema-validated, conformant-replay evidence (verified live via
+# `scripts/run_opaque_procedure_episode.py`'s own printed
+# `goal_reached=True`), yet neither act event's `Receipt.reason` carries a
+# "solved=True" string, because nothing in this runtime's real actuation
+# path ever sets `reason` on success -- the same missing field, not a
+# provider-level defect.
+_ACT_REASON_KERNEL_GAP_SUBJECTS = frozenset({"swegym", "opaque-procedure"})
 
 # Named, real exception to check #3 below (`act_events` must be non-empty):
 # `dev-portfolio` (`gymact/gyms/dev_portfolio.py`) is READ-only *by design* --
@@ -95,7 +105,17 @@ _ACT_REASON_KERNEL_GAP_SUBJECTS = frozenset({"swegym"})
 # marking this named and explicitly, rather than loosening check #3's
 # assertion for every subject, keeps the assertion strict for every gym that
 # does carry DO capabilities.
-_NO_ACT_CAPABILITY_SUBJECTS = frozenset({"dev-portfolio"})
+#
+# `k8s-resources` (`gymact/gyms/k8s_resource_gym.py`) joins this set for the
+# identical structural reason (round-3 GO-list closure): all three of its
+# capabilities are `Consequence.READ` (verified live: `grep -n
+# "Consequence\." src/gymact/gyms/k8s_resource_gym.py` shows READ on every
+# one, zero DO). `kernel.py`'s `READ_CAPABILITY_IS_NOT_ACTUATION` refusal
+# means these can only be invoked via `gym.act()` (refused) or `gym.read()`
+# (the real symmetric READ path, which by its own docstring carries no
+# `Receipt`/`act`-event path at all) -- so a real conformant episode against
+# this gym never produces, and never should produce, an `act` event either.
+_NO_ACT_CAPABILITY_SUBJECTS = frozenset({"dev-portfolio", "k8s-resources"})
 
 _LOG_PATHS = _discover_ocel_logs()
 _LOG_PARAMS = [
