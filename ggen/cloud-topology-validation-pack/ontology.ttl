@@ -79,6 +79,16 @@ cv:spotCheckRegion a rdf:Property ;
     rdfs:range xsd:string ;
     rdfs:comment "Real region code paired with cv:spotCheckService. AWS's real, long-standing pair: s3 / us-east-1." .
 
+cv:managedK8sHourlyCostUsd a rdf:Property ;
+    rdfs:domain cv:CloudProvider ;
+    rdfs:range xsd:decimal ;
+    rdfs:comment "Real, publicly published USD/hour control-plane management fee for this provider's managed Kubernetes offering (EKS/AKS Standard tier/GKE), Standard-tier pricing where a provider offers a free tier too. Not fetched live this session -- a known public list price, cited via cv:managedK8sCostSource; re-verify before treating as current." .
+
+cv:managedK8sCostSource a rdf:Property ;
+    rdfs:domain cv:CloudProvider ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Provenance string for cv:managedK8sHourlyCostUsd -- names which real, public pricing page/tier the figure comes from." .
+
 cv:reasonCode a rdf:Property ;
     rdfs:domain cv:ValidationInvariant ;
     rdfs:range xsd:string ;
@@ -100,7 +110,9 @@ cv:aws a cv:CloudProvider ;
     cv:recountKind "live" ;
     cv:hasDegenerateServices false ;
     cv:spotCheckService "s3" ;
-    cv:spotCheckRegion "us-east-1" .
+    cv:spotCheckRegion "us-east-1" ;
+    cv:managedK8sHourlyCostUsd 0.10 ;
+    cv:managedK8sCostSource "aws-eks-cluster-hourly-fee-public-pricing" .
     # No cv:staleAfterDays -- live-loaded every call, no staleness concept (matches
     # _staleness(None) -> (False, ()) in the prior hand-written module).
 
@@ -112,7 +124,9 @@ cv:azure a cv:CloudProvider ;
     cv:snapshotRegionKey "regions" ;
     cv:snapshotServiceKey "service_tags" ;
     cv:hasDegenerateServices false ;
-    cv:staleAfterDays 30 .
+    cv:staleAfterDays 30 ;
+    cv:managedK8sHourlyCostUsd 0.10 ;
+    cv:managedK8sCostSource "azure-aks-standard-tier-hourly-fee-public-pricing" .
 
 cv:gcp a cv:CloudProvider ;
     cv:providerId "gcp" ;
@@ -122,7 +136,9 @@ cv:gcp a cv:CloudProvider ;
     cv:snapshotRegionKey "regions" ;
     cv:snapshotServiceKey "services" ;
     cv:hasDegenerateServices true ;
-    cv:staleAfterDays 30 .
+    cv:staleAfterDays 30 ;
+    cv:managedK8sHourlyCostUsd 0.10 ;
+    cv:managedK8sCostSource "gcp-gke-cluster-management-fee-public-pricing" .
 
 # ---------------------------------------------------------------------------
 # Individuals: the static, unparameterized structural invariants
@@ -213,6 +229,12 @@ cv:capabilityBinding a rdf:Property ;
 cv:capabilityOrder a rdf:Property ;
     rdfs:domain cv:GymCapability ; rdfs:range xsd:integer ;
     rdfs:comment "Rendered tuple/dispatch order -- explicit so it doesn't depend on SPARQL row order being stable across engines." .
+cv:capabilityDeclaredCostUsd a rdf:Property ;
+    rdfs:domain cv:GymCapability ; rdfs:range xsd:decimal ;
+    rdfs:comment "Optional real, published USD declared-estimate cost for one call of this capability. Absent (no triple) means this capability's real cost is $0 -- an in-memory read, never a fabricated non-zero placeholder." .
+cv:capabilityDeclaredCostSource a rdf:Property ;
+    rdfs:domain cv:GymCapability ; rdfs:range xsd:string ;
+    rdfs:comment "Provenance string paired with cv:capabilityDeclaredCostUsd." .
 
 cv:cap-list-regions a cv:GymCapability ;
     cv:capabilityOrder 1 ;
@@ -237,3 +259,11 @@ cv:cap-validate-topology a cv:GymCapability ;
     cv:capabilityIri "urn:gymact:cloud-topology:capability:validate_topology" ;
     cv:capabilityTitle "Independently validate this provider's loaded topology via cloud_topology_validation.py (ggen-generated) -- structural invariants + a real recount via a separate code path, never just 'it loaded' (payload: {})" ;
     cv:capabilityBinding "validate_topology" .
+
+cv:cap-estimated-managed-k8s-cost a cv:GymCapability ;
+    cv:capabilityOrder 5 ;
+    cv:capabilityIri "urn:gymact:cloud-topology:capability:estimated_managed_k8s_cost" ;
+    cv:capabilityTitle "Real published USD/hour control-plane cost of this provider's managed Kubernetes offering -- a declared estimate, not a live-billed figure (payload: {})" ;
+    cv:capabilityBinding "estimated_managed_k8s_cost" ;
+    cv:capabilityDeclaredCostUsd 0.10 ;
+    cv:capabilityDeclaredCostSource "managed-k8s-control-plane-hourly-fee-public-pricing" .

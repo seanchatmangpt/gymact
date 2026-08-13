@@ -24,7 +24,7 @@ from dataclasses import asdict
 from typing import Any
 from uuid import uuid4
 
-from gymact.models import Capability, Consequence
+from gymact.models import Capability, Consequence, CostDimension
 
 from . import cloud_topology_validation
 from .cloud_topology import CloudTopology, load_topology
@@ -55,8 +55,35 @@ CLOUD_TOPOLOGY_CAPABILITIES: tuple[Capability, ...] = (
         consequence=Consequence.READ,
         binding="validate_topology",
     ),
+    Capability(
+        iri="urn:gymact:cloud-topology:capability:estimated_managed_k8s_cost",
+        title="Real published USD/hour control-plane cost of this provider's managed Kubernetes offering -- a declared estimate, not a live-billed figure (payload: {})",
+        consequence=Consequence.READ,
+        binding="estimated_managed_k8s_cost",
+        costs=(
+            CostDimension(
+                unit="usd",
+                quantity=0.1,
+                kind="declared_estimate",
+                source="managed-k8s-control-plane-hourly-fee-public-pricing",
+            ),
+        ),
+    ),
 )
 _CAPABILITY_BY_BINDING = {c.binding: c for c in CLOUD_TOPOLOGY_CAPABILITIES}
+
+#: Real, ontology-sourced managed-Kubernetes hourly control-plane cost per
+#: provider -- echoed from cv:CloudProvider's cv:managedK8sHourlyCostUsd.
+_MANAGED_K8S_COST_USD: dict[str, float] = {
+    "aws": 0.1,
+    "azure": 0.1,
+    "gcp": 0.1,
+}
+_MANAGED_K8S_COST_SOURCE: dict[str, str] = {
+    "aws": "aws-eks-cluster-hourly-fee-public-pricing",
+    "azure": "azure-aks-standard-tier-hourly-fee-public-pricing",
+    "gcp": "gcp-gke-cluster-management-fee-public-pricing",
+}
 
 
 class CloudTopologyEnvironment:
@@ -114,6 +141,13 @@ class CloudTopologyEnvironment:
             result = list(self._topology.services_in_region(region))
         elif binding == "validate_topology":
             result = asdict(self._validate())
+        elif binding == "estimated_managed_k8s_cost":
+            result = {
+                "provider": self.provider,
+                "unit": "usd",
+                "quantity_per_hour": _MANAGED_K8S_COST_USD.get(self.provider),
+                "source": _MANAGED_K8S_COST_SOURCE.get(self.provider),
+            }
         else:
             raise ValueError(f"unsupported cloud-topology binding: {binding}")
         return {

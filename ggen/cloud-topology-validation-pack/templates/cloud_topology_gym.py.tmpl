@@ -2,7 +2,8 @@
 to: "src/gymact/gyms/cloud_topology_gym.py"
 force: true
 sparql:
-  capabilities: "PREFIX cv: <http://seanchatmangpt.github.io/packs/cloud-topology-validation#> SELECT ?capabilityIri ?capabilityTitle ?capabilityBinding WHERE { ?c a cv:GymCapability ; cv:capabilityIri ?capabilityIri ; cv:capabilityTitle ?capabilityTitle ; cv:capabilityBinding ?capabilityBinding ; cv:capabilityOrder ?capabilityOrder } ORDER BY ?capabilityOrder"
+  capabilities: "PREFIX cv: <http://seanchatmangpt.github.io/packs/cloud-topology-validation#> SELECT ?capabilityIri ?capabilityTitle ?capabilityBinding ?capabilityDeclaredCostUsd ?capabilityDeclaredCostSource WHERE { ?c a cv:GymCapability ; cv:capabilityIri ?capabilityIri ; cv:capabilityTitle ?capabilityTitle ; cv:capabilityBinding ?capabilityBinding ; cv:capabilityOrder ?capabilityOrder . OPTIONAL { ?c cv:capabilityDeclaredCostUsd ?capabilityDeclaredCostUsd ; cv:capabilityDeclaredCostSource ?capabilityDeclaredCostSource } } ORDER BY ?capabilityOrder"
+  providerCosts: "PREFIX cv: <http://seanchatmangpt.github.io/packs/cloud-topology-validation#> SELECT ?providerId ?managedK8sHourlyCostUsd ?managedK8sCostSource WHERE { ?p a cv:CloudProvider ; cv:providerId ?providerId ; cv:managedK8sHourlyCostUsd ?managedK8sHourlyCostUsd ; cv:managedK8sCostSource ?managedK8sCostSource } ORDER BY ?providerId"
 ---
 """Real, read-only gym exposing `gymact.gyms.cloud_topology`'s
 provider-published cloud data as a queryable `Environment` -- so an agent
@@ -30,7 +31,7 @@ from dataclasses import asdict
 from typing import Any
 from uuid import uuid4
 
-from gymact.models import Capability, Consequence
+from gymact.models import Capability, Consequence, CostDimension
 
 from . import cloud_topology_validation
 from .cloud_topology import CloudTopology, load_topology
@@ -42,9 +43,26 @@ CLOUD_TOPOLOGY_CAPABILITIES: tuple[Capability, ...] = (
         title="{{ c.capabilityTitle }}",
         consequence=Consequence.READ,
         binding="{{ c.capabilityBinding }}",
-    ),
+{% if c.capabilityDeclaredCostUsd %}        costs=(
+            CostDimension(
+                unit="usd",
+                quantity={{ c.capabilityDeclaredCostUsd }},
+                kind="declared_estimate",
+                source="{{ c.capabilityDeclaredCostSource }}",
+            ),
+        ),
+{% endif %}    ),
 {% endfor %})
 _CAPABILITY_BY_BINDING = {c.binding: c for c in CLOUD_TOPOLOGY_CAPABILITIES}
+
+#: Real, ontology-sourced managed-Kubernetes hourly control-plane cost per
+#: provider -- echoed from cv:CloudProvider's cv:managedK8sHourlyCostUsd.
+_MANAGED_K8S_COST_USD: dict[str, float] = {
+{% for p in providerCosts %}    "{{ p.providerId }}": {{ p.managedK8sHourlyCostUsd }},
+{% endfor %}}
+_MANAGED_K8S_COST_SOURCE: dict[str, str] = {
+{% for p in providerCosts %}    "{{ p.providerId }}": "{{ p.managedK8sCostSource }}",
+{% endfor %}}
 
 
 class CloudTopologyEnvironment:
@@ -102,6 +120,13 @@ class CloudTopologyEnvironment:
             result = list(self._topology.services_in_region(region))
 {% elif c.capabilityBinding == "validate_topology" %}        elif binding == "validate_topology":
             result = asdict(self._validate())
+{% elif c.capabilityBinding == "estimated_managed_k8s_cost" %}        elif binding == "estimated_managed_k8s_cost":
+            result = {
+                "provider": self.provider,
+                "unit": "usd",
+                "quantity_per_hour": _MANAGED_K8S_COST_USD.get(self.provider),
+                "source": _MANAGED_K8S_COST_SOURCE.get(self.provider),
+            }
 {% endif %}{% endfor %}        else:
             raise ValueError(f"unsupported cloud-topology binding: {binding}")
         return {

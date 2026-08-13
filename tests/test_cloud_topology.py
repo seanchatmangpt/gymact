@@ -180,6 +180,32 @@ def test_real_provider_materialize_observe_actuate_verify_checkpoint_restore_tea
     asyncio.run(run())
 
 
+def test_estimated_managed_k8s_cost_capability_declares_and_returns_real_cost() -> None:
+    """The capability itself declares a real, sourced USD cost estimate
+    (`Capability.costs`), and actuating it returns that same real figure per
+    real provider -- not a mocked pricing lookup."""
+
+    async def run() -> None:
+        capability = _CAPABILITY_BY_BINDING["estimated_managed_k8s_cost"]
+        assert len(capability.costs) == 1
+        assert capability.costs[0].unit == "usd"
+        assert capability.costs[0].kind == "declared_estimate"
+        assert capability.costs[0].source
+
+        provider = CloudTopologyProvider()
+        for real_provider in ("aws", "azure", "gcp"):
+            env = await provider.materialize(scenario=real_provider, config={})
+            result = await env.actuate(capability, {})
+            assert result["result"]["provider"] == real_provider
+            assert result["result"]["unit"] == "usd"
+            assert isinstance(result["result"]["quantity_per_hour"], float)
+            assert result["result"]["quantity_per_hour"] > 0
+            assert result["result"]["source"]
+            await env.teardown()
+
+    asyncio.run(run())
+
+
 def test_real_provider_materializes_each_real_cloud() -> None:
     async def run() -> None:
         provider = CloudTopologyProvider()
