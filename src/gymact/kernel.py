@@ -792,6 +792,10 @@ class GymAct:
                         principal=intent.principal,
                         pre_state_digest=before.state_digest,
                         post_state_digest=after.state_digest,
+                        costs=tuple(
+                            c.model_copy(update={"kind": "observed_actual"})
+                            for c in capability.costs
+                        ),
                     ),
                 ),
             )

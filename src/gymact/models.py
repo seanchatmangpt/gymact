@@ -72,6 +72,25 @@ class CanonicalInputModel(FrozenModel):
         return self
 
 
+class CostDimension(FrozenModel):
+    """One typed, non-monetary-or-monetary cost quantity for an action.
+
+    Cost is not always money -- a UAV gym's real cost is fuel liters and
+    flight-hours, a treaty gym's is political capital. Every dimension names
+    its own unit and provenance rather than collapsing onto a single float,
+    so a declared estimate and an observed actual can be compared honestly
+    and neither is ever silently coerced to zero when unmeasured (see
+    ``.claude/rules/absence-is-not-evidence.md``).
+    """
+
+    unit: str
+    quantity: float
+    kind: Literal["declared_estimate", "observed_actual"]
+    #: Real provenance for this figure, e.g. "aws-eks-pricing-2026-08" or
+    #: "measured" -- never a bare number with no traceable source.
+    source: str
+
+
 class Capability(FrozenModel):
     """Python realization of a public ``sosa:Procedure`` capability."""
 
@@ -79,6 +98,10 @@ class Capability(FrozenModel):
     title: str
     consequence: Consequence
     binding: str
+    #: The gym's own declared per-actuation cost estimate. Empty by default
+    #: so every existing call site keeps compiling unchanged; each element
+    #: must carry ``kind="declared_estimate"``.
+    costs: tuple[CostDimension, ...] = ()
 
 
 class Episode(FrozenModel):
@@ -201,6 +224,14 @@ class Receipt(FrozenModel):
     parent_receipt_ids: tuple[str, ...] = ()
     error_digest: str | None = None
     reason: str | None = None
+    #: Cost actually incurred by this actuation. Empty for every non-ACT or
+    #: non-accepted receipt (nothing real was incurred); on an accepted ACT
+    #: receipt this echoes the actuated ``Capability.costs`` unless a
+    #: provider observed a different real figure -- each element must carry
+    #: ``kind="observed_actual"``. This is the only durable record of cost;
+    #: never re-derive or re-store it elsewhere (see
+    #: ``.claude/rules/no-dual-bookkeeping.md``).
+    costs: tuple[CostDimension, ...] = ()
 
     @model_validator(mode="after")
     def combinatorial_binding_is_atomic(self) -> Self:

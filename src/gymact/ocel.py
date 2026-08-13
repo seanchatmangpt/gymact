@@ -56,7 +56,7 @@ def receipts_to_ocel(receipts: list[Receipt]) -> dict[str, Any]:
             capability_ids.add(receipt.capability_ref)
         event_type_names.add(receipt.operation.value)
 
-        attributes = [
+        attributes: list[dict[str, Any]] = [
             {"name": "standing", "value": receipt.standing.value},
         ]
         for name, value in (
@@ -71,6 +71,11 @@ def receipts_to_ocel(receipts: list[Receipt]) -> dict[str, Any]:
         ):
             if value is not None:
                 attributes.append({"name": name, "value": value})
+
+        for cost in receipt.costs:
+            attributes.append({"name": f"cost:{cost.unit}", "value": cost.quantity})
+            attributes.append({"name": f"cost_kind:{cost.unit}", "value": cost.kind})
+            attributes.append({"name": f"cost_source:{cost.unit}", "value": cost.source})
 
         relationships = [{"objectId": receipt.episode_id, "qualifier": "episode"}]
         if receipt.subject_ref:
