@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import warnings
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
-from typing import Iterable, Mapping, Sequence
-import warnings
 
 from rdflib import Graph, URIRef
 from rdflib.compare import to_canonical_graph
