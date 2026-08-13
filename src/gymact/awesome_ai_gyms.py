@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import csv
-import hashlib
 import io
 from dataclasses import dataclass
 from pathlib import Path
@@ -37,11 +36,6 @@ class AwesomeAIGymCandidate:
     admission: Literal["CANDIDATE_ONLY"] = "CANDIDATE_ONLY"
 
 
-def _gym_ref(canonical_url: str) -> str:
-    digest = hashlib.sha256(canonical_url.encode("utf-8")).hexdigest()[:24]
-    return f"awesome-ai-gym:{digest}"
-
-
 def parse_awesome_ai_gyms_tsv(text: str) -> tuple[AwesomeAIGymCandidate, ...]:
     """Parse canonical TSV without registering, importing, or materializing any gym."""
 
@@ -61,7 +55,7 @@ def parse_awesome_ai_gyms_tsv(text: str) -> tuple[AwesomeAIGymCandidate, ...]:
             raise ValueError(f"AWESOME_AI_GYM_INVALID_CANDIDATE:{row['name']}")
         candidates.append(
             AwesomeAIGymCandidate(
-                gym_ref=_gym_ref(canonical_url),
+                gym_ref=canonical_url,
                 name=row["name"].strip(),
                 canonical_url=canonical_url,
                 category=row["category"].strip(),

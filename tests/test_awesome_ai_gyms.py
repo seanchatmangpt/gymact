@@ -19,7 +19,7 @@ def test_catalog_candidates_are_inert_and_stable() -> None:
     second = parse_awesome_ai_gyms_tsv(text)[0]
 
     assert first.gym_ref == second.gym_ref
-    assert first.gym_ref.startswith("awesome-ai-gym:")
+    assert first.gym_ref == "https://github.com/web-arena-x/webarena"
     assert first.standing == "UNKNOWN"
     assert first.authority == "NONE"
     assert first.admission == "CANDIDATE_ONLY"
