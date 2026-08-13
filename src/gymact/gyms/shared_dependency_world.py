@@ -52,7 +52,9 @@ class SharedDependencyWorldEnvironment:
         self._release_world = release_world
         self._closed = False
         self.world_id = shared.world_id
-        self.environment_id = f"{inner.environment_id}:world:{shared.world_id}"
+        # The underlying environment already has a canonical unique identity.
+        # `world_id` is correlation state, not an authority or IRI namespace.
+        self.environment_id = inner.environment_id
         self.requires_authority = inner.requires_authority
 
     def _ensure_open(self) -> None:
@@ -134,11 +136,10 @@ class SharedDependencyWorldEnvironment:
         self._ensure_open()
         if checkpoint.get("world_id") != self.world_id:
             raise ValueError("CHECKPOINT_WORLD_MISMATCH")
+        if checkpoint.get("actor") != self._inner.actor:
+            raise ValueError("CHECKPOINT_ACTOR_MISMATCH")
         candidate = dict(checkpoint)
         candidate.pop("world_id", None)
-        # A checkpoint is an episode-local recovery artifact. Preserve this
-        # actor's identity even when another actor changed the shared world.
-        candidate["actor"] = self._inner.actor
         with self._shared.lock:
             self._load()
             await self._inner.restore(candidate)
