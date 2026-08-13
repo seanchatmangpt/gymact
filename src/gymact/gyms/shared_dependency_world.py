@@ -52,8 +52,7 @@ class SharedDependencyWorldEnvironment:
         self._release_world = release_world
         self._closed = False
         self.world_id = shared.world_id
-        # The underlying environment already has a canonical unique identity.
-        # `world_id` is correlation state, not an authority or IRI namespace.
+        # world_id is correlation state, not an authority or IRI namespace.
         self.environment_id = inner.environment_id
         self.requires_authority = inner.requires_authority
 
@@ -61,17 +60,25 @@ class SharedDependencyWorldEnvironment:
         if self._closed:
             raise RuntimeError("environment is torn down")
 
-    def _load(self) -> None:
-        self._inner._direct = deepcopy(self._shared.direct)
-        self._inner._effective = deepcopy(self._shared.effective)
-        self._inner._step = self._shared.step
-        self._inner._history = deepcopy(self._shared.history)
+    async def _load(self) -> None:
+        """Load shared state through the Environment recovery contract."""
+        await self._inner.restore(
+            {
+                "actor": self._inner.actor,
+                "step": self._shared.step,
+                "direct": deepcopy(self._shared.direct),
+                "effective": deepcopy(self._shared.effective),
+                "history": deepcopy(self._shared.history),
+            }
+        )
 
-    def _save(self) -> None:
-        self._shared.direct = deepcopy(self._inner._direct)
-        self._shared.effective = deepcopy(self._inner._effective)
-        self._shared.step = self._inner._step
-        self._shared.history = deepcopy(self._inner._history)
+    async def _save(self) -> None:
+        """Persist actor-view state through the Environment checkpoint contract."""
+        checkpoint = await self._inner.checkpoint()
+        self._shared.direct = deepcopy(checkpoint["direct"])
+        self._shared.effective = deepcopy(checkpoint["effective"])
+        self._shared.step = int(checkpoint["step"])
+        self._shared.history = deepcopy(checkpoint["history"])
 
     def capabilities(self) -> tuple[Capability, ...]:
         self._ensure_open()
@@ -80,7 +87,7 @@ class SharedDependencyWorldEnvironment:
     async def observe(self) -> dict[str, Any]:
         self._ensure_open()
         with self._shared.lock:
-            self._load()
+            await self._load()
             observed = await self._inner.observe()
             observed["world_id"] = self.world_id
             return observed
@@ -90,9 +97,9 @@ class SharedDependencyWorldEnvironment:
     ) -> dict[str, Any]:
         self._ensure_open()
         with self._shared.lock:
-            self._load()
+            await self._load()
             effect = await self._inner.actuate(capability, payload)
-            self._save()
+            await self._save()
             effect["world_id"] = self.world_id
             return effect
 
@@ -127,7 +134,7 @@ class SharedDependencyWorldEnvironment:
     async def checkpoint(self) -> dict[str, Any]:
         self._ensure_open()
         with self._shared.lock:
-            self._load()
+            await self._load()
             checkpoint = await self._inner.checkpoint()
             checkpoint["world_id"] = self.world_id
             return checkpoint
@@ -141,9 +148,9 @@ class SharedDependencyWorldEnvironment:
         candidate = dict(checkpoint)
         candidate.pop("world_id", None)
         with self._shared.lock:
-            self._load()
+            await self._load()
             await self._inner.restore(candidate)
-            self._save()
+            await self._save()
 
     async def teardown(self) -> None:
         if self._closed:
