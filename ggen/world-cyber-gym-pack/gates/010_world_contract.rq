@@ -1,0 +1,67 @@
+# MESSAGE: any returned row refuses the World Cyber Range semantic graph.
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX pplan: <http://purl.org/net/p-plan#>
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+PREFIX odrl: <http://www.w3.org/ns/odrl/2/>
+PREFIX dqv: <http://www.w3.org/ns/dqv#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT ?subject ?problem WHERE {
+  {
+    ?subject a ?kind .
+    VALUES ?kind { owl:Class owl:ObjectProperty owl:DatatypeProperty rdfs:Class rdf:Property }
+    FILTER(STRSTARTS(STR(?subject), "urn:gymact:world-cyber:"))
+    BIND("local-tbox-forbidden" AS ?problem)
+  }
+  UNION
+  {
+    ?s ?subject ?o .
+    FILTER(STRSTARTS(STR(?subject), "urn:gymact:world-cyber:"))
+    BIND("local-predicate-forbidden" AS ?problem)
+  }
+  UNION
+  {
+    ?subject a sosa:Procedure .
+    VALUES ?required { dct:identifier dct:title dct:type dct:accessRights dct:subject }
+    FILTER NOT EXISTS { ?subject ?required ?value }
+    BIND(CONCAT("capability-missing:", STR(?required)) AS ?problem)
+  }
+  UNION
+  {
+    ?subject a sosa:Procedure ; dct:type <urn:gymact:world-cyber:family:disturbance> .
+    FILTER NOT EXISTS { ?subject dct:conformsTo <urn:gymact:world-cyber:profile:synthetic-only> }
+    BIND("disturbance-not-synthetic-only" AS ?problem)
+  }
+  UNION
+  {
+    ?subject a prov:Entity, sosa:FeatureOfInterest ; dct:identifier ?id ; dct:type ?domain .
+    FILTER NOT EXISTS { ?domain a skos:Concept ; skos:inScheme <urn:gymact:world-cyber:scheme:domain> }
+    BIND("asset-domain-invalid" AS ?problem)
+  }
+  UNION
+  {
+    ?subject a prov:Entity, sosa:FeatureOfInterest .
+    FILTER NOT EXISTS { ?obs a sosa:Observation ; sosa:hasFeatureOfInterest ?subject ; sosa:hasResult ?status . }
+    BIND("asset-initial-observation-missing" AS ?problem)
+  }
+  UNION
+  {
+    ?subject a prov:Agent ; dct:type ?role .
+    FILTER NOT EXISTS {
+      ?policy a odrl:Set ; odrl:permission ?permission .
+      ?permission odrl:assignee ?subject ; odrl:action odrl:read ; odrl:target ?target .
+    }
+    BIND("actor-read-surface-missing" AS ?problem)
+  }
+  UNION
+  {
+    ?subject a dqv:QualityMeasurement ; dqv:value ?value .
+    FILTER(xsd:integer(?value) < 0)
+    BIND("negative-bound-or-lag" AS ?problem)
+  }
+}
+ORDER BY ?subject ?problem
