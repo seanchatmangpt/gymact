@@ -1,0 +1,57 @@
+# Real source of truth for gymact.gyms.chatman_state_gym's capability catalog. The actual
+# live data (repo lists, git log stats, gh CLI calls) is imperative I/O in the hand-written
+# gymact.gyms.chatman_state module -- this ontology only admits the fixed capability
+# catalog, per cloud-topology-validation-pack's established split ("templates echo, they
+# never synthesize" -- a live git-log result cannot be an ontology literal).
+
+@prefix cs:   <http://seanchatmangpt.github.io/packs/chatman-state#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# ---------------------------------------------------------------------------
+# Vocabulary
+# ---------------------------------------------------------------------------
+
+cs:GymCapability a rdfs:Class ;
+    rdfs:label "GymCapability" ;
+    rdfs:comment "One real GymAct Capability this gym exposes -- iri/title/binding echoed verbatim into the generated CHATMAN_STATE_CAPABILITIES tuple." .
+
+cs:capabilityIri a rdf:Property ;
+    rdfs:domain cs:GymCapability ; rdfs:range xsd:string .
+cs:capabilityTitle a rdf:Property ;
+    rdfs:domain cs:GymCapability ; rdfs:range xsd:string .
+cs:capabilityBinding a rdf:Property ;
+    rdfs:domain cs:GymCapability ; rdfs:range xsd:string ;
+    rdfs:comment "Also the actuate()-dispatch discriminator the template's fixed set of Tera branches switches on." .
+cs:capabilityOrder a rdf:Property ;
+    rdfs:domain cs:GymCapability ; rdfs:range xsd:integer ;
+    rdfs:comment "Rendered tuple/dispatch order -- explicit so it doesn't depend on SPARQL row order being stable across engines." .
+
+# ---------------------------------------------------------------------------
+# Individuals: the 4 real capabilities
+# ---------------------------------------------------------------------------
+
+cs:cap-list-local-repos a cs:GymCapability ;
+    cs:capabilityOrder 1 ;
+    cs:capabilityIri "urn:gymact:chatman-state:capability:list_local_repos" ;
+    cs:capabilityTitle "List the most recently active real local git repos under $HOME, capped and recency-sorted, with the real total found also disclosed (payload: {})" ;
+    cs:capabilityBinding "list_local_repos" .
+
+cs:cap-list-github-repos a cs:GymCapability ;
+    cs:capabilityOrder 2 ;
+    cs:capabilityIri "urn:gymact:chatman-state:capability:list_github_repos" ;
+    cs:capabilityTitle "List the most recently pushed real repos on this GitHub account via a live gh CLI call, capped and recency-sorted, with the real total found also disclosed (payload: {})" ;
+    cs:capabilityBinding "list_github_repos" .
+
+cs:cap-estimated-effort-cost a cs:GymCapability ;
+    cs:capabilityOrder 3 ;
+    cs:capabilityIri "urn:gymact:chatman-state:capability:estimated_effort_cost" ;
+    cs:capabilityTitle "Real engineering_hour cost estimate for one named local repo over a real git log window, via a named, disclosed heuristic -- never a claim of measured wall-clock time (payload: {'repo': str, 'since': str?})" ;
+    cs:capabilityBinding "estimated_effort_cost" .
+
+cs:cap-portfolio-summary a cs:GymCapability ;
+    cs:capabilityOrder 4 ;
+    cs:capabilityIri "urn:gymact:chatman-state:capability:portfolio_summary" ;
+    cs:capabilityTitle "Real local + GitHub repo counts found vs. returned -- the disclosed cap-vs-total honesty check for the other two list capabilities (payload: {})" ;
+    cs:capabilityBinding "portfolio_summary" .

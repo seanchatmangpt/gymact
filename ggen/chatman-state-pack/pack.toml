@@ -1,0 +1,18 @@
+[pack]
+name = "chatman-state-pack"
+version = "0.1.0"
+description = """
+Generates gymact.gyms.chatman_state_gym -- a real gym exposing the operator's own current
+portfolio state (local git repositories on this machine, this GitHub account's own
+repositories, and a cost-heuristic estimate of recent effort per repo) as a queryable
+Environment. Follows cloud-topology-validation-pack's split: the real, dynamic data itself
+(repo lists, git log stats) is imperative I/O against a live filesystem/gh CLI session --
+never ontology content, since it changes on every real call -- so only the fixed capability
+catalog (iri/title/binding/order) is admitted here as cs:GymCapability individuals; the
+template echoes that catalog and writes the actual live-data-fetching logic once, in
+chatman_state.py (hand-written, not generated -- the same I/O-boundary split
+cloud_topology.py established for provider-published cloud data).
+
+Ships one gate (gates/010_capability_validity.rq) admitting the ontology: every
+cs:GymCapability must carry a complete iri/title/binding/order.
+"""

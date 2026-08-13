@@ -1,0 +1,24 @@
+# MESSAGE: every cs:GymCapability individual must carry a complete, renderable
+# iri/title/binding/order before the template can echo it -- a missing field would render as
+# an undefined Tera variable (silent blank) in the generated capability tuple. Any row is a
+# refusal, mirroring cloud-topology-validation-pack's own gate pattern.
+PREFIX cs:  <http://seanchatmangpt.github.io/packs/chatman-state#>
+SELECT ?capability ?violation WHERE {
+  {
+    ?capability a cs:GymCapability .
+    FILTER NOT EXISTS { ?capability cs:capabilityIri ?i }
+    BIND("GymCapability missing required cs:capabilityIri" AS ?violation)
+  } UNION {
+    ?capability a cs:GymCapability .
+    FILTER NOT EXISTS { ?capability cs:capabilityTitle ?t }
+    BIND("GymCapability missing required cs:capabilityTitle" AS ?violation)
+  } UNION {
+    ?capability a cs:GymCapability .
+    FILTER NOT EXISTS { ?capability cs:capabilityBinding ?b }
+    BIND("GymCapability missing required cs:capabilityBinding" AS ?violation)
+  } UNION {
+    ?capability a cs:GymCapability .
+    FILTER NOT EXISTS { ?capability cs:capabilityOrder ?o }
+    BIND("GymCapability missing required cs:capabilityOrder" AS ?violation)
+  }
+}

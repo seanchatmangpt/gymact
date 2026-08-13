@@ -54,6 +54,13 @@ try:  # k8s-resource needs only the bundled snapshot, always available
 except ImportError:  # pragma: no cover -- real UNSUPPORTED environment gate
     _K8S_RESOURCE_AVAILABLE = False
 
+try:  # chatman-state needs the real `gh` CLI on PATH plus a live gh auth session
+    from .gyms.chatman_state_gym import ChatmanStateProvider
+
+    _CHATMAN_STATE_AVAILABLE = True
+except ImportError:  # pragma: no cover -- real UNSUPPORTED environment gate
+    _CHATMAN_STATE_AVAILABLE = False
+
 __all__ = [
     "REPORTS_DIR",
     "GYM_FACTOR",
@@ -176,6 +183,20 @@ async def _k8s_resource_observe_only(gym: GymAct, ep: str) -> None:
     await gym.observe(ep)
 
 
+async def _chatman_state_happy_path(gym: GymAct, ep: str) -> None:
+    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:chatman-state:capability:portfolio_summary", payload={}))
+
+
+async def _chatman_state_with_checkpoint_restore(gym: GymAct, ep: str) -> None:
+    checkpoint = await gym.checkpoint(ep)
+    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:chatman-state:capability:list_local_repos", payload={}))
+    await gym.restore(ep, checkpoint)
+
+
+async def _chatman_state_observe_only(gym: GymAct, ep: str) -> None:
+    await gym.observe(ep)
+
+
 def _build_scenarios() -> dict[str, _GymScenario]:
     scenarios: dict[str, _GymScenario] = {
         "memory": _GymScenario(
@@ -230,6 +251,17 @@ def _build_scenarios() -> dict[str, _GymScenario]:
                 "happy_path": _k8s_resource_happy_path,
                 "with_checkpoint_restore": _k8s_resource_with_checkpoint_restore,
                 "observe_only": _k8s_resource_observe_only,
+            },
+        )
+    if _CHATMAN_STATE_AVAILABLE:
+        scenarios["chatman-state"] = _GymScenario(
+            provider_factory=ChatmanStateProvider,
+            config={"repo_limit": 5},
+            scenario=None,
+            variants={
+                "happy_path": _chatman_state_happy_path,
+                "with_checkpoint_restore": _chatman_state_with_checkpoint_restore,
+                "observe_only": _chatman_state_observe_only,
             },
         )
     return scenarios

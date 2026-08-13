@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from gymact.gyms.chatman_state_gym import ChatmanStateProvider, CHATMAN_STATE_CAPABILITIES
 from gymact.gyms.cloud_topology_gym import CloudTopologyProvider, CLOUD_TOPOLOGY_CAPABILITIES
 from gymact.gyms.cloudsim import CloudSimProvider, CLOUDSIM_CAPABILITIES
 from gymact.gyms.codebase import CodebaseProvider, CODEBASE_CAPABILITIES
@@ -44,6 +45,7 @@ from gymact.gyms.terraform_plan import TerraformPlanProvider, TERRAFORM_PLAN_CAP
 #   - gymact.gyms.vendor_benchmarks.VendorBenchmarkProvider: generic vendor-benchmark dispatch surface, not a single fixed-capability gym -- registered per-vendor benchmark target elsewhere, not as one flat builtin name here.
 
 _BUILTINS = {
+    "chatman-state": (ChatmanStateProvider, CHATMAN_STATE_CAPABILITIES),
     "cloud-topology": (CloudTopologyProvider, CLOUD_TOPOLOGY_CAPABILITIES),
     "cloudsim": (CloudSimProvider, CLOUDSIM_CAPABILITIES),
     "codebase": (CodebaseProvider, CODEBASE_CAPABILITIES),

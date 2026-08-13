@@ -60,6 +60,10 @@ rg:p-k8s-resource a rg:RegisteredProvider ;
     rg:registryKey "k8s-resource" ; rg:providerModule "gymact.gyms.k8s_resource_gym" ; rg:providerClassName "K8sResourceProvider" ;
     rg:capabilitiesModule "gymact.gyms.k8s_resource_gym" ; rg:capabilitiesImportClause "K8S_RESOURCE_CAPABILITIES" ; rg:capabilitiesExpr "K8S_RESOURCE_CAPABILITIES" .
 
+rg:p-chatman-state a rg:RegisteredProvider ;
+    rg:registryKey "chatman-state" ; rg:providerModule "gymact.gyms.chatman_state_gym" ; rg:providerClassName "ChatmanStateProvider" ;
+    rg:capabilitiesModule "gymact.gyms.chatman_state_gym" ; rg:capabilitiesImportClause "CHATMAN_STATE_CAPABILITIES" ; rg:capabilitiesExpr "CHATMAN_STATE_CAPABILITIES" .
+
 rg:p-git a rg:RegisteredProvider ;
     rg:registryKey "git" ; rg:providerModule "gymact.local_providers" ; rg:providerClassName "GitProvider" ;
     rg:capabilitiesModule "gymact.local_providers" ; rg:capabilitiesImportClause "GIT_CAPABILITIES" ; rg:capabilitiesExpr "GIT_CAPABILITIES" .

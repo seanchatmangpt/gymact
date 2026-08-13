@@ -16,6 +16,7 @@ cloud-topology-validation-pack = { path = "cloud-topology-validation-pack" }
 public-ontology-admission-pack = { path = "public-ontology-admission-pack" }
 gymact-registry-pack = { path = "gymact-registry-pack" }
 k8s-resource-catalog-pack = { path = "k8s-resource-catalog-pack" }
+chatman-state-pack = { path = "chatman-state-pack" }
 
 [templates]
 dir = "templates"
