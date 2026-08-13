@@ -24,8 +24,13 @@ def _candidate(episode_id: str) -> dict[str, object]:
     }
 
 
-def test_default_rest_constructs_candidate_but_refuses_raw_do() -> None:
+def test_default_rest_constructs_candidate_but_refuses_raw_do(request) -> None:
     client = TestClient(create_app())
+    # See the matching comment in
+    # `tests/test_core.py::test_fastapi_surface_executes_real_episode_and_contract_routes`
+    # -- an unclosed `TestClient` leaks anyio memory streams, surfaced by
+    # pytest's unraisable-exception plugin against a later, unrelated test.
+    request.addfinalizer(client.close)
     created = client.post(
         "/episodes",
         json={

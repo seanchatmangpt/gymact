@@ -596,10 +596,19 @@ async def test_checkpoint_restore_requires_admitted_authority() -> None:
     assert (await runtime.observe(episode.episode_id)).state == {"value": 1}
 
 
-def test_fastapi_surface_executes_real_episode_and_contract_routes() -> None:
+def test_fastapi_surface_executes_real_episode_and_contract_routes(request) -> None:
     runtime = GymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
     runtime.register_provider(MemoryProvider())
     client = TestClient(create_app(runtime))
+    # `TestClient` wraps a real `httpx` transport holding anyio memory
+    # streams that are never released without an explicit `close()` (this
+    # test doesn't use `with TestClient(...) as client:` because the body
+    # asserts throughout, not just at exit) -- left unclosed, GC finalizes
+    # them later, inside an unrelated test, as a
+    # `PytestUnraisableExceptionWarning` (`ResourceWarning: Unclosed
+    # <MemoryObjectReceiveStream ...>`). `request.addfinalizer` guarantees
+    # this runs even if an assertion below fails.
+    request.addfinalizer(client.close)
     assert client.get("/health").json()["status"] == "ALIVE"
     assert client.get("/profile").json()["conforms"] is True
     assert client.get("/providers").json() == {"providers": ["memory"]}

@@ -83,6 +83,20 @@ def _reason_attribute(event: dict) -> str | None:
 # actuation path, out of scope for a single-gym integration.
 _ACT_REASON_KERNEL_GAP_SUBJECTS = frozenset({"swegym"})
 
+# Named, real exception to check #3 below (`act_events` must be non-empty):
+# `dev-portfolio` (`gymact/gyms/dev_portfolio.py`) is READ-only *by design* --
+# all three of its capabilities are `Consequence.READ` (verified live:
+# `grep -n "Consequence\." src/gymact/gyms/dev_portfolio.py` shows READ on
+# every one, zero DO). A real episode against it therefore never has, and
+# never should have, a real `act` event -- there is no capability capable of
+# producing one. This is not a gap the provider owes evidence for; it is the
+# correct, conformant shape of a read-only domain. Per this file's own
+# xfail(strict=True) precedent above (`_ACT_REASON_KERNEL_GAP_SUBJECTS`),
+# marking this named and explicitly, rather than loosening check #3's
+# assertion for every subject, keeps the assertion strict for every gym that
+# does carry DO capabilities.
+_NO_ACT_CAPABILITY_SUBJECTS = frozenset({"dev-portfolio"})
+
 _LOG_PATHS = _discover_ocel_logs()
 _LOG_PARAMS = [
     pytest.param(
@@ -102,6 +116,21 @@ _LOG_PARAMS = [
             ),
         )
         if log_path.parent.name in _ACT_REASON_KERNEL_GAP_SUBJECTS
+        else (
+            pytest.mark.xfail(
+                reason=(
+                    "READ_ONLY_GYM:NO_ACT_CAPABILITY -- dev-portfolio exposes only "
+                    "Consequence.READ capabilities by design, so a real conformant "
+                    "episode never produces an `act` event. Schema validation and "
+                    "conformant replay both pass for real for this subject; only "
+                    "check #3's act-event requirement (written for DO-capable "
+                    "gyms) does not apply. See the comment above "
+                    "_NO_ACT_CAPABILITY_SUBJECTS."
+                ),
+                strict=True,
+            ),
+        )
+        if log_path.parent.name in _NO_ACT_CAPABILITY_SUBJECTS
         else (),
     )
     for log_path in _LOG_PATHS

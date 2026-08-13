@@ -36,10 +36,15 @@ def test_cli_exposes_complete_canonical_surface() -> None:
     assert required <= commands
 
 
-def test_openapi_makes_dcm_selected_cut_the_canonical_production_do() -> None:
+def test_openapi_makes_dcm_selected_cut_the_canonical_production_do(request) -> None:
     runtime = GymAct()
     runtime.register_provider(MemoryProvider())
     client = TestClient(create_app(runtime))
+    # See the matching comment in
+    # `tests/test_core.py::test_fastapi_surface_executes_real_episode_and_contract_routes`
+    # -- an unclosed `TestClient` leaks anyio memory streams, surfaced by
+    # pytest's unraisable-exception plugin against a later, unrelated test.
+    request.addfinalizer(client.close)
     schema = client.get("/openapi.json").json()
     paths = schema["paths"]
     assert "/candidates" in paths

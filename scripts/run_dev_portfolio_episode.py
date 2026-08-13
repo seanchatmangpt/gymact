@@ -32,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from gymact import GymAct, MaterializationIntent
 from gymact.gyms.dev_portfolio import DevPortfolioProvider
+from gymact.models import Operation
 from gymact.ocel import write_ocel_log
 
 REPORTS_DIR = Path(__file__).parent.parent / "reports" / "ocel"
@@ -79,14 +80,27 @@ async def run() -> None:
 
     episode_id = materialization.episode.episode_id
 
+    # `gym.observe()` returns a plain `Observation`, not a `Receipt` -- READ
+    # capabilities are deliberately receipt-less by kernel design (see
+    # `GymAct.read`'s own docstring: "No Receipt/authority path runs here").
+    # To still record this real read as its own OCEL event, derive a new
+    # receipt from the materialization receipt for shared episode/subject
+    # identity, but override `operation` to `OBSERVE` (not the inherited
+    # `MATERIALIZE`) and drop the materialize-only `idempotency_key` --
+    # otherwise this event is indistinguishable from the real materialize
+    # event that preceded it, which `ConformanceChecker` correctly rejects
+    # as an illegal materialize -> materialize transition (caught by
+    # `tests/test_ocel_standing.py::test_gym_is_actuated_per_its_real_ocel_log`).
     observation = await gym.observe(episode_id)
     receipts.append(
         materialization.receipt.model_copy(
             update={
+                "operation": Operation.OBSERVE,
+                "idempotency_key": None,
                 "reason": (
                     f"observed {len(observation.state.get('local_repos', {}))} local repos, "
                     f"{len(observation.state.get('github_repos', {}))} github repos"
-                )
+                ),
             }
         )
     )

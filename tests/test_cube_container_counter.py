@@ -23,6 +23,8 @@ pair that degraded silently by default, inconsistent with its siblings.
 from __future__ import annotations
 
 import importlib.util
+import shutil
+import subprocess
 
 from gymact.standing import require_standing
 
@@ -33,11 +35,32 @@ except ImportError:
 
 
 def _docker_daemon_reachable() -> bool:
-    if docker is None:
+    # Reachability is checked via a real `docker info` subprocess, not
+    # `docker.from_env().ping()`, because docker-py's own HTTP client opens
+    # its socket eagerly inside `from_env()` (fetching the server API
+    # version before `ping()` is ever called) and leaves it unclosed when
+    # the daemon refuses the connection -- there is no client object to
+    # call `.close()` on in that failure path, since the constructor itself
+    # raised before returning one. That leaked socket surfaces later, at an
+    # unrelated test's setup, as a `PytestUnraisableExceptionWarning` (seen
+    # here failing `test_unknown_action_is_structurally_valid` and
+    # `test_default_verifier_catches_a_dishonest_providers_false_success_claim`
+    # in a full-suite run). A subprocess owns and cleans up its own socket
+    # on exit regardless of connection outcome, so this cannot leak into
+    # this process's garbage collector. Same pattern already used by
+    # `test_swegym_live.py::_docker_available`.
+    if shutil.which("docker") is None:
         return False
     try:
-        return docker.from_env().ping()
-    except Exception:
+        result = subprocess.run(
+            ["docker", "info"],
+            capture_output=True,
+            text=True,
+            timeout=10.0,
+            check=False,
+        )
+        return result.returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
         return False
 
 
