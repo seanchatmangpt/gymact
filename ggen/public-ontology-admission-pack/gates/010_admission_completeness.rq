@@ -1,0 +1,29 @@
+# MESSAGE: every pa:AdmittedClass must carry a complete classIri/className/belongsTo triple, and
+# every pa:PublicAuthority it belongs to must carry a non-empty, real namespaceUri -- a missing
+# field here would let the generated admission.py silently admit an unresolvable or blank class
+# IRI, defeating the whole point of the PUBLIC-ONLY ADMISSION policy (an admitted class must be
+# checkably real). Mirrors cloud-topology-validation-pack's gates/010_provider_policy_validity.rq
+# admission pattern -- any row returned is a refusal.
+PREFIX pa: <http://seanchatmangpt.github.io/packs/public-ontology-admission#>
+SELECT ?subject ?violation WHERE {
+  {
+    ?c a pa:AdmittedClass .
+    FILTER NOT EXISTS { ?c pa:classIri ?iri }
+    BIND(?c AS ?subject) BIND("AdmittedClass missing required pa:classIri" AS ?violation)
+  } UNION {
+    ?c a pa:AdmittedClass .
+    FILTER NOT EXISTS { ?c pa:belongsTo ?a }
+    BIND(?c AS ?subject) BIND("AdmittedClass missing required pa:belongsTo" AS ?violation)
+  } UNION {
+    ?a a pa:PublicAuthority .
+    FILTER NOT EXISTS { ?a pa:namespaceUri ?ns }
+    BIND(?a AS ?subject) BIND("PublicAuthority missing required pa:namespaceUri" AS ?violation)
+  } UNION {
+    ?a a pa:PublicAuthority ; pa:namespaceUri "" .
+    BIND(?a AS ?subject) BIND("PublicAuthority has empty pa:namespaceUri" AS ?violation)
+  } UNION {
+    ?c a pa:AdmittedClass ; pa:classIri ?iri .
+    FILTER(!STRSTARTS(?iri, "http"))
+    BIND(?c AS ?subject) BIND("AdmittedClass classIri is not a real http(s) IRI" AS ?violation)
+  }
+}

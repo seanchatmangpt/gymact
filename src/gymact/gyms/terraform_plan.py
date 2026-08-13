@@ -74,6 +74,7 @@ from typing import Any
 from uuid import uuid4
 
 from gymact.models import Capability, Consequence
+from gymact.verify_replay import terraform_plan_verify_from_log
 
 _MAX_CAPTURED_OUTPUT = 8000
 _DEFAULT_INIT_TIMEOUT_SECONDS = 300.0
@@ -294,16 +295,11 @@ class TerraformPlanEnvironment:
         if expected:
             passed = all(observed.get(key) == value for key, value in expected.items())
         else:
-            init_ok = (
-                observed.get("init_attempted") is True and observed.get("init_returncode") == 0
-            )
-            plan_ran = (
-                observed.get("plan_attempted") is True
-                and observed.get("plan_timed_out") is False
-                and observed.get("plan_returncode") is not None
-                and bool(observed.get("plan_stdout")) is True
-            )
-            passed = init_ok and plan_ran
+            # Shared with gymact.verify_replay.terraform_plan_verify_from_log
+            # so the live path and the log-only replay path (FR4,
+            # docs/jira/v26.8.12/cloud-cert-wbpr-prd.md) can never silently
+            # drift apart into two different verdicts for the same state.
+            passed = terraform_plan_verify_from_log(observed)
         return passed, observed
 
     async def checkpoint(self) -> dict[str, Any]:

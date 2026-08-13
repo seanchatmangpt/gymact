@@ -1,0 +1,17 @@
+[pack]
+name = "public-ontology-admission-pack"
+version = "0.1.0"
+description = """
+Generates gymact.semantics.admission -- the PUBLIC-ONLY ADMISSION policy: a class IRI is
+admitted only if it belongs to a recognized public semantic authority (a real W3C/OMG/OASIS/etc
+namespace), never a locally-invented private class. Two authorities admitted this pass, both
+verified live (WebFetch, this session) against their real specification documents before being
+transcribed: W3C PROV-O (http://www.w3.org/ns/prov#, W3C Recommendation 2013-04-30 -- Entity/
+Activity/Agent) and the W3C Organization Ontology (http://www.w3.org/ns/org#, W3C Recommendation
+2014-01-16 -- Organization/OrganizationalUnit/Role/Membership). Every admitted class carries a
+sourceKind (this pass: NATIVE_ONTOLOGY for both, since PROV-O and ORG are themselves native
+RDF/OWL ontologies, not schema-derived projections) and its real, resolvable namespace IRI.
+gymact and autofde-lab both consume this pack -- generated once, not duplicated by hand in
+either repo. Mirrors cloud-topology-validation-pack's structure and templates conventions
+(force:true outputs, SPARQL-derived rows, a gate refusing structurally incomplete individuals).
+"""

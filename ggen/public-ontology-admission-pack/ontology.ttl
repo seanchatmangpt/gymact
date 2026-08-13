@@ -1,0 +1,679 @@
+# Real source of truth for gymact.semantics.admission's PUBLIC-ONLY ADMISSION policy.
+#
+# GROUNDING METHOD (real, not simulated). Two admission modes coexist, both real:
+#
+#   - HAND-TYPED (SKOS only, below): verified live via WebFetch this session, transcribed by
+#     hand. Kept hand-typed because skos.rdf (RDF/XML) is not yet wired as a ggen ontology
+#     import in either repo -- see autofde-lab's copy of this file / the PRD for the real,
+#     named reason this is deferred, not silently dropped.
+#   - MECHANICALLY INGESTED (PROV-O, ORG, DCAT, DQV, SHACL): the pa:AdmittedClass individuals
+#     below for these five authorities are NOT hand-typed here. They are exported, verbatim,
+#     from a real SPARQL CONSTRUCT query
+#     (autofde-lab's queries/public-ontology-admission/ingest_vendored_classes.rq, same text,
+#     also wired as autofde-lab's native ggen [[inference.rules]]) run against real vendored
+#     bytes fetched via ggen-marketplace/packs/autofde-semantic-registry-pack/sources/
+#     materialize.py. gymact's own ggen.toml schema (frontmatter/[packs]) has no native
+#     CONSTRUCT/[[inference.rules]] mechanism (confirmed: `grep inference
+#     ggen-engine/src/config.rs` -> zero hits) -- autofde-lab is the ggen-native source of
+#     truth for these five authorities' classes; this file receives the same real, mechanically
+#     ingested output, not a second hand-written subset.
+#
+# Authority facts (namespace/spec/publication status) were independently WebFetch-verified
+# this session; the CLASSES themselves are never hand-typed for the five ingested authorities.
+
+@prefix pa:   <http://seanchatmangpt.github.io/packs/public-ontology-admission#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+pa:PublicAuthority a rdfs:Class ;
+  rdfs:comment "One recognized public semantic authority (a real, versioned, resolvable namespace) whose classes may be admitted." .
+pa:AdmittedClass a rdfs:Class ;
+  rdfs:comment "One class IRI, from an admitted authority, that a local individual may be typed by." .
+
+pa:authorityId       a rdf:Property ; rdfs:domain pa:PublicAuthority ; rdfs:range xsd:string .
+pa:namespaceUri       a rdf:Property ; rdfs:domain pa:PublicAuthority ; rdfs:range xsd:string .
+pa:specUri            a rdf:Property ; rdfs:domain pa:PublicAuthority ; rdfs:range xsd:string .
+pa:publicationStatus  a rdf:Property ; rdfs:domain pa:PublicAuthority ; rdfs:range xsd:string .
+pa:sourceKind         a rdf:Property ; rdfs:range xsd:string .
+
+pa:className     a rdf:Property ; rdfs:domain pa:AdmittedClass ; rdfs:range xsd:string .
+pa:classIri       a rdf:Property ; rdfs:domain pa:AdmittedClass ; rdfs:range xsd:string .
+pa:belongsTo      a rdf:Property ; rdfs:domain pa:AdmittedClass ; rdfs:range pa:PublicAuthority .
+pa:classComment   a rdf:Property ; rdfs:domain pa:AdmittedClass ; rdfs:range xsd:string .
+
+pa:authority_provo a pa:PublicAuthority ;
+  pa:authorityId "prov-o" ; pa:namespaceUri "http://www.w3.org/ns/prov#" ;
+  pa:specUri "https://www.w3.org/ns/prov-o" ; pa:publicationStatus "W3C Recommendation 2013-04-30" ;
+  pa:sourceKind "NATIVE_ONTOLOGY" .
+pa:authority_org a pa:PublicAuthority ;
+  pa:authorityId "org" ; pa:namespaceUri "http://www.w3.org/ns/org#" ;
+  pa:specUri "https://www.w3.org/TR/vocab-org/" ; pa:publicationStatus "W3C Recommendation 2014-01-16" ;
+  pa:sourceKind "NATIVE_ONTOLOGY" .
+pa:authority_dcat3 a pa:PublicAuthority ;
+  pa:authorityId "dcat-3" ; pa:namespaceUri "http://www.w3.org/ns/dcat#" ;
+  pa:specUri "https://www.w3.org/TR/vocab-dcat-3/" ; pa:publicationStatus "W3C Recommendation 2024-08-22" ;
+  pa:sourceKind "NATIVE_ONTOLOGY" .
+pa:authority_dqv a pa:PublicAuthority ;
+  pa:authorityId "dqv" ; pa:namespaceUri "http://www.w3.org/ns/dqv#" ;
+  pa:specUri "https://www.w3.org/TR/vocab-dqv/" ; pa:publicationStatus "W3C Working Group Note 2016-12-15" ;
+  pa:sourceKind "NATIVE_ONTOLOGY" .
+pa:authority_shacl a pa:PublicAuthority ;
+  pa:authorityId "shacl" ; pa:namespaceUri "http://www.w3.org/ns/shacl#" ;
+  pa:specUri "https://www.w3.org/TR/shacl/" ; pa:publicationStatus "W3C Recommendation 2017-07-20" ;
+  pa:sourceKind "NATIVE_ONTOLOGY" .
+
+pa:authority_skos a pa:PublicAuthority ;
+  pa:authorityId "skos" ; pa:namespaceUri "http://www.w3.org/2004/02/skos/core#" ;
+  pa:specUri "https://www.w3.org/TR/skos-reference/" ; pa:publicationStatus "W3C Recommendation 2009-08-18" ;
+  pa:sourceKind "NATIVE_ONTOLOGY" .
+
+pa:class_skos_concept a pa:AdmittedClass ;
+  pa:belongsTo pa:authority_skos ; pa:className "Concept" ; pa:classIri "http://www.w3.org/2004/02/skos/core#Concept" ;
+  pa:classComment "an idea or notion; a unit of thought within a knowledge organization system" .
+pa:class_skos_conceptscheme a pa:AdmittedClass ;
+  pa:belongsTo pa:authority_skos ; pa:className "ConceptScheme" ; pa:classIri "http://www.w3.org/2004/02/skos/core#ConceptScheme" ;
+  pa:classComment "an aggregation of one or more SKOS concepts and their semantic relationships" .
+pa:class_skos_collection a pa:AdmittedClass ;
+  pa:belongsTo pa:authority_skos ; pa:className "Collection" ; pa:classIri "http://www.w3.org/2004/02/skos/core#Collection" ;
+  pa:classComment "a labeled and/or ordered group of concepts or nested collections" .
+pa:class_skos_orderedcollection a pa:AdmittedClass ;
+  pa:belongsTo pa:authority_skos ; pa:className "OrderedCollection" ; pa:classIri "http://www.w3.org/2004/02/skos/core#OrderedCollection" ;
+  pa:classComment "a specialized collection that maintains member ordering" .
+
+# ── Mechanically ingested classes (PROV-O/ORG/DCAT-3/DQV/SHACL) ──────────
+# Exported verbatim from autofde-lab's real CONSTRUCT query output -- see header note above.
+
+pa:class_dcat3_catalog a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_dcat3 ;
+    pa:classComment "A curated collection of metadata about resources (e.g., datasets and data services in the context of a data catalog)."@en ;
+    pa:classIri "http://www.w3.org/ns/dcat#Catalog" ;
+    pa:className "Catalog" .
+
+pa:class_dcat3_catalogrecord a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_dcat3 ;
+    pa:classComment "A record in a data catalog, describing the registration of a single dataset or data service."@en ;
+    pa:classIri "http://www.w3.org/ns/dcat#CatalogRecord" ;
+    pa:className "CatalogRecord" .
+
+pa:class_dcat3_dataservice a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_dcat3 ;
+    pa:classComment "A site or end-point providing operations related to the discovery of, access to, or processing functions on, data or related resources."@en ;
+    pa:classIri "http://www.w3.org/ns/dcat#DataService" ;
+    pa:className "DataService" .
+
+pa:class_dcat3_dataset a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_dcat3 ;
+    pa:classComment "A collection of data, published or curated by a single source, and available for access or download in one or more representations."@en ;
+    pa:classIri "http://www.w3.org/ns/dcat#Dataset" ;
+    pa:className "Dataset" .
+
+pa:class_dcat3_datasetseries a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_dcat3 ;
+    pa:classComment "A collection of datasets that are published separately, but share some characteristics that group them."@en ;
+    pa:classIri "http://www.w3.org/ns/dcat#DatasetSeries" ;
+    pa:className "DatasetSeries" .
+
+pa:class_dcat3_distribution a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_dcat3 ;
+    pa:classComment "A specific representation of a dataset. A dataset might be available in multiple serializations that may differ in various ways, including natural language, media-type or format, schematic organization, temporal and spatial resolution, level of detail or profiles (which might specify any or all of the above)."@en ;
+    pa:classIri "http://www.w3.org/ns/dcat#Distribution" ;
+    pa:className "Distribution" .
+
+pa:class_dcat3_relationship a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_dcat3 ;
+    pa:classComment "An association class for attaching additional information to a relationship between DCAT Resources."@en ;
+    pa:classIri "http://www.w3.org/ns/dcat#Relationship" ;
+    pa:className "Relationship" .
+
+pa:class_dcat3_resource a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_dcat3 ;
+    pa:classComment "Resource published or curated by a single agent."@en ;
+    pa:classIri "http://www.w3.org/ns/dcat#Resource" ;
+    pa:className "Resource" .
+
+pa:class_dcat3_role a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_dcat3 ;
+    pa:classComment "A role is the function of a resource or agent with respect to another resource, in the context of resource attribution or resource relationships."@en ;
+    pa:classIri "http://www.w3.org/ns/dcat#Role" ;
+    pa:className "Role" .
+
+pa:class_dqv_category a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_dqv ;
+    pa:classComment "Represents a group of quality dimensions in which a common type of information is used as quality indicator."@en ;
+    pa:classIri "http://www.w3.org/ns/dqv#Category" ;
+    pa:className "Category" .
+
+pa:class_dqv_dimension a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_dqv ;
+    pa:classComment "Represents criteria relevant for assessing quality. Each quality dimension must have one or more metric to measure it. A dimension is linked with a category using the dqv:inCategory property."@en ;
+    pa:classIri "http://www.w3.org/ns/dqv#Dimension" ;
+    pa:className "Dimension" .
+
+pa:class_dqv_metric a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_dqv ;
+    pa:classComment "Represents a standard to measure a quality dimension. An observation (instance of dqv:QualityMeasurement) assigns a value in a given unit to a Metric."@en ;
+    pa:classIri "http://www.w3.org/ns/dqv#Metric" ;
+    pa:className "Metric" .
+
+pa:class_dqv_qualityannotation a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_dqv ;
+    pa:classComment "Represents quality annotations, including ratings, quality certificates or feedback that can be associated to datasets or distributions. Quality annotations must have one oa:motivatedBy statement with an instance of oa:Motivation (and skos:Concept) that reflects a quality assessment purpose. We define this instance as dqv:qualityAssessment."@en ;
+    pa:classIri "http://www.w3.org/ns/dqv#QualityAnnotation" ;
+    pa:className "QualityAnnotation" .
+
+pa:class_dqv_qualitycertificate a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_dqv ;
+    pa:classComment "An annotation that associates a resource (especially, a dataset or a distribution) to another resource (for example, a document) that certifies the resource's quality according to a set of quality assessment rules."@en ;
+    pa:classIri "http://www.w3.org/ns/dqv#QualityCertificate" ;
+    pa:className "QualityCertificate" .
+
+pa:class_dqv_qualitymeasurement a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_dqv ;
+    pa:classComment "Represents the evaluation of a given dataset (or dataset distribution) against a specific quality metric."@en ;
+    pa:classIri "http://www.w3.org/ns/dqv#QualityMeasurement" ;
+    pa:className "QualityMeasurement" .
+
+pa:class_dqv_qualitymeasurementdataset a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_dqv ;
+    pa:classComment "Represents a dataset of quality measurements, evaluations of one or more datasets (or dataset distributions) against specific quality metrics."@en ;
+    pa:classIri "http://www.w3.org/ns/dqv#QualityMeasurementDataset" ;
+    pa:className "QualityMeasurementDataset" .
+
+pa:class_dqv_qualitymetadata a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_dqv ;
+    pa:classComment "Represents quality metadata, it is defined to group quality certificates, policies, measurements and annotations under a named graph."@en ;
+    pa:classIri "http://www.w3.org/ns/dqv#QualityMetadata" ;
+    pa:className "QualityMetadata" .
+
+pa:class_dqv_qualitypolicy a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_dqv ;
+    pa:classComment "Represents a policy or agreement that is chiefly governed by data quality concerns."@en ;
+    pa:classIri "http://www.w3.org/ns/dqv#QualityPolicy" ;
+    pa:className "QualityPolicy" .
+
+pa:class_dqv_userqualityfeedback a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_dqv ;
+    pa:classComment "Represents feedback that users have on the quality of datasets or distributions. Besides dqv:qualityAssessment, which is the motivation required by all quality annotations, one of the predefined instances of oa:Motivation should be indicated as motivation to distinguish among the different kinds of feedback, e.g., classifications, questions."@en ;
+    pa:classIri "http://www.w3.org/ns/dqv#UserQualityFeedback" ;
+    pa:className "UserQualityFeedback" .
+
+pa:class_org_changeevent a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_org ;
+    pa:classComment "Represents an event which resulted in a major change to an organization such as a merger or complete restructuring. It is intended for situations where the resulting organization is sufficient distinct from the original organizations that it has a distinct identity and distinct URI. Extension vocabularies should define sub-classes of this to denote particular categories of event. The instant or interval at which the event occurred should be given by `prov:startAtTime` and `prov:endedAtTime`, a description should be given by `dct:description`. "@en ;
+    pa:classIri "http://www.w3.org/ns/org#ChangeEvent" ;
+    pa:className "ChangeEvent" .
+
+pa:class_org_formalorganization a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_org ;
+    pa:classComment "An Organization which is recognized in the world at large, in particular in legal jurisdictions, with associated rights and responsibilities. Examples include a Corporation, Charity, Government or Church. Note that this is a super class of `gr:BusinessEntity` and it is recommended to use the GoodRelations vocabulary to denote Business classifications such as DUNS or NAICS."@en ;
+    pa:classIri "http://www.w3.org/ns/org#FormalOrganization" ;
+    pa:className "FormalOrganization" .
+
+pa:class_org_membership a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_org ;
+    pa:classComment "Indicates the nature of an Agent's membership of an organization. Represents an n-ary relation between an Agent, an Organization and a Role. It is possible to directly indicate membership, independent of the specific Role, through use of the `org:memberOf` property."@en ;
+    pa:classIri "http://www.w3.org/ns/org#Membership" ;
+    pa:className "Membership" .
+
+pa:class_org_organization a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_org ;
+    pa:classComment "Represents a collection of people organized together into a community or other social, commercial or political structure. The group has some common purpose or reason for existence which goes beyond the set of people belonging to it and can act as an Agent. Organizations are often decomposable into hierarchical structures.  It is recommended that SKOS lexical labels should be used to label the Organization. In particular `skos:prefLabel` for the primary (possibly legally recognized name), `skos:altLabel` for alternative names (trading names, colloquial names) and `skos:notation` to denote a code from a code list. Alternative names: _Collective_ _Body_ _Org_ _Group_"@en ;
+    pa:classIri "http://www.w3.org/ns/org#Organization" ;
+    pa:className "Organization" .
+
+pa:class_org_organizationalcollaboration a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_org ;
+    pa:classComment "A collaboration between two or more Organizations such as a project. It meets the criteria for being an Organization in that it has an identity and defining purpose independent of its particular members but is neither a formally recognized legal entity nor a sub-unit within some larger organization. Might typically have a shorter lifetime than the Organizations within it, but not necessarily. All members are `org:Organization`s rather than individuals and those Organizations can play particular roles within the venture. Alternative names: _Project_ _Venture_  _Endeavour_ _Consortium_ _Endeavour_"@en ;
+    pa:classIri "http://www.w3.org/ns/org#OrganizationalCollaboration" ;
+    pa:className "OrganizationalCollaboration" .
+
+pa:class_org_organizationalunit a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_org ;
+    pa:classComment "An Organization such as a University Support Unit which is part of some larger FormalOrganization and only has full recognition within the context of that FormalOrganization, it is not a Legal Entity in its own right. Units can be large and complex containing other Units and even FormalOrganizations. Alternative names: _OU_ _Unit_ _Department_"@en ;
+    pa:classIri "http://www.w3.org/ns/org#OrganizationalUnit" ;
+    pa:className "OrganizationalUnit" .
+
+pa:class_org_post a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_org ;
+    pa:classComment "A Post represents some position within an organization that exists independently of the person or persons filling it. Posts may be used to represent situations where a person is a member of an organization ex officio (for example the Secretary of State for Scotland is part of UK Cabinet by virtue of being Secretary of State for Scotland, not as an individual person). A post can be held by multiple people and hence can be treated as a organization in its own right."@en ;
+    pa:classIri "http://www.w3.org/ns/org#Post" ;
+    pa:className "Post" .
+
+pa:class_org_role a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_org ;
+    pa:classComment "Denotes a role that a Person or other Agent can take in an organization. Instances of this class describe the abstract role; to denote a specific instance of a person playing that role in a specific organization use an instance of `org:Membership`. It is common for roles to be arranged in some taxonomic structure and we use SKOS to represent that. The normal SKOS lexical properties should be used when labelling the Role. Additional descriptive properties for the Role, such as a Salary band, may be added by extension vocabularies."@en ;
+    pa:classIri "http://www.w3.org/ns/org#Role" ;
+    pa:className "Role" .
+
+pa:class_org_site a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_org ;
+    pa:classComment "An office or other premise at which the organization is located. Many organizations are spread across multiple sites and many sites will host multiple locations. In most cases a Site will be a physical location. However, we don't exclude the possibility of non-physical sites such as a virtual office with an associated post box and phone reception service. Extensions may provide subclasses to denote particular types of site."@en ;
+    pa:classIri "http://www.w3.org/ns/org#Site" ;
+    pa:className "Site" .
+
+pa:class_prov-o_activity a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "" ;
+    pa:classIri "http://www.w3.org/ns/prov#Activity" ;
+    pa:className "Activity" .
+
+pa:class_prov-o_activityinfluence a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "ActivityInfluence provides additional descriptions of an Activity's binary influence upon any other kind of resource. Instances of ActivityInfluence use the prov:activity property to cite the influencing Activity."@en,
+        "It is not recommended that the type ActivityInfluence be asserted without also asserting one of its more specific subclasses."@en ;
+    pa:classIri "http://www.w3.org/ns/prov#ActivityInfluence" ;
+    pa:className "ActivityInfluence" .
+
+pa:class_prov-o_agent a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "" ;
+    pa:classIri "http://www.w3.org/ns/prov#Agent" ;
+    pa:className "Agent" .
+
+pa:class_prov-o_agentinfluence a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "AgentInfluence provides additional descriptions of an Agent's binary influence upon any other kind of resource. Instances of AgentInfluence use the prov:agent property to cite the influencing Agent."@en,
+        "It is not recommended that the type AgentInfluence be asserted without also asserting one of its more specific subclasses."@en ;
+    pa:classIri "http://www.w3.org/ns/prov#AgentInfluence" ;
+    pa:className "AgentInfluence" .
+
+pa:class_prov-o_association a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "An instance of prov:Association provides additional descriptions about the binary prov:wasAssociatedWith relation from an prov:Activity to some prov:Agent that had some responsiblity for it. For example, :baking prov:wasAssociatedWith :baker; prov:qualifiedAssociation [ a prov:Association; prov:agent :baker; :foo :bar ]."@en ;
+    pa:classIri "http://www.w3.org/ns/prov#Association" ;
+    pa:className "Association" .
+
+pa:class_prov-o_attribution a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "An instance of prov:Attribution provides additional descriptions about the binary prov:wasAttributedTo relation from an prov:Entity to some prov:Agent that had some responsible for it. For example, :cake prov:wasAttributedTo :baker; prov:qualifiedAttribution [ a prov:Attribution; prov:entity :baker; :foo :bar ]."@en ;
+    pa:classIri "http://www.w3.org/ns/prov#Attribution" ;
+    pa:className "Attribution" .
+
+pa:class_prov-o_bundle a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "Note that there are kinds of bundles (e.g. handwritten letters, audio recordings, etc.) that are not expressed in PROV-O, but can be still be described by PROV-O."@en ;
+    pa:classIri "http://www.w3.org/ns/prov#Bundle" ;
+    pa:className "Bundle" .
+
+pa:class_prov-o_collection a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "" ;
+    pa:classIri "http://www.w3.org/ns/prov#Collection" ;
+    pa:className "Collection" .
+
+pa:class_prov-o_communication a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "An instance of prov:Communication provides additional descriptions about the binary prov:wasInformedBy relation from an informed prov:Activity to the prov:Activity that informed it. For example, :you_jumping_off_bridge prov:wasInformedBy :everyone_else_jumping_off_bridge; prov:qualifiedCommunication [ a prov:Communication; prov:activity :everyone_else_jumping_off_bridge; :foo :bar ]."@en ;
+    pa:classIri "http://www.w3.org/ns/prov#Communication" ;
+    pa:className "Communication" .
+
+pa:class_prov-o_delegation a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "An instance of prov:Delegation provides additional descriptions about the binary prov:actedOnBehalfOf relation from a performing prov:Agent to some prov:Agent for whom it was performed. For example, :mixing prov:wasAssociatedWith :toddler . :toddler prov:actedOnBehalfOf :mother; prov:qualifiedDelegation [ a prov:Delegation; prov:entity :mother; :foo :bar ]."@en ;
+    pa:classIri "http://www.w3.org/ns/prov#Delegation" ;
+    pa:className "Delegation" .
+
+pa:class_prov-o_derivation a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "An instance of prov:Derivation provides additional descriptions about the binary prov:wasDerivedFrom relation from some derived prov:Entity to another prov:Entity from which it was derived. For example, :chewed_bubble_gum prov:wasDerivedFrom :unwrapped_bubble_gum; prov:qualifiedDerivation [ a prov:Derivation; prov:entity :unwrapped_bubble_gum; :foo :bar ]."@en,
+        "The more specific forms of prov:Derivation (i.e., prov:Revision, prov:Quotation, prov:PrimarySource) should be asserted if they apply."@en ;
+    pa:classIri "http://www.w3.org/ns/prov#Derivation" ;
+    pa:className "Derivation" .
+
+pa:class_prov-o_emptycollection a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "" ;
+    pa:classIri "http://www.w3.org/ns/prov#EmptyCollection" ;
+    pa:className "EmptyCollection" .
+
+pa:class_prov-o_end a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "An instance of prov:End provides additional descriptions about the binary prov:wasEndedBy relation from some ended prov:Activity to an prov:Entity that ended it. For example, :ball_game prov:wasEndedBy :buzzer; prov:qualifiedEnd [ a prov:End; prov:entity :buzzer; :foo :bar; prov:atTime '2012-03-09T08:05:08-05:00'^^xsd:dateTime ]."@en ;
+    pa:classIri "http://www.w3.org/ns/prov#End" ;
+    pa:className "End" .
+
+pa:class_prov-o_entity a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "" ;
+    pa:classIri "http://www.w3.org/ns/prov#Entity" ;
+    pa:className "Entity" .
+
+pa:class_prov-o_entityinfluence a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "EntityInfluence provides additional descriptions of an Entity's binary influence upon any other kind of resource. Instances of EntityInfluence use the prov:entity property to cite the influencing Entity."@en,
+        "It is not recommended that the type EntityInfluence be asserted without also asserting one of its more specific subclasses."@en ;
+    pa:classIri "http://www.w3.org/ns/prov#EntityInfluence" ;
+    pa:className "EntityInfluence" .
+
+pa:class_prov-o_generation a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "An instance of prov:Generation provides additional descriptions about the binary prov:wasGeneratedBy relation from a generated prov:Entity to the prov:Activity that generated it. For example, :cake prov:wasGeneratedBy :baking; prov:qualifiedGeneration [ a prov:Generation; prov:activity :baking; :foo :bar ]."@en ;
+    pa:classIri "http://www.w3.org/ns/prov#Generation" ;
+    pa:className "Generation" .
+
+pa:class_prov-o_influence a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "An instance of prov:Influence provides additional descriptions about the binary prov:wasInfluencedBy relation from some influenced Activity, Entity, or Agent to the influencing Activity, Entity, or Agent. For example, :stomach_ache prov:wasInfluencedBy :spoon; prov:qualifiedInfluence [ a prov:Influence; prov:entity :spoon; :foo :bar ] . Because prov:Influence is a broad relation, the more specific relations (Communication, Delegation, End, etc.) should be used when applicable."@en,
+        "Because prov:Influence is a broad relation, its most specific subclasses (e.g. prov:Communication, prov:Delegation, prov:End, prov:Revision, etc.) should be used when applicable."@en ;
+    pa:classIri "http://www.w3.org/ns/prov#Influence" ;
+    pa:className "Influence" .
+
+pa:class_prov-o_instantaneousevent a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "An instantaneous event, or event for short, happens in the world and marks a change in the world, in its activities and in its entities. The term 'event' is commonly used in process algebra with a similar meaning. Events represent communications or interactions; they are assumed to be atomic and instantaneous."@en ;
+    pa:classIri "http://www.w3.org/ns/prov#InstantaneousEvent" ;
+    pa:className "InstantaneousEvent" .
+
+pa:class_prov-o_invalidation a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "An instance of prov:Invalidation provides additional descriptions about the binary prov:wasInvalidatedBy relation from an invalidated prov:Entity to the prov:Activity that invalidated it. For example, :uncracked_egg prov:wasInvalidatedBy :baking; prov:qualifiedInvalidation [ a prov:Invalidation; prov:activity :baking; :foo :bar ]."@en ;
+    pa:classIri "http://www.w3.org/ns/prov#Invalidation" ;
+    pa:className "Invalidation" .
+
+pa:class_prov-o_location a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "" ;
+    pa:classIri "http://www.w3.org/ns/prov#Location" ;
+    pa:className "Location" .
+
+pa:class_prov-o_organization a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "" ;
+    pa:classIri "http://www.w3.org/ns/prov#Organization" ;
+    pa:className "Organization" .
+
+pa:class_prov-o_person a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "" ;
+    pa:classIri "http://www.w3.org/ns/prov#Person" ;
+    pa:className "Person" .
+
+pa:class_prov-o_plan a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "There exist no prescriptive requirement on the nature of plans, their representation, the actions or steps they consist of, or their intended goals. Since plans may evolve over time, it may become necessary to track their provenance, so plans themselves are entities. Representing the plan explicitly in the provenance can be useful for various tasks: for example, to validate the execution as represented in the provenance record, to manage expectation failures, or to provide explanations."@en ;
+    pa:classIri "http://www.w3.org/ns/prov#Plan" ;
+    pa:className "Plan" .
+
+pa:class_prov-o_primarysource a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "An instance of prov:PrimarySource provides additional descriptions about the binary prov:hadPrimarySource relation from some secondary prov:Entity to an earlier, primary prov:Entity. For example, :blog prov:hadPrimarySource :newsArticle; prov:qualifiedPrimarySource [ a prov:PrimarySource; prov:entity :newsArticle; :foo :bar ] ."@en ;
+    pa:classIri "http://www.w3.org/ns/prov#PrimarySource" ;
+    pa:className "PrimarySource" .
+
+pa:class_prov-o_quotation a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "An instance of prov:Quotation provides additional descriptions about the binary prov:wasQuotedFrom relation from some taken prov:Entity from an earlier, larger prov:Entity. For example, :here_is_looking_at_you_kid prov:wasQuotedFrom :casablanca_script; prov:qualifiedQuotation [ a prov:Quotation; prov:entity :casablanca_script; :foo :bar ]."@en ;
+    pa:classIri "http://www.w3.org/ns/prov#Quotation" ;
+    pa:className "Quotation" .
+
+pa:class_prov-o_revision a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "An instance of prov:Revision provides additional descriptions about the binary prov:wasRevisionOf relation from some newer prov:Entity to an earlier prov:Entity. For example, :draft_2 prov:wasRevisionOf :draft_1; prov:qualifiedRevision [ a prov:Revision; prov:entity :draft_1; :foo :bar ]."@en ;
+    pa:classIri "http://www.w3.org/ns/prov#Revision" ;
+    pa:className "Revision" .
+
+pa:class_prov-o_role a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "" ;
+    pa:classIri "http://www.w3.org/ns/prov#Role" ;
+    pa:className "Role" .
+
+pa:class_prov-o_softwareagent a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "" ;
+    pa:classIri "http://www.w3.org/ns/prov#SoftwareAgent" ;
+    pa:className "SoftwareAgent" .
+
+pa:class_prov-o_start a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "An instance of prov:Start provides additional descriptions about the binary prov:wasStartedBy relation from some started prov:Activity to an prov:Entity that started it. For example, :foot_race prov:wasStartedBy :bang; prov:qualifiedStart [ a prov:Start; prov:entity :bang; :foo :bar; prov:atTime '2012-03-09T08:05:08-05:00'^^xsd:dateTime ] ."@en ;
+    pa:classIri "http://www.w3.org/ns/prov#Start" ;
+    pa:className "Start" .
+
+pa:class_prov-o_usage a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_provo ;
+    pa:classComment "An instance of prov:Usage provides additional descriptions about the binary prov:used relation from some prov:Activity to an prov:Entity that it used. For example, :keynote prov:used :podium; prov:qualifiedUsage [ a prov:Usage; prov:entity :podium; :foo :bar ]."@en ;
+    pa:classIri "http://www.w3.org/ns/prov#Usage" ;
+    pa:className "Usage" .
+
+pa:class_shacl_abstractresult a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The base class of validation results, typically not instantiated directly."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#AbstractResult" ;
+    pa:className "AbstractResult" .
+
+pa:class_shacl_constraintcomponent a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of constraint components."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#ConstraintComponent" ;
+    pa:className "ConstraintComponent" .
+
+pa:class_shacl_function a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of SHACL functions."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#Function" ;
+    pa:className "Function" .
+
+pa:class_shacl_jsconstraint a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of constraints backed by a JavaScript function."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#JSConstraint" ;
+    pa:className "JSConstraint" .
+
+pa:class_shacl_jsexecutable a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "Abstract base class of resources that declare an executable JavaScript."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#JSExecutable" ;
+    pa:className "JSExecutable" .
+
+pa:class_shacl_jsfunction a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of SHACL functions that execute a JavaScript function when called."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#JSFunction" ;
+    pa:className "JSFunction" .
+
+pa:class_shacl_jslibrary a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "Represents a JavaScript library, typically identified by one or more URLs of files to include."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#JSLibrary" ;
+    pa:className "JSLibrary" .
+
+pa:class_shacl_jsrule a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of SHACL rules expressed using JavaScript."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#JSRule" ;
+    pa:className "JSRule" .
+
+pa:class_shacl_jstarget a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of targets that are based on JavaScript functions."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#JSTarget" ;
+    pa:className "JSTarget" .
+
+pa:class_shacl_jstargettype a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The (meta) class for parameterizable targets that are based on JavaScript functions."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#JSTargetType" ;
+    pa:className "JSTargetType" .
+
+pa:class_shacl_jsvalidator a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "A SHACL validator based on JavaScript. This can be used to declare SHACL constraint components that perform JavaScript-based validation when used."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#JSValidator" ;
+    pa:className "JSValidator" .
+
+pa:class_shacl_nodekind a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of all node kinds, including sh:BlankNode, sh:IRI, sh:Literal or the combinations of these: sh:BlankNodeOrIRI, sh:BlankNodeOrLiteral, sh:IRIOrLiteral."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#NodeKind" ;
+    pa:className "NodeKind" .
+
+pa:class_shacl_nodeshape a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "A node shape is a shape that specifies constraint that need to be met with respect to focus nodes."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#NodeShape" ;
+    pa:className "NodeShape" .
+
+pa:class_shacl_parameter a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of parameter declarations, consisting of a path predicate and (possibly) information about allowed value type, cardinality and other characteristics."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#Parameter" ;
+    pa:className "Parameter" .
+
+pa:class_shacl_parameterizable a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "Superclass of components that can take parameters, especially functions and constraint components."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#Parameterizable" ;
+    pa:className "Parameterizable" .
+
+pa:class_shacl_prefixdeclaration a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of prefix declarations, consisting of pairs of a prefix with a namespace."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#PrefixDeclaration" ;
+    pa:className "PrefixDeclaration" .
+
+pa:class_shacl_propertygroup a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "Instances of this class represent groups of property shapes that belong together."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#PropertyGroup" ;
+    pa:className "PropertyGroup" .
+
+pa:class_shacl_propertyshape a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "A property shape is a shape that specifies constraints on the values of a focus node for a given property or path."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#PropertyShape" ;
+    pa:className "PropertyShape" .
+
+pa:class_shacl_resultannotation a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "A class of result annotations, which define the rules to derive the values of a given annotation property as extra values for a validation result."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#ResultAnnotation" ;
+    pa:className "ResultAnnotation" .
+
+pa:class_shacl_rule a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of SHACL rules. Never instantiated directly."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#Rule" ;
+    pa:className "Rule" .
+
+pa:class_shacl_severity a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of validation result severity levels, including violation and warning levels."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#Severity" ;
+    pa:className "Severity" .
+
+pa:class_shacl_shape a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "A shape is a collection of constraints that may be targeted for certain nodes."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#Shape" ;
+    pa:className "Shape" .
+
+pa:class_shacl_sparqlaskexecutable a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of SPARQL executables that are based on an ASK query."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#SPARQLAskExecutable" ;
+    pa:className "SPARQLAskExecutable" .
+
+pa:class_shacl_sparqlaskvalidator a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of validators based on SPARQL ASK queries. The queries are evaluated for each value node and are supposed to return true if the given node conforms."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#SPARQLAskValidator" ;
+    pa:className "SPARQLAskValidator" .
+
+pa:class_shacl_sparqlconstraint a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of constraints based on SPARQL SELECT queries."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#SPARQLConstraint" ;
+    pa:className "SPARQLConstraint" .
+
+pa:class_shacl_sparqlconstructexecutable a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of SPARQL executables that are based on a CONSTRUCT query."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#SPARQLConstructExecutable" ;
+    pa:className "SPARQLConstructExecutable" .
+
+pa:class_shacl_sparqlexecutable a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of resources that encapsulate a SPARQL query."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#SPARQLExecutable" ;
+    pa:className "SPARQLExecutable" .
+
+pa:class_shacl_sparqlfunction a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "A function backed by a SPARQL query - either ASK or SELECT."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#SPARQLFunction" ;
+    pa:className "SPARQLFunction" .
+
+pa:class_shacl_sparqlrule a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of SHACL rules based on SPARQL CONSTRUCT queries."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#SPARQLRule" ;
+    pa:className "SPARQLRule" .
+
+pa:class_shacl_sparqlselectexecutable a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of SPARQL executables based on a SELECT query."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#SPARQLSelectExecutable" ;
+    pa:className "SPARQLSelectExecutable" .
+
+pa:class_shacl_sparqlselectvalidator a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of validators based on SPARQL SELECT queries. The queries are evaluated for each focus node and are supposed to produce bindings for all focus nodes that do not conform."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#SPARQLSelectValidator" ;
+    pa:className "SPARQLSelectValidator" .
+
+pa:class_shacl_sparqltarget a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of targets that are based on SPARQL queries."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#SPARQLTarget" ;
+    pa:className "SPARQLTarget" .
+
+pa:class_shacl_sparqltargettype a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The (meta) class for parameterizable targets that are based on SPARQL queries."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#SPARQLTargetType" ;
+    pa:className "SPARQLTargetType" .
+
+pa:class_shacl_sparqlupdateexecutable a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of SPARQL executables based on a SPARQL UPDATE."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#SPARQLUpdateExecutable" ;
+    pa:className "SPARQLUpdateExecutable" .
+
+pa:class_shacl_target a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The base class of targets such as those based on SPARQL queries."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#Target" ;
+    pa:className "Target" .
+
+pa:class_shacl_targettype a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The (meta) class for parameterizable targets.	Instances of this are instantiated as values of the sh:target property."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#TargetType" ;
+    pa:className "TargetType" .
+
+pa:class_shacl_triplerule a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "" ;
+    pa:classIri "http://www.w3.org/ns/shacl#TripleRule" ;
+    pa:className "TripleRule" .
+
+pa:class_shacl_validationreport a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of SHACL validation reports."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#ValidationReport" ;
+    pa:className "ValidationReport" .
+
+pa:class_shacl_validationresult a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of validation results."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#ValidationResult" ;
+    pa:className "ValidationResult" .
+
+pa:class_shacl_validator a pa:AdmittedClass ;
+    pa:belongsTo pa:authority_shacl ;
+    pa:classComment "The class of validators, which provide instructions on how to process a constraint definition. This class serves as base class for the SPARQL-based validators and other possible implementations."@en ;
+    pa:classIri "http://www.w3.org/ns/shacl#Validator" ;
+    pa:className "Validator" .
+

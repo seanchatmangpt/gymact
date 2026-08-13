@@ -84,10 +84,19 @@ def _local_name(iri: str) -> str:
 
 
 def _sort_key(identifier: str) -> tuple[int, str]:
+    """Topological sort key: an identifier's numeric segment (e.g.
+    `togaf.10.phase-a` -> `10`) IS the real precondition ordering
+    `_preconditions_for` relies on. Identifiers with no numeric segment at
+    all (e.g. bare `sosa:Procedure` tasks' plain `dct:identifier` values
+    like "read"/"do" -- see `load_procedures`) carry no real ordering
+    signal, so they all collapse to the SAME key `(0, "")` -- not a
+    per-identifier fallback -- so that no spurious precondition ordering
+    is invented between tasks whose real ontology facts state no order at
+    all. Real numeric-identifier tasks never hit this branch."""
     for part in identifier.split("."):
         if part.isdigit():
             return (int(part), identifier)
-    return (0, identifier)
+    return (0, "")
 
 
 @dataclass(frozen=True)
@@ -133,6 +142,54 @@ def load_tasks(pack_dir: Path) -> tuple[OntologyTask, ...]:
             )
         )
     return tuple(sorted(tasks, key=lambda t: _sort_key(t.identifier)))
+
+
+_PROCEDURE_QUERY = """
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+PREFIX dct: <http://purl.org/dc/terms/>
+SELECT ?procedure ?identifier ?type WHERE {
+  ?procedure a sosa:Procedure ;
+             dct:identifier ?identifier ;
+             dct:type ?type .
+}
+"""
+
+
+def load_procedures(pack_dir: Path) -> tuple[OntologyTask, ...]:
+    """Extract bare `sosa:Procedure` capabilities from a pack that has no
+    `pplan:Plan` task wrapper at all (e.g. `protocol-gym-pack`'s real
+    ontology.ttl: two `sosa:Procedure` capabilities, `dct:identifier`
+    naming each, `dct:type` giving READ/DO consequence, no `dct:subject`
+    artifact-establishment model whatsoever -- a genuinely different real
+    shape from `load_tasks`'s `pplan:Plan` tasks, confirmed by direct read
+    before writing this function, not assumed).
+
+    Honest modeling choice, stated rather than papered over: a bare
+    `sosa:Procedure` has no natural topological order (no numeric
+    `dct:identifier` prefix the way `pplan:Plan` tasks have) and no
+    `dct:subject` artifact to establish. This function therefore treats
+    each procedure as establishing exactly one fact -- its own IRI -- with
+    NO preconditions on any other procedure: `_sort_key` collapses every
+    non-numeric identifier to the same key `(0, "")`, so
+    `OntologyDrivenEnvironment._preconditions_for`'s strictly-earlier-tasks
+    chain admits every bare-procedure task from the start -- there is no
+    real, present ordering constraint in this pack's own facts, and
+    inventing one (e.g. alphabetical) would misrepresent them.
+    `family` is the `dct:type` object's local name (`read`/`do`), reusing
+    the same authority-tier/reset-family mechanism `load_tasks`-derived
+    tasks already use."""
+    graph = _load_pack_graph(pack_dir)
+    tasks: list[OntologyTask] = []
+    for procedure, identifier, type_ in graph.query(_PROCEDURE_QUERY):
+        tasks.append(
+            OntologyTask(
+                task_iri=str(procedure),
+                identifier=str(identifier),
+                subjects=(str(procedure),),
+                family=_local_name(str(type_)),
+            )
+        )
+    return tuple(sorted(tasks, key=lambda t: t.identifier))
 
 
 def capability_iri(*, provider_name: str, task: OntologyTask) -> str:
@@ -336,6 +393,115 @@ class OntologyDrivenProvider:
             reset_task_families=self._reset_task_families,
             reset_target_families=self._reset_target_families,
             requires_authority=requires_authority,
+        )
+
+
+_ODRL_PERMISSION_QUERY = """
+PREFIX odrl: <http://www.w3.org/ns/odrl/2/>
+SELECT ?permission ?target ?assigner ?assignee WHERE {
+  { ?permission a odrl:Permission . }
+  UNION
+  { ?holder odrl:permission ?permission . ?permission a odrl:Permission . }
+  OPTIONAL { ?permission odrl:target ?target . }
+  OPTIONAL { ?permission odrl:assigner ?assigner . }
+  OPTIONAL { ?permission odrl:assignee ?assignee . }
+}
+"""
+
+
+@dataclass(frozen=True)
+class OdrlPermission:
+    permission_iri: str | None
+    target: str | None
+    assigner: str | None
+    assignee: str | None
+
+
+def load_odrl_permissions(pack_dir: Path) -> tuple[OdrlPermission, ...]:
+    """Extract every real `odrl:Permission` fact from a pack's ontology --
+    both bare (a subject directly typed `odrl:Permission`, e.g. `multicloud-
+    gym-pack`'s IAM operations) and nested under an `odrl:Policy`/`odrl:Set`
+    via `odrl:permission` (e.g. `career-gym-pack`'s consent policy,
+    `togaf-gym-pack`'s governance permission). Confirmed against all three
+    real shapes present in this repo's own packs before writing this query."""
+    graph = _load_pack_graph(pack_dir)
+    permissions: list[OdrlPermission] = []
+    seen: set[str] = set()
+    for row in graph.query(_ODRL_PERMISSION_QUERY):
+        permission_iri = str(row.permission) if row.permission is not None else None
+        key = permission_iri or f"blank:{len(permissions)}"
+        if key in seen:
+            continue
+        seen.add(key)
+        permissions.append(
+            OdrlPermission(
+                permission_iri=permission_iri,
+                target=str(row.target) if row.target is not None else None,
+                assigner=str(row.assigner) if row.assigner is not None else None,
+                assignee=str(row.assignee) if row.assignee is not None else None,
+            )
+        )
+    return tuple(permissions)
+
+
+class OdrlAuthorityResolver:
+    """Authority decisions driven by real, already-declared `odrl:Permission`
+    facts in a pack's ontology -- not Python-side configuration
+    (`TieredAuthorityResolver`'s family-name sets), not newly-constructed
+    ODRL instances. Reads data this repo's own packs already admit.
+
+    Honest, real scope (three shapes found across this repo's packs, not
+    every conceivable ODRL pattern):
+
+    - A permission with a real `odrl:assigner`: admits a request only when
+      `request.authority_ref` equals that assigner's IRI verbatim -- the
+      caller must present the identity ODRL names as authorized to grant
+      this permission (`togaf-gym-pack`'s real governance permission has
+      `odrl:assigner <urn:gymact:togaf:org:architecture-board>`).
+    - A permission with a real `odrl:target` matching `request.capability_ref`
+      and no assigner: admits any request carrying a non-`None`
+      `authority_ref` (`career-gym-pack`'s consent policy has no assigner --
+      the permission's mere existence for this exact target is the grant).
+    - A capability IRI itself directly typed `odrl:Permission` (no separate
+      `odrl:target`, `multicloud-gym-pack`'s real shape): the same
+      any-non-`None`-ref admission as above, matched by `permission_iri`
+      instead of `target`.
+
+    No permission at all matching `request.capability_ref` -> refused with
+    `ODRL_NO_PERMISSION_FOR_CAPABILITY`, regardless of ref."""
+
+    def __init__(self, permissions: tuple[OdrlPermission, ...]) -> None:
+        self._permissions = permissions
+
+    async def authorize(self, request: AuthorityRequest) -> AuthorityDecision:
+        ref = request.authority_ref
+        matching = [
+            p
+            for p in self._permissions
+            if p.target == request.capability_ref
+            or p.permission_iri == request.capability_ref
+        ]
+        if not matching:
+            return AuthorityDecision(
+                admitted=False, reason="ODRL_NO_PERMISSION_FOR_CAPABILITY"
+            )
+        if ref is None:
+            return AuthorityDecision(admitted=False, reason="LIVE_AUTHORITY_REQUIRED")
+        assigners = {p.assigner for p in matching if p.assigner is not None}
+        if assigners:
+            if ref not in assigners:
+                return AuthorityDecision(
+                    admitted=False, reason="ODRL_ASSIGNER_MISMATCH"
+                )
+            return AuthorityDecision(
+                admitted=True,
+                reason="ODRL_ASSIGNER_ADMITTED",
+                evidence_ref=f"urn:gymact:authority-decision:odrl:{ref}",
+            )
+        return AuthorityDecision(
+            admitted=True,
+            reason="ODRL_PERMISSION_ADMITTED",
+            evidence_ref=f"urn:gymact:authority-decision:odrl:{ref}",
         )
 
 
