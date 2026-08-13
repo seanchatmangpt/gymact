@@ -37,6 +37,32 @@ A gym's pytest suite passing is a claim about `request accepted`, not `objective
 
 Do not claim release standing for the current project version until exact-head CI has executed the semantic/runtime tests, Python matrix, package/wheel installation, docs build, lock validation, and container build required by the release contract.
 
+## Git workflow
+
+Documented explicitly per the 2026-08-13 dev_portfolio FMEA/RCA close-out, because the prior
+state (silence in this file, a convention that only ever existed as one-off commit-message
+prose -- "per repo git-workflow rule" in `af6d46d`/`ad96ef3`) let a real branch-per-task/PR
+convention decay without any agent session being able to discover it.
+
+- **Current, real convention: direct commits to `main` are acceptable for solo/agent
+  iteration.** The last several dozen commits on `main` are direct, non-merge commits, and
+  this repo is private on a plan tier where `gh api repos/.../branches/main/protection`
+  returns 403 (branch protection cannot be purchased/configured here) -- there is no
+  technical enforcement mechanism for a stricter policy even if one were declared, so
+  declaring one without a backstop would just decay again the same way the PR-era
+  convention did.
+- Branch-per-task tooling still exists and is fine to use whenever isolation is wanted
+  (parallel agent work, a change you want reviewed before merging, an experiment you might
+  discard): `agent/*`, `feat/*` branch naming and `git worktree` are both already in active
+  use elsewhere in this repo's history (`git branch -a`). Use them when isolation earns its
+  cost; do not treat direct-to-`main` as forbidden when it doesn't.
+- Per this project's fix-forward discipline, never rewrite or force-move already-committed,
+  evidenced work off `main` retroactively just to match a workflow preference decided later.
+- If a stricter policy (e.g. mandatory branch-per-task) is ever actually wanted, state it
+  here explicitly and back it with a local pre-commit hook that warns (not blocks, matching
+  this repo's no-destructive-ops ethos) when `HEAD == main` -- GitHub-side branch protection
+  is not available on this plan tier, so any enforcement has to be local.
+
 ## Change discipline
 
 - Keep the generic kernel smaller than benchmark-specific integrations.

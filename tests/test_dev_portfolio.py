@@ -136,7 +136,12 @@ async def test_verify_fails_on_a_wrong_expectation_real_negative_case(tmp_path) 
 
 async def test_teardown_is_idempotent() -> None:
     gym = await _gym()
-    m = await gym.materialize(MaterializationIntent(provider="dev_portfolio", config={}))
+    m = await gym.materialize(
+        MaterializationIntent(
+            provider="dev_portfolio",
+            config={"allow_empty_portfolio": True},
+        )
+    )
     episode_id = m.episode.episode_id
     env = gym._episodes[episode_id].environment
     await gym.teardown(episode_id)

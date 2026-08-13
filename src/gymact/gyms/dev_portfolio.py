@@ -51,15 +51,43 @@ def _bounded_repo_path(allowed: dict[str, Path], name: str) -> Path:
     return allowed[name]
 
 
-def _run(args: list[str], *, cwd: Path | None = None, timeout: float = _DEFAULT_TIMEOUT_SECONDS) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        args,
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        check=False,
-    )
+class _RunFailure:
+    """Sentinel standing in for a `CompletedProcess` when the subprocess
+    itself never completed (timeout, missing binary, OS-level failure) --
+    distinct from `check=False`'s "ran, but exited nonzero" case. Carries
+    `returncode=None` (never a real exit code) plus a human-readable
+    `stderr` so callers can tell "failed to run" from "ran and said no"."""
+
+    __slots__ = ("returncode", "stdout", "stderr")
+
+    def __init__(self, stderr: str) -> None:
+        self.returncode: int | None = None
+        self.stdout = ""
+        self.stderr = stderr
+
+
+def _run(
+    args: list[str], *, cwd: Path | None = None, timeout: float = _DEFAULT_TIMEOUT_SECONDS
+) -> subprocess.CompletedProcess[str] | _RunFailure:
+    """Real subprocess call, hardened against the two failure modes that
+    used to crash the whole episode (FMEA RPN 240): a hung process
+    (`subprocess.TimeoutExpired`) and a process that never started at all
+    (`OSError`, e.g. binary vanished between `shutil.which` and exec).
+    Both are reported as a `_RunFailure` (never raised) so one bad repo
+    degrades that repo's snapshot instead of aborting every other repo's."""
+    try:
+        return subprocess.run(
+            args,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return _RunFailure(f"timeout after {timeout}s running {' '.join(args)!r}")
+    except OSError as exc:
+        return _RunFailure(f"OSError running {' '.join(args)!r}: {exc}")
 
 
 def _snapshot_one_local_repo(path: Path) -> dict[str, Any]:
@@ -69,6 +97,12 @@ def _snapshot_one_local_repo(path: Path) -> dict[str, Any]:
     branch = _run(["git", "branch", "--show-current"], cwd=path)
     log = _run(["git", "log", "-1", "--format=%h %cI %s"], cwd=path)
     dirty_lines = [line for line in status.stdout.splitlines() if line.strip()]
+    # FMEA RPN 210: a detached HEAD / corrupted `.git` / any subprocess
+    # failure on branch/log used to collapse into the same blank fields as
+    # "genuinely clean repo" -- now every one of the three calls' returncode
+    # is captured, and `git_error` names the failure explicitly rather than
+    # leaving it to be inferred from empty strings.
+    git_error = any(r.returncode != 0 for r in (status, branch, log))
     return {
         "path": str(path),
         "exists": True,
@@ -76,7 +110,22 @@ def _snapshot_one_local_repo(path: Path) -> dict[str, Any]:
         "dirty_files": len(dirty_lines),
         "last_commit": log.stdout.strip(),
         "git_status_returncode": status.returncode,
+        "git_branch_returncode": branch.returncode,
+        "git_log_returncode": log.returncode,
+        "git_error": git_error,
     }
+
+
+def _json_or_none(result: subprocess.CompletedProcess[str] | _RunFailure) -> Any | None:
+    """Parse `gh`'s stdout as JSON, or `None` on any failure -- a failed/
+    empty/malformed subprocess result must never be indistinguishable from
+    a real, successfully-parsed empty JSON array (FMEA RPN 336, RPN 84)."""
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
 
 
 def _snapshot_one_github_repo(owner_slash_name: str) -> dict[str, Any]:
@@ -103,23 +152,37 @@ def _snapshot_one_github_repo(owner_slash_name: str) -> dict[str, Any]:
         timeout=_GH_TIMEOUT_SECONDS,
     )
 
-    open_prs = json.loads(pr_result.stdout) if pr_result.returncode == 0 and pr_result.stdout.strip() else []
+    # FMEA RPN 336: a failed `pr_result`/`branches_result` call used to
+    # collapse to the same `0`/`[]` shape as "repo genuinely has none" --
+    # now both mirror the `open_issues_ok`/`None` pattern the issues branch
+    # already used, rather than silently reporting a false "zero backlog".
+    open_prs = _json_or_none(pr_result)
+    open_prs_ok = open_prs is not None
     open_issues_ok = issue_result.returncode == 0
-    open_issues = json.loads(issue_result.stdout) if open_issues_ok and issue_result.stdout.strip() else []
-    all_branches = [b for b in branches_result.stdout.splitlines() if b.strip()] if branches_result.returncode == 0 else []
-    pr_heads = {pr["headRefName"] for pr in open_prs}
-    stale_branches = [b for b in all_branches if b not in pr_heads and b not in ("main", "master")]
+    open_issues = _json_or_none(issue_result) if open_issues_ok else None
+    branches_ok = branches_result.returncode == 0
+    all_branches = (
+        [b for b in branches_result.stdout.splitlines() if b.strip()] if branches_ok else None
+    )
+    pr_heads = {pr["headRefName"] for pr in (open_prs or [])}
+    stale_branches = (
+        [b for b in all_branches if b not in pr_heads and b not in ("main", "master")]
+        if all_branches is not None
+        else None
+    )
 
     return {
         "repo": owner_slash_name,
-        "open_pr_count": len(open_prs),
-        "open_prs": open_prs,
+        "open_pr_count": len(open_prs) if open_prs_ok else None,
+        "open_prs": open_prs if open_prs_ok else [],
+        "pr_query_error": None if open_prs_ok else pr_result.stderr,
         "issues_disabled": not open_issues_ok and "disabled" in issue_result.stderr.lower(),
-        "open_issue_count": len(open_issues) if open_issues_ok else None,
-        "open_issues": open_issues,
-        "branch_count": len(all_branches),
-        "stale_branch_count": len(stale_branches),
-        "stale_branches": stale_branches,
+        "open_issue_count": len(open_issues) if open_issues_ok and open_issues is not None else None,
+        "open_issues": open_issues if open_issues else [],
+        "branch_count": len(all_branches) if branches_ok else None,
+        "stale_branch_count": len(stale_branches) if stale_branches is not None else None,
+        "stale_branches": stale_branches if stale_branches is not None else [],
+        "branch_query_error": None if branches_ok else branches_result.stderr,
     }
 
 
@@ -248,6 +311,16 @@ class DevPortfolioEnvironment:
         return await self.observe()
 
     async def restore(self, checkpoint: dict[str, Any]) -> None:
+        """Intentionally causally inert for every protocol method that
+        matters (FMEA #5): `verify()`/`observe()` always re-run real
+        `git`/`gh` calls rather than consulting `self._last_snapshot`, by
+        design, because every read in this domain is idempotent -- there is
+        no external state for a restored checkpoint to roll back to (see
+        `verify()`'s own docstring). This assignment exists only so a
+        caller reading `._last_snapshot` directly after `restore()` sees
+        the checkpoint value; it is not consulted by any Environment
+        protocol method, and should not be read as implying that calling
+        `restore()` changes what `observe()`/`verify()` report next."""
         self._ensure_open()
         self._last_snapshot = checkpoint or None
 
@@ -287,6 +360,24 @@ class DevPortfolioProvider:
         requires_authority = config.get("requires_authority", False)
         if not isinstance(requires_authority, bool):
             raise TypeError("config.requires_authority must be a boolean")
+
+        # FMEA RPN 192: a typo'd config key (e.g. `locale_repos`) or an
+        # omitted `local_repos`/`github_repos` used to silently resolve to
+        # an empty portfolio that materializes, "succeeds", and produces a
+        # 0-event OCEL log with no signal anything was wrong -- a
+        # Decorative Completion per this repo's own coding-agent-mistakes
+        # taxonomy. Refuse it explicitly instead. `allow_empty_portfolio`
+        # is an explicit, named escape hatch for the one legitimate empty
+        # case (`test_teardown_is_idempotent`-style teardown-only tests),
+        # so refusal stays the default without making the empty case
+        # unreachable for callers who genuinely want it.
+        if not local_repos and not github_repos and not config.get("allow_empty_portfolio", False):
+            raise ValueError(
+                "dev_portfolio: config.local_repos and config.github_repos both "
+                "resolved empty -- refusing to materialize a portfolio that "
+                "would silently observe nothing. Check for a typo'd config key, "
+                "or pass allow_empty_portfolio=True if this is intentional."
+            )
 
         return DevPortfolioEnvironment(
             local_repos=local_repos,
