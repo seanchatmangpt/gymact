@@ -17,9 +17,14 @@ containment discipline, just applied to "which repos may be inspected" rather
 than "which paths inside one worktree"). GitHub repos are read the same way
 this session's own ad-hoc cross-repo audit did it -- real `gh pr list`/`gh
 issue list`/`gh api .../branches` subprocess calls -- now behind the stable
-`Environment` contract instead of a one-off script. This is a new pattern for
-gymact: nothing else in `gymact/src/gymact/gyms/*.py` calls the GitHub API or
-`gh` CLI today (confirmed by grep before writing this file).
+`Environment` contract instead of a one-off script. This is not the first
+gymact gym to call the GitHub API or `gh` CLI: `chatman_state.py` (backing
+`chatman_state_gym.py`) already does, via its own `discover_github_repos`/
+`count_github_repos` real `gh` subprocess calls. The two gyms differ in
+shape, not in whether they touch GitHub: `dev_portfolio.py` is a bounded,
+explicit-allowlist PR/issue/branch backlog view over named repos supplied by
+config; `chatman_state.py` is an open-ended, recency-sorted discovery scan
+over an owner's repos, with no caller-supplied allowlist.
 """
 
 from __future__ import annotations

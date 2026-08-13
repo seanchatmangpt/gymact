@@ -61,6 +61,13 @@ try:  # chatman-state needs the real `gh` CLI on PATH plus a live gh auth sessio
 except ImportError:  # pragma: no cover -- real UNSUPPORTED environment gate
     _CHATMAN_STATE_AVAILABLE = False
 
+try:  # dev-portfolio needs only stdlib + the real local `git` binary (github_repos optional)
+    from .gyms.dev_portfolio import DevPortfolioProvider
+
+    _DEV_PORTFOLIO_AVAILABLE = True
+except ImportError:  # pragma: no cover -- real UNSUPPORTED environment gate
+    _DEV_PORTFOLIO_AVAILABLE = False
+
 __all__ = [
     "REPORTS_DIR",
     "GYM_FACTOR",
@@ -197,6 +204,20 @@ async def _chatman_state_observe_only(gym: GymAct, ep: str) -> None:
     await gym.observe(ep)
 
 
+async def _dev_portfolio_happy_path(gym: GymAct, ep: str) -> None:
+    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:dev-portfolio:capability:snapshot_full_portfolio", payload={}))
+
+
+async def _dev_portfolio_with_checkpoint_restore(gym: GymAct, ep: str) -> None:
+    checkpoint = await gym.checkpoint(ep)
+    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:dev-portfolio:capability:snapshot_local_state", payload={}))
+    await gym.restore(ep, checkpoint)
+
+
+async def _dev_portfolio_observe_only(gym: GymAct, ep: str) -> None:
+    await gym.observe(ep)
+
+
 def _build_scenarios() -> dict[str, _GymScenario]:
     scenarios: dict[str, _GymScenario] = {
         "memory": _GymScenario(
@@ -262,6 +283,21 @@ def _build_scenarios() -> dict[str, _GymScenario]:
                 "happy_path": _chatman_state_happy_path,
                 "with_checkpoint_restore": _chatman_state_with_checkpoint_restore,
                 "observe_only": _chatman_state_observe_only,
+            },
+        )
+    if _DEV_PORTFOLIO_AVAILABLE:
+        # Real, non-fabricated config: this checkout's own gymact repo root
+        # -- mirrors `_chatman_state_happy_path`'s use of the real, live
+        # local machine state rather than a synthetic fixture.
+        _gymact_repo_root = Path(__file__).resolve().parent.parent.parent
+        scenarios["dev-portfolio"] = _GymScenario(
+            provider_factory=DevPortfolioProvider,
+            config={"local_repos": {"gymact": str(_gymact_repo_root)}},
+            scenario=None,
+            variants={
+                "happy_path": _dev_portfolio_happy_path,
+                "with_checkpoint_restore": _dev_portfolio_with_checkpoint_restore,
+                "observe_only": _dev_portfolio_observe_only,
             },
         )
     return scenarios

@@ -64,6 +64,10 @@ rg:p-chatman-state a rg:RegisteredProvider ;
     rg:registryKey "chatman-state" ; rg:providerModule "gymact.gyms.chatman_state_gym" ; rg:providerClassName "ChatmanStateProvider" ;
     rg:capabilitiesModule "gymact.gyms.chatman_state_gym" ; rg:capabilitiesImportClause "CHATMAN_STATE_CAPABILITIES" ; rg:capabilitiesExpr "CHATMAN_STATE_CAPABILITIES" .
 
+rg:p-dev-portfolio a rg:RegisteredProvider ;
+    rg:registryKey "dev-portfolio" ; rg:providerModule "gymact.gyms.dev_portfolio" ; rg:providerClassName "DevPortfolioProvider" ;
+    rg:capabilitiesModule "gymact.gyms.dev_portfolio" ; rg:capabilitiesImportClause "DEV_PORTFOLIO_CAPABILITIES" ; rg:capabilitiesExpr "DEV_PORTFOLIO_CAPABILITIES" .
+
 rg:p-git a rg:RegisteredProvider ;
     rg:registryKey "git" ; rg:providerModule "gymact.local_providers" ; rg:providerClassName "GitProvider" ;
     rg:capabilitiesModule "gymact.local_providers" ; rg:capabilitiesImportClause "GIT_CAPABILITIES" ; rg:capabilitiesExpr "GIT_CAPABILITIES" .
