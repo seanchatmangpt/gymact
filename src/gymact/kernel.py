@@ -532,6 +532,40 @@ class GymAct:
         async with state.lock:
             return await self._observe_unlocked(state)
 
+    async def read(
+        self, episode_id: str, capability_ref: str, payload: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """Invoke one `Consequence.READ` capability directly against the
+        environment -- the real, symmetric counterpart to `act()`'s
+        DO-only law (`READ_CAPABILITY_IS_NOT_ACTUATION`,
+        `tests/test_core.py::test_read_capability_cannot_be_smuggled_through_actuation`).
+        `act()` refuses a READ capability; `read()` refuses a DO one, with
+        the mirror-image reason `DO_CAPABILITY_IS_NOT_A_READ`.
+
+        No `Receipt`/authority path runs here -- an information query
+        against an environment's own already-materialized, real state
+        carries no consequence to gate or record, matching every real
+        READ-only gym's own `requires_authority=False` convention. This
+        is exactly what every gym-level test in this repo already does by
+        calling `environment.actuate(capability, payload)` directly
+        (see `tests/test_cloud_topology.py`); `read()` gives callers that
+        don't hold the environment object directly (e.g.
+        `gymact.dspy_agent.GymActReActAgent`) the same real access without
+        reaching into `GymAct`'s private episode state.
+        """
+        state = self._state(episode_id)
+        capabilities = {item.iri: item for item in state.environment.capabilities()}
+        capability = capabilities.get(capability_ref)
+        if capability is None:
+            raise ValueError(f"unknown capability: {capability_ref}")
+        if capability.consequence is not Consequence.READ:
+            raise ValueError("DO_CAPABILITY_IS_NOT_A_READ")
+        return await self._bounded(
+            self.limits.actuate_timeout_s,
+            "READ_TIMEOUT",
+            lambda: state.environment.actuate(capability, payload or {}),
+        )
+
     async def act(self, intent: ActuationIntent) -> ActuationResult:
         """Attempt one semantic actuation with authority, limits and replay gates."""
         state = self._state(intent.episode_id)

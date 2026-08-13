@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from copy import deepcopy
 from pathlib import Path
 
 import anyio
@@ -304,6 +305,12 @@ class ReadCapabilityEnvironment(MemoryEnvironment):
             ),
         )
 
+    async def actuate(self, capability, payload):  # type: ignore[no-untyped-def]
+        self._ensure_open()
+        if capability.binding == "read":
+            return {"capability": capability.iri, "result": deepcopy(self._state)}
+        return await super().actuate(capability, payload)
+
 
 class ReadCapabilityProvider(MemoryProvider):
     name = "read-capability"
@@ -330,6 +337,51 @@ async def test_read_capability_cannot_be_smuggled_through_actuation() -> None:
     )
     assert actuation.standing == Standing.REFUSED
     assert actuation.receipt.reason == "READ_CAPABILITY_IS_NOT_ACTUATION"
+
+
+@pytest.mark.asyncio
+async def test_read_invokes_a_real_read_capability_directly() -> None:
+    """`read()` is the real, symmetric counterpart to `act()`'s DO-only
+    law -- it must actually reach `ReadCapabilityEnvironment.actuate()`,
+    not just refuse to raise."""
+    runtime = GymAct()
+    runtime.register_provider(ReadCapabilityProvider())
+    result = await runtime.materialize(
+        MaterializationIntent(provider="read-capability", idempotency_key="read-direct")
+    )
+    assert result.episode is not None
+    outcome = await runtime.read(result.episode.episode_id, "urn:test:capability:read", {})
+    assert outcome["capability"] == "urn:test:capability:read"
+
+
+@pytest.mark.asyncio
+async def test_do_capability_cannot_be_smuggled_through_read() -> None:
+    """Mirror-image refusal: a real DO capability must not be reachable via
+    `read()` either -- `read()` is READ-only by the same law `act()` is
+    DO-only by."""
+    runtime = GymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
+    runtime.register_provider(MemoryProvider())
+    result = await runtime.materialize(
+        MaterializationIntent(provider="memory", authority_ref=AUTHORITY)
+    )
+    assert result.episode is not None
+    do_capability = next(
+        c for c in runtime.capabilities(result.episode.episode_id) if c.consequence is Consequence.DO
+    )
+    with pytest.raises(ValueError, match="DO_CAPABILITY_IS_NOT_A_READ"):
+        await runtime.read(result.episode.episode_id, do_capability.iri, {})
+
+
+@pytest.mark.asyncio
+async def test_read_unknown_capability_raises() -> None:
+    runtime = GymAct()
+    runtime.register_provider(ReadCapabilityProvider())
+    result = await runtime.materialize(
+        MaterializationIntent(provider="read-capability", idempotency_key="read-unknown")
+    )
+    assert result.episode is not None
+    with pytest.raises(ValueError, match="unknown capability"):
+        await runtime.read(result.episode.episode_id, "urn:test:capability:not-real", {})
 
 
 @pytest.mark.asyncio

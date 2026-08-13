@@ -310,6 +310,15 @@ class GymActReActAgent:
             if capability.consequence is Consequence.DO
         )
 
+    def _read_capabilities(self) -> tuple[Capability, ...]:
+        from gymact.models import Consequence
+
+        return tuple(
+            capability
+            for capability in self._gym.capabilities(self._episode_id)
+            if capability.consequence is Consequence.READ
+        )
+
     def _build_tools(self, steps: list[AgentStep]) -> list[Any]:
         dspy = self._dspy
 
@@ -382,6 +391,42 @@ class GymActReActAgent:
                 return actuate_tool
 
             tools.append(dspy.Tool(make_actuator(capability), name=capability.binding))
+
+        for capability in self._read_capabilities():
+
+            def make_reader(cap: Capability) -> Any:
+                async def read_tool(payload: dict[str, Any] | None = None) -> dict[str, Any]:
+                    # A READ capability is an information query, not an
+                    # actuation -- it goes through `GymAct.read()`, the
+                    # real, symmetric counterpart to `act()`'s DO-only law
+                    # (never `gym.act()`, which refuses every READ
+                    # capability with `READ_CAPABILITY_IS_NOT_ACTUATION`).
+                    # No grounding check on the way in: a READ call is
+                    # what *produces* grounded facts, not something that
+                    # must already reference one.
+                    outcome = await self._gym.read(self._episode_id, cap.iri, payload or {})
+                    # Whatever this READ call surfaced becomes real,
+                    # citable grounding for subsequent DO tool calls --
+                    # the same widening `observe_tool` already performs,
+                    # just sourced from a capability result instead of
+                    # `environment.observe()`.
+                    self._grounded_facts = self._grounded_facts | frozenset(
+                        _collect_string_leaves(outcome)
+                    )
+                    steps.append(
+                        AgentStep(tool_name=cap.binding, payload=payload or {}, result=outcome)
+                    )
+                    return outcome
+
+                read_tool.__doc__ = (
+                    f"{cap.title} (real READ capability {cap.iri!r}). "
+                    "A pure information query against this episode's real, "
+                    "already-materialized state -- never mutates anything, "
+                    "carries no consequence, requires no authority."
+                )
+                return read_tool
+
+            tools.append(dspy.Tool(make_reader(capability), name=capability.binding))
 
         return tools
 

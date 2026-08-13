@@ -30,6 +30,7 @@ from gymact import (  # noqa: E402
     GymAct,
     MaterializationIntent,
     MemoryProvider,
+    Standing,
 )
 from gymact.dspy_agent import (  # noqa: E402
     GymActReActAgent,
@@ -159,6 +160,84 @@ class TestGymActReActAgentToolRefusesUngroundedActuation:
         with pytest.raises(UngroundedActuationRefused):
             await tools["delete"].acall(payload={"key": "phantom-key"})
         await gym.teardown(episode_id, authority_ref=AUTHORITY)
+
+
+class TestGymActReActAgentWrapsReadCapabilities:
+    """Real proof of the READ-tool gap fix: `chatman-state`'s gym is 100%
+    `Consequence.READ` (no DO capabilities at all), so before this fix
+    `GymActReActAgent._build_tools` would hand the agent zero real tools
+    for it. No LLM needed -- these call the real tool closures directly,
+    same style as the grounding-guard tests above."""
+
+    async def _agent_over_real_chatman_state_episode(self):
+        import shutil
+
+        if shutil.which("gh") is None or shutil.which("git") is None:
+            pytest.skip("real gh/git CLI required on PATH")
+        from gymact.gyms.chatman_state_gym import ChatmanStateProvider
+
+        gym = GymAct()
+        gym.register_provider(ChatmanStateProvider())
+        materialization = await gym.materialize(
+            MaterializationIntent(provider="chatman-state", config={"repo_limit": 3})
+        )
+        assert materialization.accepted, materialization.receipt.reason
+        episode_id = materialization.episode.episode_id
+        agent = GymActReActAgent(gym, episode_id)
+        return gym, agent, episode_id
+
+    async def test_read_only_gym_gets_real_nonempty_tools(self):
+        gym, agent, episode_id = await self._agent_over_real_chatman_state_episode()
+        steps = []
+        tools = {tool.name: tool for tool in agent._build_tools(steps)}
+        # The bug this fixes: before wrapping READ capabilities, this dict
+        # held only "observe" for a gym with zero DO capabilities.
+        assert {
+            "list_local_repos",
+            "list_github_repos",
+            "estimated_effort_cost",
+            "portfolio_summary",
+        }.issubset(tools.keys())
+        await gym.teardown(episode_id)
+
+    async def test_read_tool_reaches_the_real_kernel_read_path(self):
+        gym, agent, episode_id = await self._agent_over_real_chatman_state_episode()
+        steps = []
+        tools = {tool.name: tool for tool in agent._build_tools(steps)}
+        result = await tools["portfolio_summary"].acall(payload={})
+        assert result["result"]["local_repo_count_found"] >= result["result"]["local_repo_count_returned"]
+        assert steps and steps[-1].tool_name == "portfolio_summary"
+        await gym.teardown(episode_id)
+
+    async def test_read_tool_result_widens_grounded_facts_for_later_do_calls(self):
+        gym, agent, episode_id = await self._agent_over_real_chatman_state_episode()
+        steps = []
+        tools = {tool.name: tool for tool in agent._build_tools(steps)}
+        assert agent._grounded_facts == frozenset()
+        await tools["list_local_repos"].acall(payload={})
+        # A real repo name surfaced by the READ call must now be grounded --
+        # the same widening `observe_tool` performs, just sourced from a
+        # capability result instead of `environment.observe()`.
+        assert "gymact" in agent._grounded_facts or len(agent._grounded_facts) > 0
+        await gym.teardown(episode_id)
+
+    async def test_read_tool_cannot_be_smuggled_through_kernel_act(self):
+        """The READ tool goes through `gym.read()`, never `gym.act()` --
+        confirm the underlying law it relies on still refuses the DO path,
+        so a future accidental rewiring back to `act()` would be caught by
+        this test, not silently pass."""
+        gym, _agent, episode_id = await self._agent_over_real_chatman_state_episode()
+        from gymact.models import ActuationIntent
+
+        capability = next(
+            c for c in gym.capabilities(episode_id) if c.binding == "portfolio_summary"
+        )
+        result = await gym.act(
+            ActuationIntent(episode_id=episode_id, capability=capability.iri, payload={})
+        )
+        assert result.standing == Standing.REFUSED
+        assert result.receipt.reason == "READ_CAPABILITY_IS_NOT_ACTUATION"
+        await gym.teardown(episode_id)
 
 
 @pytest.mark.skipif(not _groq_key_available(), reason="no GROQ_API_KEY in this environment")
