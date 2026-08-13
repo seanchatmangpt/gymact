@@ -590,11 +590,32 @@ class SregymEnvironment:
                 mcp_ready = _tcp_port_reachable("127.0.0.1", mcp_server_port, timeout=1.0)
             return api_ready and mcp_ready
 
-        poll_until(
-            _startup_check,
-            timeout_seconds=startup_timeout_seconds,
-            interval_seconds=_POLL_INTERVAL_SECONDS,
-        )
+        try:
+            poll_until(
+                _startup_check,
+                timeout_seconds=startup_timeout_seconds,
+                interval_seconds=_POLL_INTERVAL_SECONDS,
+            )
+        except Exception:
+            # Real defect found by an adversarial gap-hunt this session,
+            # fixed forward: `poll_until` (per its own documented contract
+            # in `polling.py`) propagates a raising `condition()` --
+            # including `_startup_check`'s own `RuntimeError` for the
+            # process-exited-during-startup case above -- immediately,
+            # unwinding straight out of this `try` without ever reaching
+            # the timeout branch below. That skipped cleanup entirely on
+            # this specific path: `self._log_fh` stayed open (a real,
+            # live-reproduced `ResourceWarning: unclosed file` this
+            # session) and `_kill_process_group` was never called, so the
+            # already-spawned subprocess (and its `kubectl port-forward`
+            # grandchild -- the exact orphan class `_kill_process_group`'s
+            # own docstring already documents fixing on the *timeout*
+            # path) relied only on its own crash to die, not an explicit
+            # kill. Same cleanup as the timeout branch, on every raising
+            # startup-check failure, not just the timeout one.
+            self._kill_process_group(10.0)
+            self._log_fh.close()
+            raise
         if not (api_ready and mcp_ready):
             # Real defect found and fixed forward this session: this used
             # to be a bare `self._process.kill()` -- only the direct
