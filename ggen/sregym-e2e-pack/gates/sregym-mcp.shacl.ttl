@@ -1,5 +1,4 @@
 @prefix sh: <http://www.w3.org/ns/shacl#> .
-@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix dct: <http://purl.org/dc/terms/> .
 @prefix sr: <urn:gymact:sregym:mcp:> .
@@ -13,6 +12,7 @@ sr:CapabilityShape a sh:NodeShape ;
     sh:sparql [
         sh:message "DO capabilities must require authority" ;
         sh:select """
+            PREFIX sr: <urn:gymact:sregym:mcp:>
             SELECT $this WHERE {
               $this sr:consequence sr:DO ; sr:authorityRequired false .
             }
@@ -21,6 +21,7 @@ sr:CapabilityShape a sh:NodeShape ;
     sh:sparql [
         sh:message "READ capabilities must not require execution authority" ;
         sh:select """
+            PREFIX sr: <urn:gymact:sregym:mcp:>
             SELECT $this WHERE {
               $this sr:consequence sr:READ ; sr:authorityRequired true .
             }
@@ -34,6 +35,7 @@ sr:ProgramShape a sh:NodeShape ;
     sh:sparql [
         sh:message "Every deterministic program must target an admitted corpus subject" ;
         sh:select """
+            PREFIX sr: <urn:gymact:sregym:mcp:>
             SELECT $this WHERE {
               $this sr:problemId ?problem .
               FILTER NOT EXISTS { ?subject a sr:CorpusSubject ; sr:problemId ?problem }
