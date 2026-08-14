@@ -8,6 +8,8 @@ ONTOLOGY = ROOT / "ggen" / "protocol-gym-pack" / "ontology.ttl"
 SHAPES = ROOT / "ggen" / "protocol-gym-pack" / "gates" / "mcp-surface.shacl.ttl"
 
 MCP = Namespace("urn:gymact:mcp:")
+ODRL = Namespace("http://www.w3.org/ns/odrl/2/")
+PROV = Namespace("http://www.w3.org/ns/prov#")
 
 EXPECTED_2026_07_28_CORE_METHODS = {
     "completion/complete",
@@ -69,7 +71,7 @@ def test_protocol_ontology_conforms_to_its_admission_shapes() -> None:
     assert conforms, report
 
 
-def test_modern_core_method_closure_is_exactly_the_official_2026_07_28_surface() -> None:
+def test_modern_core_method_closure_matches_official_2026_07_28_surface() -> None:
     graph = _graph()
     revision = MCP["revision-2026-07-28"]
     current_methods = {
@@ -80,10 +82,12 @@ def test_modern_core_method_closure_is_exactly_the_official_2026_07_28_surface()
 
     assert _method_names(graph, current_methods) == EXPECTED_2026_07_28_CORE_METHODS
     assert len(current_methods) == 21
-    assert all(graph.value(subject, MCP.lifecycle) != MCP.Removed for subject in current_methods)
+    assert all(
+        graph.value(subject, MCP.lifecycle) != MCP.Removed for subject in current_methods
+    )
 
 
-def test_modern_mrtr_embeds_server_intent_instead_of_restoring_server_to_client_rpc() -> None:
+def test_modern_mrtr_embeds_server_intent_instead_of_server_to_client_rpc() -> None:
     graph = _graph()
     embedded = {
         subject
@@ -92,14 +96,17 @@ def test_modern_mrtr_embeds_server_intent_instead_of_restoring_server_to_client_
     }
 
     assert _method_names(graph, embedded) == EXPECTED_EMBEDDED_MRTR_KINDS
-    assert all(graph.value(subject, MCP.messageKind) == MCP.EmbeddedInputRequest for subject in embedded)
+    assert all(
+        graph.value(subject, MCP.messageKind) == MCP.EmbeddedInputRequest
+        for subject in embedded
+    )
     assert all(
         graph.value(subject, MCP.direction) == MCP.ServerIntentClientResponse
         for subject in embedded
     )
 
 
-def test_removed_legacy_methods_are_compatibility_only_and_outside_modern_closure() -> None:
+def test_removed_legacy_methods_are_compatibility_only_and_outside_modern() -> None:
     graph = _graph()
     revision = MCP["revision-2026-07-28"]
     removed = {
@@ -134,7 +141,10 @@ def test_tasks_are_a_negotiated_extension_not_a_core_method_leak() -> None:
 
     assert _method_names(graph, extension_methods) == EXPECTED_TASK_EXTENSION_METHODS
     assert str(graph.value(tasks, MCP.extensionId)) == "io.modelcontextprotocol/tasks"
-    assert all(graph.value(subject, MCP.lifecycle) == MCP.ExtensionLifecycle for subject in extension_methods)
+    assert all(
+        graph.value(subject, MCP.lifecycle) == MCP.ExtensionLifecycle
+        for subject in extension_methods
+    )
     assert all(graph.value(subject, MCP.inRevision) is None for subject in extension_methods)
 
 
@@ -158,7 +168,7 @@ def test_tools_call_is_conditional_effect_not_ambient_do_authority() -> None:
 
     assert graph.value(method, MCP.consequence) == MCP.ConditionalEffect
     assert graph.value(method, MCP.controlMode) == MCP.ModelControlled
-    assert (MCP["gymact-brce-do-policy"], RDF.type, Namespace("http://www.w3.org/ns/odrl/2/").Policy) in graph
+    assert (MCP["gymact-brce-do-policy"], RDF.type, ODRL.Policy) in graph
 
 
 def test_transport_and_header_models_preserve_body_as_semantic_source() -> None:
@@ -166,7 +176,10 @@ def test_transport_and_header_models_preserve_body_as_semantic_source() -> None:
 
     assert graph.value(MCP["transport-stdio"], MCP.lifecycle) == MCP.Active
     assert graph.value(MCP["transport-streamable-http"], MCP.lifecycle) == MCP.Active
-    assert graph.value(MCP["transport-legacy-http-sse"], MCP.compatibilityOnly) == Literal(True)
+    assert (
+        graph.value(MCP["transport-legacy-http-sse"], MCP.compatibilityOnly)
+        == Literal(True)
+    )
 
     protocol_header = MCP["header-protocol-version"]
     parameter_header = MCP["header-param-mirror"]
@@ -204,7 +217,7 @@ def test_exact_upstream_revision_and_schema_dialect_are_receipted() -> None:
     revision = MCP["revision-2026-07-28"]
 
     assert str(graph.value(revision, MCP.protocolVersion)) == "2026-07-28"
-    assert str(graph.value(revision, Namespace("http://www.w3.org/ns/prov#").value)) == (
+    assert str(graph.value(revision, PROV.value)) == (
         "schema.ts@9b55feeb412bc3ae877f2eac10b5c01ba29a2eed"
     )
     assert str(graph.value(MCP["json-schema-2020-12"], MCP.schemaDialect)) == (
