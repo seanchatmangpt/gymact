@@ -1,0 +1,4 @@
+[pack]
+name = "mna-gym-pack"
+version = "0.1.0"
+description = "Public-ontology ABox for a bounded synthetic enterprise merger-and-acquisition process. GymAct compiles the p-plan tasks into an executable world; selection remains external and consequential authority remains fail-closed."
