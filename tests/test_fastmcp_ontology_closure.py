@@ -83,8 +83,10 @@ def test_fastmcp_consequence_partition_is_complete_and_disjoint() -> None:
 def test_fastmcp_surface_is_bound_to_current_mcp_revision_and_exact_source() -> None:
     graph = _graph()
     surface = URIRef("urn:gymact:bridge:fastmcp-surface")
+    sources = list(graph.objects(surface, DCTERMS.source))
 
-    assert graph.value(surface, DCTERMS.source) == None or str(graph.value(surface, DCTERMS.source)) == "src/gymact/surfaces/fastmcp.py"
+    assert len(sources) == 1
+    assert str(sources[0]) == "src/gymact/surfaces/fastmcp.py"
     assert (surface, DCTERMS.conformsTo, MODERN_MCP) in graph
     assert set(graph.objects(surface, DCTERMS.hasPart)) == set(_ontology_tools(graph).values())
 
