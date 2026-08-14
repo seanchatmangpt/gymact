@@ -115,7 +115,22 @@ _ACT_REASON_KERNEL_GAP_SUBJECTS = frozenset({"swegym", "opaque-procedure"})
 # (the real symmetric READ path, which by its own docstring carries no
 # `Receipt`/`act`-event path at all) -- so a real conformant episode against
 # this gym never produces, and never should produce, an `act` event either.
-_NO_ACT_CAPABILITY_SUBJECTS = frozenset({"dev-portfolio", "k8s-resources"})
+#
+# `chatman-state` (`gymact/gyms/chatman_state_gym.py`) and `cloud-topology`
+# (`gymact/gyms/cloud_topology_gym.py`) join this set for the identical
+# structural reason -- their episode scripts
+# (`run_{chatman_state,cloud_topology}_episode.py`) are hand-maintained, not
+# ggen-generated (commit efc34c5; see CONTRIBUTING.md's "ggen ownership
+# boundary" section, which documents episode-runner scripts and unit tests as
+# always hand-maintained per gym, never a ggen-generated target): all
+# capabilities on each are `Consequence.READ` (verified live: `grep -n
+# "Consequence\." src/gymact/gyms/chatman_state_gym.py
+# src/gymact/gyms/cloud_topology_gym.py` shows READ on every one, zero DO),
+# invoked exclusively via `gym.read()`, the same real symmetric READ path
+# with no `Receipt`/`act`-event path.
+_NO_ACT_CAPABILITY_SUBJECTS = frozenset(
+    {"dev-portfolio", "k8s-resources", "chatman-state", "cloud-topology"}
+)
 
 _LOG_PATHS = _discover_ocel_logs()
 _LOG_PARAMS = [
