@@ -1,0 +1,59 @@
+---
+to: "src/gymact/generated/sregym_mcp_catalog.py"
+force: true
+sparql:
+  capabilities: |
+    PREFIX sr: <urn:gymact:sregym:mcp:>
+    PREFIX sosa: <http://www.w3.org/ns/sosa/>
+    PREFIX dct: <http://purl.org/dc/terms/>
+    SELECT ?iri ?title ?binding ?consequence ?route ?tool WHERE {
+      ?iri a sosa:Procedure, sr:Capability ;
+           dct:title ?title ; sr:binding ?binding ; sr:consequence ?c ; dct:relation ?routeNode .
+      ?c <http://www.w3.org/2004/02/skos/core#prefLabel> ?consequence .
+      ?routeNode sr:routePath ?route .
+      OPTIONAL { ?iri sr:toolName ?tool }
+    } ORDER BY ?iri
+  corpus: |
+    PREFIX sr: <urn:gymact:sregym:mcp:>
+    SELECT ?problem WHERE { ?s a sr:CorpusSubject ; sr:problemId ?problem } ORDER BY ?problem
+  programs: |
+    PREFIX sr: <urn:gymact:sregym:mcp:>
+    SELECT ?problem ?source WHERE { ?p a sr:Program ; sr:problemId ?problem ; sr:sourceRef ?source } ORDER BY ?problem ?source
+  steps: |
+    PREFIX sr: <urn:gymact:sregym:mcp:>
+    SELECT ?problem ?ord ?cap ?payload ?purpose ?source WHERE {
+      ?p a sr:Program ; sr:problemId ?problem .
+      ?s a sr:ProgramStep ; sr:inProgram ?p ; sr:stepOrder ?ord ; sr:stepCapability ?cap ;
+         sr:payloadTemplateJson ?payload ; sr:purpose ?purpose ; sr:sourceRef ?source .
+    } ORDER BY ?problem ?ord
+---
+"""GENERATED from ggen/sregym-e2e-pack/ontology.ttl. DO NOT HAND EDIT."""
+from __future__ import annotations
+
+import json
+
+SREGYM_UPSTREAM_REVISION = "ba07faf1a322f9b6d4a279643bb796aa2f36f64b"
+
+SREGYM_CAPABILITY_ROWS = (
+{% for row in capabilities -%}
+    {"iri": "{{ row.iri }}", "title": "{{ row.title }}", "binding": "{{ row.binding }}", "consequence": "{{ row.consequence }}", "route": "{{ row.route }}", "tool_name": {% if row.tool %}"{{ row.tool }}"{% else %}None{% endif %}},
+{% endfor -%}
+)
+
+SREGYM_LITE_PROBLEMS = (
+{% for row in corpus -%}
+    "{{ row.problem }}",
+{% endfor -%}
+)
+
+PROGRAM_SOURCE_ROWS = (
+{% for row in programs -%}
+    ("{{ row.problem }}", "{{ row.source }}"),
+{% endfor -%}
+)
+
+PROGRAM_STEP_ROWS = (
+{% for row in steps -%}
+    ("{{ row.problem }}", {{ row.ord }}, "{{ row.cap }}", json.loads(r'''{{ row.payload }}'''), "{{ row.purpose }}", "{{ row.source }}"),
+{% endfor -%}
+)
