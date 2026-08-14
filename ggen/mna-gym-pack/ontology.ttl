@@ -56,79 +56,85 @@ mna:association-strategy a prov:Association ;
     prov:agent mna:agent-strategy ;
     prov:hadRole mna:role-strategy ;
     prov:hadPlan mna:planner-deterministic-workflow .
+mna:execution-strategy a prov:Activity ;
+    prov:qualifiedAssociation mna:association-strategy .
 
 mna:association-diligence a prov:Association ;
     prov:agent mna:agent-diligence ;
     prov:hadRole mna:role-diligence ;
     prov:hadPlan mna:planner-deterministic-workflow .
+mna:execution-diligence a prov:Activity ;
+    prov:qualifiedAssociation mna:association-diligence .
 
 mna:association-finance a prov:Association ;
     prov:agent mna:agent-finance ;
     prov:hadRole mna:role-finance ;
     prov:hadPlan mna:planner-deterministic-workflow .
+mna:execution-finance a prov:Activity ;
+    prov:qualifiedAssociation mna:association-finance .
 
 mna:association-regulatory a prov:Association ;
     prov:agent mna:agent-regulatory ;
     prov:hadRole mna:role-regulatory ;
     prov:hadPlan mna:planner-deterministic-workflow .
+mna:execution-regulatory a prov:Activity ;
+    prov:qualifiedAssociation mna:association-regulatory .
 
 mna:association-integration a prov:Association ;
     prov:agent mna:agent-integration ;
     prov:hadRole mna:role-integration ;
     prov:hadPlan mna:planner-deterministic-workflow .
+mna:execution-integration a prov:Activity ;
+    prov:qualifiedAssociation mna:association-integration .
 
 mna:association-governance a prov:Association ;
     prov:agent mna:agent-governance ;
     prov:hadRole mna:role-governance ;
     prov:hadPlan mna:planner-deterministic-workflow .
+mna:execution-governance a prov:Activity ;
+    prov:qualifiedAssociation mna:association-governance .
 
 mna:agent-strategy a prov:Agent ;
     dct:identifier "mna-strategy" ;
     dct:type mna:logical-agent ;
     dct:subject mna:objective-minimize-flow-time ;
     dct:relation mna:projection-mna-state, mna:projection-capability-payload, mna:pack-mna ;
-    dct:extent "1"^^xsd:integer ;
-    prov:qualifiedAssociation mna:association-strategy .
+    dct:extent "1"^^xsd:integer .
 
 mna:agent-diligence a prov:Agent ;
     dct:identifier "mna-diligence" ;
     dct:type mna:logical-agent ;
     dct:subject mna:objective-minimize-flow-time ;
     dct:relation mna:projection-mna-state, mna:projection-capability-payload, mna:pack-mna ;
-    dct:extent "1"^^xsd:integer ;
-    prov:qualifiedAssociation mna:association-diligence .
+    dct:extent "1"^^xsd:integer .
 
 mna:agent-finance a prov:Agent ;
     dct:identifier "mna-finance" ;
     dct:type mna:logical-agent ;
     dct:subject mna:objective-minimize-flow-time ;
     dct:relation mna:projection-mna-state, mna:projection-capability-payload, mna:pack-mna ;
-    dct:extent "1"^^xsd:integer ;
-    prov:qualifiedAssociation mna:association-finance .
+    dct:extent "1"^^xsd:integer .
 
 mna:agent-regulatory a prov:Agent ;
     dct:identifier "mna-regulatory" ;
     dct:type mna:logical-agent ;
     dct:subject mna:objective-minimize-flow-time ;
     dct:relation mna:projection-mna-state, mna:projection-capability-payload, mna:pack-mna ;
-    dct:extent "1"^^xsd:integer ;
-    prov:qualifiedAssociation mna:association-regulatory .
+    dct:extent "1"^^xsd:integer .
 
 mna:agent-integration a prov:Agent ;
     dct:identifier "mna-integration" ;
     dct:type mna:logical-agent ;
     dct:subject mna:objective-minimize-flow-time ;
     dct:relation mna:projection-mna-state, mna:projection-capability-payload, mna:pack-mna ;
-    dct:extent "1"^^xsd:integer ;
-    prov:qualifiedAssociation mna:association-integration .
+    dct:extent "1"^^xsd:integer .
 
 mna:agent-governance a prov:Agent ;
     dct:identifier "mna-governance" ;
     dct:type mna:logical-agent ;
     dct:subject mna:objective-minimize-flow-time ;
     dct:relation mna:projection-mna-state, mna:projection-capability-payload, mna:pack-mna ;
-    dct:extent "1"^^xsd:integer ;
-    prov:qualifiedAssociation mna:association-governance .
+    dct:extent "1"^^xsd:integer .
 
 mna:artifact-strategic-thesis a prov:Entity ; dct:title "Strategic transaction thesis" .
 mna:artifact-target-screen a prov:Entity ; dct:title "Target-screen evidence" .
