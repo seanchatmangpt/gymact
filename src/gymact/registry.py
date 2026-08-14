@@ -31,7 +31,7 @@ from gymact.providers import MemoryProvider, MEMORY_CAPABILITIES
 from gymact.gyms.multicloud import MulticloudProvider, CAPABILITY_REGISTRY as MULTICLOUD_CAPABILITIES
 from gymact.gyms.resource_flow import ResourceFlowProvider, RESOURCE_FLOW_CAPABILITIES
 from gymact.local_providers import SQLiteProvider, SQLITE_CAPABILITIES
-from gymact.gyms.sregym import SregymVendorProvider, SREGYM_CAPABILITIES
+from gymact.gyms.sregym_ontology import SregymOntologyProvider, SREGYM_CAPABILITIES
 from gymact.gyms.swegym import SWEGymProvider, SWEGYM_EVALUATE_CAPABILITY
 from gymact.gyms.switchboard import SwitchboardProvider, SWITCHBOARD_CAPABILITIES
 from gymact.gyms.terraform_docker_apply import TerraformDockerApplyProvider, TERRAFORM_DOCKER_APPLY_CAPABILITIES
@@ -65,7 +65,7 @@ _BUILTINS = {
     "multicloud": (MulticloudProvider, MULTICLOUD_CAPABILITIES),
     "resource-flow": (ResourceFlowProvider, RESOURCE_FLOW_CAPABILITIES),
     "sqlite": (SQLiteProvider, SQLITE_CAPABILITIES),
-    "sregym": (SregymVendorProvider, SREGYM_CAPABILITIES),
+    "sregym": (SregymOntologyProvider, SREGYM_CAPABILITIES),
     "swegym": (SWEGymProvider, (SWEGYM_EVALUATE_CAPABILITY,)),
     "switchboard": (SwitchboardProvider, SWITCHBOARD_CAPABILITIES),
     "terraform-docker-apply": (TerraformDockerApplyProvider, TERRAFORM_DOCKER_APPLY_CAPABILITIES),
