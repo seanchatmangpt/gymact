@@ -35,7 +35,9 @@ def _admitted_sources(graph: Graph) -> dict[URIRef, str]:
         assert subject not in admitted, f"duplicate MCP consumer entity: {subject}"
         admitted[subject] = source
     assert admitted, "MCP consumer ontology admitted no consumers"
-    assert len(set(admitted.values())) == len(admitted), "MCP consumer source paths must be unique"
+    assert len(set(admitted.values())) == len(admitted), (
+        "MCP consumer source paths must be unique"
+    )
     return admitted
 
 
@@ -43,7 +45,9 @@ def _imports_mcp_transport(path: Path) -> bool:
     tree = ast.parse(path.read_text(), filename=str(path))
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            if any(alias.name.split(".", 1)[0] in MCP_IMPORT_ROOTS for alias in node.names):
+            if any(
+                alias.name.split(".", 1)[0] in MCP_IMPORT_ROOTS for alias in node.names
+            ):
                 return True
         elif isinstance(node, ast.ImportFrom):
             module = node.module or ""
@@ -59,7 +63,9 @@ def _source_relative(path: Path) -> str:
 def test_every_admitted_mcp_consumer_has_one_existing_source() -> None:
     graph = _consumer_graph()
     for source in _admitted_sources(graph).values():
-        assert source.startswith("src/gymact/"), f"MCP consumer escaped source boundary: {source}"
+        assert source.startswith("src/gymact/"), (
+            f"MCP consumer escaped source boundary: {source}"
+        )
         path = ROOT / source
         assert path.is_file(), f"admitted MCP consumer source does not exist: {source}"
 
@@ -69,8 +75,12 @@ def test_direct_mcp_imports_and_mcp_named_modules_are_ontology_admitted() -> Non
     admitted = set(_admitted_sources(graph).values())
     python_files = tuple(SRC.rglob("*.py"))
 
-    direct_imports = {_source_relative(path) for path in python_files if _imports_mcp_transport(path)}
-    mcp_named = {_source_relative(path) for path in python_files if "mcp" in path.stem.lower()}
+    direct_imports = {
+        _source_relative(path) for path in python_files if _imports_mcp_transport(path)
+    }
+    mcp_named = {
+        _source_relative(path) for path in python_files if "mcp" in path.stem.lower()
+    }
     discovered = direct_imports | mcp_named
     missing = discovered - admitted
 
@@ -91,7 +101,9 @@ def test_consumer_mcp_relations_resolve_in_central_protocol_ontology() -> None:
         and relation not in central_nodes
     }
 
-    assert not unresolved, f"MCP_CONSUMER_RELATION_UNRESOLVED:{sorted(map(str, unresolved))}"
+    assert not unresolved, (
+        f"MCP_CONSUMER_RELATION_UNRESOLVED:{sorted(map(str, unresolved))}"
+    )
 
 
 def test_client_session_consumer_is_exactly_source_bound() -> None:
