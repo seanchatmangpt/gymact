@@ -1,0 +1,59 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix sr: <urn:gymact:sregym:mcp:> .
+
+sr:CapabilityShape a sh:NodeShape ;
+    sh:targetClass sr:Capability ;
+    sh:property [ sh:path sr:binding ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path sr:consequence ; sh:minCount 1 ; sh:maxCount 1 ; sh:in (sr:READ sr:DO) ] ;
+    sh:property [ sh:path dct:relation ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path sr:authorityRequired ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:boolean ] ;
+    sh:sparql [
+        sh:message "DO capabilities must require authority" ;
+        sh:select """
+            SELECT $this WHERE {
+              $this sr:consequence sr:DO ; sr:authorityRequired false .
+            }
+        """
+    ] ;
+    sh:sparql [
+        sh:message "READ capabilities must not require execution authority" ;
+        sh:select """
+            SELECT $this WHERE {
+              $this sr:consequence sr:READ ; sr:authorityRequired true .
+            }
+        """
+    ] .
+
+sr:ProgramShape a sh:NodeShape ;
+    sh:targetClass sr:Program ;
+    sh:property [ sh:path sr:problemId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path sr:sourceRef ; sh:minCount 1 ; sh:datatype xsd:string ] ;
+    sh:sparql [
+        sh:message "Every deterministic program must target an admitted corpus subject" ;
+        sh:select """
+            SELECT $this WHERE {
+              $this sr:problemId ?problem .
+              FILTER NOT EXISTS { ?subject a sr:CorpusSubject ; sr:problemId ?problem }
+            }
+        """
+    ] .
+
+sr:ProgramStepShape a sh:NodeShape ;
+    sh:targetClass sr:ProgramStep ;
+    sh:property [ sh:path sr:inProgram ; sh:minCount 1 ; sh:maxCount 1 ; sh:class sr:Program ] ;
+    sh:property [ sh:path sr:stepOrder ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ; sh:minInclusive 1 ] ;
+    sh:property [ sh:path sr:stepCapability ; sh:minCount 1 ; sh:maxCount 1 ; sh:class sr:Capability ] ;
+    sh:property [ sh:path sr:payloadTemplateJson ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path sr:purpose ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path sr:sourceRef ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] .
+
+sr:CorpusSubjectShape a sh:NodeShape ;
+    sh:targetClass sr:CorpusSubject ;
+    sh:property [ sh:path sr:problemId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] .
+
+sr:ProjectionTargetShape a sh:NodeShape ;
+    sh:targetClass sr:ProjectionTarget ;
+    sh:property [ sh:path sr:projectionPath ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] .
