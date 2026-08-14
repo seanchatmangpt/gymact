@@ -1,0 +1,222 @@
+@prefix mcp: <urn:gymact:mcp:> .
+@prefix sh:  <http://www.w3.org/ns/shacl#> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# Structural admission for the ontology that manufactures MCP projections.
+# Exact-set closure against the official 2026-07-28 schema is additionally
+# asserted by tests/test_mcp_protocol_ontology.py because SHACL is not used as
+# a substitute for an independently enumerated upstream method set.
+
+mcp:ProtocolRevisionShape
+    a sh:NodeShape ;
+    sh:targetClass mcp:ProtocolRevision ;
+    sh:property [
+        sh:path mcp:protocolVersion ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string
+    ] ;
+    sh:property [
+        sh:path dct:source ;
+        sh:minCount 1
+    ] .
+
+mcp:MethodShape
+    a sh:NodeShape ;
+    sh:targetClass mcp:Method ;
+    sh:property [
+        sh:path mcp:methodName ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string
+    ] ;
+    sh:property [
+        sh:path mcp:facet ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class mcp:Facet
+    ] ;
+    sh:property [
+        sh:path mcp:messageKind ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class mcp:MessageKind
+    ] ;
+    sh:property [
+        sh:path mcp:direction ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class mcp:Direction
+    ] ;
+    sh:property [
+        sh:path mcp:invocationMode ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class mcp:InvocationMode
+    ] ;
+    sh:property [
+        sh:path mcp:lifecycle ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class mcp:LifecycleStatus
+    ] ;
+    sh:property [
+        sh:path mcp:controlMode ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class mcp:ControlMode
+    ] ;
+    sh:property [
+        sh:path mcp:consequence ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class mcp:ConsequenceClass
+    ] ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "Removed MCP methods must be compatibility-only." ;
+        sh:select """
+            PREFIX mcp: <urn:gymact:mcp:>
+            SELECT $this WHERE {
+              $this mcp:lifecycle mcp:Removed .
+              FILTER NOT EXISTS { $this mcp:compatibilityOnly true }
+            }
+        """
+    ] ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "Removed MCP methods cannot be members of the modern 2026-07-28 revision." ;
+        sh:select """
+            PREFIX mcp: <urn:gymact:mcp:>
+            SELECT $this WHERE {
+              $this mcp:lifecycle mcp:Removed ;
+                    mcp:inRevision mcp:revision-2026-07-28 .
+            }
+        """
+    ] ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "Extension-lifecycle methods must name an extension." ;
+        sh:select """
+            PREFIX mcp: <urn:gymact:mcp:>
+            SELECT $this WHERE {
+              $this mcp:lifecycle mcp:ExtensionLifecycle .
+              FILTER NOT EXISTS { $this mcp:extension ?extension }
+            }
+        """
+    ] .
+
+mcp:CapabilityShape
+    a sh:NodeShape ;
+    sh:targetClass mcp:Capability ;
+    sh:property [
+        sh:path mcp:capabilitySide ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ("client" "server")
+    ] ;
+    sh:property [
+        sh:path mcp:capabilityKey ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string
+    ] ;
+    sh:property [
+        sh:path mcp:lifecycle ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class mcp:LifecycleStatus
+    ] .
+
+mcp:MetadataFieldShape
+    a sh:NodeShape ;
+    sh:targetClass mcp:MetadataField ;
+    sh:property [
+        sh:path mcp:metaKey ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string
+    ] ;
+    sh:property [
+        sh:path mcp:required ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:boolean
+    ] ;
+    sh:property [
+        sh:path mcp:lifecycle ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class mcp:LifecycleStatus
+    ] .
+
+mcp:HeaderShape
+    a sh:NodeShape ;
+    sh:targetClass mcp:Header ;
+    sh:property [
+        sh:path mcp:headerName ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string
+    ] ;
+    sh:property [
+        sh:path mcp:lifecycle ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class mcp:LifecycleStatus
+    ] ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "Active MCP mirrored headers must declare the body field/schema that remains authoritative." ;
+        sh:select """
+            PREFIX mcp: <urn:gymact:mcp:>
+            SELECT $this WHERE {
+              $this mcp:lifecycle mcp:Active .
+              FILTER NOT EXISTS { $this mcp:bodySource ?source }
+            }
+        """
+    ] ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "Active MCP mirrored headers must declare a fail-closed mismatch reason." ;
+        sh:select """
+            PREFIX mcp: <urn:gymact:mcp:>
+            SELECT $this WHERE {
+              $this mcp:lifecycle mcp:Active .
+              FILTER NOT EXISTS { $this mcp:mismatchRefusal ?reason }
+            }
+        """
+    ] .
+
+mcp:ProjectionTargetShape
+    a sh:NodeShape ;
+    sh:targetClass mcp:ProjectionTarget ;
+    sh:property [
+        sh:path dct:identifier ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string
+    ] ;
+    sh:property [
+        sh:path mcp:projectionKind ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string
+    ] ;
+    sh:property [
+        sh:path mcp:projectionPath ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string
+    ] .
+
+mcp:InvariantShape
+    a sh:NodeShape ;
+    sh:targetClass mcp:Invariant ;
+    sh:property [
+        sh:path mcp:reasonCode ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string
+    ] .
