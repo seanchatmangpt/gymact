@@ -1,0 +1,9 @@
+{
+  "allowed_log_digest": "e59bc99b2226bf7b0c710c008187b21eab2d33b150da59b9404e48d0ecf91093",
+  "allowed_standing": "VERIFIED_ALIVE",
+  "denied_log_digest": "ce6e38a867d8a771a1f2a6ced30bb5cc3192da875e1948868acdc5790c7c211f",
+  "denied_standing": "VERIFIED_ALIVE",
+  "standing_invariant_holds": true,
+  "unauthorized_path_found_allowed": false,
+  "unauthorized_path_found_denied": false
+}

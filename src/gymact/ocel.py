@@ -68,6 +68,17 @@ def receipts_to_ocel(receipts: list[Receipt]) -> dict[str, Any]:
             ("post_state_digest", receipt.post_state_digest),
             ("verification_id", receipt.verification_id),
             ("error_digest", receipt.error_digest),
+            # `Receipt.verified`/`Receipt.world_changed` were previously never
+            # projected at all -- a real gap of the same class already named
+            # in .claude/rules/ocel-standing.md for the ACT-event `reason`
+            # path, found while building the CROWN_P1 standing derivation off
+            # `verify` events (gymact.crown_p1). str(bool) matches how every
+            # other stringly-typed OCEL attribute value here is represented.
+            ("verified", str(receipt.verified) if receipt.verified is not None else None),
+            (
+                "world_changed",
+                str(receipt.world_changed) if receipt.world_changed is not None else None,
+            ),
         ):
             if value is not None:
                 attributes.append({"name": name, "value": value})
