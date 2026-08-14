@@ -6,11 +6,16 @@ editing this file's import block or `_BUILTINS` dict directly -- the generator c
 "forget" a registration the way hand-editing two separate files (a new gym module plus this
 dict) once did (see tests/test_registry_completeness_chicago.py's own docstring for the real
 gap this closes: CloudTopologyProvider shipped without ever being registered here).
+
+`_OUTCOME_PREDICATES` is the opt-in structured-outcome counterpart: most providers declare
+neither rg:outcomePredicateModule nor rg:outcomePredicateExpr, so this dict is empty for them
+and scripts/ocel_standing.py keeps using its generic solved=True substring fallback -- see
+that ontology property's rdfs:comment for the opt-in contract.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
 from gymact.gyms.chatman_state_gym import ChatmanStateProvider, CHATMAN_STATE_CAPABILITIES
 from gymact.gyms.cloud_topology_gym import CloudTopologyProvider, CLOUD_TOPOLOGY_CAPABILITIES
@@ -36,6 +41,7 @@ from gymact.gyms.swegym import SWEGymProvider, SWEGYM_EVALUATE_CAPABILITY
 from gymact.gyms.switchboard import SwitchboardProvider, SWITCHBOARD_CAPABILITIES
 from gymact.gyms.terraform_docker_apply import TerraformDockerApplyProvider, TERRAFORM_DOCKER_APPLY_CAPABILITIES
 from gymact.gyms.terraform_plan import TerraformPlanProvider, TERRAFORM_PLAN_CAPABILITIES
+
 
 # NOT registered here (deliberately, not an oversight):
 #   - gymact.gyms.browsergym.BrowserGymProvider: top-level `import browsergym.core` / `import gymnasium`, both gated behind the optional "gyms" extra -- importing this module with only the base install raises ImportError, so registering it would break a clean `import gymact.registry`.
@@ -70,6 +76,11 @@ _BUILTINS = {
     "switchboard": (SwitchboardProvider, SWITCHBOARD_CAPABILITIES),
     "terraform-docker-apply": (TerraformDockerApplyProvider, TERRAFORM_DOCKER_APPLY_CAPABILITIES),
     "terraform-plan": (TerraformPlanProvider, TERRAFORM_PLAN_CAPABILITIES),
+}
+
+# Opt-in structured outcome predicates -- only providers with a real rg:outcomePredicateModule
+# / rg:outcomePredicateExpr pair appear here. Empty for most providers by design.
+_OUTCOME_PREDICATES: dict[str, Callable[[str, dict], bool]] = {
 }
 
 
