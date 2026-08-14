@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from rdflib import Graph, Namespace, RDF, URIRef
+from rdflib import Graph, RDF, URIRef
 from rdflib.namespace import DCTERMS, PROV, SOSA
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -71,8 +71,12 @@ def test_fastmcp_tool_surface_equals_ontology_exactly() -> None:
 def test_fastmcp_consequence_partition_is_complete_and_disjoint() -> None:
     graph = _graph()
     tools = _ontology_tools(graph)
-    read = {name for name, subject in tools.items() if graph.value(subject, DCTERMS.type) == READ}
-    do = {name for name, subject in tools.items() if graph.value(subject, DCTERMS.type) == DO}
+    read = {
+        name for name, subject in tools.items() if graph.value(subject, DCTERMS.type) == READ
+    }
+    do = {
+        name for name, subject in tools.items() if graph.value(subject, DCTERMS.type) == DO
+    }
 
     assert read == EXPECTED_READ
     assert do == EXPECTED_DO
