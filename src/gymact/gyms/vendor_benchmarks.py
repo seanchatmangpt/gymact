@@ -36,6 +36,14 @@ VENDOR_REVISIONS: dict[str, str] = {
     "androidworld": "3e50888527ef9f29b9157ecd537e408008bb1c85",
     "asb": "1f561dccf92d55302368fa67679b4ba9d9c8fdc4",
     "assetopsbench": "e11d1c1b2022db0396364a6d66e24168955a3bb7",
+    # Not from AutoFDE Lab's gym-lock.ttl like the entries above/below --
+    # awesome-ai-gyms is the user's own gym-discovery registry
+    # (github.com/seanchatmangpt/awesome-ai-gyms), pinned directly against
+    # its real main HEAD (fetched live via `gh api
+    # repos/seanchatmangpt/awesome-ai-gyms/commits/main --jq .sha`, not
+    # copied from gym-lock.ttl). See gymact.gym_index for the bridge that
+    # reads this vendor's registry/gyms.tsv into ForwardBenchSubject rows.
+    "awesome-ai-gyms": "e9320f82c1caf0fa15e53ba11b1416eb3a0f7e3a",
     "azuregoat": "b97045952e6df00de735a7f27fd7c4994dcfe8c0",
     "bountytasks": "1956e5fd4eff12034a5fbe0544482d2cf52bb5b0",
     "browsergym": "9e779f087de9a65668b6974d11f9ce9816026e96",

@@ -21,7 +21,10 @@ from gymact.gyms.vendor_benchmarks import (
 class VendorBenchmarkProviderTests(unittest.TestCase):
     def test_current_lock_has_exact_provider_for_every_pinned_vendor(self):
         self.assertEqual(LOCK_SOURCE_SHA, "dcc9947f713a719d9c0952f90b95b3f12a2f2cbe")
-        self.assertEqual(len(VENDOR_REVISIONS), 51)
+        # 52, not 51: this session added "awesome-ai-gyms" (see gym_index.py)
+        # as the 52nd pinned vendor entry, matching the existing pin-by-SHA
+        # convention every other vendor here already uses.
+        self.assertEqual(len(VENDOR_REVISIONS), 52)
         self.assertEqual(set(VENDOR_PROVIDERS), set(VENDOR_REVISIONS))
         self.assertTrue(all(len(revision) == 40 for revision in VENDOR_REVISIONS.values()))
         self.assertTrue(all(revision == revision.lower() for revision in VENDOR_REVISIONS.values()))

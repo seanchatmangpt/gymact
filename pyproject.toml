@@ -41,6 +41,12 @@ dependencies = [
   "rfc8785>=0.1.4,<1",
   "typer>=0.27,<1",
   "uvicorn>=0.48,<1",
+  # Real, ggen-manufactured, dependency-free (only pydantic) shared Pydantic
+  # v2 types (OcelEvent/OcelLog/etc.), reused by gymact.powl.conformance so
+  # this repo depends on a neutral, cross-repo type package instead of
+  # reaching into autofde_lab.ocel.model directly -- gymact does not import
+  # autofde_lab.
+  "wasm4pm-compat-pydantic>=0.2,<0.3",
 ]
 
 [project.optional-dependencies]
@@ -66,6 +72,9 @@ cube = [
 # the kernel; gated at import time via `pytest.importorskip("dspy")`, never
 # mocked when genuinely absent.
 dspy = ["dspy>=3.3,<4"]
+bpmn = [
+    "spiffworkflow>=3.2.0",
+]
 
 [tool.uv]
 # browsergym-core==0.14.3 hard-pins playwright==1.44, which pins
@@ -77,6 +86,7 @@ override-dependencies = ["playwright>=1.47,<2"]
 [tool.uv.sources]
 cube-standard = { path = "/Users/sac/autofde-lab/vendor/gyms/cube-standard", editable = true }
 counter-cube = { path = "/Users/sac/autofde-lab/vendor/gyms/cube-standard/examples/counter-cube", editable = true }
+wasm4pm-compat-pydantic = { path = "/Users/sac/wasm4pm-compat/python", editable = true }
 
 [project.scripts]
 gymact = "gymact.cli:app"

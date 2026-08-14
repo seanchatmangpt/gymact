@@ -251,6 +251,28 @@ KNOWN_COMPONENT_CAPABILITIES: tuple[ComponentCapabilities, ...] = (
         ),
     ),
     ComponentCapabilities(
+        component_ref="gymact.bpmn_runtime.run_bpmn_workflow",
+        capabilities=(
+            CapabilityEvidence(
+                capability_id="BPMN_WORKFLOW_EXECUTION",
+                evidence_ref="src/gymact/bpmn_runtime.py:57-96",
+                evidence_kind="source-contract",
+                standing="ALIVE",
+            ),
+        ),
+    ),
+    ComponentCapabilities(
+        component_ref="gymact.gyms.vendor_benchmarks.audit_vendor",
+        capabilities=(
+            CapabilityEvidence(
+                capability_id="VENDOR_PIN_AUDIT",
+                evidence_ref="src/gymact/gyms/vendor_benchmarks.py:147-203",
+                evidence_kind="source-contract",
+                standing="ALIVE",
+            ),
+        ),
+    ),
+    ComponentCapabilities(
         component_ref="gymact.process.ConformanceChecker",
         capabilities=(
             CapabilityEvidence(
@@ -308,6 +330,126 @@ KNOWN_CAPABILITY_CLASSIFICATIONS: tuple[CapabilityClassification, ...] = (
             "bookkeeping over the existing Receipt/EvidenceRecord chain "
             "(gymact.models.Receipt, gymact.evidence), not a new environment "
             "capability."
+        ),
+    ),
+    # Deterministic MCP-call dispatch (gymact.mcp_process_control), session
+    # follow-up to CROWN_P1: composes AUTHORITY_GATE + CAPABILITY_SCOPE_GATE
+    # (both already ALIVE above) with a hand/ontology-authored transition
+    # table, not a mined process model. Deliberately does NOT introduce a
+    # PROCESS_MODEL_DISCOVERY entry -- OCEL-driven mining/discovery (the
+    # wasm4pm_bridge.py-shaped half of the concept explored this session,
+    # real in ~/autofde-lab but not in this repo) stays unclassified and
+    # therefore BLOCKED_DISCOVERY if ever contracted for.
+    CapabilityClassification(
+        capability_id="DETERMINISTIC_MCP_DISPATCH",
+        kind="orchestration",
+        reason=(
+            "Gating which capability_ref may be dispatched next against a "
+            "hand-authored ProcessControlGraph, before delegating to the "
+            "unchanged GymAct.act() (which still runs CapabilityScope/"
+            "AuthorityResolver), is a control-flow composition over already-"
+            "ALIVE gates -- see gymact.mcp_process_control.dispatch, which "
+            "never bypasses AUTHORITY_GATE/CAPABILITY_SCOPE_GATE, only adds a "
+            "graph-licensing check before them. Same trust model as "
+            "gymact.gdmcp's solution catalog (hand/ontology-authored, not "
+            "mined) -- not new environment physics."
+        ),
+    ),
+    CapabilityClassification(
+        capability_id="PROCESS_MODEL_CONFORMANCE_GATE",
+        kind="orchestration",
+        reason=(
+            "Post-hoc conformance replay of a dispatched episode's real "
+            "operation sequence against gymact.process.ConformanceChecker "
+            "(already-ALIVE, see CONFORMANCE_REPLAY above) is auditing "
+            "existing evidence, the same pattern as UNAUTHORIZED_PATH_PREDICATE "
+            "-- projecting a predicate over already-produced receipts, not a "
+            "new capability the world itself must supply."
+        ),
+    ),
+    # Provider-agnostic deterministic MCP program compilation
+    # (gymact.deterministic_program), session follow-up: generalizes
+    # gdmcp.py's real, unmerged-branch pattern using only already-merged
+    # primitives.
+    CapabilityClassification(
+        capability_id="DETERMINISTIC_PROGRAM_COMPILATION",
+        kind="orchestration",
+        reason=(
+            "Compiling a hand/ontology-authored catalog entry into a "
+            "rendered, replayable sequence of real dispatch() calls "
+            "(already ADAPT-admitted, see DETERMINISTIC_MCP_DISPATCH above) "
+            "is fail-closed catalog lookup plus {{placeholder}} template "
+            "rendering -- the same trust model gymact.gdmcp's own catalog "
+            "already uses (real, on the unmerged agent/"
+            "gdmcp-sregym-deterministic-solutions branch), reimplemented "
+            "generically here using only merged primitives. Not new "
+            "environment physics."
+        ),
+    ),
+    # Vendored gym-discovery index (gymact.gym_index), session follow-up:
+    # reads a real, pin-audited external checkout's registry/gyms.tsv into
+    # typed GymIndexEntry rows.
+    CapabilityClassification(
+        capability_id="GYM_INDEX_INGESTION",
+        kind="orchestration",
+        reason=(
+            "Reading a vendored registry file's rows into typed GymIndexEntry "
+            "objects composes an already-ALIVE audit primitive "
+            "(VENDOR_PIN_AUDIT, gymact.gyms.vendor_benchmarks.audit_vendor) "
+            "with plain TSV parsing (Python stdlib csv) -- the same "
+            "pin-then-read discipline every other vendored benchmark in this "
+            "repo already uses, not new environment physics. Deliberately "
+            "excludes any auto-projection to gymact.lab.ForwardBenchSubject "
+            "(see gymact.gym_index's module docstring): that would require "
+            "fabricating ontology_ref/capability_refs/environment_ref values "
+            "this session has no real basis for."
+        ),
+    ),
+    # Real BPMN 2.0 token-execution semantics via SpiffWorkflow
+    # (gymact.bpmn_runtime), session follow-up. Deliberately kind=
+    # "world_physics", not "orchestration" -- unlike this session's other
+    # additions, no existing gymact component (gymact.process.LIFECYCLE,
+    # gymact.powl.*, gymact.epistemic_process_kernel,
+    # gymact.mcp_process_control -- all real, distinct, unrelated scopes,
+    # confirmed by direct read) supplies BPMN token/place-transition
+    # execution semantics. This is the correct "depend on a real, external
+    # engine" case, not a composition-avoidable gap.
+    CapabilityClassification(
+        capability_id="BPMN_WORKFLOW_EXECUTION",
+        kind="world_physics",
+        reason=(
+            "SpiffWorkflow (spiffworkflow>=3.2.0, real optional dependency "
+            "added this session, pyproject.toml's `bpmn` extra) is a real, "
+            "independent, mature BPMN 2.0 execution engine. No existing "
+            "gymact component -- gymact.process.LIFECYCLE (kernel Operation "
+            "FSM), gymact.powl.* (partial-order workflow algebra/executor), "
+            "gymact.epistemic_process_kernel (DSPy epistemic loop), "
+            "gymact.mcp_process_control (deterministic MCP-call dispatch "
+            "graph) -- implements BPMN token/place-transition semantics; "
+            "genuinely new environment physics, not composable from what "
+            "already exists."
+        ),
+    ),
+    # gdmcp <-> bpmn_runtime bridge (gymact.gdmcp_bpmn_bridge), session
+    # follow-up: composes two already-real, already-classified pieces --
+    # BPMN_WORKFLOW_EXECUTION (real SpiffWorkflow engine) determines the
+    # real fire order, kernel.act() (unchanged, real) does the only real
+    # actuation. No new physics; the safe-dispatch pattern itself
+    # (integer-index-only XML, never eval/exec) was studied directly from
+    # ~/autotel's real DspyServiceTask._run_hook before designing.
+    CapabilityClassification(
+        capability_id="GDMCP_BPMN_REPLAY",
+        kind="orchestration",
+        reason=(
+            "Generating a linear BPMN document from a real "
+            "CompiledGdmcpProgram, running it through the already-real "
+            "BPMN_WORKFLOW_EXECUTION engine to recover a real fire order, "
+            "then driving real sequential kernel.act() calls in that order "
+            "is control-flow composition over two already-ALIVE "
+            "collaborators -- see gymact.gdmcp_bpmn_bridge, which never "
+            "calls kernel.act() from inside SpiffWorkflow's own execution "
+            "and never bypasses CapabilityScope/AuthorityResolver. Not new "
+            "environment physics."
         ),
     ),
 )
