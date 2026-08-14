@@ -204,6 +204,16 @@ def _real_ggen_packs_with_gates() -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 _INTENTIONALLY_UNCATALOGED: dict[str, str] = {
+    "SregymOntologyProvider": (
+        "gymact.gyms.sregym_ontology.SregymOntologyProvider wraps the already-"
+        "catalogued gymact.gyms.sregym.SregymVendorProvider (component_ref above), "
+        "delegating observe()/actuate() and adding only IRI/binding/consequence "
+        "admission checks sourced from the admitted sregym_mcp_catalog -- no new "
+        "capability physics beyond what the wrapped provider already supplies. "
+        "Registered as gymact's real `sregym` provider (registry.py) since the "
+        "agent/gdmcp-sregym-deterministic-solutions merge; catalog entry gap found "
+        "and named here rather than silently left uncaught."
+    ),
     # -- gym Provider classes: optional-extra-gated, same real top-level-import
     # gating already documented in test_registry_completeness_chicago.py's
     # _INTENTIONALLY_UNREGISTERED for the same classes.

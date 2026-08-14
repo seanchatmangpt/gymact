@@ -27,20 +27,26 @@ mirroring `ggen/gymact-bridge-pack`'s `operation_catalog_proof.rs.tmpl`
 pattern, in Python/pytest instead of Rust.
 
 `ontology.ttl`'s grounding was expanded to maximal public-vocabulary
-coverage per `.claude/rules/ontology.md`: every one of the 20 capabilities
+coverage per `.claude/rules/ontology.md`: every one of the 26 capabilities
 is now additionally typed `skos:Concept`, classified by cloud provider
-(AWS/Azure/GCP) and service domain (IAM/Storage/Compute) via `skos:broader`
-into two new `skos:ConceptScheme`s owned by this pack; the account/
-subscription/project containment boundary each capability's simulated
-identifiers are scoped under is modeled as three `org:OrganizationalUnit`
-instances (also `skos:Concept`s, in a third `resource-kind` scheme); and
-the three policy-attach/role-assign `odrl:Permission` operations
+(AWS/Azure/GCP) and service domain (IAM/Storage/Compute/Network Security)
+via `skos:broader` into two new `skos:ConceptScheme`s owned by this pack;
+the account/subscription/project containment boundary each capability's
+simulated identifiers are scoped under is modeled as three
+`org:OrganizationalUnit` instances (also `skos:Concept`s, in a third
+`resource-kind` scheme); and the six policy-attach/role-assign/
+security-group-authoring `odrl:Permission` operations
 (`aws.iam.attach_role_policy`, `azure.authorization.create_role_assignment`,
-`gcp.iam.add_iam_policy_binding`) carry a real OWL-Time `time:Interval`
-authority-window via `dct:temporal`, since those are the only three
-capabilities with genuine temporal-validity meaning (granting/assigning
-standing authority) -- list/describe reads and non-authority DO operations
-(bucket/VM/role creation) do not get one. DQV was evaluated and explicitly
+`gcp.iam.add_iam_policy_binding`, `aws.ec2.authorize_security_group_ingress`,
+`azure.network.create_security_rule`, `gcp.compute.insert_firewall`) carry a
+real OWL-Time `time:Interval` authority-window via `dct:temporal`, since
+those are the only six capabilities with genuine temporal-validity meaning
+(granting/assigning standing authority, or authoring a network-perimeter
+rule that holds for an interval) -- list/describe reads and non-authority
+DO operations (bucket/VM/role creation) do not get one. Network Security is
+a native fourth service-domain, a peer to IAM/Storage/Compute, not a
+bolt-on pack: a cloud gym without a way to represent a security-group/
+firewall rule is an incomplete cloud model. DQV was evaluated and explicitly
 rejected for this pass: this module's own `verify()` (below) performs a
 plain state-equality diff, not a quality *measurement* (no freshness/
 completeness score is computed anywhere), so there is no real DQV referent
@@ -124,6 +130,18 @@ CAPABILITY_REGISTRY: tuple[Capability, ...] = (
         consequence=Consequence.READ,
         binding="aws_ec2_describe_instances",
     ),
+    Capability(
+        iri="urn:gymact:multicloud:aws:capability:ec2.authorize_security_group_ingress",
+        title="aws.ec2.authorize_security_group_ingress",
+        consequence=Consequence.DO,
+        binding="aws_ec2_authorize_security_group_ingress",
+    ),
+    Capability(
+        iri="urn:gymact:multicloud:aws:capability:ec2.describe_security_groups",
+        title="aws.ec2.describe_security_groups",
+        consequence=Consequence.READ,
+        binding="aws_ec2_describe_security_groups",
+    ),
     # -- Azure (azure-sdk-for-python-style operation names) -------------
     Capability(
         iri="urn:gymact:multicloud:azure:capability:authorization.create_role_assignment",
@@ -160,6 +178,18 @@ CAPABILITY_REGISTRY: tuple[Capability, ...] = (
         title="azure.compute.list_virtual_machines",
         consequence=Consequence.READ,
         binding="azure_compute_list_virtual_machines",
+    ),
+    Capability(
+        iri="urn:gymact:multicloud:azure:capability:network.create_security_rule",
+        title="azure.network.create_security_rule",
+        consequence=Consequence.DO,
+        binding="azure_network_create_security_rule",
+    ),
+    Capability(
+        iri="urn:gymact:multicloud:azure:capability:network.list_security_rules",
+        title="azure.network.list_security_rules",
+        consequence=Consequence.READ,
+        binding="azure_network_list_security_rules",
     ),
     # -- GCP (google-cloud-python-style operation names) -----------------
     Capability(
@@ -204,6 +234,18 @@ CAPABILITY_REGISTRY: tuple[Capability, ...] = (
         consequence=Consequence.READ,
         binding="gcp_compute_list_instances",
     ),
+    Capability(
+        iri="urn:gymact:multicloud:gcp:capability:compute.insert_firewall",
+        title="gcp.compute.insert_firewall",
+        consequence=Consequence.DO,
+        binding="gcp_compute_insert_firewall",
+    ),
+    Capability(
+        iri="urn:gymact:multicloud:gcp:capability:compute.list_firewalls",
+        title="gcp.compute.list_firewalls",
+        consequence=Consequence.READ,
+        binding="gcp_compute_list_firewalls",
+    ),
 )
 
 _BY_BINDING: dict[str, Capability] = {capability.binding: capability for capability in CAPABILITY_REGISTRY}
@@ -223,17 +265,20 @@ def _empty_state() -> dict[str, Any]:
             "iam_role_policy_attachments": {},
             "storage_buckets": {},
             "compute_instances": {},
+            "security_group_rules": {},
         },
         "azure": {
             "iam_role_assignments": {},
             "storage_accounts": {},
             "compute_instances": {},
+            "network_security_rules": {},
         },
         "gcp": {
             "iam_service_accounts": {},
             "iam_policy_bindings": {},
             "storage_buckets": {},
             "compute_instances": {},
+            "firewalls": {},
         },
     }
 
@@ -371,6 +416,26 @@ def _aws_ec2_describe_instances(state: dict[str, Any], payload: dict[str, Any]) 
     return deepcopy(state["aws"]["compute_instances"])
 
 
+def _aws_ec2_authorize_security_group_ingress(
+    state: dict[str, Any], payload: dict[str, Any]
+) -> dict[str, Any]:
+    group_id = _require(payload, "group_id")
+    cidr_ip = _require(payload, "cidr_ip")
+    port = payload.get("port", 443)
+    if not isinstance(port, int) or port < 0:
+        raise ValueError("payload.port must be a non-negative integer")
+    rules = state["aws"]["security_group_rules"].setdefault(group_id, [])
+    entry = {"group_id": group_id, "cidr_ip": cidr_ip, "port": port}
+    if entry not in rules:
+        rules.append(entry)
+    return entry
+
+
+def _aws_ec2_describe_security_groups(state: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    del payload
+    return deepcopy(state["aws"]["security_group_rules"])
+
+
 def _azure_authorization_create_role_assignment(
     state: dict[str, Any], payload: dict[str, Any]
 ) -> dict[str, Any]:
@@ -445,6 +510,29 @@ def _azure_compute_list_virtual_machines(
     return deepcopy(state["azure"]["compute_instances"])
 
 
+def _azure_network_create_security_rule(state: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    rule_name = _require(payload, "rule_name")
+    rules = state["azure"]["network_security_rules"]
+    if rule_name in rules:
+        raise ValueError(f"azure network security rule already exists: {rule_name}")
+    entry = {
+        "rule_name": rule_name,
+        "id": (
+            f"/subscriptions/{_AZURE_SUBSCRIPTION_ID}"
+            f"/resourceGroups/{_AZURE_RESOURCE_GROUP}"
+            f"/providers/Microsoft.Network/networkSecurityGroups/default"
+            f"/securityRules/{rule_name}"
+        ),
+    }
+    rules[rule_name] = entry
+    return entry
+
+
+def _azure_network_list_security_rules(state: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    del payload
+    return deepcopy(state["azure"]["network_security_rules"])
+
+
 def _gcp_iam_create_service_account(state: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     account_id = _require(payload, "account_id")
     accounts = state["gcp"]["iam_service_accounts"]
@@ -513,6 +601,24 @@ def _gcp_compute_list_instances(state: dict[str, Any], payload: dict[str, Any]) 
     return deepcopy(state["gcp"]["compute_instances"])
 
 
+def _gcp_compute_insert_firewall(state: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    firewall_name = _require(payload, "firewall_name")
+    firewalls = state["gcp"]["firewalls"]
+    if firewall_name in firewalls:
+        raise ValueError(f"gcp firewall already exists: {firewall_name}")
+    entry = {
+        "firewall_name": firewall_name,
+        "name": f"projects/{_GCP_PROJECT_ID}/global/firewalls/{firewall_name}",
+    }
+    firewalls[firewall_name] = entry
+    return entry
+
+
+def _gcp_compute_list_firewalls(state: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    del payload
+    return deepcopy(state["gcp"]["firewalls"])
+
+
 _ACTUATORS = {
     "aws_iam_create_role": _aws_iam_create_role,
     "aws_iam_attach_role_policy": _aws_iam_attach_role_policy,
@@ -521,12 +627,16 @@ _ACTUATORS = {
     "aws_s3_list_buckets": _aws_s3_list_buckets,
     "aws_ec2_run_instances": _aws_ec2_run_instances,
     "aws_ec2_describe_instances": _aws_ec2_describe_instances,
+    "aws_ec2_authorize_security_group_ingress": _aws_ec2_authorize_security_group_ingress,
+    "aws_ec2_describe_security_groups": _aws_ec2_describe_security_groups,
     "azure_authorization_create_role_assignment": _azure_authorization_create_role_assignment,
     "azure_authorization_list_role_assignments": _azure_authorization_list_role_assignments,
     "azure_storage_create_account": _azure_storage_create_account,
     "azure_storage_list_accounts": _azure_storage_list_accounts,
     "azure_compute_create_virtual_machine": _azure_compute_create_virtual_machine,
     "azure_compute_list_virtual_machines": _azure_compute_list_virtual_machines,
+    "azure_network_create_security_rule": _azure_network_create_security_rule,
+    "azure_network_list_security_rules": _azure_network_list_security_rules,
     "gcp_iam_create_service_account": _gcp_iam_create_service_account,
     "gcp_iam_add_iam_policy_binding": _gcp_iam_add_iam_policy_binding,
     "gcp_iam_list_service_accounts": _gcp_iam_list_service_accounts,
@@ -534,6 +644,8 @@ _ACTUATORS = {
     "gcp_storage_list_buckets": _gcp_storage_list_buckets,
     "gcp_compute_create_instance": _gcp_compute_create_instance,
     "gcp_compute_list_instances": _gcp_compute_list_instances,
+    "gcp_compute_insert_firewall": _gcp_compute_insert_firewall,
+    "gcp_compute_list_firewalls": _gcp_compute_list_firewalls,
 }
 
 assert set(_ACTUATORS) == set(_BY_BINDING), "every capability binding must have a dispatch handler"

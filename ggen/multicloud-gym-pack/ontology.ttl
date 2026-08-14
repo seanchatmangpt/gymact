@@ -263,6 +263,29 @@
 #   or deliberately left ungrounded (the GCP case, per the existing
 #   research-gap note above) -- neither is a `foaf:Person`. No FOAF term is
 #   added.
+#
+# =============================================================================
+# Third pass: security as a native fourth service-domain, not a bolt-on pack.
+# A cloud gym that models IAM/storage/compute but has no way to represent a
+# security-group/firewall rule is an incomplete cloud model; a caller should
+# not be able to omit it by simply not depending on a separate pack. Adds one
+# new `skos:Concept` (`service-domain:network-security`, a peer to the
+# existing IAM/Storage/Compute concepts in the same
+# `scheme:service-domain`) and six new `sosa:Procedure` capabilities, two per
+# provider (one DO, one READ), bringing the total from 20 to 26.
+#
+# The three new DO capabilities (`aws.ec2.authorize_security_group_ingress`,
+# `azure.network.create_security_rule`, `gcp.compute.insert_firewall`) reuse
+# the identical `odrl:Permission` + `dct:temporal time:Interval`
+# authority-window grounding already established above for the three IAM
+# policy/role-assignment operations -- no new research pass was needed: a
+# security-group/firewall ingress rule is the same authority-grant shape
+# ("this permission holds starting now, for an interval") as an IAM policy
+# attachment, so the existing rationale applies directly. The three new READ
+# capabilities (`describe_security_groups`, `list_security_rules`,
+# `list_firewalls`) follow the plain `sosa:Procedure, skos:Concept` shape
+# with no extra typing, matching every existing `list_*`/`describe_*`
+# capability in this file.
 
 @prefix dct: <http://purl.org/dc/terms/> .
 @prefix sosa: <http://www.w3.org/ns/sosa/> .
@@ -326,6 +349,12 @@
     skos:inScheme <urn:gymact:multicloud:scheme:service-domain> ;
     skos:prefLabel "Compute" ;
     skos:definition "Virtual machine / instance provisioning and listing (EC2, Azure VMs, GCE instances)." .
+
+<urn:gymact:multicloud:service-domain:network-security>
+    a skos:Concept ;
+    skos:inScheme <urn:gymact:multicloud:scheme:service-domain> ;
+    skos:prefLabel "Network Security" ;
+    skos:definition "Security-group/firewall rule authorization, revocation, and listing -- the network-perimeter control surface every cloud account exposes alongside IAM, storage, and compute. A cloud gym that models IAM/storage/compute but has no way to represent a security-group/firewall rule is an incomplete cloud model; this is a native peer service-domain, not a bolt-on." .
 
 <urn:gymact:multicloud:scheme:resource-kind>
     a skos:ConceptScheme ;
@@ -405,6 +434,22 @@
     dct:type <urn:gymact:consequence:read> ;
     skos:broader <urn:gymact:multicloud:provider:aws>, <urn:gymact:multicloud:service-domain:compute> .
 
+<urn:gymact:multicloud:aws:capability:ec2.authorize_security_group_ingress>
+    a sosa:Procedure, odrl:Permission, skos:Concept ;
+    dct:title "aws.ec2.authorize_security_group_ingress" ;
+    dct:type <urn:gymact:consequence:do> ;
+    dct:temporal <urn:gymact:multicloud:aws:authority-window:ec2.authorize_security_group_ingress> ;
+    skos:broader <urn:gymact:multicloud:provider:aws>, <urn:gymact:multicloud:service-domain:network-security> .
+
+<urn:gymact:multicloud:aws:authority-window:ec2.authorize_security_group_ingress>
+    a time:Interval .
+
+<urn:gymact:multicloud:aws:capability:ec2.describe_security_groups>
+    a sosa:Procedure, skos:Concept ;
+    dct:title "aws.ec2.describe_security_groups" ;
+    dct:type <urn:gymact:consequence:read> ;
+    skos:broader <urn:gymact:multicloud:provider:aws>, <urn:gymact:multicloud:service-domain:network-security> .
+
 # ---------------------------------------------------------------------------
 # Azure (azure-sdk-for-python-style operation names)
 # ---------------------------------------------------------------------------
@@ -450,6 +495,22 @@
     dct:title "azure.compute.list_virtual_machines" ;
     dct:type <urn:gymact:consequence:read> ;
     skos:broader <urn:gymact:multicloud:provider:azure>, <urn:gymact:multicloud:service-domain:compute> .
+
+<urn:gymact:multicloud:azure:capability:network.create_security_rule>
+    a sosa:Procedure, odrl:Permission, skos:Concept ;
+    dct:title "azure.network.create_security_rule" ;
+    dct:type <urn:gymact:consequence:do> ;
+    dct:temporal <urn:gymact:multicloud:azure:authority-window:network.create_security_rule> ;
+    skos:broader <urn:gymact:multicloud:provider:azure>, <urn:gymact:multicloud:service-domain:network-security> .
+
+<urn:gymact:multicloud:azure:authority-window:network.create_security_rule>
+    a time:Interval .
+
+<urn:gymact:multicloud:azure:capability:network.list_security_rules>
+    a sosa:Procedure, skos:Concept ;
+    dct:title "azure.network.list_security_rules" ;
+    dct:type <urn:gymact:consequence:read> ;
+    skos:broader <urn:gymact:multicloud:provider:azure>, <urn:gymact:multicloud:service-domain:network-security> .
 
 # ---------------------------------------------------------------------------
 # GCP (google-cloud-python-style operation names)
@@ -506,3 +567,19 @@
     dct:title "gcp.compute.list_instances" ;
     dct:type <urn:gymact:consequence:read> ;
     skos:broader <urn:gymact:multicloud:provider:gcp>, <urn:gymact:multicloud:service-domain:compute> .
+
+<urn:gymact:multicloud:gcp:capability:compute.insert_firewall>
+    a sosa:Procedure, odrl:Permission, skos:Concept ;
+    dct:title "gcp.compute.insert_firewall" ;
+    dct:type <urn:gymact:consequence:do> ;
+    dct:temporal <urn:gymact:multicloud:gcp:authority-window:compute.insert_firewall> ;
+    skos:broader <urn:gymact:multicloud:provider:gcp>, <urn:gymact:multicloud:service-domain:network-security> .
+
+<urn:gymact:multicloud:gcp:authority-window:compute.insert_firewall>
+    a time:Interval .
+
+<urn:gymact:multicloud:gcp:capability:compute.list_firewalls>
+    a sosa:Procedure, skos:Concept ;
+    dct:title "gcp.compute.list_firewalls" ;
+    dct:type <urn:gymact:consequence:read> ;
+    skos:broader <urn:gymact:multicloud:provider:gcp>, <urn:gymact:multicloud:service-domain:network-security> .

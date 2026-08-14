@@ -18,7 +18,17 @@ from rdflib import RDF, Graph, Namespace, URIRef
 from rdflib.namespace import DCTERMS
 
 from gymact.authority import AllowListAuthorityResolver
-from gymact.gyms.multicloud import CAPABILITY_REGISTRY, MulticloudProvider
+from gymact.gyms.multicloud import (
+    CAPABILITY_REGISTRY,
+    MulticloudProvider,
+    _aws_ec2_authorize_security_group_ingress,
+    _aws_ec2_describe_security_groups,
+    _azure_network_create_security_rule,
+    _azure_network_list_security_rules,
+    _empty_state,
+    _gcp_compute_insert_firewall,
+    _gcp_compute_list_firewalls,
+)
 from gymact.models import ActuationIntent, Consequence, MaterializationIntent, Standing
 from gymact.runtime import GymAct
 
@@ -480,3 +490,161 @@ async def test_cross_cloud_scenario_coexisting_real_state_mutations() -> None:
 
     teardown_receipt = await runtime.teardown(episode_id, authority_ref=AUTHORITY)
     assert teardown_receipt.standing == Standing.ALIVE
+
+
+# ---------------------------------------------------------------------------
+# Network Security: a native fourth service-domain, a peer to IAM/Storage/
+# Compute (not a bolt-on pack) -- one DO + one READ capability per provider.
+# ---------------------------------------------------------------------------
+
+AWS_AUTHORIZE_INGRESS = _capability("aws_ec2_authorize_security_group_ingress")
+AWS_DESCRIBE_SECURITY_GROUPS = _capability("aws_ec2_describe_security_groups")
+AZURE_CREATE_SECURITY_RULE = _capability("azure_network_create_security_rule")
+AZURE_LIST_SECURITY_RULES = _capability("azure_network_list_security_rules")
+GCP_INSERT_FIREWALL = _capability("gcp_compute_insert_firewall")
+GCP_LIST_FIREWALLS = _capability("gcp_compute_list_firewalls")
+
+
+@pytest.mark.asyncio
+async def test_network_security_capabilities_are_registered_in_every_provider() -> None:
+    by_provider = {"aws": 0, "azure": 0, "gcp": 0}
+    for capability in CAPABILITY_REGISTRY:
+        if ":service-domain:" in capability.iri:
+            continue
+        for provider in by_provider:
+            if f":multicloud:{provider}:capability:" in capability.iri and (
+                "security" in capability.iri or "firewall" in capability.iri
+            ):
+                by_provider[provider] += 1
+    assert by_provider == {"aws": 2, "azure": 2, "gcp": 2}
+
+
+@pytest.mark.asyncio
+async def test_do_actuation_of_security_group_ingress_without_authority_is_refused() -> None:
+    """MCPValidity != DOAuthority: a network-security DO capability is
+    exactly as authority-gated as an IAM or storage DO capability -- no
+    special-casing by service domain."""
+    runtime = GymAct()
+    runtime.register_provider(MulticloudProvider())
+    materialized = await materialize(runtime, key="secgroup-refused-materialize")
+    episode = materialized.episode
+    assert episode is not None
+
+    result = await runtime.act(
+        ActuationIntent(
+            episode_id=episode.episode_id,
+            capability=AWS_AUTHORIZE_INGRESS,
+            payload={"group_id": "sg-refused", "cidr_ip": "0.0.0.0/0", "port": 443},
+            idempotency_key="refused-ingress-authorize",
+        )
+    )
+    assert result.accepted is False
+    assert result.standing == Standing.REFUSED
+    assert result.receipt.reason == "LIVE_AUTHORITY_REQUIRED"
+
+    observation = await runtime.observe(episode.episode_id)
+    assert observation.state["aws"]["security_group_rules"] == {}
+
+
+@pytest.mark.asyncio
+async def test_admitted_authority_actuates_network_security_across_all_three_clouds() -> None:
+    runtime = authorized_runtime()
+    materialized = await materialize(runtime, key="network-security-materialize")
+    episode = materialized.episode
+    assert episode is not None
+    episode_id = episode.episode_id
+
+    aws_result = await runtime.act(
+        ActuationIntent(
+            episode_id=episode_id,
+            capability=AWS_AUTHORIZE_INGRESS,
+            payload={"group_id": "sg-gymact", "cidr_ip": "10.0.0.0/8", "port": 443},
+            authority_ref=AUTHORITY,
+            idempotency_key="aws-authorize-ingress",
+        )
+    )
+    assert aws_result.accepted is True
+
+    azure_result = await runtime.act(
+        ActuationIntent(
+            episode_id=episode_id,
+            capability=AZURE_CREATE_SECURITY_RULE,
+            payload={"rule_name": "gymact-allow-https"},
+            authority_ref=AUTHORITY,
+            idempotency_key="azure-create-security-rule",
+        )
+    )
+    assert azure_result.accepted is True
+
+    gcp_result = await runtime.act(
+        ActuationIntent(
+            episode_id=episode_id,
+            capability=GCP_INSERT_FIREWALL,
+            payload={"firewall_name": "gymact-allow-https"},
+            authority_ref=AUTHORITY,
+            idempotency_key="gcp-insert-firewall",
+        )
+    )
+    assert gcp_result.accepted is True
+
+    observation = await runtime.observe(episode_id)
+    state = observation.state
+    assert state["aws"]["security_group_rules"]["sg-gymact"] == [
+        {"group_id": "sg-gymact", "cidr_ip": "10.0.0.0/8", "port": 443}
+    ]
+    assert state["azure"]["network_security_rules"]["gymact-allow-https"]["rule_name"] == (
+        "gymact-allow-https"
+    )
+    assert state["gcp"]["firewalls"]["gymact-allow-https"]["name"] == (
+        "projects/gymact-simulated-project/global/firewalls/gymact-allow-https"
+    )
+
+    verification = await runtime.verify(
+        episode_id,
+        {
+            "aws": {"security_group_rules": state["aws"]["security_group_rules"]},
+            "azure": {"network_security_rules": state["azure"]["network_security_rules"]},
+            "gcp": {"firewalls": state["gcp"]["firewalls"]},
+        },
+    )
+    assert verification.passed is True
+
+
+def test_aws_describe_security_groups_handler_returns_real_snapshot() -> None:
+    state = _empty_state()
+    entry = _aws_ec2_authorize_security_group_ingress(
+        state, {"group_id": "sg-1", "cidr_ip": "0.0.0.0/0", "port": 22}
+    )
+    assert entry == {"group_id": "sg-1", "cidr_ip": "0.0.0.0/0", "port": 22}
+    snapshot = _aws_ec2_describe_security_groups(state, {})
+    assert snapshot == {"sg-1": [{"group_id": "sg-1", "cidr_ip": "0.0.0.0/0", "port": 22}]}
+
+
+def test_azure_list_security_rules_handler_returns_real_snapshot() -> None:
+    state = _empty_state()
+    entry = _azure_network_create_security_rule(state, {"rule_name": "allow-ssh"})
+    assert entry["rule_name"] == "allow-ssh"
+    snapshot = _azure_network_list_security_rules(state, {})
+    assert snapshot["allow-ssh"]["rule_name"] == "allow-ssh"
+
+
+def test_azure_create_security_rule_rejects_duplicate() -> None:
+    state = _empty_state()
+    _azure_network_create_security_rule(state, {"rule_name": "dup"})
+    with pytest.raises(ValueError, match="already exists"):
+        _azure_network_create_security_rule(state, {"rule_name": "dup"})
+
+
+def test_gcp_list_firewalls_handler_returns_real_snapshot() -> None:
+    state = _empty_state()
+    entry = _gcp_compute_insert_firewall(state, {"firewall_name": "allow-internal"})
+    assert entry["firewall_name"] == "allow-internal"
+    snapshot = _gcp_compute_list_firewalls(state, {})
+    assert snapshot["allow-internal"]["firewall_name"] == "allow-internal"
+
+
+def test_gcp_insert_firewall_rejects_duplicate() -> None:
+    state = _empty_state()
+    _gcp_compute_insert_firewall(state, {"firewall_name": "dup"})
+    with pytest.raises(ValueError, match="already exists"):
+        _gcp_compute_insert_firewall(state, {"firewall_name": "dup"})
