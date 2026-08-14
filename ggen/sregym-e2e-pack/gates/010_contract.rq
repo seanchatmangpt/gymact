@@ -13,10 +13,15 @@ SELECT ?violation WHERE {
         dct:identifier "sregym-e2e" ;
         dct:source <https://github.com/SREGym/SREGym> ;
         dct:hasVersion "ba07faf1a322f9b6d4a279643bb796aa2f36f64b" ;
-        dct:conformsTo <urn:gymact:profile:v26.8.7>,
-                       <urn:gymact:mcp:revision-2026-07-28> .
+        dct:conformsTo <urn:gymact:profile:v26.8.7>, <urn:gymact:mcp:revision-2026-07-28> .
     }
     BIND("subject-contract" AS ?violation)
+  }
+  UNION
+  {
+    <urn:gymact:sregym:e2e:contract> dct:hasVersion ?revision .
+    FILTER(?revision != "ba07faf1a322f9b6d4a279643bb796aa2f36f64b")
+    BIND(CONCAT("revision-shadow:", STR(?revision)) AS ?violation)
   }
   UNION
   {
@@ -37,27 +42,13 @@ SELECT ?violation WHERE {
     BIND(CONCAT("do-count:", STR(?count)) AS ?violation)
   }
   UNION
-  {
-    ?cap a sr:Capability ; sr:consequence sr:DO ; sr:authorityRequired false .
-    BIND(CONCAT("do-without-authority:", STR(?cap)) AS ?violation)
-  }
+  { ?cap a sr:Capability ; sr:consequence sr:DO ; sr:authorityRequired false . BIND(CONCAT("do-without-authority:", STR(?cap)) AS ?violation) }
   UNION
-  {
-    ?cap a sr:Capability ; sr:consequence sr:READ ; sr:authorityRequired true .
-    BIND(CONCAT("read-requires-authority:", STR(?cap)) AS ?violation)
-  }
+  { ?cap a sr:Capability ; sr:consequence sr:READ ; sr:authorityRequired true . BIND(CONCAT("read-requires-authority:", STR(?cap)) AS ?violation) }
   UNION
-  {
-    ?cap a sr:Capability .
-    FILTER NOT EXISTS { ?cap sr:binding ?binding }
-    BIND(CONCAT("capability-missing-binding:", STR(?cap)) AS ?violation)
-  }
+  { ?cap a sr:Capability . FILTER NOT EXISTS { ?cap sr:binding ?binding } BIND(CONCAT("capability-missing-binding:", STR(?cap)) AS ?violation) }
   UNION
-  {
-    ?cap a sr:Capability .
-    FILTER NOT EXISTS { ?cap dct:relation ?route . ?route sr:routePath ?path }
-    BIND(CONCAT("capability-missing-route:", STR(?cap)) AS ?violation)
-  }
+  { ?cap a sr:Capability . FILTER NOT EXISTS { ?cap dct:relation ?route . ?route sr:routePath ?path } BIND(CONCAT("capability-missing-route:", STR(?cap)) AS ?violation) }
   UNION
   {
     { SELECT (COUNT(DISTINCT ?subject) AS ?count) WHERE { ?subject a sr:CorpusSubject ; sr:problemId ?problem . } }
@@ -71,30 +62,14 @@ SELECT ?violation WHERE {
     BIND(CONCAT("program-count:", STR(?count)) AS ?violation)
   }
   UNION
-  {
-    ?program a sr:Program ; sr:problemId ?problem .
-    FILTER NOT EXISTS { ?subject a sr:CorpusSubject ; sr:problemId ?problem }
-    BIND(CONCAT("program-outside-corpus:", ?problem) AS ?violation)
-  }
+  { ?program a sr:Program ; sr:problemId ?problem . FILTER NOT EXISTS { ?subject a sr:CorpusSubject ; sr:problemId ?problem } BIND(CONCAT("program-outside-corpus:", ?problem) AS ?violation) }
+  UNION
+  { ?step a sr:ProgramStep ; sr:stepCapability ?cap . FILTER NOT EXISTS { ?cap a sr:Capability } BIND(CONCAT("step-capability-not-admitted:", STR(?step)) AS ?violation) }
+  UNION
+  { ?step a sr:ProgramStep . FILTER NOT EXISTS { ?step sr:inProgram ?program ; sr:stepOrder ?order ; sr:payloadTemplateJson ?payload ; sr:purpose ?purpose ; sr:sourceRef ?source } BIND(CONCAT("incomplete-program-step:", STR(?step)) AS ?violation) }
   UNION
   {
-    ?step a sr:ProgramStep ; sr:stepCapability ?cap .
-    FILTER NOT EXISTS { ?cap a sr:Capability }
-    BIND(CONCAT("step-capability-not-admitted:", STR(?step)) AS ?violation)
-  }
-  UNION
-  {
-    ?step a sr:ProgramStep .
-    FILTER NOT EXISTS { ?step sr:inProgram ?program ; sr:stepOrder ?order ; sr:payloadTemplateJson ?payload ; sr:purpose ?purpose ; sr:sourceRef ?source }
-    BIND(CONCAT("incomplete-program-step:", STR(?step)) AS ?violation)
-  }
-  UNION
-  {
-    VALUES ?path {
-      "src/gymact/generated/sregym_mcp_catalog.py"
-      "rust/sregym_e2e/src/lib.rs"
-      "rust/sregym_e2e/wit/sregym-e2e.wit"
-    }
+    VALUES ?path { "src/gymact/generated/sregym_mcp_catalog.py" "rust/sregym_e2e/src/lib.rs" "rust/sregym_e2e/wit/sregym-e2e.wit" }
     FILTER NOT EXISTS { ?target a sr:ProjectionTarget ; sr:projectionPath ?path }
     BIND(CONCAT("missing-projection:", ?path) AS ?violation)
   }
