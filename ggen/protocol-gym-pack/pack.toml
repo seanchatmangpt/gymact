@@ -1,4 +1,4 @@
 [pack]
 name = "protocol-gym-pack"
-version = "0.1.0"
-description = "Manufacture independent Rust/WIT/proof projections from an admitted MCP/A2A/LSP GymSpec ABox; Python protocol clients remain native."
+version = "0.2.0"
+description = "Manufacture independent Rust/WIT/proof projections from admitted protocol ontologies. MCP is modeled as an exact, revision-aware semantic surface (2026-07-28): core methods, per-request capabilities/meta, MRTR, tools/resources/prompts/completions, subscriptions/notifications, transports, HTTP header mirroring, authorization policy, schema dialect, lifecycle/deprecation, formal extensions, Tasks, and compatibility-only legacy facts. ggen echoes that ontology into generated protocol surfaces; it does not grant execution authority. Python protocol clients remain native and consequential MCP tools still cross GymAct capability-scope/authority/BRCE gates."
