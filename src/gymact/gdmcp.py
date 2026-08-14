@@ -1,64 +1,35 @@
-"""Generated Deterministic MCP (gdmcp) programs for bounded GymAct worlds.
+"""Generated Deterministic MCP (gdmcp) compiler for bounded GymAct worlds.
 
-This module is intentionally not an agent.  It compiles exact, source-grounded
-solution programs into ordinary :class:`gymact.models.ActuationIntent` values.
-Those intents still cross GymAct's capability-scope and authority gates and the
-normal BRCE consequence path.  gdmcp therefore adds no actuation authority.
-
-The first profile is SREGym.  Known benchmark repairs are compiled from the
-exact-pinned upstream SREGym recovery semantics.  Unknown problems, upstream
-revision drift, or unexpected runtime bindings fail closed instead of falling
-back to an LLM or arbitrary MCP tool selection.
+The compiler contains no benchmark-specific solution table.  Known solution
+semantics are manufactured from ``ggen/sregym-e2e-pack/ontology.ttl`` into
+``gymact.generated.sregym_mcp_catalog``.  This module only validates, binds,
+and compiles that admitted projection into ordinary ``ActuationIntent`` values.
+Those intents still cross capability scope, authority admission, and BRCE.
 """
-
 from __future__ import annotations
 
 import hashlib
 import json
 import re
+from collections import defaultdict
 from typing import Any, Literal
 
+from gymact.generated.sregym_mcp_catalog import (
+    PROGRAM_SOURCE_ROWS,
+    PROGRAM_STEP_ROWS,
+    SREGYM_CAPABILITY_ROWS,
+    SREGYM_LITE_PROBLEMS,
+    SREGYM_UPSTREAM_REVISION,
+)
 from gymact.models import ActuationIntent, FrozenModel
-
-SREGYM_UPSTREAM_REVISION = "ba07faf1a322f9b6d4a279643bb796aa2f36f64b"
 
 SREGYM_RUN_KUBECTL = "urn:gymact:sregym:capability:run_kubectl"
 SREGYM_SUBMIT_DIAGNOSIS = "urn:gymact:sregym:capability:submit_diagnosis"
 SREGYM_SUBMIT_MITIGATION = "urn:gymact:sregym:capability:submit_mitigation"
 
 _GDMCP_SREGYM_CAPABILITIES = frozenset(
-    {
-        SREGYM_RUN_KUBECTL,
-        SREGYM_SUBMIT_DIAGNOSIS,
-        SREGYM_SUBMIT_MITIGATION,
-    }
+    row["iri"] for row in SREGYM_CAPABILITY_ROWS if row["consequence"] == "DO"
 )
-
-# Exact list from SREGym/SREGym@SREGYM_UPSTREAM_REVISION docs/SREGym-Lite.md.
-SREGYM_LITE_PROBLEMS = (
-    "cronjob_sidecar_blocks_completion_hotel_reservation",
-    "edge_request_filter_cpu_saturation",
-    "network_policy_block",
-    "env_variable_shadowing_astronomy_shop",
-    "mutating_webhook_resource_limits_social_network",
-    "finalizer_deadlock_controller_hotel_reservation",
-    "kafka_poison_pill_hol_block",
-    "internal_traffic_policy_local_astronomy_shop",
-    "service_dns_resolution_failure_social_network",
-    "service_wrong_pod_selection_hotel_reservation",
-    "namespace_memory_limit",
-    "valkey_auth_disruption",
-    "secret_rotation_stale_env_credentials_astronomy_shop",
-    "unschedulable_incorrect_port_assignment",
-    "readiness_probe_misconfiguration_social_network",
-    "duplicate_pvc_mounts_social_network",
-    "admission_webhook_outage_hotel_reservation",
-    "wrong_dns_policy_astronomy_shop",
-    "wrong_service_selector_social_network",
-    "rolling_update_misconfigured_social_network",
-    "search_rate_retry_collapse_hotel_reservation",
-)
-
 _PLACEHOLDER_RE = re.compile(r"\{\{([a-z][a-z0-9_]*)\}\}")
 _K8S_NAMESPACE_RE = re.compile(r"^[a-z0-9](?:[-a-z0-9]*[a-z0-9])?$")
 
@@ -73,8 +44,6 @@ class GdmcpRefusal(RuntimeError):
 
 
 class GdmcpStep(FrozenModel):
-    """One generated MCP/GymAct transition with no runtime tool selection."""
-
     capability: str
     payload_template: dict[str, Any]
     purpose: str
@@ -82,8 +51,6 @@ class GdmcpStep(FrozenModel):
 
 
 class GdmcpProgram(FrozenModel):
-    """One exact-subject deterministic solution program."""
-
     profile: Literal["sregym"] = "sregym"
     problem_id: str
     upstream_revision: str = SREGYM_UPSTREAM_REVISION
@@ -102,8 +69,6 @@ class GdmcpProgram(FrozenModel):
 
 
 class CompiledGdmcpProgram(FrozenModel):
-    """A deterministic program bound to one GymAct episode."""
-
     program_digest: str
     problem_id: str
     upstream_revision: str
@@ -112,213 +77,56 @@ class CompiledGdmcpProgram(FrozenModel):
 
 
 class GdmcpCoverage(FrozenModel):
-    """Honest bounded coverage for a named benchmark corpus."""
-
     corpus: str
     admitted_subjects: int
     compiled_subjects: int
     deterministic_projection_ratio: float
 
 
-def _source(path: str, symbol: str, *, blob_sha: str | None = None) -> str:
-    blob = f";blob={blob_sha}" if blob_sha else ""
-    return f"SREGym/SREGym@{SREGYM_UPSTREAM_REVISION}:{path}#{symbol}{blob}"
+def _programs_from_projection() -> dict[str, GdmcpProgram]:
+    sources: dict[str, list[str]] = defaultdict(list)
+    for problem_id, source_ref in PROGRAM_SOURCE_ROWS:
+        sources[problem_id].append(source_ref)
+
+    steps: dict[str, list[tuple[int, GdmcpStep]]] = defaultdict(list)
+    for problem_id, order, capability, payload, purpose, source_ref in PROGRAM_STEP_ROWS:
+        if capability not in _GDMCP_SREGYM_CAPABILITIES:
+            raise RuntimeError(f"GDMCP_GENERATED_NON_DO_CAPABILITY:{capability}")
+        steps[problem_id].append(
+            (
+                int(order),
+                GdmcpStep(
+                    capability=capability,
+                    payload_template=dict(payload),
+                    purpose=purpose,
+                    source_ref=source_ref,
+                ),
+            )
+        )
+
+    if set(sources) != set(steps):
+        raise RuntimeError(
+            f"GDMCP_GENERATED_PROGRAM_SET_DIVERGENCE:sources={sorted(sources)},steps={sorted(steps)}"
+        )
+
+    result: dict[str, GdmcpProgram] = {}
+    for problem_id in sorted(steps):
+        ordered = sorted(steps[problem_id], key=lambda item: item[0])
+        ordinals = [item[0] for item in ordered]
+        if ordinals != list(range(1, len(ordered) + 1)):
+            raise RuntimeError(f"GDMCP_GENERATED_STEP_ORDER_INVALID:{problem_id}:{ordinals}")
+        result[problem_id] = GdmcpProgram(
+            problem_id=problem_id,
+            source_refs=tuple(sources[problem_id]),
+            steps=tuple(step for _, step in ordered),
+        )
+    return result
 
 
-_WRONG_DNS_SOURCE = _source(
-    "sregym/conductor/problems/wrong_dns_policy.py",
-    "WrongDNSPolicy.recover_fault",
-    blob_sha="630627e4c4d3f69f477e857252972b397757f68c",
-)
-_WRONG_DNS_INJECTOR_SOURCE = _source(
-    "sregym/generators/fault/inject_virtual.py",
-    "VirtualizationFaultInjector.recover_wrong_dns_policy",
-)
-_INTERNAL_TRAFFIC_SOURCE = _source(
-    "sregym/conductor/problems/internal_traffic_policy_local.py",
-    "InternalTrafficPolicyLocalAstronomyShop.recover_fault",
-    blob_sha="4264df2c1b88845df120aec09bb9583292f652d4",
-)
-
-
-def _step(
-    capability: str,
-    payload: dict[str, Any],
-    purpose: str,
-    source_ref: str,
-) -> GdmcpStep:
-    if capability not in _GDMCP_SREGYM_CAPABILITIES:
-        raise ValueError(f"gdmcp program uses non-admitted SREGym capability: {capability}")
-    return GdmcpStep(
-        capability=capability,
-        payload_template=payload,
-        purpose=purpose,
-        source_ref=source_ref,
-    )
-
-
-# These are deliberately data, not per-problem Python control-flow branches.
-# ggen can manufacture this same structure from admitted recovery semantics as
-# coverage expands; the runtime compiler below remains unchanged.
-_SREGYM_PROGRAMS: dict[str, GdmcpProgram] = {
-    "wrong_dns_policy_astronomy_shop": GdmcpProgram(
-        problem_id="wrong_dns_policy_astronomy_shop",
-        source_refs=(_WRONG_DNS_SOURCE, _WRONG_DNS_INJECTOR_SOURCE),
-        steps=(
-            _step(
-                SREGYM_SUBMIT_DIAGNOSIS,
-                {
-                    "component": "frontend",
-                    "cause": (
-                        "deployment frontend has dnsPolicy=None and an external "
-                        "8.8.8.8 resolver, breaking cluster-internal DNS resolution"
-                    ),
-                    "gdmcp_source": _WRONG_DNS_SOURCE,
-                },
-                "submit the source-grounded diagnosis; no model inference",
-                _WRONG_DNS_SOURCE,
-            ),
-            _step(
-                SREGYM_RUN_KUBECTL,
-                {
-                    "command": (
-                        "kubectl patch deployment frontend -n {{namespace}} "
-                        "--type=json -p='[{\"op\":\"remove\",\"path\":\"/spec/template/spec/dnsPolicy\"},"
-                        "{\"op\":\"remove\",\"path\":\"/spec/template/spec/dnsConfig\"}]'"
-                    )
-                },
-                "restore the deployment to normal ClusterFirst DNS semantics",
-                _WRONG_DNS_INJECTOR_SOURCE,
-            ),
-            _step(
-                SREGYM_RUN_KUBECTL,
-                {
-                    "command": (
-                        "kubectl rollout status deployment frontend -n {{namespace}} "
-                        "--timeout=120s"
-                    )
-                },
-                "wait for the repaired deployment to become stable",
-                _WRONG_DNS_INJECTOR_SOURCE,
-            ),
-            _step(
-                SREGYM_SUBMIT_MITIGATION,
-                {
-                    "action": (
-                        "removed the injected dnsPolicy/dnsConfig override and "
-                        "waited for the frontend rollout"
-                    ),
-                    "gdmcp_source": _WRONG_DNS_INJECTOR_SOURCE,
-                },
-                "submit the deterministic mitigation evidence",
-                _WRONG_DNS_INJECTOR_SOURCE,
-            ),
-        ),
-    ),
-    "internal_traffic_policy_local_astronomy_shop": GdmcpProgram(
-        problem_id="internal_traffic_policy_local_astronomy_shop",
-        source_refs=(_INTERNAL_TRAFFIC_SOURCE,),
-        steps=(
-            _step(
-                SREGYM_SUBMIT_DIAGNOSIS,
-                {
-                    "component": "service/recommendation",
-                    "cause": (
-                        "internalTrafficPolicy=Local plus pinned recommendation/frontend "
-                        "pods causes cross-node in-cluster requests to be dropped"
-                    ),
-                    "gdmcp_source": _INTERNAL_TRAFFIC_SOURCE,
-                },
-                "submit the source-grounded diagnosis; no model inference",
-                _INTERNAL_TRAFFIC_SOURCE,
-            ),
-            _step(
-                SREGYM_RUN_KUBECTL,
-                {
-                    "command": (
-                        "kubectl patch service recommendation -n {{namespace}} "
-                        "--type=merge -p '{\"spec\":{\"internalTrafficPolicy\":\"Cluster\"}}'"
-                    )
-                },
-                "restore cluster-wide service routing",
-                _INTERNAL_TRAFFIC_SOURCE,
-            ),
-            _step(
-                SREGYM_RUN_KUBECTL,
-                {
-                    "command": (
-                        "kubectl patch deployment recommendation -n {{namespace}} "
-                        "--type=merge -p '{\"spec\":{\"template\":{\"spec\":{\"nodeSelector\":null}}}}'"
-                    )
-                },
-                "remove fault-only recommendation node pinning",
-                _INTERNAL_TRAFFIC_SOURCE,
-            ),
-            _step(
-                SREGYM_RUN_KUBECTL,
-                {"command": "kubectl rollout restart deployment/recommendation -n {{namespace}}"},
-                "restart recommendation after topology repair",
-                _INTERNAL_TRAFFIC_SOURCE,
-            ),
-            _step(
-                SREGYM_RUN_KUBECTL,
-                {
-                    "command": (
-                        "kubectl patch deployment frontend -n {{namespace}} "
-                        "--type=merge -p '{\"spec\":{\"template\":{\"spec\":{\"nodeSelector\":null}}}}'"
-                    )
-                },
-                "remove fault-only frontend node pinning",
-                _INTERNAL_TRAFFIC_SOURCE,
-            ),
-            _step(
-                SREGYM_RUN_KUBECTL,
-                {"command": "kubectl rollout restart deployment/frontend -n {{namespace}}"},
-                "restart frontend after topology repair",
-                _INTERNAL_TRAFFIC_SOURCE,
-            ),
-            _step(
-                SREGYM_RUN_KUBECTL,
-                {
-                    "command": (
-                        "kubectl rollout status deployment/recommendation -n {{namespace}} "
-                        "--timeout=180s"
-                    )
-                },
-                "wait for recommendation convergence",
-                _INTERNAL_TRAFFIC_SOURCE,
-            ),
-            _step(
-                SREGYM_RUN_KUBECTL,
-                {
-                    "command": (
-                        "kubectl rollout status deployment/frontend -n {{namespace}} "
-                        "--timeout=180s"
-                    )
-                },
-                "wait for frontend convergence",
-                _INTERNAL_TRAFFIC_SOURCE,
-            ),
-            _step(
-                SREGYM_SUBMIT_MITIGATION,
-                {
-                    "action": (
-                        "restored internalTrafficPolicy=Cluster, removed both injected "
-                        "nodeSelectors, and waited for both deployments to roll out"
-                    ),
-                    "gdmcp_source": _INTERNAL_TRAFFIC_SOURCE,
-                },
-                "submit the deterministic mitigation evidence",
-                _INTERNAL_TRAFFIC_SOURCE,
-            ),
-        ),
-    ),
-}
+_SREGYM_PROGRAMS = _programs_from_projection()
 
 
 def known_sregym_programs() -> tuple[GdmcpProgram, ...]:
-    """Return deterministic programs in stable problem-id order."""
-
     return tuple(_SREGYM_PROGRAMS[key] for key in sorted(_SREGYM_PROGRAMS))
 
 
@@ -342,7 +150,7 @@ def _collect_placeholders(value: Any) -> set[str]:
             found.update(_collect_placeholders(item))
         return found
     if isinstance(value, (list, tuple)):
-        found = set()
+        found: set[str] = set()
         for item in value:
             found.update(_collect_placeholders(item))
         return found
@@ -407,12 +215,11 @@ def compile_sregym_solution(
     authority_ref: str | None = None,
     principal: str | None = "urn:gymact:agent:gdmcp",
 ) -> CompiledGdmcpProgram:
-    """Compile one known SREGym solution into exact GymAct actuation intents.
+    """Compile one ontology-admitted SREGym solution into exact GymAct intents.
 
-    The compiler has no LLM path.  A subject it does not know is a typed
-    refusal and belongs at the AutoFDE-Lab novelty boundary.
+    There is no LLM path. Unknown subjects belong at the novelty boundary and
+    fail closed rather than becoming an unreceipted improvisation.
     """
-
     if upstream_revision != SREGYM_UPSTREAM_REVISION:
         raise GdmcpRefusal(
             "GDMCP_SUBJECT_DRIFT",
@@ -426,14 +233,11 @@ def compile_sregym_solution(
     required_bindings: set[str] = set()
     for step in program.steps:
         required_bindings.update(_collect_placeholders(step.payload_template))
-
-    observed_bindings = set(bindings)
-    if observed_bindings != required_bindings:
+    if set(bindings) != required_bindings:
         raise GdmcpRefusal(
             "GDMCP_BINDING_SET_MISMATCH",
-            f"required={sorted(required_bindings)},observed={sorted(observed_bindings)}",
+            f"required={sorted(required_bindings)},observed={sorted(bindings)}",
         )
-
     for name, value in bindings.items():
         if not isinstance(value, str):
             raise GdmcpRefusal("GDMCP_BINDING_NOT_STRING", name)
