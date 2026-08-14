@@ -21,26 +21,61 @@ then calls `run_episode()`.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from gymact.epistemic_dspy import (
     AdmittedHypothesis,
-    CandidateClaimExtractor,
     CandidatePlan,
     Constraint,
-    Diagnoser,
     DiagnosisCandidate,
-    Discriminator,
-    EvidenceLinker,
     Fact,
     Goal,
-    Hypothesizer,
-    PlanConstructor,
     ReadCandidate,
     ReceiptExplanation,
     VerificationAssessment,
 )
 from gymact.epistemic_dspy import Capability as EpistemicCapability
+
+# `CandidateClaimExtractor`/`Diagnoser`/`Discriminator`/`EvidenceLinker`/
+# `Hypothesizer`/`PlanConstructor` are `dspy.Module` subclasses that
+# `gymact.epistemic_dspy` only defines when the optional 'dspy' extra is
+# installed (see that module's `if dspy is not None:` guard). This module's
+# pure decision function `next_kernel_action` needs none of them at import
+# time -- they're only instantiated inside `run_episode()`, which itself
+# requires real `dspy` -- so importing them optionally here, matching
+# `gymact.dspy_verifier`'s guard convention, keeps collection of this module
+# (and anything that imports only the pure helpers) working without dspy.
+#
+# Always import for static analysis (TYPE_CHECKING branch) so pyright types
+# `hypothesizer = Hypothesizer()` etc. against the real classes instead of
+# `None` -- pyright only type-checks the TYPE_CHECKING branch, matching the
+# same idiom `gymact.epistemic_dspy` uses for its own `dspy` import.
+if TYPE_CHECKING:
+    from gymact.epistemic_dspy import (
+        CandidateClaimExtractor,
+        Diagnoser,
+        Discriminator,
+        EvidenceLinker,
+        Hypothesizer,
+        PlanConstructor,
+    )
+else:
+    try:
+        from gymact.epistemic_dspy import (
+            CandidateClaimExtractor,
+            Diagnoser,
+            Discriminator,
+            EvidenceLinker,
+            Hypothesizer,
+            PlanConstructor,
+        )
+    except ImportError:  # pragma: no cover - exercised via require_standing in tests
+        CandidateClaimExtractor = None
+        Diagnoser = None
+        Discriminator = None
+        EvidenceLinker = None
+        Hypothesizer = None
+        PlanConstructor = None
 from gymact.kernel import GymAct
 from gymact.models import ActuationIntent
 from gymact.models import Capability as GymActCapability
@@ -141,9 +176,7 @@ async def _execute_capability(
     }
 
 
-def _admit_links(
-    links: list[Any], fact_ids: set[str]
-) -> tuple[list[Any], list[str]]:
+def _admit_links(links: list[Any], fact_ids: set[str]) -> tuple[list[Any], list[str]]:
     """Real referential-integrity check over `EvidenceLinkProposal`s --
     the same discipline `epistemic_kernel.admit_diagnosis` applied to
     `evidence_ids`, relocated to where this design puts state computation.
@@ -171,9 +204,7 @@ def _admit_links(
     return admitted, refused_reasons
 
 
-def _admit_claims(
-    claims: list[Any], real_obs_ids: set[str]
-) -> tuple[list[Any], list[str]]:
+def _admit_claims(claims: list[Any], real_obs_ids: set[str]) -> tuple[list[Any], list[str]]:
     """Real referential-integrity check over `CandidateClaim`s -- the same
     discipline `_admit_links` applies to `fact_id`, applied here to
     `source_observation_ids`. A claim citing an observation id no real
@@ -371,11 +402,13 @@ async def run_episode(
         for h in hypotheses:
             h.state = _compute_state(h.id, grounded_links)
             h.supporting_fact_ids = [
-                ln.fact_id for ln in grounded_links
+                ln.fact_id
+                for ln in grounded_links
                 if ln.hypothesis_id == h.id and ln.relation == "SUPPORTS"
             ]
             h.contradicting_fact_ids = [
-                ln.fact_id for ln in grounded_links
+                ln.fact_id
+                for ln in grounded_links
                 if ln.hypothesis_id == h.id and ln.relation == "CONTRADICTS"
             ]
 
@@ -425,8 +458,7 @@ async def run_episode(
         if action == "rehypothesize":
             investigated_ids = set()
             active_constraints = [
-                c for c in active_constraints
-                if c.id != "constraint:commit-after-investigation"
+                c for c in active_constraints if c.id != "constraint:commit-after-investigation"
             ]
             with dspy.context(lm=lm):
                 hypothesizer = Hypothesizer()
@@ -499,8 +531,10 @@ async def run_episode(
             steps.append(
                 KernelStep(
                     kind="discriminate_execute",
-                    payload={"capability_id": candidate.capability_id,
-                              "parameters": candidate.parameters},
+                    payload={
+                        "capability_id": candidate.capability_id,
+                        "parameters": candidate.parameters,
+                    },
                     result={"observation_id": obs_id, "outcome": outcome},
                 )
             )
@@ -508,9 +542,7 @@ async def run_episode(
         if observations:
             with dspy.context(lm=lm):
                 extractor = CandidateClaimExtractor()
-                claims_pred = extractor(
-                    observation_text_by_id=observations, existing_facts=facts
-                )
+                claims_pred = extractor(observation_text_by_id=observations, existing_facts=facts)
             # Same "No AI Without PI!" (arXiv:2508.00116) grounding
             # requirement as `_admit_links` above, applied to claim
             # extraction via `_admit_claims`.
@@ -519,9 +551,7 @@ async def run_episode(
                 list(claims_pred.claims), real_obs_ids
             )
             admitted_claim_ids = {id(c) for c in admitted_claims}
-            refused_claims = [
-                c for c in claims_pred.claims if id(c) not in admitted_claim_ids
-            ]
+            refused_claims = [c for c in claims_pred.claims if id(c) not in admitted_claim_ids]
             for claim, reason in zip(refused_claims, refused_claim_reasons, strict=True):
                 steps.append(
                     KernelStep(
@@ -540,9 +570,7 @@ async def run_episode(
                 )
                 next_fact_id += 1
                 facts.append(fact)
-                steps.append(
-                    KernelStep(kind="fact_admitted", payload={}, result=fact.model_dump())
-                )
+                steps.append(KernelStep(kind="fact_admitted", payload={}, result=fact.model_dump()))
 
     supported = [h for h in hypotheses if h.state == "SUPPORTED"]
     if len(supported) != 1:
@@ -611,9 +639,7 @@ async def run_episode(
             rounds_used=rounds_used,
             steps=steps,
         )
-    steps.append(
-        KernelStep(kind="construct", payload={}, result=selected_plan.model_dump())
-    )
+    steps.append(KernelStep(kind="construct", payload={}, result=selected_plan.model_dump()))
 
     diagnosis_submitted = False
     mitigation_submitted = False
@@ -627,8 +653,10 @@ async def run_episode(
         steps.append(
             KernelStep(
                 kind="brce_act",
-                payload={"capability_id": plan_step.capability_id,
-                          "parameters": plan_step.parameters},
+                payload={
+                    "capability_id": plan_step.capability_id,
+                    "parameters": plan_step.parameters,
+                },
                 result=outcome,
             )
         )
@@ -683,8 +711,7 @@ async def explain_episode(
 
         goal: Goal = dspy.InputField(desc="the desired state the episode was pursuing")
         hypotheses: list[AdmittedHypothesis] = dspy.InputField(
-            desc="the real hypotheses considered during the episode, kernel-computed state "
-            "included"
+            desc="the real hypotheses considered during the episode, kernel-computed state included"
         )
         facts: list[Fact] = dspy.InputField(
             desc="the real facts gathered and admitted during the episode"
