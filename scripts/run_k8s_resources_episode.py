@@ -31,6 +31,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from gymact import GymAct, MaterializationIntent
 from gymact.gyms.k8s_resource_gym import K8sResourceProvider
+from gymact.models import Operation
 from gymact.ocel import write_ocel_log
 
 REPORTS_DIR = Path(__file__).parent.parent / "reports" / "ocel"
@@ -60,16 +61,52 @@ async def run() -> None:
     try:
         observation = await gym.observe(episode_id)
         print(f"k8s-resources: observe state={observation.state}")
+        receipts.append(
+            materialization.receipt.model_copy(
+                update={
+                    "operation": Operation.OBSERVE,
+                    "idempotency_key": None,
+                    "reason": f"observe state: {str(observation.state)[:180]}",
+                }
+            )
+        )
 
         kinds = await gym.read(episode_id, LIST_KINDS, {})
         print(f"k8s-resources: read(list_resource_kinds) = {kinds['result']}")
+        receipts.append(
+            materialization.receipt.model_copy(
+                update={
+                    "operation": Operation.OBSERVE,
+                    "idempotency_key": None,
+                    "reason": f"read list_resource_kinds: {str(kinds['result'])[:180]}",
+                }
+            )
+        )
 
         for kind in kinds["result"]:
             fields = await gym.read(episode_id, REQUIRED_FIELDS, {"kind": kind})
             print(f"k8s-resources: read(required_fields_for_kind, {kind}) = {fields['result']}")
+            receipts.append(
+                materialization.receipt.model_copy(
+                    update={
+                        "operation": Operation.OBSERVE,
+                        "idempotency_key": None,
+                        "reason": f"read required_fields_for_kind({kind}): {str(fields['result'])[:180]}",
+                    }
+                )
+            )
 
             providers = await gym.read(episode_id, PROVIDERS, {"kind": kind})
             print(f"k8s-resources: read(providers_offering_kind, {kind}) = {providers['result']}")
+            receipts.append(
+                materialization.receipt.model_copy(
+                    update={
+                        "operation": Operation.OBSERVE,
+                        "idempotency_key": None,
+                        "reason": f"read providers_offering_kind({kind}): {str(providers['result'])[:180]}",
+                    }
+                )
+            )
 
         verification = await gym.verify(episode_id, {})
         print(f"k8s-resources: verify_passed={verification.passed}")
