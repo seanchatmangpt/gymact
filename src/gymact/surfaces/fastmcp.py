@@ -10,6 +10,7 @@ from fastmcp import FastMCP
 from gymact.brce import BRCEBroker, BrokerRequest
 from gymact.cut import CombinatorialBrokerRequest
 from gymact.dcm_runtime import DCMDecisionCourt, DecisionCourtRequest
+from gymact.ggen_agent import GgenAgentRuntime, manufacture_ggen_agent_space
 from gymact.models import ActuationIntent, MaterializationIntent
 from gymact.providers import MemoryProvider
 from gymact.runtime import GymAct, ProductionGymAct
@@ -26,8 +27,16 @@ def _runtime(runtime: GymAct | None) -> GymAct:
     return instance
 
 
-def create_mcp(runtime: GymAct | None = None) -> FastMCP:
-    """Create GymAct MCP tools; DCM selected-cut execution is the production DO mode."""
+def create_mcp(
+    runtime: GymAct | None = None,
+    *,
+    ggen_agents: GgenAgentRuntime | None = None,
+) -> FastMCP:
+    """Create GymAct MCP tools; DCM selected-cut execution is the production DO mode.
+
+    ``ggen_agents`` is an optional LLM-free logical-agent runtime.  Its tools
+    expose deterministic manufacture only; MCP is transport, never a reasoner.
+    """
     service = _runtime(runtime)
     compatibility_broker = BRCEBroker(service)
     decision_court = DCMDecisionCourt()
@@ -69,6 +78,56 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
         return (await service.observe(episode_id)).model_dump(mode="json")
 
     @mcp.tool()
+    async def ggen_agent_catalog() -> dict[str, Any]:
+        """List configured LLM-free logical ggen agents and current active WIP."""
+        if ggen_agents is None:
+            return {"standing": "REQUIRES_CONFIGURATION", "agents": [], "wip": {}}
+        return {
+            "standing": "ALIVE",
+            "agents": [spec.model_dump(mode="json") for spec in ggen_agents.specs()],
+            "wip": ggen_agents.wip(),
+            "llm_calls": 0,
+        }
+
+    @mcp.tool()
+    async def ggen_agent_frontier(
+        roles: list[str],
+        planners: list[str],
+        objectives: list[str],
+        observation_projections: list[str],
+        action_projections: list[str],
+        packs: list[str],
+        max_combinations: int = 10000,
+    ) -> dict[str, Any]:
+        """Construct a powerless DfCM logical-agent possibility space without selecting."""
+        space = manufacture_ggen_agent_space(
+            roles=tuple(roles),
+            planners=tuple(planners),
+            objectives=tuple(objectives),
+            observation_projections=tuple(observation_projections),
+            action_projections=tuple(action_projections),
+            packs=tuple(packs),
+            max_combinations=max_combinations,
+        )
+        return {"mode": "CONSTRUCT", "llm_calls": 0, **space.model_dump(mode="json")}
+
+    @mcp.tool()
+    async def ggen_agent_invoke(
+        agent_id: str,
+        observation: dict[str, Any],
+        inputs: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Invoke one deterministic logical ggen agent; no LM is instantiated."""
+        if ggen_agents is None:
+            raise ValueError("GGEN_AGENT_RUNTIME_NOT_CONFIGURED")
+        result = await ggen_agents.invoke(
+            agent_id,
+            observation=observation,
+            inputs=inputs or {},
+        )
+        return result.model_dump(mode="json")
+
+    @mcp.tool()
     async def act(
         episode_id: str | None = None,
         capability: str | None = None,
@@ -87,10 +146,7 @@ def create_mcp(runtime: GymAct | None = None) -> FastMCP:
         request. ``request`` is deprecated BRCE compatibility. Legacy fields cannot
         mutate the default ProductionGymAct runtime.
         """
-        supplied = sum(
-            value is not None
-            for value in (candidate, court, selected, request)
-        )
+        supplied = sum(value is not None for value in (candidate, court, selected, request))
         legacy_supplied = episode_id is not None or capability is not None
         if supplied + int(legacy_supplied) != 1:
             raise ValueError("ACT_REQUIRES_EXACTLY_ONE_MODE")
