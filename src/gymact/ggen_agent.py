@@ -4,11 +4,11 @@ An agent in this module is a projection, not a conversational process:
 
     Agent = Planner x Role x Objective x ObservationProjection x ActionProjection x Pack
 
-The DfCM possibility space is preserved independently of active execution.  A
+The DfCM possibility space is preserved independently of active execution. A
 ``GgenAgentRuntime`` admits only a bounded amount of active work and refuses
-excess WIP rather than hiding it in an internal queue.  The manufacturer is
-injected; the production adapter routes manufacture through GymAct's existing
-``ggen`` provider and therefore through the normal authority/receipt boundary.
+excess WIP rather than hiding it in an internal queue. Agent specifications
+may themselves be compiled from a ggen pack's RDF ABox, so the logical
+organization is data rather than hand-written Python constructors.
 
 No class in this module constructs, requires, or calls an LLM.
 """
@@ -16,10 +16,12 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Callable, Mapping
+from pathlib import Path
 from typing import Any, Literal, Protocol, runtime_checkable
 
 import anyio
 from pydantic import Field
+from rdflib import DCTERMS, RDF, Graph, Namespace
 
 from gymact.combinatorial import (
     CombinationSpace,
@@ -29,6 +31,14 @@ from gymact.combinatorial import (
 )
 from gymact.evidence import digest
 from gymact.models import ActuationIntent, FrozenModel, Standing
+
+PROV = Namespace("http://www.w3.org/ns/prov#")
+PPLAN = Namespace("http://purl.org/net/p-plan#")
+
+_LOGICAL_AGENT_KIND = "logical-agent"
+_OBSERVATION_PROJECTION_KIND = "observation-projection"
+_ACTION_PROJECTION_KIND = "action-projection"
+_GGEN_PACK_KIND = "ggen-pack"
 
 
 class GgenAgentSpec(FrozenModel):
@@ -77,10 +87,181 @@ class GgenManufacturer(Protocol):
 ManufactureCallable = Callable[..., Mapping[str, Any] | Any]
 
 
-class CallableGgenManufacturer:
-    """Small adapter for deterministic Python/ggen-generated callables.
+def _local_name(value: Any) -> str:
+    iri = str(value)
+    for separator in ("#", ":"):
+        if separator in iri:
+            iri = iri.rsplit(separator, 1)[-1]
+    return iri
 
-    The callable may be synchronous or asynchronous.  It receives only the
+
+def _load_pack_graph(pack_dir: Path) -> Graph:
+    graph = Graph()
+    flat = pack_dir / "ontology.ttl"
+    if flat.is_file():
+        graph.parse(flat, format="turtle")
+    split_dir = pack_dir / "ontology"
+    if split_dir.is_dir():
+        for ttl_file in sorted(split_dir.glob("*.ttl")):
+            graph.parse(ttl_file, format="turtle")
+    return graph
+
+
+def _exactly_one(values: tuple[Any, ...], *, field: str, subject: Any) -> Any:
+    if len(values) != 1:
+        raise ValueError(
+            f"GGEN_AGENT_{field}_CARDINALITY:{subject}:{len(values)}"
+        )
+    return values[0]
+
+
+def _objects(graph: Graph, subject: Any, predicate: Any) -> tuple[Any, ...]:
+    return tuple(graph.objects(subject, predicate))
+
+
+def _has_kind(graph: Graph, subject: Any, expected: str) -> bool:
+    return any(
+        _local_name(kind) == expected
+        for kind in graph.objects(subject, DCTERMS.type)
+    )
+
+
+def _relation_of_kind(graph: Graph, subject: Any, expected: str) -> Any:
+    matches = tuple(
+        relation
+        for relation in graph.objects(subject, DCTERMS.relation)
+        if _has_kind(graph, relation, expected)
+    )
+    return _exactly_one(matches, field=expected.upper(), subject=subject)
+
+
+def _projection_keys(graph: Graph, projection: Any) -> tuple[str, ...]:
+    keys: list[str] = []
+    for part in graph.objects(projection, DCTERMS.hasPart):
+        identifier = _exactly_one(
+            _objects(graph, part, DCTERMS.identifier),
+            field="PROJECTION_KEY",
+            subject=part,
+        )
+        keys.append(str(identifier))
+    return tuple(sorted(keys))
+
+
+def compile_ggen_agent_specs(pack_dir: Path) -> tuple[GgenAgentSpec, ...]:
+    """Compile logical-agent specs from a public-ontology RDF ABox.
+
+    The compiler recognizes only public predicates/classes. Domain-specific
+    distinctions such as ``logical-agent`` and ``action-projection`` are SKOS
+    concept data carried through ``dct:type``; no private Python class or RDF
+    predicate is required. Every structural field is cardinality checked and
+    malformed agent data fails closed.
+    """
+    graph = _load_pack_graph(pack_dir)
+    specs: list[GgenAgentSpec] = []
+
+    for agent in sorted(graph.subjects(RDF.type, PROV.Agent), key=str):
+        if not _has_kind(graph, agent, _LOGICAL_AGENT_KIND):
+            continue
+
+        agent_id = str(
+            _exactly_one(
+                _objects(graph, agent, DCTERMS.identifier),
+                field="ID",
+                subject=agent,
+            )
+        )
+        association = _exactly_one(
+            _objects(graph, agent, PROV.qualifiedAssociation),
+            field="ASSOCIATION",
+            subject=agent,
+        )
+        role = _exactly_one(
+            _objects(graph, association, PROV.hadRole),
+            field="ROLE",
+            subject=agent,
+        )
+        planner = _exactly_one(
+            _objects(graph, association, PROV.hadPlan),
+            field="PLANNER",
+            subject=agent,
+        )
+        objective = _exactly_one(
+            _objects(graph, agent, DCTERMS.subject),
+            field="OBJECTIVE",
+            subject=agent,
+        )
+        observation_projection = _relation_of_kind(
+            graph, agent, _OBSERVATION_PROJECTION_KIND
+        )
+        action_projection = _relation_of_kind(
+            graph, agent, _ACTION_PROJECTION_KIND
+        )
+        pack = _relation_of_kind(graph, agent, _GGEN_PACK_KIND)
+
+        extent_values = _objects(graph, agent, DCTERMS.extent)
+        max_wip = int(extent_values[0]) if extent_values else 1
+        if len(extent_values) > 1:
+            raise ValueError(
+                f"GGEN_AGENT_MAX_WIP_CARDINALITY:{agent}:{len(extent_values)}"
+            )
+
+        specs.append(
+            GgenAgentSpec(
+                agent_id=agent_id,
+                role_ref=str(role),
+                planner_ref=str(planner),
+                objective_ref=str(objective),
+                observation_projection_ref=str(observation_projection),
+                action_projection_ref=str(action_projection),
+                pack_ref=str(pack),
+                observation_keys=_projection_keys(graph, observation_projection),
+                output_keys=_projection_keys(graph, action_projection),
+                max_wip=max_wip,
+                mcp_tool_name=agent_id.replace("-", "_"),
+            )
+        )
+
+    return tuple(sorted(specs, key=lambda spec: spec.agent_id))
+
+
+def load_task_agent_assignments(pack_dir: Path) -> dict[str, str]:
+    """Compile p-plan task -> logical-agent assignment from ``dct:contributor``."""
+    graph = _load_pack_graph(pack_dir)
+    assignments: dict[str, str] = {}
+
+    for task in graph.subjects(RDF.type, PPLAN.Plan):
+        identifiers = _objects(graph, task, DCTERMS.identifier)
+        if not identifiers:
+            continue
+        identifier = str(
+            _exactly_one(identifiers, field="TASK_ID", subject=task)
+        )
+        contributors = tuple(
+            contributor
+            for contributor in graph.objects(task, DCTERMS.contributor)
+            if _has_kind(graph, contributor, _LOGICAL_AGENT_KIND)
+        )
+        agent = _exactly_one(
+            contributors,
+            field="TASK_AGENT",
+            subject=task,
+        )
+        agent_id = str(
+            _exactly_one(
+                _objects(graph, agent, DCTERMS.identifier),
+                field="TASK_AGENT_ID",
+                subject=agent,
+            )
+        )
+        assignments[identifier] = agent_id
+
+    return dict(sorted(assignments.items()))
+
+
+class CallableGgenManufacturer:
+    """Adapter for deterministic Python/ggen-generated callables.
+
+    The callable may be synchronous or asynchronous. It receives only the
     admitted projection plus explicit inputs; no prompt or language model is
     manufactured behind the caller's back.
     """
@@ -108,13 +289,39 @@ class CallableGgenManufacturer:
         return value
 
 
-class GymActGgenManufacturer:
-    """Production adapter over an already-materialized GymAct ``ggen`` episode.
+class ProjectionGgenManufacturer:
+    """Machine-speed manufacturer for graph-compiled projection agents.
 
-    This adapter does not shell out around GymAct.  It invokes the provider's
-    existing ``sync`` capability through ``GymAct.act`` so authority,
-    capability scope, idempotency, verification evidence, and receipts stay in
-    the same kernel path as every other consequential operation.
+    The ggen pack manufactures the agent's observation/action projection.
+    Runtime execution simply projects explicitly supplied values into the
+    declared output keys. Missing output material is refused; nothing is
+    guessed, prompted, or completed by an LM.
+    """
+
+    manufacturer_ref = "urn:gymact:manufacturer:ggen-projection"
+
+    async def manufacture(
+        self,
+        *,
+        spec: GgenAgentSpec,
+        observation: dict[str, Any],
+        inputs: dict[str, Any],
+    ) -> Mapping[str, Any]:
+        del observation
+        missing = tuple(key for key in spec.output_keys if key not in inputs)
+        if missing:
+            raise ValueError(f"GGEN_PROJECTION_INPUT_MISSING:{missing!r}")
+        return {key: inputs[key] for key in spec.output_keys}
+
+
+class GymActGgenManufacturer:
+    """Adapter over an already-materialized GymAct ``ggen`` episode.
+
+    This adapter does not shell out around GymAct. It invokes the provider's
+    existing ``sync`` capability through ``GymAct.act``. Therefore a sealed
+    ``ProductionGymAct`` still requires the normal BRCE execution-grant path;
+    this adapter never bypasses authority, capability scope, idempotency,
+    verification evidence, or receipts.
     """
 
     manufacturer_ref = "urn:gymact:manufacturer:ggen-provider"
@@ -141,7 +348,11 @@ class GymActGgenManufacturer:
     ) -> Mapping[str, Any]:
         del observation
         capabilities = self._runtime.capabilities(self._episode_id)
-        matches = tuple(capability for capability in capabilities if capability.binding == "sync")
+        matches = tuple(
+            capability
+            for capability in capabilities
+            if capability.binding == "sync"
+        )
         if len(matches) != 1:
             raise RuntimeError("GGEN_SYNC_CAPABILITY_NOT_UNAMBIGUOUS")
         result = await self._runtime.act(
@@ -186,21 +397,31 @@ def manufacture_ggen_agent_space(
     Logical population cardinality may be enormous while active WIP remains
     independently bounded by each admitted ``GgenAgentSpec.max_wip``.
     """
-
     return manufacture_combination_space(
         (
             Factor(factor_id="role", alternatives=roles),
             Factor(factor_id="planner", alternatives=planners),
             Factor(factor_id="objective", alternatives=objectives),
-            Factor(factor_id="observation_projection", alternatives=observation_projections),
-            Factor(factor_id="action_projection", alternatives=action_projections),
+            Factor(
+                factor_id="observation_projection",
+                alternatives=observation_projections,
+            ),
+            Factor(
+                factor_id="action_projection",
+                alternatives=action_projections,
+            ),
             Factor(factor_id="pack", alternatives=packs),
         ),
         bounds=ExplorationBounds(max_combinations=max_combinations),
     )
 
 
-def _project(value: Mapping[str, Any], keys: tuple[str, ...], *, kind: str) -> dict[str, Any]:
+def _project(
+    value: Mapping[str, Any],
+    keys: tuple[str, ...],
+    *,
+    kind: str,
+) -> dict[str, Any]:
     if not keys:
         return dict(value)
     missing = tuple(key for key in keys if key not in value)
@@ -213,7 +434,7 @@ class GgenAgentRuntime:
     """Bounded LLM-free runtime for a population of logical ggen agents.
 
     The runtime deliberately *refuses* an invocation once the spec's WIP
-    limit is saturated.  Waiting work is inventory too; silently queuing it
+    limit is saturated. Waiting work is inventory too; silently queuing it
     would defeat the Little's-Law control this abstraction exists to expose.
     """
 
