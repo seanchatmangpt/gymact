@@ -105,8 +105,8 @@ rg:p-sqlite a rg:RegisteredProvider ;
     rg:capabilitiesModule "gymact.local_providers" ; rg:capabilitiesImportClause "SQLITE_CAPABILITIES" ; rg:capabilitiesExpr "SQLITE_CAPABILITIES" .
 
 rg:p-sregym a rg:RegisteredProvider ;
-    rg:registryKey "sregym" ; rg:providerModule "gymact.gyms.sregym" ; rg:providerClassName "SregymVendorProvider" ;
-    rg:capabilitiesModule "gymact.gyms.sregym" ; rg:capabilitiesImportClause "SREGYM_CAPABILITIES" ; rg:capabilitiesExpr "SREGYM_CAPABILITIES" .
+    rg:registryKey "sregym" ; rg:providerModule "gymact.gyms.sregym_ontology" ; rg:providerClassName "SregymOntologyProvider" ;
+    rg:capabilitiesModule "gymact.gyms.sregym_ontology" ; rg:capabilitiesImportClause "SREGYM_CAPABILITIES" ; rg:capabilitiesExpr "SREGYM_CAPABILITIES" .
 
 rg:p-swegym a rg:RegisteredProvider ;
     rg:registryKey "swegym" ; rg:providerModule "gymact.gyms.swegym" ; rg:providerClassName "SWEGymProvider" ;
