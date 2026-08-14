@@ -1,91 +1,102 @@
-# MESSAGE: SREGym E2E contract must preserve the exact admitted subject,
-# DO capability, solved predicate, receipt sequence, required evidence, and
-# WIT identities. Any returned row is a refusal before generation.
+# MESSAGE: SREGym MCP/E2E ontology must preserve its exact subject, capability
+# partition, corpus and deterministic-program closure. Any returned row refuses
+# generation. Runtime ALIVE standing is intentionally outside this structural gate.
 PREFIX dct: <http://purl.org/dc/terms/>
-PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX sosa: <http://www.w3.org/ns/sosa/>
+PREFIX sr: <urn:gymact:sregym:mcp:>
 
 SELECT ?violation WHERE {
   {
     FILTER NOT EXISTS {
       <urn:gymact:sregym:e2e:contract>
+        a <http://www.w3.org/ns/prov#Entity> ;
         dct:identifier "sregym-e2e" ;
         dct:source <https://github.com/SREGym/SREGym> ;
         dct:hasVersion "ba07faf1a322f9b6d4a279643bb796aa2f36f64b" ;
-        dct:conformsTo <urn:gymact:profile:v26.8.7> ;
-        dct:relation <urn:gymact:sregym:capability:submit_mitigation> ;
-        dct:hasPart <urn:gymact:sregym:e2e:expected-solved>,
-                    <urn:gymact:sregym:e2e:receipt-sequence> .
+        dct:conformsTo <urn:gymact:profile:v26.8.7>,
+                       <urn:gymact:mcp:revision-2026-07-28> .
     }
     BIND("subject-contract" AS ?violation)
   }
   UNION
   {
-    <urn:gymact:sregym:e2e:contract> dct:hasVersion ?revision_a, ?revision_b .
-    FILTER(?revision_a != ?revision_b)
-    BIND("revision-not-single-valued" AS ?violation)
+    { SELECT (COUNT(DISTINCT ?cap) AS ?count) WHERE { ?cap a sosa:Procedure, sr:Capability . } }
+    FILTER(?count != 14)
+    BIND(CONCAT("capability-count:", STR(?count)) AS ?violation)
   }
   UNION
   {
-    FILTER NOT EXISTS {
-      <urn:gymact:sregym:capability:submit_mitigation>
-        a sosa:Procedure ;
-        dct:title "sregym.submit_mitigation" ;
-        dct:type <urn:gymact:consequence:do> .
-    }
-    BIND("submit-mitigation-capability-not-do" AS ?violation)
+    { SELECT (COUNT(DISTINCT ?cap) AS ?count) WHERE { ?cap a sosa:Procedure, sr:Capability ; sr:consequence sr:READ . } }
+    FILTER(?count != 11)
+    BIND(CONCAT("read-count:", STR(?count)) AS ?violation)
   }
   UNION
   {
-    FILTER NOT EXISTS {
-      <urn:gymact:sregym:e2e:expected-solved>
-        dct:identifier "solved" ;
-        rdf:value true .
-    }
-    BIND("expected-solved" AS ?violation)
+    { SELECT (COUNT(DISTINCT ?cap) AS ?count) WHERE { ?cap a sosa:Procedure, sr:Capability ; sr:consequence sr:DO . } }
+    FILTER(?count != 3)
+    BIND(CONCAT("do-count:", STR(?count)) AS ?violation)
   }
   UNION
   {
-    FILTER NOT EXISTS {
-      <urn:gymact:sregym:e2e:receipt-sequence>
-        a rdf:Seq ;
-        rdf:_1 <urn:gymact:operation:materialize> ;
-        rdf:_2 <urn:gymact:operation:act> ;
-        rdf:_3 <urn:gymact:operation:verify> ;
-        rdf:_4 <urn:gymact:operation:teardown> .
-    }
-    BIND("receipt-sequence" AS ?violation)
+    ?cap a sr:Capability ; sr:consequence sr:DO ; sr:authorityRequired false .
+    BIND(CONCAT("do-without-authority:", STR(?cap)) AS ?violation)
   }
   UNION
   {
-    <urn:gymact:sregym:e2e:receipt-sequence> ?membership ?extra .
-    FILTER(STRSTARTS(STR(?membership), "http://www.w3.org/1999/02/22-rdf-syntax-ns#_"))
-    FILTER(?membership NOT IN (rdf:_1, rdf:_2, rdf:_3, rdf:_4))
-    BIND("receipt-sequence-extra-member" AS ?violation)
+    ?cap a sr:Capability ; sr:consequence sr:READ ; sr:authorityRequired true .
+    BIND(CONCAT("read-requires-authority:", STR(?cap)) AS ?violation)
   }
   UNION
   {
-    VALUES ?required {
-      "authority-admitted"
-      "native-result-artifact-read"
-      "ocel-schema-valid"
-      "replay-conformant"
-    }
-    FILTER NOT EXISTS {
-      <urn:gymact:sregym:e2e:contract> dct:requires ?evidence .
-      ?evidence dct:identifier ?required .
-    }
-    BIND(CONCAT("missing-evidence:", ?required) AS ?violation)
+    ?cap a sr:Capability .
+    FILTER NOT EXISTS { ?cap sr:binding ?binding }
+    BIND(CONCAT("capability-missing-binding:", STR(?cap)) AS ?violation)
   }
   UNION
   {
-    VALUES (?resource ?identifier) {
-      (<urn:gymact:sregym:e2e:wit-package> "gymact:sregym-e2e@0.1.0")
-      (<urn:gymact:sregym:e2e:wit-interface> "sregym-e2e-verifier")
-      (<urn:gymact:sregym:e2e:wit-world> "sregym-e2e-world")
+    ?cap a sr:Capability .
+    FILTER NOT EXISTS { ?cap dct:relation ?route . ?route sr:routePath ?path }
+    BIND(CONCAT("capability-missing-route:", STR(?cap)) AS ?violation)
+  }
+  UNION
+  {
+    { SELECT (COUNT(DISTINCT ?subject) AS ?count) WHERE { ?subject a sr:CorpusSubject ; sr:problemId ?problem . } }
+    FILTER(?count != 21)
+    BIND(CONCAT("corpus-count:", STR(?count)) AS ?violation)
+  }
+  UNION
+  {
+    { SELECT (COUNT(DISTINCT ?program) AS ?count) WHERE { ?program a sr:Program ; sr:problemId ?problem . } }
+    FILTER(?count != 2)
+    BIND(CONCAT("program-count:", STR(?count)) AS ?violation)
+  }
+  UNION
+  {
+    ?program a sr:Program ; sr:problemId ?problem .
+    FILTER NOT EXISTS { ?subject a sr:CorpusSubject ; sr:problemId ?problem }
+    BIND(CONCAT("program-outside-corpus:", ?problem) AS ?violation)
+  }
+  UNION
+  {
+    ?step a sr:ProgramStep ; sr:stepCapability ?cap .
+    FILTER NOT EXISTS { ?cap a sr:Capability }
+    BIND(CONCAT("step-capability-not-admitted:", STR(?step)) AS ?violation)
+  }
+  UNION
+  {
+    ?step a sr:ProgramStep .
+    FILTER NOT EXISTS { ?step sr:inProgram ?program ; sr:stepOrder ?order ; sr:payloadTemplateJson ?payload ; sr:purpose ?purpose ; sr:sourceRef ?source }
+    BIND(CONCAT("incomplete-program-step:", STR(?step)) AS ?violation)
+  }
+  UNION
+  {
+    VALUES ?path {
+      "src/gymact/generated/sregym_mcp_catalog.py"
+      "rust/sregym_e2e/src/lib.rs"
+      "rust/sregym_e2e/wit/sregym-e2e.wit"
     }
-    FILTER NOT EXISTS { ?resource dct:identifier ?identifier . }
-    BIND(CONCAT("missing-wit-identity:", ?identifier) AS ?violation)
+    FILTER NOT EXISTS { ?target a sr:ProjectionTarget ; sr:projectionPath ?path }
+    BIND(CONCAT("missing-projection:", ?path) AS ?violation)
   }
 }
 ORDER BY ?violation
