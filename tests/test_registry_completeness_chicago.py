@@ -1,17 +1,8 @@
-"""Chicago-style completeness check: every real `*Provider` class exported under
-`src/gymact/gyms/*.py` (including the `cloudsim` sub-package) must either be a real,
-importable value in `gymact.registry._BUILTINS`, or be named in this test's own
-`_INTENTIONALLY_UNREGISTERED` allowlist with a real, specific one-line reason.
+"""Chicago-style completeness court for every real ``*Provider`` class.
 
-This is a real static scan of the real source tree (via `ast`, no mocking) plus a real
-import of `gymact.registry` and the real allowlisted modules -- it asserts on the actual
-classes found and the actual dict contents, not on any packaged/summarized verdict. It is
-the automated check that would have caught the registry-drift gap this file documents:
-`_BUILTINS` only registering 5 of 21+ real provider classes.
-
-No collaborator here is faked: the filesystem walk, the AST parse, the registry import,
-and the allowlisted-module imports are all real. Nothing here needs an interaction-faking
-test double of any kind.
+Registration and deliberate exclusion are ontology-owned.  This test mechanically
+compares the real source tree against the generated runtime registry and the registry
+ABox; it contains no hand-maintained provider allowlist.
 """
 
 from __future__ import annotations
@@ -21,61 +12,57 @@ import importlib
 from pathlib import Path
 
 import pytest
+from rdflib import Graph, Namespace, RDF
 
 from gymact import registry
 
-GYMS_ROOT = Path(__file__).resolve().parent.parent / "src" / "gymact" / "gyms"
+ROOT = Path(__file__).resolve().parent.parent
+GYMS_ROOT = ROOT / "src" / "gymact" / "gyms"
+REGISTRY_ONTOLOGIES = (
+    ROOT / "ggen" / "gymact-registry-pack" / "ontology.ttl",
+    ROOT / "ggen" / "gymact-registry-pack" / "exclusions.ttl",
+)
+RG = Namespace("http://seanchatmangpt.github.io/packs/gymact-registry#")
 
-# name -> real, specific reason it is deliberately not in `_BUILTINS`. Mirrors the
-# "NOT gymact.local_providers"-style comment already present in registry.py itself.
-_INTENTIONALLY_UNREGISTERED: dict[str, str] = {
-    "BrowserGymProvider": (
-        "top-level `import browsergym.core`/`import gymnasium`, gated behind the "
-        "optional 'gyms' extra -- importing it with only the base install raises "
-        "ImportError."
-    ),
-    "GymnasiumProvider": ("top-level `import gymnasium`, gated behind the optional 'gyms' extra."),
-    "InspectEvalsProvider": (
-        "top-level `from inspect_ai import ...`, gated behind the optional 'gyms' "
-        "extra (inspect-ai)."
-    ),
-    "CubeCounterProvider": (
-        "top-level `from counter_cube...` re-raised as ImportError when absent, "
-        "gated behind the optional 'cube' extra (Python >=3.12 only)."
-    ),
-    "CubeContainerCounterProvider": (
-        "top-level `from cube.infra_local import LocalInfraConfig` re-raised as "
-        "ImportError when absent, gated behind the optional 'cube' extra plus Docker."
-    ),
-    "VendorBenchmarkProvider": (
-        "generic vendor-benchmark dispatch surface, not a single fixed-capability "
-        "gym -- not a flat builtin name."
-    ),
-    "OpaqueProcedureProvider": (
-        "capabilities are constructed per-instance from materialize()-time config "
-        "(hidden_steps), not a fixed module-level tuple -- same static-capabilities-"
-        "tuple mismatch as VendorBenchmarkProvider/OntologyDrivenProvider below, "
-        "found and named while adding the latter's allowlist entry (this gap "
-        "pre-dates and is unrelated to that work; confirmed via `git stash`)."
-    ),
-    "OntologyDrivenProvider": (
-        "generic ontology-driven compiler (gymact.gyms.ontology_gym), not a single "
-        "fixed-capability gym itself -- same rationale as VendorBenchmarkProvider "
-        "above. Requires per-domain configuration (pack_dir, task-family sets) at "
-        "construction time, so it isn't zero-arg-instantiable the way _BUILTINS "
-        "expects, and its capabilities are derived dynamically from a pack's "
-        "ontology.ttl at materialize() time, not a static module-level tuple. The "
-        "real, concrete instance (gymact.gyms.togaf.build_togaf_provider) is a "
-        "function, not a class, so it is not flagged by this file's AST scan at all."
-    ),
-}
+
+def _registry_graph() -> Graph:
+    graph = Graph()
+    for path in REGISTRY_ONTOLOGIES:
+        graph.parse(path, format="turtle")
+    return graph
+
+
+def _ontology_exclusions() -> dict[str, str]:
+    graph = _registry_graph()
+    excluded: dict[str, str] = {}
+    for subject in graph.subjects(RDF.type, RG.ExcludedProvider):
+        qualified = graph.value(subject, RG.excludedClass)
+        reason = graph.value(subject, RG.exclusionReason)
+        assert qualified is not None, f"excluded provider {subject} lacks rg:excludedClass"
+        assert reason is not None and str(reason).strip(), (
+            f"excluded provider {subject} lacks a non-empty rg:exclusionReason"
+        )
+        class_name = str(qualified).rsplit(".", 1)[-1]
+        assert class_name not in excluded, f"duplicate excluded provider class: {class_name}"
+        excluded[class_name] = str(reason)
+    return excluded
+
+
+def _ontology_registered() -> dict[str, str]:
+    graph = _registry_graph()
+    registered: dict[str, str] = {}
+    for subject in graph.subjects(RDF.type, RG.RegisteredProvider):
+        key = graph.value(subject, RG.registryKey)
+        class_name = graph.value(subject, RG.providerClassName)
+        assert key is not None and class_name is not None
+        key_text = str(key)
+        assert key_text not in registered, f"duplicate registry key in ontology: {key_text}"
+        registered[key_text] = str(class_name)
+    return registered
 
 
 def _real_provider_classes_under_gyms() -> dict[str, Path]:
-    """Real AST scan (no imports) of every `*Provider` class defined under
-    `src/gymact/gyms/**/*.py`. Using AST instead of importing keeps this discovery
-    step itself safe to run even when optional heavy dependencies are absent.
-    """
+    """AST-scan real provider declarations without importing optional dependencies."""
     found: dict[str, Path] = {}
     for py_file in sorted(GYMS_ROOT.rglob("*.py")):
         if py_file.name == "__init__.py":
@@ -83,50 +70,50 @@ def _real_provider_classes_under_gyms() -> dict[str, Path]:
         tree = ast.parse(py_file.read_text(), filename=str(py_file))
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef) and node.name.endswith("Provider"):
+                assert node.name not in found, (
+                    f"duplicate Provider class name {node.name}: {found[node.name]} and {py_file}"
+                )
                 found[node.name] = py_file
     return found
 
 
-def test_every_real_gym_provider_class_is_registered_or_allowlisted():
+def test_every_real_gym_provider_class_is_registered_or_ontology_excluded() -> None:
     provider_classes = _real_provider_classes_under_gyms()
-    assert provider_classes, "expected to find real Provider classes under src/gymact/gyms"
+    assert provider_classes, "expected real Provider classes under src/gymact/gyms"
 
     registered_class_names = {cls.__name__ for cls, _caps in registry._BUILTINS.values()}
-
-    unaccounted = [
-        name
-        for name in provider_classes
-        if name not in registered_class_names and name not in _INTENTIONALLY_UNREGISTERED
-    ]
+    excluded_class_names = set(_ontology_exclusions())
+    unaccounted = sorted(
+        set(provider_classes) - registered_class_names - excluded_class_names
+    )
     assert unaccounted == [], (
-        "the following real gym Provider classes are neither registered in "
-        "gymact.registry._BUILTINS nor named in this test's "
-        "_INTENTIONALLY_UNREGISTERED allowlist with a reason: "
-        f"{sorted(unaccounted)} (source files: "
-        f"{[str(provider_classes[n]) for n in unaccounted]})"
+        "real gym Provider classes lack both registry standing and an ontology exclusion: "
+        f"{unaccounted}; source files={ [str(provider_classes[name]) for name in unaccounted] }"
     )
 
 
-def test_allowlist_entries_are_real_classes_not_stale_names():
+def test_ontology_exclusions_are_real_classes_not_stale_names() -> None:
     provider_classes = _real_provider_classes_under_gyms()
-    stale = [name for name in _INTENTIONALLY_UNREGISTERED if name not in provider_classes]
-    assert stale == [], (
-        f"allowlist names no real Provider class under src/gymact/gyms anymore: {stale} "
-        "-- remove the stale allowlist entry"
-    )
+    stale = sorted(set(_ontology_exclusions()) - set(provider_classes))
+    assert stale == [], f"ontology exclusions name no real Provider class: {stale}"
 
 
-def test_allowlist_and_registry_do_not_overlap():
+def test_ontology_exclusions_and_registry_do_not_overlap() -> None:
     registered_class_names = {cls.__name__ for cls, _caps in registry._BUILTINS.values()}
-    overlap = registered_class_names & set(_INTENTIONALLY_UNREGISTERED)
+    overlap = registered_class_names & set(_ontology_exclusions())
     assert overlap == set(), (
-        f"classes {sorted(overlap)} are both registered in _BUILTINS and listed as "
-        "intentionally unregistered -- the allowlist entry is stale, remove it"
+        f"Provider classes are simultaneously registered and excluded: {sorted(overlap)}"
     )
+
+
+def test_generated_registry_exactly_matches_registered_provider_ontology() -> None:
+    expected = _ontology_registered()
+    observed = {key: provider_type.__name__ for key, (provider_type, _caps) in registry._BUILTINS.items()}
+    assert observed == expected
 
 
 @pytest.mark.parametrize("name", sorted(registry.builtin_provider_names()))
-def test_every_registered_builtin_actually_instantiates_and_reports_capabilities(name):
+def test_every_registered_builtin_actually_instantiates_and_reports_capabilities(name: str) -> None:
     provider = registry.create_builtin_provider(name)
     capabilities = registry.builtin_capabilities(name)
     assert provider is not None
@@ -137,10 +124,7 @@ def test_every_registered_builtin_actually_instantiates_and_reports_capabilities
     assert described["type"] == type(provider).__name__
 
 
-def test_registered_module_paths_match_real_gyms_tree():
-    """Cross-check: every class registered under a `gymact.gyms.*` module path must be
-    the real class object importable at that path, not a same-named lookalike.
-    """
+def test_registered_module_paths_match_real_gyms_tree() -> None:
     provider_classes = _real_provider_classes_under_gyms()
     for cls, _caps in registry._BUILTINS.values():
         module = importlib.import_module(cls.__module__)

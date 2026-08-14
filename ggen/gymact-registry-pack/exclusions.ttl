@@ -1,0 +1,17 @@
+@prefix rg: <http://seanchatmangpt.github.io/packs/gymact-registry#> .
+
+# Additional provider-exclusion ABox facts discovered by the mechanical registry court.
+# These live beside ontology.ttl rather than in Python test data; the court loads the
+# complete registry ABox (ontology.ttl + exclusions.ttl).
+
+rg:x-opaque-procedure a rg:ExcludedProvider ;
+    rg:excludedClass "gymact.gyms.opaque_procedure.OpaqueProcedureProvider" ;
+    rg:exclusionReason "capabilities are constructed per-instance from materialize-time hidden_steps rather than a fixed module-level capability tuple, so this generic dynamic provider is not a zero-argument flat builtin." .
+
+rg:x-ontology-driven a rg:ExcludedProvider ;
+    rg:excludedClass "gymact.gyms.ontology_gym.OntologyDrivenProvider" ;
+    rg:exclusionReason "generic ontology-driven compiler whose capabilities are derived from a configured pack ontology at materialize time; concrete domain instances are manufactured from configuration rather than registered as one fixed builtin." .
+
+rg:x-sregym-vendor-physics a rg:ExcludedProvider ;
+    rg:excludedClass "gymact.gyms.sregym.SregymVendorProvider" ;
+    rg:exclusionReason "real SREGym transport/process physics implementation wrapped by the registered SregymOntologyProvider; its historical hand-authored capability metadata is intentionally not admitted as runtime semantic truth." .

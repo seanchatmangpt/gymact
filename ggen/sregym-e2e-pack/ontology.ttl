@@ -1,97 +1,164 @@
 @prefix dct: <http://purl.org/dc/terms/> .
 @prefix prov: <http://www.w3.org/ns/prov#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 @prefix sosa: <http://www.w3.org/ns/sosa/> .
+@prefix odrl: <http://www.w3.org/ns/odrl/2/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix sr: <urn:gymact:sregym:mcp:> .
 
-# ABox only: no GymAct-owned classes or properties are declared here.
-# The pack records the exact compatibility subject and the evidence contract
-# that ggen compiles into Rust/WIT. Execution authority remains outside ggen.
-#
-# `dct:relation` was retargeted from `urn:gymact:sregym:capability:run` to
-# `capability:submit_mitigation` when the Python provider changed from a
-# CLI-wrapping `SREGymProvider` (single `run` capability) to the persistent-
-# MCP-session `SregymVendorProvider` (5 real capabilities; no `run` binding
-# exists on it). This is a provider swap, not a semantic redesign:
-# `submit_mitigation` is the DO capability whose successful invocation
-# represents a completed benchmark attempt, matching the old `run`
-# capability's role in this contract.
+# SREGym's exact-pinned semantic source.  This ABox owns the protocol bindings,
+# consequence classifications, and deterministic known-solution programs.  The
+# Python/FastMCP/Rust/WIT artifacts are projections, never a second source of truth.
 <urn:gymact:sregym:e2e:contract>
     a prov:Entity ;
     dct:identifier "sregym-e2e" ;
     dct:title "SREGym GymAct end-to-end evidence contract" ;
     dct:source <https://github.com/SREGym/SREGym> ;
     dct:hasVersion "ba07faf1a322f9b6d4a279643bb796aa2f36f64b" ;
-    dct:conformsTo <urn:gymact:profile:v26.8.7> ;
-    dct:relation <urn:gymact:sregym:capability:submit_mitigation> ;
-    dct:hasPart <urn:gymact:sregym:e2e:expected-solved>,
-                <urn:gymact:sregym:e2e:receipt-sequence> ;
+    dct:conformsTo <urn:gymact:profile:v26.8.7>, <urn:gymact:mcp:revision-2026-07-28> ;
     dct:requires <urn:gymact:sregym:e2e:evidence:authority-admitted>,
                  <urn:gymact:sregym:e2e:evidence:native-result-artifact-read>,
                  <urn:gymact:sregym:e2e:evidence:ocel-schema-valid>,
                  <urn:gymact:sregym:e2e:evidence:replay-conformant> .
 
-<urn:gymact:sregym:capability:submit_mitigation>
-    a sosa:Procedure ;
-    dct:title "sregym.submit_mitigation" ;
-    dct:type <urn:gymact:consequence:do> .
+<urn:gymact:sregym:e2e:evidence:authority-admitted> a prov:Entity ; dct:identifier "authority-admitted" .
+<urn:gymact:sregym:e2e:evidence:native-result-artifact-read> a prov:Entity ; dct:identifier "native-result-artifact-read" .
+<urn:gymact:sregym:e2e:evidence:ocel-schema-valid> a prov:Entity ; dct:identifier "ocel-schema-valid" .
+<urn:gymact:sregym:e2e:evidence:replay-conformant> a prov:Entity ; dct:identifier "replay-conformant" .
 
-<urn:gymact:sregym:e2e:expected-solved>
-    a prov:Entity ;
-    dct:identifier "solved" ;
-    rdf:value true .
+# ---------------------------------------------------------------------------
+# Local irreducible MCP/domain binding vocabulary.
+# ---------------------------------------------------------------------------
+sr:Capability a rdfs:Class .
+sr:Program a rdfs:Class .
+sr:ProgramStep a rdfs:Class .
+sr:CorpusSubject a rdfs:Class .
+sr:ProjectionTarget a rdfs:Class .
 
-<urn:gymact:sregym:e2e:receipt-sequence>
-    a rdf:Seq ;
-    rdf:_1 <urn:gymact:operation:materialize> ;
-    rdf:_2 <urn:gymact:operation:act> ;
-    rdf:_3 <urn:gymact:operation:verify> ;
-    rdf:_4 <urn:gymact:operation:teardown> .
+sr:binding a rdf:Property .
+sr:consequence a rdf:Property .
+sr:routePath a rdf:Property .
+sr:toolName a rdf:Property .
+sr:transportKind a rdf:Property .
+sr:authorityRequired a rdf:Property .
+sr:payloadSchemaJson a rdf:Property .
+sr:problemId a rdf:Property .
+sr:stepOrder a rdf:Property .
+sr:stepCapability a rdf:Property .
+sr:payloadTemplateJson a rdf:Property .
+sr:purpose a rdf:Property .
+sr:sourceRef a rdf:Property .
+sr:inProgram a rdf:Property .
+sr:projectionPath a rdf:Property .
 
-<urn:gymact:operation:materialize>
-    a skos:Concept ;
-    skos:prefLabel "materialize" .
+sr:READ a skos:Concept ; skos:prefLabel "READ" .
+sr:DO a skos:Concept ; skos:prefLabel "DO" .
+sr:SSE a skos:Concept ; skos:prefLabel "SSE compatibility transport" .
+sr:HTTP a skos:Concept ; skos:prefLabel "HTTP" .
 
-<urn:gymact:operation:act>
-    a skos:Concept ;
-    skos:prefLabel "act" .
+# ---------------------------------------------------------------------------
+# Five real MCP routes + conductor status HTTP route.
+# ---------------------------------------------------------------------------
+sr:route-kubectl a prov:Entity ; dct:identifier "kubectl" ; sr:routePath "/kubectl/sse" ; sr:transportKind sr:SSE .
+sr:route-jaeger a prov:Entity ; dct:identifier "jaeger" ; sr:routePath "/jaeger/sse" ; sr:transportKind sr:SSE .
+sr:route-loki a prov:Entity ; dct:identifier "loki" ; sr:routePath "/loki/sse" ; sr:transportKind sr:SSE .
+sr:route-prometheus a prov:Entity ; dct:identifier "prometheus" ; sr:routePath "/prometheus/sse" ; sr:transportKind sr:SSE .
+sr:route-submit a prov:Entity ; dct:identifier "submit" ; sr:routePath "/submit_mcp/sse" ; sr:transportKind sr:SSE .
+sr:route-status a prov:Entity ; dct:identifier "status" ; sr:routePath "/status" ; sr:transportKind sr:HTTP .
 
-<urn:gymact:operation:verify>
-    a skos:Concept ;
-    skos:prefLabel "verify" .
+# ---------------------------------------------------------------------------
+# Exact 14 GymAct capabilities.  11 are information-only READ; only kubectl
+# and the two semantic submit bindings are DO.  The real kernel has a named
+# READ operation and mechanically refuses READ through DO, so the historical
+# all-DO workaround is intentionally not carried forward.
+# ---------------------------------------------------------------------------
+<urn:gymact:sregym:capability:observe_cluster_state> a sosa:Procedure, sr:Capability ;
+    dct:title "Read SREGym conductor status" ; sr:binding "observe_cluster_state" ; sr:consequence sr:READ ;
+    dct:relation sr:route-status ; sr:authorityRequired false .
+<urn:gymact:sregym:capability:get_benchmark_status> a sosa:Procedure, sr:Capability ;
+    dct:title "Read SREGym benchmark stage" ; sr:binding "get_benchmark_status" ; sr:consequence sr:READ ;
+    dct:relation sr:route-status ; sr:authorityRequired false .
+<urn:gymact:sregym:capability:run_kubectl> a sosa:Procedure, sr:Capability ;
+    dct:title "Execute kubectl through SREGym kubectl MCP" ; sr:binding "run_kubectl" ; sr:consequence sr:DO ;
+    dct:relation sr:route-kubectl ; sr:toolName "exec_kubectl_cmd_safely" ; sr:authorityRequired true ;
+    sr:payloadSchemaJson "{\"type\":\"object\",\"required\":[\"command\"],\"properties\":{\"command\":{\"type\":\"string\",\"minLength\":1}},\"additionalProperties\":false}" .
+<urn:gymact:sregym:capability:submit_diagnosis> a sosa:Procedure, sr:Capability ;
+    dct:title "Submit diagnosis through SREGym submit MCP" ; sr:binding "submit_diagnosis" ; sr:consequence sr:DO ;
+    dct:relation sr:route-submit ; sr:toolName "submit" ; sr:authorityRequired true .
+<urn:gymact:sregym:capability:submit_mitigation> a sosa:Procedure, sr:Capability ;
+    dct:title "Submit mitigation through SREGym submit MCP" ; sr:binding "submit_mitigation" ; sr:consequence sr:DO ;
+    dct:relation sr:route-submit ; sr:toolName "submit" ; sr:authorityRequired true .
 
-<urn:gymact:operation:teardown>
-    a skos:Concept ;
-    skos:prefLabel "teardown" .
+<urn:gymact:sregym:capability:jaeger_get_services> a sosa:Procedure, sr:Capability ; dct:title "Jaeger get_services" ; sr:binding "jaeger_get_services" ; sr:consequence sr:READ ; dct:relation sr:route-jaeger ; sr:toolName "get_services" ; sr:authorityRequired false .
+<urn:gymact:sregym:capability:jaeger_get_operations> a sosa:Procedure, sr:Capability ; dct:title "Jaeger get_operations" ; sr:binding "jaeger_get_operations" ; sr:consequence sr:READ ; dct:relation sr:route-jaeger ; sr:toolName "get_operations" ; sr:authorityRequired false .
+<urn:gymact:sregym:capability:jaeger_get_traces> a sosa:Procedure, sr:Capability ; dct:title "Jaeger get_traces" ; sr:binding "jaeger_get_traces" ; sr:consequence sr:READ ; dct:relation sr:route-jaeger ; sr:toolName "get_traces" ; sr:authorityRequired false .
+<urn:gymact:sregym:capability:jaeger_get_dependency_graph> a sosa:Procedure, sr:Capability ; dct:title "Jaeger get_dependency_graph" ; sr:binding "jaeger_get_dependency_graph" ; sr:consequence sr:READ ; dct:relation sr:route-jaeger ; sr:toolName "get_dependency_graph" ; sr:authorityRequired false .
+<urn:gymact:sregym:capability:loki_get_logs> a sosa:Procedure, sr:Capability ; dct:title "Loki get_logs" ; sr:binding "loki_get_logs" ; sr:consequence sr:READ ; dct:relation sr:route-loki ; sr:toolName "get_logs" ; sr:authorityRequired false .
+<urn:gymact:sregym:capability:loki_get_labels> a sosa:Procedure, sr:Capability ; dct:title "Loki get_labels" ; sr:binding "loki_get_labels" ; sr:consequence sr:READ ; dct:relation sr:route-loki ; sr:toolName "get_labels" ; sr:authorityRequired false .
+<urn:gymact:sregym:capability:loki_get_label_values> a sosa:Procedure, sr:Capability ; dct:title "Loki get_label_values" ; sr:binding "loki_get_label_values" ; sr:consequence sr:READ ; dct:relation sr:route-loki ; sr:toolName "get_label_values" ; sr:authorityRequired false .
+<urn:gymact:sregym:capability:prometheus_get_metrics> a sosa:Procedure, sr:Capability ; dct:title "Prometheus get_metrics" ; sr:binding "prometheus_get_metrics" ; sr:consequence sr:READ ; dct:relation sr:route-prometheus ; sr:toolName "get_metrics" ; sr:authorityRequired false .
+<urn:gymact:sregym:capability:prometheus_get_alerts> a sosa:Procedure, sr:Capability ; dct:title "Prometheus get_alerts" ; sr:binding "prometheus_get_alerts" ; sr:consequence sr:READ ; dct:relation sr:route-prometheus ; sr:toolName "get_alerts" ; sr:authorityRequired false .
 
-<urn:gymact:sregym:e2e:evidence:authority-admitted>
-    a prov:Entity ;
-    dct:identifier "authority-admitted" ;
-    dct:title "An explicit BRCE execution grant was admitted for the exact SREGym subject" .
+# DO is permitted only through GymAct's consequence boundary; MCP transport
+# validity does not itself grant authority.
+<urn:gymact:sregym:mcp-do-policy> a odrl:Policy ;
+    odrl:permission [ a odrl:Permission ; odrl:action <urn:gymact:operation:act> ; odrl:target sr:DO ] .
 
-<urn:gymact:sregym:e2e:evidence:native-result-artifact-read>
-    a prov:Entity ;
-    dct:identifier "native-result-artifact-read" ;
-    dct:title "SREGym native result artifact was read rather than replaced by a GymAct score" .
+# ---------------------------------------------------------------------------
+# Exact SREGym-Lite corpus (21 admitted subjects) and deterministic coverage.
+# ---------------------------------------------------------------------------
+sr:corpus-sregym-lite a prov:Entity ; dct:identifier "SREGym-Lite" ; dct:hasVersion "ba07faf1a322f9b6d4a279643bb796aa2f36f64b" .
 
-<urn:gymact:sregym:e2e:evidence:ocel-schema-valid>
-    a prov:Entity ;
-    dct:identifier "ocel-schema-valid" ;
-    dct:title "Episode OCEL 2.0 log passed schema validation" .
+sr:p01 a sr:CorpusSubject ; sr:problemId "cronjob_sidecar_blocks_completion_hotel_reservation" .
+sr:p02 a sr:CorpusSubject ; sr:problemId "edge_request_filter_cpu_saturation" .
+sr:p03 a sr:CorpusSubject ; sr:problemId "network_policy_block" .
+sr:p04 a sr:CorpusSubject ; sr:problemId "env_variable_shadowing_astronomy_shop" .
+sr:p05 a sr:CorpusSubject ; sr:problemId "mutating_webhook_resource_limits_social_network" .
+sr:p06 a sr:CorpusSubject ; sr:problemId "finalizer_deadlock_controller_hotel_reservation" .
+sr:p07 a sr:CorpusSubject ; sr:problemId "kafka_poison_pill_hol_block" .
+sr:p08 a sr:CorpusSubject ; sr:problemId "internal_traffic_policy_local_astronomy_shop" .
+sr:p09 a sr:CorpusSubject ; sr:problemId "service_dns_resolution_failure_social_network" .
+sr:p10 a sr:CorpusSubject ; sr:problemId "service_wrong_pod_selection_hotel_reservation" .
+sr:p11 a sr:CorpusSubject ; sr:problemId "namespace_memory_limit" .
+sr:p12 a sr:CorpusSubject ; sr:problemId "valkey_auth_disruption" .
+sr:p13 a sr:CorpusSubject ; sr:problemId "secret_rotation_stale_env_credentials_astronomy_shop" .
+sr:p14 a sr:CorpusSubject ; sr:problemId "unschedulable_incorrect_port_assignment" .
+sr:p15 a sr:CorpusSubject ; sr:problemId "readiness_probe_misconfiguration_social_network" .
+sr:p16 a sr:CorpusSubject ; sr:problemId "duplicate_pvc_mounts_social_network" .
+sr:p17 a sr:CorpusSubject ; sr:problemId "admission_webhook_outage_hotel_reservation" .
+sr:p18 a sr:CorpusSubject ; sr:problemId "wrong_dns_policy_astronomy_shop" .
+sr:p19 a sr:CorpusSubject ; sr:problemId "wrong_service_selector_social_network" .
+sr:p20 a sr:CorpusSubject ; sr:problemId "rolling_update_misconfigured_social_network" .
+sr:p21 a sr:CorpusSubject ; sr:problemId "search_rate_retry_collapse_hotel_reservation" .
 
-<urn:gymact:sregym:e2e:evidence:replay-conformant>
-    a prov:Entity ;
-    dct:identifier "replay-conformant" ;
-    dct:title "Episode receipt sequence passed conformant replay" .
+# Program 1: wrong DNS policy.
+sr:program-wrong-dns a sr:Program ; sr:problemId "wrong_dns_policy_astronomy_shop" ;
+    sr:sourceRef "SREGym/SREGym@ba07faf1a322f9b6d4a279643bb796aa2f36f64b:sregym/conductor/problems/wrong_dns_policy.py#WrongDNSPolicy.recover_fault;blob=630627e4c4d3f69f477e857252972b397757f68c" ;
+    sr:sourceRef "SREGym/SREGym@ba07faf1a322f9b6d4a279643bb796aa2f36f64b:sregym/generators/fault/inject_virtual.py#VirtualizationFaultInjector.recover_wrong_dns_policy" .
 
-<urn:gymact:sregym:e2e:wit-package>
-    a prov:Entity ;
-    dct:identifier "gymact:sregym-e2e@0.1.0" .
+sr:wd-1 a sr:ProgramStep ; sr:inProgram sr:program-wrong-dns ; sr:stepOrder 1 ; sr:stepCapability <urn:gymact:sregym:capability:submit_diagnosis> ; sr:payloadTemplateJson "{\"component\":\"frontend\",\"cause\":\"deployment frontend has dnsPolicy=None and an external 8.8.8.8 resolver, breaking cluster-internal DNS resolution\",\"gdmcp_source\":\"SREGym/SREGym@ba07faf1a322f9b6d4a279643bb796aa2f36f64b:sregym/conductor/problems/wrong_dns_policy.py#WrongDNSPolicy.recover_fault;blob=630627e4c4d3f69f477e857252972b397757f68c\"}" ; sr:purpose "submit the source-grounded diagnosis; no model inference" ; sr:sourceRef "SREGym/SREGym@ba07faf1a322f9b6d4a279643bb796aa2f36f64b:sregym/conductor/problems/wrong_dns_policy.py#WrongDNSPolicy.recover_fault;blob=630627e4c4d3f69f477e857252972b397757f68c" .
+sr:wd-2 a sr:ProgramStep ; sr:inProgram sr:program-wrong-dns ; sr:stepOrder 2 ; sr:stepCapability <urn:gymact:sregym:capability:run_kubectl> ; sr:payloadTemplateJson "{\"command\":\"kubectl patch deployment frontend -n {{namespace}} --type=json -p='[{\\\"op\\\":\\\"remove\\\",\\\"path\\\":\\\"/spec/template/spec/dnsPolicy\\\"},{\\\"op\\\":\\\"remove\\\",\\\"path\\\":\\\"/spec/template/spec/dnsConfig\\\"}]'\"}" ; sr:purpose "restore the deployment to normal ClusterFirst DNS semantics" ; sr:sourceRef "SREGym/SREGym@ba07faf1a322f9b6d4a279643bb796aa2f36f64b:sregym/generators/fault/inject_virtual.py#VirtualizationFaultInjector.recover_wrong_dns_policy" .
+sr:wd-3 a sr:ProgramStep ; sr:inProgram sr:program-wrong-dns ; sr:stepOrder 3 ; sr:stepCapability <urn:gymact:sregym:capability:run_kubectl> ; sr:payloadTemplateJson "{\"command\":\"kubectl rollout status deployment frontend -n {{namespace}} --timeout=120s\"}" ; sr:purpose "wait for the repaired deployment to become stable" ; sr:sourceRef "SREGym/SREGym@ba07faf1a322f9b6d4a279643bb796aa2f36f64b:sregym/generators/fault/inject_virtual.py#VirtualizationFaultInjector.recover_wrong_dns_policy" .
+sr:wd-4 a sr:ProgramStep ; sr:inProgram sr:program-wrong-dns ; sr:stepOrder 4 ; sr:stepCapability <urn:gymact:sregym:capability:submit_mitigation> ; sr:payloadTemplateJson "{\"action\":\"removed the injected dnsPolicy/dnsConfig override and waited for the frontend rollout\",\"gdmcp_source\":\"SREGym/SREGym@ba07faf1a322f9b6d4a279643bb796aa2f36f64b:sregym/generators/fault/inject_virtual.py#VirtualizationFaultInjector.recover_wrong_dns_policy\"}" ; sr:purpose "submit the deterministic mitigation evidence" ; sr:sourceRef "SREGym/SREGym@ba07faf1a322f9b6d4a279643bb796aa2f36f64b:sregym/generators/fault/inject_virtual.py#VirtualizationFaultInjector.recover_wrong_dns_policy" .
 
-<urn:gymact:sregym:e2e:wit-interface>
-    a prov:Entity ;
-    dct:identifier "sregym-e2e-verifier" .
+# Program 2: internalTrafficPolicy Local.
+sr:program-internal-traffic a sr:Program ; sr:problemId "internal_traffic_policy_local_astronomy_shop" ;
+    sr:sourceRef "SREGym/SREGym@ba07faf1a322f9b6d4a279643bb796aa2f36f64b:sregym/conductor/problems/internal_traffic_policy_local.py#InternalTrafficPolicyLocalAstronomyShop.recover_fault;blob=4264df2c1b88845df120aec09bb9583292f652d4" .
 
-<urn:gymact:sregym:e2e:wit-world>
-    a prov:Entity ;
-    dct:identifier "sregym-e2e-world" .
+sr:it-1 a sr:ProgramStep ; sr:inProgram sr:program-internal-traffic ; sr:stepOrder 1 ; sr:stepCapability <urn:gymact:sregym:capability:submit_diagnosis> ; sr:payloadTemplateJson "{\"component\":\"service/recommendation\",\"cause\":\"internalTrafficPolicy=Local plus pinned recommendation/frontend pods causes cross-node in-cluster requests to be dropped\",\"gdmcp_source\":\"SREGym/SREGym@ba07faf1a322f9b6d4a279643bb796aa2f36f64b:sregym/conductor/problems/internal_traffic_policy_local.py#InternalTrafficPolicyLocalAstronomyShop.recover_fault;blob=4264df2c1b88845df120aec09bb9583292f652d4\"}" ; sr:purpose "submit the source-grounded diagnosis; no model inference" ; sr:sourceRef "SREGym/SREGym@ba07faf1a322f9b6d4a279643bb796aa2f36f64b:sregym/conductor/problems/internal_traffic_policy_local.py#InternalTrafficPolicyLocalAstronomyShop.recover_fault;blob=4264df2c1b88845df120aec09bb9583292f652d4" .
+sr:it-2 a sr:ProgramStep ; sr:inProgram sr:program-internal-traffic ; sr:stepOrder 2 ; sr:stepCapability <urn:gymact:sregym:capability:run_kubectl> ; sr:payloadTemplateJson "{\"command\":\"kubectl patch service recommendation -n {{namespace}} --type=merge -p '{\\\"spec\\\":{\\\"internalTrafficPolicy\\\":\\\"Cluster\\\"}}'\"}" ; sr:purpose "restore cluster-wide service routing" ; sr:sourceRef "SREGym/SREGym@ba07faf1a322f9b6d4a279643bb796aa2f36f64b:sregym/conductor/problems/internal_traffic_policy_local.py#InternalTrafficPolicyLocalAstronomyShop.recover_fault;blob=4264df2c1b88845df120aec09bb9583292f652d4" .
+sr:it-3 a sr:ProgramStep ; sr:inProgram sr:program-internal-traffic ; sr:stepOrder 3 ; sr:stepCapability <urn:gymact:sregym:capability:run_kubectl> ; sr:payloadTemplateJson "{\"command\":\"kubectl patch deployment recommendation -n {{namespace}} --type=merge -p '{\\\"spec\\\":{\\\"template\\\":{\\\"spec\\\":{\\\"nodeSelector\\\":null}}}}'\"}" ; sr:purpose "remove fault-only recommendation node pinning" ; sr:sourceRef "SREGym/SREGym@ba07faf1a322f9b6d4a279643bb796aa2f36f64b:sregym/conductor/problems/internal_traffic_policy_local.py#InternalTrafficPolicyLocalAstronomyShop.recover_fault;blob=4264df2c1b88845df120aec09bb9583292f652d4" .
+sr:it-4 a sr:ProgramStep ; sr:inProgram sr:program-internal-traffic ; sr:stepOrder 4 ; sr:stepCapability <urn:gymact:sregym:capability:run_kubectl> ; sr:payloadTemplateJson "{\"command\":\"kubectl rollout restart deployment/recommendation -n {{namespace}}\"}" ; sr:purpose "restart recommendation after topology repair" ; sr:sourceRef "SREGym/SREGym@ba07faf1a322f9b6d4a279643bb796aa2f36f64b:sregym/conductor/problems/internal_traffic_policy_local.py#InternalTrafficPolicyLocalAstronomyShop.recover_fault;blob=4264df2c1b88845df120aec09bb9583292f652d4" .
+sr:it-5 a sr:ProgramStep ; sr:inProgram sr:program-internal-traffic ; sr:stepOrder 5 ; sr:stepCapability <urn:gymact:sregym:capability:run_kubectl> ; sr:payloadTemplateJson "{\"command\":\"kubectl patch deployment frontend -n {{namespace}} --type=merge -p '{\\\"spec\\\":{\\\"template\\\":{\\\"spec\\\":{\\\"nodeSelector\\\":null}}}}'\"}" ; sr:purpose "remove fault-only frontend node pinning" ; sr:sourceRef "SREGym/SREGym@ba07faf1a322f9b6d4a279643bb796aa2f36f64b:sregym/conductor/problems/internal_traffic_policy_local.py#InternalTrafficPolicyLocalAstronomyShop.recover_fault;blob=4264df2c1b88845df120aec09bb9583292f652d4" .
+sr:it-6 a sr:ProgramStep ; sr:inProgram sr:program-internal-traffic ; sr:stepOrder 6 ; sr:stepCapability <urn:gymact:sregym:capability:run_kubectl> ; sr:payloadTemplateJson "{\"command\":\"kubectl rollout restart deployment/frontend -n {{namespace}}\"}" ; sr:purpose "restart frontend after topology repair" ; sr:sourceRef "SREGym/SREGym@ba07faf1a322f9b6d4a279643bb796aa2f36f64b:sregym/conductor/problems/internal_traffic_policy_local.py#InternalTrafficPolicyLocalAstronomyShop.recover_fault;blob=4264df2c1b88845df120aec09bb9583292f652d4" .
+sr:it-7 a sr:ProgramStep ; sr:inProgram sr:program-internal-traffic ; sr:stepOrder 7 ; sr:stepCapability <urn:gymact:sregym:capability:run_kubectl> ; sr:payloadTemplateJson "{\"command\":\"kubectl rollout status deployment/recommendation -n {{namespace}} --timeout=180s\"}" ; sr:purpose "wait for recommendation convergence" ; sr:sourceRef "SREGym/SREGym@ba07faf1a322f9b6d4a279643bb796aa2f36f64b:sregym/conductor/problems/internal_traffic_policy_local.py#InternalTrafficPolicyLocalAstronomyShop.recover_fault;blob=4264df2c1b88845df120aec09bb9583292f652d4" .
+sr:it-8 a sr:ProgramStep ; sr:inProgram sr:program-internal-traffic ; sr:stepOrder 8 ; sr:stepCapability <urn:gymact:sregym:capability:run_kubectl> ; sr:payloadTemplateJson "{\"command\":\"kubectl rollout status deployment/frontend -n {{namespace}} --timeout=180s\"}" ; sr:purpose "wait for frontend convergence" ; sr:sourceRef "SREGym/SREGym@ba07faf1a322f9b6d4a279643bb796aa2f36f64b:sregym/conductor/problems/internal_traffic_policy_local.py#InternalTrafficPolicyLocalAstronomyShop.recover_fault;blob=4264df2c1b88845df120aec09bb9583292f652d4" .
+sr:it-9 a sr:ProgramStep ; sr:inProgram sr:program-internal-traffic ; sr:stepOrder 9 ; sr:stepCapability <urn:gymact:sregym:capability:submit_mitigation> ; sr:payloadTemplateJson "{\"action\":\"restored internalTrafficPolicy=Cluster, removed both injected nodeSelectors, and waited for both deployments to roll out\",\"gdmcp_source\":\"SREGym/SREGym@ba07faf1a322f9b6d4a279643bb796aa2f36f64b:sregym/conductor/problems/internal_traffic_policy_local.py#InternalTrafficPolicyLocalAstronomyShop.recover_fault;blob=4264df2c1b88845df120aec09bb9583292f652d4\"}" ; sr:purpose "submit the deterministic mitigation evidence" ; sr:sourceRef "SREGym/SREGym@ba07faf1a322f9b6d4a279643bb796aa2f36f64b:sregym/conductor/problems/internal_traffic_policy_local.py#InternalTrafficPolicyLocalAstronomyShop.recover_fault;blob=4264df2c1b88845df120aec09bb9583292f652d4" .
+
+# ggen projection targets.  The Python catalog is consumed by the runtime;
+# Rust/WIT keep the independent Gall checkpoint.
+sr:projection-python-catalog a sr:ProjectionTarget ; sr:projectionPath "src/gymact/generated/sregym_mcp_catalog.py" .
+sr:projection-rust a sr:ProjectionTarget ; sr:projectionPath "rust/sregym_e2e/src/lib.rs" .
+sr:projection-wit a sr:ProjectionTarget ; sr:projectionPath "rust/sregym_e2e/wit/sregym-e2e.wit" .

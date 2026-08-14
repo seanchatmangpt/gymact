@@ -5,14 +5,13 @@ semantics are manufactured from ``ggen/sregym-e2e-pack/ontology.ttl`` into
 ``gymact.generated.sregym_mcp_catalog``.  This module only validates, binds,
 and compiles that admitted projection into ordinary ``ActuationIntent`` values.
 Those intents still cross capability scope, authority admission, and BRCE.
-
-Provenance note: this file is a real, unmodified, read-only reference port
-pulled directly from `origin/agent/gdmcp-sregym-deterministic-solutions`
-(commit `82312ec`, draft PR #45) onto `main` for the `gdmcp_bpmn_bridge`
-integration -- it is not a branch merge; the branch itself remains exactly
-as unmerged/draft as it was. `src/gymact/generated/sregym_mcp_catalog.py`
-was pulled alongside it (this module's one real, self-contained dependency,
-75 lines, zero `autofde_lab` imports) for the same reason.
+Provenance note: this module was first pulled as a real, unmodified,
+read-only reference port from `agent/gdmcp-sregym-deterministic-solutions`
+(commit `82312ec`, draft PR #45) for the `gdmcp_bpmn_bridge` integration,
+then that branch was reviewed and merged into `main` for real (real
+conflicts resolved, `main`'s post-fork fixes to `ocel.py`/
+`test_ocel_standing.py`/`epistemic_dspy.py` preserved -- see the merge
+commit message).
 """
 from __future__ import annotations
 

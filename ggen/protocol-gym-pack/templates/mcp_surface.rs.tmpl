@@ -1,0 +1,214 @@
+---
+to: "src/mcp_surface.rs"
+force: true
+sparql:
+  revision: |
+    PREFIX mcp: <urn:gymact:mcp:>
+    SELECT ?version WHERE {
+      mcp:revision-2026-07-28 mcp:protocolVersion ?version .
+    }
+  core_methods: |
+    PREFIX mcp: <urn:gymact:mcp:>
+    PREFIX dct: <http://purl.org/dc/terms/>
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    SELECT ?name ?facet_id ?lifecycle_label ?kind_label ?direction_label ?invocation_label ?control_label ?consequence_label WHERE {
+      ?method a mcp:Method ;
+              mcp:methodName ?name ;
+              mcp:facet ?facet ;
+              mcp:lifecycle ?lifecycle ;
+              mcp:messageKind ?kind ;
+              mcp:direction ?direction ;
+              mcp:invocationMode ?invocation ;
+              mcp:controlMode ?control ;
+              mcp:consequence ?consequence ;
+              mcp:inRevision mcp:revision-2026-07-28 .
+      ?facet dct:identifier ?facet_id .
+      ?lifecycle skos:prefLabel ?lifecycle_label .
+      ?kind skos:prefLabel ?kind_label .
+      ?direction skos:prefLabel ?direction_label .
+      ?invocation skos:prefLabel ?invocation_label .
+      ?control skos:prefLabel ?control_label .
+      ?consequence skos:prefLabel ?consequence_label .
+    } ORDER BY ?name
+  extension_methods: |
+    PREFIX mcp: <urn:gymact:mcp:>
+    PREFIX dct: <http://purl.org/dc/terms/>
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    SELECT ?name ?facet_id ?extension_id ?lifecycle_label ?consequence_label WHERE {
+      ?method a mcp:Method ;
+              mcp:methodName ?name ;
+              mcp:facet ?facet ;
+              mcp:extension ?extension ;
+              mcp:lifecycle ?lifecycle ;
+              mcp:consequence ?consequence .
+      ?facet dct:identifier ?facet_id .
+      ?extension mcp:extensionId ?extension_id .
+      ?lifecycle skos:prefLabel ?lifecycle_label .
+      ?consequence skos:prefLabel ?consequence_label .
+    } ORDER BY ?extension_id ?name
+  capabilities: |
+    PREFIX mcp: <urn:gymact:mcp:>
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    SELECT ?side ?key ?lifecycle_label WHERE {
+      ?capability a mcp:Capability ;
+                  mcp:capabilitySide ?side ;
+                  mcp:capabilityKey ?key ;
+                  mcp:lifecycle ?lifecycle .
+      ?lifecycle skos:prefLabel ?lifecycle_label .
+    } ORDER BY ?side ?key
+  metadata: |
+    PREFIX mcp: <urn:gymact:mcp:>
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    SELECT ?key ?required ?lifecycle_label WHERE {
+      ?field a mcp:MetadataField ;
+             mcp:metaKey ?key ;
+             mcp:required ?required ;
+             mcp:lifecycle ?lifecycle .
+      ?lifecycle skos:prefLabel ?lifecycle_label .
+    } ORDER BY ?key
+  transports: |
+    PREFIX mcp: <urn:gymact:mcp:>
+    PREFIX dct: <http://purl.org/dc/terms/>
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    SELECT ?id ?lifecycle_label ?compatibility_only WHERE {
+      ?transport a mcp:Transport ;
+                 dct:identifier ?id ;
+                 mcp:lifecycle ?lifecycle ;
+                 mcp:compatibilityOnly ?compatibility_only .
+      ?lifecycle skos:prefLabel ?lifecycle_label .
+    } ORDER BY ?id
+  projections: |
+    PREFIX mcp: <urn:gymact:mcp:>
+    PREFIX dct: <http://purl.org/dc/terms/>
+    SELECT ?id ?kind ?path WHERE {
+      ?projection a mcp:ProjectionTarget ;
+                  dct:identifier ?id ;
+                  mcp:projectionKind ?kind ;
+                  mcp:projectionPath ?path .
+    } ORDER BY ?id
+---
+//! Generated from `ggen/protocol-gym-pack/ontology.ttl`.
+//! Do not hand-edit this projection. Change the admitted MCP ontology and rerun ggen.
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct McpMethod {
+    pub name: &'static str,
+    pub facet: &'static str,
+    pub lifecycle: &'static str,
+    pub message_kind: &'static str,
+    pub direction: &'static str,
+    pub invocation: &'static str,
+    pub control: &'static str,
+    pub consequence: &'static str,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct McpExtensionMethod {
+    pub name: &'static str,
+    pub facet: &'static str,
+    pub extension_id: &'static str,
+    pub lifecycle: &'static str,
+    pub consequence: &'static str,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct McpCapability {
+    pub side: &'static str,
+    pub key: &'static str,
+    pub lifecycle: &'static str,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct McpMetadataField {
+    pub key: &'static str,
+    pub required: bool,
+    pub lifecycle: &'static str,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct McpTransport {
+    pub id: &'static str,
+    pub lifecycle: &'static str,
+    pub compatibility_only: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct McpProjectionTarget {
+    pub id: &'static str,
+    pub kind: &'static str,
+    pub path: &'static str,
+}
+
+{% for row in revision -%}
+pub const MCP_PROTOCOL_VERSION: &str = "{{ row.version }}";
+{% endfor %}
+
+pub const MCP_CORE_METHODS: &[McpMethod] = &[
+{% for row in core_methods -%}
+    McpMethod {
+        name: "{{ row.name }}",
+        facet: "{{ row.facet_id }}",
+        lifecycle: "{{ row.lifecycle_label }}",
+        message_kind: "{{ row.kind_label }}",
+        direction: "{{ row.direction_label }}",
+        invocation: "{{ row.invocation_label }}",
+        control: "{{ row.control_label }}",
+        consequence: "{{ row.consequence_label }}",
+    },
+{% endfor -%}
+];
+
+pub const MCP_EXTENSION_METHODS: &[McpExtensionMethod] = &[
+{% for row in extension_methods -%}
+    McpExtensionMethod {
+        name: "{{ row.name }}",
+        facet: "{{ row.facet_id }}",
+        extension_id: "{{ row.extension_id }}",
+        lifecycle: "{{ row.lifecycle_label }}",
+        consequence: "{{ row.consequence_label }}",
+    },
+{% endfor -%}
+];
+
+pub const MCP_CAPABILITIES: &[McpCapability] = &[
+{% for row in capabilities -%}
+    McpCapability {
+        side: "{{ row.side }}",
+        key: "{{ row.key }}",
+        lifecycle: "{{ row.lifecycle_label }}",
+    },
+{% endfor -%}
+];
+
+pub const MCP_METADATA_FIELDS: &[McpMetadataField] = &[
+{% for row in metadata -%}
+    McpMetadataField {
+        key: "{{ row.key }}",
+        required: {{ row.required }},
+        lifecycle: "{{ row.lifecycle_label }}",
+    },
+{% endfor -%}
+];
+
+pub const MCP_TRANSPORTS: &[McpTransport] = &[
+{% for row in transports -%}
+    McpTransport {
+        id: "{{ row.id }}",
+        lifecycle: "{{ row.lifecycle_label }}",
+        compatibility_only: {{ row.compatibility_only }},
+    },
+{% endfor -%}
+];
+
+pub const MCP_PROJECTION_TARGETS: &[McpProjectionTarget] = &[
+{% for row in projections -%}
+    McpProjectionTarget {
+        id: "{{ row.id }}",
+        kind: "{{ row.kind }}",
+        path: "{{ row.path }}",
+    },
+{% endfor -%}
+];
+
+pub const MCP_CORE_METHOD_COUNT: usize = MCP_CORE_METHODS.len();
+pub const MCP_EXTENSION_METHOD_COUNT: usize = MCP_EXTENSION_METHODS.len();

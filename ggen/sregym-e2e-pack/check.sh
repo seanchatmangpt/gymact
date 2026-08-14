@@ -6,19 +6,13 @@ REPO_ROOT="$(cd "$PACK_ROOT/../.." && pwd)"
 GGEN_BIN="${GGEN_BIN:-ggen}"
 RUSTC_BIN="${RUSTC_BIN:-rustc}"
 
-if ! command -v "$GGEN_BIN" >/dev/null 2>&1; then
-    echo "sregym-e2e-pack: ggen binary not found: $GGEN_BIN" >&2
-    exit 2
-fi
-if ! command -v "$RUSTC_BIN" >/dev/null 2>&1; then
-    echo "sregym-e2e-pack: rustc not found: $RUSTC_BIN" >&2
-    exit 2
-fi
+command -v "$GGEN_BIN" >/dev/null 2>&1 || { echo "sregym-e2e-pack: ggen binary not found: $GGEN_BIN" >&2; exit 2; }
+command -v "$RUSTC_BIN" >/dev/null 2>&1 || { echo "sregym-e2e-pack: rustc not found: $RUSTC_BIN" >&2; exit 2; }
 
 SCRATCH="$(mktemp -d)"
 trap 'rm -rf "$SCRATCH"' EXIT
 PROJECT="$SCRATCH/consumer"
-mkdir -p "$PROJECT/templates" "$PROJECT/shapes"
+mkdir -p "$PROJECT/templates"
 : > "$PROJECT/ontology.ttl"
 
 cat > "$PROJECT/ggen.toml" <<EOF
@@ -35,8 +29,6 @@ sregym-e2e-pack = { path = "$PACK_ROOT" }
 dir = "templates"
 EOF
 
-cp "$REPO_ROOT/src/gymact/ontology/profile.shacl.ttl" "$PROJECT/shapes/profile.shacl.ttl"
-
 (
     cd "$PROJECT"
     "$GGEN_BIN" sync run
@@ -46,6 +38,7 @@ GENERATED=(
     "src/sregym_e2e_contract.rs"
     "wit/sregym-e2e.wit"
     "tests/sregym_e2e_contract_proof.rs"
+    "src/gymact/generated/sregym_mcp_catalog.py"
 )
 for path in "${GENERATED[@]}"; do
     test -s "$PROJECT/$path" || {
@@ -55,14 +48,17 @@ for path in "${GENERATED[@]}"; do
 done
 
 grep -Fq "ba07faf1a322f9b6d4a279643bb796aa2f36f64b" "$PROJECT/src/sregym_e2e_contract.rs"
-grep -Fq "urn:gymact:sregym:capability:submit_mitigation" "$PROJECT/src/sregym_e2e_contract.rs"
-grep -Fq '"solved"' "$PROJECT/src/sregym_e2e_contract.rs"
-grep -Fq '"materialize"' "$PROJECT/src/sregym_e2e_contract.rs"
-grep -Fq '"act"' "$PROJECT/src/sregym_e2e_contract.rs"
-grep -Fq '"verify"' "$PROJECT/src/sregym_e2e_contract.rs"
-grep -Fq '"teardown"' "$PROJECT/src/sregym_e2e_contract.rs"
-grep -Fq "package gymact:sregym-e2e@0.1.0;" "$PROJECT/wit/sregym-e2e.wit"
-grep -Fq "interface sregym-e2e-verifier" "$PROJECT/wit/sregym-e2e.wit"
+grep -Fq "capability_count: 14" "$PROJECT/src/sregym_e2e_contract.rs"
+grep -Fq "read_count: 11" "$PROJECT/src/sregym_e2e_contract.rs"
+grep -Fq "do_count: 3" "$PROJECT/src/sregym_e2e_contract.rs"
+grep -Fq "corpus_count: 21" "$PROJECT/src/sregym_e2e_contract.rs"
+grep -Fq "deterministic_program_count: 2" "$PROJECT/src/sregym_e2e_contract.rs"
+grep -Fq "STRUCTURAL_ADMISSION_IS_ALIVE: bool = false" "$PROJECT/src/sregym_e2e_contract.rs"
+grep -Fq "package gymact:sregym-e2e@0.2.0;" "$PROJECT/wit/sregym-e2e.wit"
+grep -Fq "structural-admission-is-alive=false" "$PROJECT/wit/sregym-e2e.wit"
+grep -Fq "SREGYM_UPSTREAM_REVISION" "$PROJECT/src/gymact/generated/sregym_mcp_catalog.py"
+grep -Fq "wrong_dns_policy_astronomy_shop" "$PROJECT/src/gymact/generated/sregym_mcp_catalog.py"
+grep -Fq "internal_traffic_policy_local_astronomy_shop" "$PROJECT/src/gymact/generated/sregym_mcp_catalog.py"
 
 RECEIPT_VERIFY="$SCRATCH/receipt-verify.json"
 (
@@ -70,14 +66,13 @@ RECEIPT_VERIFY="$SCRATCH/receipt-verify.json"
     "$GGEN_BIN" receipt verify > "$RECEIPT_VERIFY"
 )
 grep -Fq '"valid": true' "$RECEIPT_VERIFY"
-grep -Fq '"outputs": 3' "$RECEIPT_VERIFY"
+grep -Fq '"outputs": 4' "$RECEIPT_VERIFY"
 grep -Fq '"signed": true' "$RECEIPT_VERIFY"
 grep -Fq '"signature_valid": true' "$RECEIPT_VERIFY"
 
 (
     cd "$PROJECT"
-    "$RUSTC_BIN" --edition 2021 --test tests/sregym_e2e_contract_proof.rs \
-        -o "$SCRATCH/sregym-e2e-contract-proof"
+    "$RUSTC_BIN" --edition 2021 --test tests/sregym_e2e_contract_proof.rs -o "$SCRATCH/sregym-e2e-contract-proof"
     "$SCRATCH/sregym-e2e-contract-proof"
 )
 
@@ -105,10 +100,7 @@ cat > "$PROJECT/ontology.ttl" <<'EOF'
 EOF
 
 SABOTAGE_LOG="$SCRATCH/sabotage.log"
-if (
-    cd "$PROJECT"
-    "$GGEN_BIN" sync run >"$SABOTAGE_LOG" 2>&1
-); then
+if ( cd "$PROJECT" && "$GGEN_BIN" sync run >"$SABOTAGE_LOG" 2>&1 ); then
     echo "sregym-e2e-pack: semantic sabotage unexpectedly generated" >&2
     cat "$SABOTAGE_LOG" >&2
     exit 1
@@ -119,10 +111,7 @@ grep -Fq "010_contract" "$SABOTAGE_LOG" || {
     exit 1
 }
 
-(
-    cd "$PROJECT"
-    sha256sum "${GENERATED[@]}" > "$AFTER"
-)
+( cd "$PROJECT" && sha256sum "${GENERATED[@]}" > "$AFTER" )
 cmp "$BEFORE" "$AFTER"
 
-echo "sregym-e2e-pack: ALIVE — real ggen sync, signed receipt chain, generated Rust/WIT, rustc proof, idempotency, and gate refusal all passed"
+echo "sregym-e2e-pack: STRUCTURAL_ALIVE — ggen sync, signed receipt chain, Rust/WIT/Python projections, rustc proof, idempotency, and gate refusal passed; runtime SREGym ALIVE is not asserted"
