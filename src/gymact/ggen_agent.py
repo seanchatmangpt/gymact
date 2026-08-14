@@ -147,14 +147,37 @@ def _projection_keys(graph: Graph, projection: Any) -> tuple[str, ...]:
     return tuple(sorted(keys))
 
 
+def _qualified_agent_association(graph: Graph, agent: Any) -> Any:
+    associations = tuple(
+        association
+        for association in graph.subjects(PROV.agent, agent)
+        if (association, RDF.type, PROV.Association) in graph
+    )
+    association = _exactly_one(
+        associations,
+        field="ASSOCIATION",
+        subject=agent,
+    )
+    activities = tuple(
+        activity
+        for activity in graph.subjects(PROV.qualifiedAssociation, association)
+        if (activity, RDF.type, PROV.Activity) in graph
+    )
+    _exactly_one(
+        activities,
+        field="ASSOCIATION_ACTIVITY",
+        subject=agent,
+    )
+    return association
+
+
 def compile_ggen_agent_specs(pack_dir: Path) -> tuple[GgenAgentSpec, ...]:
     """Compile logical-agent specs from a public-ontology RDF ABox.
 
-    The compiler recognizes only public predicates/classes. Domain-specific
-    distinctions such as ``logical-agent`` and ``action-projection`` are SKOS
-    concept data carried through ``dct:type``; no private Python class or RDF
-    predicate is required. Every structural field is cardinality checked and
-    malformed agent data fails closed.
+    Only public predicates/classes are structural. Domain distinctions such
+    as ``logical-agent`` and ``action-projection`` remain SKOS concept data
+    carried through ``dct:type``. Every field is cardinality checked and a
+    malformed agent fails closed.
     """
     graph = _load_pack_graph(pack_dir)
     specs: list[GgenAgentSpec] = []
@@ -170,11 +193,7 @@ def compile_ggen_agent_specs(pack_dir: Path) -> tuple[GgenAgentSpec, ...]:
                 subject=agent,
             )
         )
-        association = _exactly_one(
-            _objects(graph, agent, PROV.qualifiedAssociation),
-            field="ASSOCIATION",
-            subject=agent,
-        )
+        association = _qualified_agent_association(graph, agent)
         role = _exactly_one(
             _objects(graph, association, PROV.hadRole),
             field="ROLE",
@@ -191,19 +210,23 @@ def compile_ggen_agent_specs(pack_dir: Path) -> tuple[GgenAgentSpec, ...]:
             subject=agent,
         )
         observation_projection = _relation_of_kind(
-            graph, agent, _OBSERVATION_PROJECTION_KIND
+            graph,
+            agent,
+            _OBSERVATION_PROJECTION_KIND,
         )
         action_projection = _relation_of_kind(
-            graph, agent, _ACTION_PROJECTION_KIND
+            graph,
+            agent,
+            _ACTION_PROJECTION_KIND,
         )
         pack = _relation_of_kind(graph, agent, _GGEN_PACK_KIND)
 
         extent_values = _objects(graph, agent, DCTERMS.extent)
-        max_wip = int(extent_values[0]) if extent_values else 1
         if len(extent_values) > 1:
             raise ValueError(
                 f"GGEN_AGENT_MAX_WIP_CARDINALITY:{agent}:{len(extent_values)}"
             )
+        max_wip = int(extent_values[0]) if extent_values else 1
 
         specs.append(
             GgenAgentSpec(
@@ -214,7 +237,10 @@ def compile_ggen_agent_specs(pack_dir: Path) -> tuple[GgenAgentSpec, ...]:
                 observation_projection_ref=str(observation_projection),
                 action_projection_ref=str(action_projection),
                 pack_ref=str(pack),
-                observation_keys=_projection_keys(graph, observation_projection),
+                observation_keys=_projection_keys(
+                    graph,
+                    observation_projection,
+                ),
                 output_keys=_projection_keys(graph, action_projection),
                 max_wip=max_wip,
                 mcp_tool_name=agent_id.replace("-", "_"),
@@ -234,7 +260,11 @@ def load_task_agent_assignments(pack_dir: Path) -> dict[str, str]:
         if not identifiers:
             continue
         identifier = str(
-            _exactly_one(identifiers, field="TASK_ID", subject=task)
+            _exactly_one(
+                identifiers,
+                field="TASK_ID",
+                subject=task,
+            )
         )
         contributors = tuple(
             contributor
@@ -293,9 +323,9 @@ class ProjectionGgenManufacturer:
     """Machine-speed manufacturer for graph-compiled projection agents.
 
     The ggen pack manufactures the agent's observation/action projection.
-    Runtime execution simply projects explicitly supplied values into the
-    declared output keys. Missing output material is refused; nothing is
-    guessed, prompted, or completed by an LM.
+    Runtime execution projects explicitly supplied values into the declared
+    output keys. Missing output material is refused; nothing is guessed,
+    prompted, or completed by an LM.
     """
 
     manufacturer_ref = "urn:gymact:manufacturer:ggen-projection"
