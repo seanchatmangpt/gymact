@@ -1,0 +1,210 @@
+name: Enterprise Connection Five-Station Crown
+
+on:
+  pull_request:
+    paths:
+      - "src/gymact/connection.py"
+      - "tests/test_connection.py"
+      - ".github/workflows/enterprise-connection-crown.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: enterprise-connection-five-station-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  crown:
+    name: exact five-station connection crown
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      MARKETPLACE_SHA: a6c2d36323b02a9db5cb02aacaff779155bfb177
+      LEGACY_SHA: b5e6b82e51fbc9e82313d29d5446d220c72309ac
+      CREATE_SHA: 866f04848b2e6517a73ba814667c8d910b31a6da
+      GGEN_SHA: 5c6548e1dc58deecfae4fdbb81c019ca1f5cc67a
+    steps:
+      - name: Checkout exact GymAct subject
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Checkout exact marketplace contract station
+        uses: actions/checkout@v4
+        with:
+          repository: seanchatmangpt/ggen-marketplace
+          ref: ${{ env.MARKETPLACE_SHA }}
+          path: subjects/ggen-marketplace
+          persist-credentials: false
+
+      - name: Checkout exact ggen-legacy station
+        uses: actions/checkout@v4
+        with:
+          repository: seanchatmangpt/ggen-legacy
+          ref: ${{ env.LEGACY_SHA }}
+          path: subjects/ggen-legacy
+          persist-credentials: false
+
+      - name: Checkout exact ggen-create station
+        uses: actions/checkout@v4
+        with:
+          repository: seanchatmangpt/ggen-create
+          ref: ${{ env.CREATE_SHA }}
+          path: subjects/ggen-create
+          persist-credentials: false
+
+      - name: Checkout exact ggen station
+        uses: actions/checkout@v4
+        with:
+          repository: seanchatmangpt/ggen
+          ref: ${{ env.GGEN_SHA }}
+          path: subjects/ggen
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install exact Legacy native-digest verifier
+        run: python -m pip install -r subjects/ggen-legacy/requirements-connection.txt
+
+      - name: Admit Connection v1 and refuse ambient DO
+        run: |
+          set -euo pipefail
+          GATE=subjects/ggen-marketplace/packs/enterprise-architecture-connection-pack/gates/010_connection_shape.py
+          FIXTURE=subjects/ggen-marketplace/packs/enterprise-architecture-connection-pack/examples/fortune5-global-cloud.json
+          python "$GATE" validate "$FIXTURE"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          source = Path("subjects/ggen-marketplace/packs/enterprise-architecture-connection-pack/examples/fortune5-global-cloud.json")
+          value = json.loads(source.read_bytes())
+          value["authority"]["do_authority"] = True
+          Path("/tmp/ambient-do.json").write_text(json.dumps(value, sort_keys=True, separators=(",", ":")))
+          PY
+          if python "$GATE" validate /tmp/ambient-do.json; then
+            echo "ambient DO authority was not refused" >&2
+            exit 1
+          fi
+
+      - name: RECONSTITUTE from current admitted Legacy foundry state
+        run: |
+          set -euo pipefail
+          mkdir -p work
+          python subjects/ggen-legacy/tests/test_enterprise_connection.py
+          python subjects/ggen-legacy/scripts/export_enterprise_connection.py \
+            --root subjects/ggen-legacy \
+            --revision "$LEGACY_SHA" \
+            --out work/01-reconstitute.json
+
+      - name: GENERALIZE a real multi-seed factory
+        env:
+          PYTHONPATH: ${{ github.workspace }}/subjects/ggen-create/src
+        run: |
+          set -euo pipefail
+          python -m unittest subjects/ggen-create/tests/test_connection.py -v
+          python - <<'PY'
+          from pathlib import Path
+          from ggen_create.integrity import require_valid_package
+          from ggen_create.package import build_package
+          from ggen_create.session import add_paths, add_seed, set_seed, start_session
+
+          work = Path("work").resolve()
+          exemplar = work / "exemplar"
+          packages = work / "packages"
+          exemplar.mkdir(parents=True, exist_ok=True)
+          architecture = exemplar / "architecture.txt"
+          architecture.write_text("tenant=Global\nregion=West\n", encoding="utf-8")
+          session = start_session(exemplar, "fortune5-global-cloud-factory")
+          add_paths(session, [str(architecture)])
+          set_seed(session, "Global")
+          add_seed(session, "region", "West")
+          first = build_package(session, packages)
+          second = build_package(session, packages)
+          assert first.package_dir == second.package_dir
+          assert require_valid_package(first.package_dir)["valid"]
+          PY
+          python subjects/ggen-create/scripts/export_connection.py \
+            --parent work/01-reconstitute.json \
+            --package work/packages/fortune5-global-cloud-factory \
+            --revision "$CREATE_SHA" \
+            --out work/02-generalize.json
+
+      - name: CATALOG through the exact marketplace contract
+        run: |
+          set -euo pipefail
+          GATE=subjects/ggen-marketplace/packs/enterprise-architecture-connection-pack/gates/010_connection_shape.py
+          python "$GATE" catalog work/02-generalize.json \
+            --revision "$MARKETPLACE_SHA" \
+            --artifact-root work/packages \
+            --out work/03-catalog.json
+
+      - name: Install exact ggen foundry toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-06-22
+
+      - name: MANUFACTURE at the ggen foundry connection boundary
+        run: |
+          set -euo pipefail
+          cargo test --manifest-path subjects/ggen/tools/architecture-foundry/Cargo.toml --test connection
+          cargo run --quiet --manifest-path subjects/ggen/tools/architecture-foundry/Cargo.toml \
+            --bin ggen-foundry-connection -- \
+            --input work/03-catalog.json \
+            --program subjects/ggen-legacy/authority/foundry-work-program.json \
+            --revision "$GGEN_SHA" \
+            --out work/04-manufacture.json
+
+      - name: Install exact GymAct subject
+        run: python -m pip install -e .
+
+      - name: EXERCISE input from the real GymAct semantic bundle
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src
+        run: |
+          set -euo pipefail
+          GYMACT_SHA="$(git rev-parse HEAD)"
+          python -m pytest tests/test_connection.py -q
+          python -m gymact.connection \
+            --parent work/04-manufacture.json \
+            --bundle-dir work/gymact-bundle \
+            --revision "$GYMACT_SHA" \
+            --out work/05-exercise.json
+
+      - name: Verify exact five-station parent chain
+        run: |
+          set -euo pipefail
+          GATE=subjects/ggen-marketplace/packs/enterprise-architecture-connection-pack/gates/010_connection_shape.py
+          python "$GATE" chain \
+            work/01-reconstitute.json \
+            work/02-generalize.json \
+            work/03-catalog.json \
+            work/04-manufacture.json \
+            work/05-exercise.json | tee work/connection-crown-receipt.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          receipt = json.loads(Path("work/connection-crown-receipt.json").read_text())
+          assert receipt["valid"] is True
+          assert receipt["stages"] == ["RECONSTITUTE", "GENERALIZE", "CATALOG", "MANUFACTURE", "EXERCISE"]
+          assert receipt["do_authority"] is False
+          assert receipt["standing"] == "ALIVE"
+          assert receipt["claim"] == "ENTERPRISE_CONNECTION_TRANSPORT_COMPOSITION_ONLY"
+          PY
+
+      - name: Publish bounded five-station evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: enterprise-connection-five-station-${{ github.run_id }}
+          path: |
+            work/01-reconstitute.json
+            work/02-generalize.json
+            work/03-catalog.json
+            work/04-manufacture.json
+            work/05-exercise.json
+            work/connection-crown-receipt.json
+          if-no-files-found: error
+          retention-days: 14
