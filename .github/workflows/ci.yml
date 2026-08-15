@@ -68,7 +68,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(uv --version | awk '{print $2}')" = "$GYMACT_UV_VERSION"
-          uv sync --extra gyms --group dev
+          uv sync --extra gyms --extra bpmn --extra dspy --group dev
 
       - name: Provision real kubectl + kind cluster
         uses: helm/kind-action@v1
