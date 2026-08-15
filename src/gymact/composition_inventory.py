@@ -452,6 +452,30 @@ KNOWN_CAPABILITY_CLASSIFICATIONS: tuple[CapabilityClassification, ...] = (
             "environment physics."
         ),
     ),
+    # POWL-native sibling of GDMCP_BPMN_REPLAY, same reasoning: real
+    # structural replay of an already-admitted POWL2 document (the shape
+    # autofde_lab.fabric.powl.project_plan_to_powl already emits) via the
+    # already-ALIVE gymact.powl.executor recovers a real fire order; real
+    # sequential kernel.act() calls (unchanged, real) do the only real
+    # actuation. No new physics -- see gymact.powl_bridge, which parses via
+    # the already-tested gymact.powl.turtle_bridge round trip and never
+    # invents a capability from an activity label (typed refusal on any
+    # unbound mfwp:implementsAction).
+    CapabilityClassification(
+        capability_id="POWL_ADMITTED_GRAPH_REPLAY",
+        kind="orchestration",
+        reason=(
+            "Real structural replay of an already-admitted POWL2 Turtle "
+            "document via the already-ALIVE gymact.powl.executor "
+            "(enabled()/fire()/is_final()) recovers a real, deterministic "
+            "fire order; driving real sequential kernel.act() calls in that "
+            "order is control-flow composition over two already-ALIVE "
+            "collaborators -- see gymact.powl_bridge, which never calls "
+            "kernel.act() from inside the structural replay phase and never "
+            "bypasses CapabilityScope/AuthorityResolver. Not new "
+            "environment physics."
+        ),
+    ),
 )
 
 

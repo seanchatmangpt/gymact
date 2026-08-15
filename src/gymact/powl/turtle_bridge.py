@@ -51,6 +51,9 @@ from __future__ import annotations
 
 from typing import Dict, List, Tuple
 
+from rdflib import Graph, Literal, URIRef
+from rdflib.namespace import Namespace, RDF
+
 from gymact.powl._turtle import (
     MFWP,
     POWL2,
@@ -65,10 +68,15 @@ from gymact.powl.algebra import Atom, NodeId, OrderEdge, PartialOrder, PowlNode
 
 __all__ = [
     "BridgeError",
+    "parse_powl_turtle",
     "powl_model_to_node",
     "powl_node_to_model",
     "model_to_turtle",
 ]
+
+_POWL2 = Namespace(POWL2)
+_MFWP = Namespace(MFWP)
+_PROV = Namespace(PROV)
 
 
 class BridgeError(ValueError):
@@ -279,6 +287,161 @@ def _binding_sort_key(key: str) -> Tuple[int, str]:
 # directly and never materializes a PowlModel on the way. This is the
 # missing leg needed to close the round-trip loop for a test.
 # ---------------------------------------------------------------------------
+
+
+def parse_powl_turtle(text: str) -> PowlModel:
+    """Real ``rdflib``-based parse of POWL2 Turtle into a :class:`PowlModel`.
+
+    Accepts exactly the shape :func:`model_to_turtle` emits (and, by
+    construction, the shape ``autofde_lab.fabric.powl.project_plan_to_powl``
+    already produces -- same predicates: ``powl2:Model``/``PartialOrder``,
+    ``powl2:hasChild``/``ChildBinding``/``childIndex``/``childModel``,
+    ``powl2:Leaf``/``ActivityLeaf``/``activityLabel``, ``mfwp:implementsAction``,
+    ``mfwp:bindsParameter``/``ParameterBinding``, ``powl2:precedes``).
+
+    No parser for this direction existed anywhere in this repo before this
+    function -- ``model_to_turtle`` above was the only serializer, and
+    nothing round-tripped Turtle text back into a real :class:`PowlModel`.
+    This closes that gap for real, using ``rdflib`` (already a gymact
+    dependency) rather than hand-rolled string parsing.
+
+    Refuses (``BridgeError``) rather than guesses on: no ``powl2:Model``
+    subject, more than one, or any required field missing -- never silently
+    defaults a digest/label/action to an empty string.
+    """
+    graph = Graph()
+    try:
+        graph.parse(data=text, format="turtle")
+    except Exception as exc:  # noqa: BLE001 -- real rdflib parse errors, re-typed
+        raise BridgeError(f"UNPARSEABLE_TURTLE: {exc}") from exc
+
+    model_subjects = sorted(
+        str(s) for s in graph.subjects(RDF.type, _POWL2.Model)
+    )
+    if not model_subjects:
+        raise BridgeError("NO_POWL_MODEL: no subject typed powl2:Model in the document")
+    if len(model_subjects) > 1:
+        raise BridgeError(
+            f"MULTIPLE_POWL_MODELS: {len(model_subjects)} subjects typed powl2:Model "
+            f"({model_subjects}) -- this bridge accepts exactly one per document"
+        )
+    root = URIRef(model_subjects[0])
+
+    def _one_literal(subject: URIRef, predicate: URIRef, *, required: bool, label: str) -> str | None:
+        values = list(graph.objects(subject, predicate))
+        if not values:
+            if required:
+                raise BridgeError(f"MISSING_REQUIRED_FIELD: <{subject}> has no {label}")
+            return None
+        if len(values) > 1:
+            raise BridgeError(f"MULTI_VALUED_SCALAR: <{subject}> has more than one {label}")
+        value = values[0]
+        return str(value) if isinstance(value, Literal) else str(value)
+
+    activity_count_literal = _one_literal(
+        root, _MFWP.activityCount, required=False, label="mfwp:activityCount"
+    )
+
+    children: Dict[str, ChildBinding] = {}
+    leaves: Dict[str, ActivityLeaf] = {}
+    bindings: Dict[str, ParameterBinding] = {}
+
+    for child_iri in sorted(str(c) for c in graph.objects(root, _POWL2.hasChild)):
+        child_subject = URIRef(child_iri)
+        types = {str(t) for t in graph.objects(child_subject, RDF.type)}
+        if str(_POWL2.ChildBinding) not in types:
+            raise BridgeError(
+                f"UNTYPED_HAS_CHILD_TARGET: <{child_iri}> is powl2:hasChild of "
+                f"<{root}> but is not typed powl2:ChildBinding"
+            )
+        child_index_literal = _one_literal(
+            child_subject, _POWL2.childIndex, required=True, label="powl2:childIndex"
+        )
+        child_model = _one_literal(
+            child_subject, _POWL2.childModel, required=True, label="powl2:childModel"
+        )
+        precedes = tuple(
+            sorted(str(t) for t in graph.objects(child_subject, _POWL2.precedes))
+        )
+        children[child_iri] = ChildBinding(
+            iri=child_iri,
+            child_index=int(child_index_literal),  # type: ignore[arg-type]
+            child_model=child_model,  # type: ignore[arg-type]
+            precedes=precedes,
+        )
+
+        leaf_subject = URIRef(child_model)  # type: ignore[arg-type]
+        leaf_types = {str(t) for t in graph.objects(leaf_subject, RDF.type)}
+        if str(_POWL2.ActivityLeaf) not in leaf_types:
+            raise BridgeError(
+                f"DANGLING_CHILD_MODEL: <{child_iri}> powl2:childModel <{child_model}> "
+                f"is not typed powl2:ActivityLeaf"
+            )
+        activity_label = _one_literal(
+            leaf_subject, _POWL2.activityLabel, required=True, label="powl2:activityLabel"
+        )
+        implements_action = _one_literal(
+            leaf_subject, _MFWP.implementsAction, required=True, label="mfwp:implementsAction"
+        )
+        plan_ordinal_literal = _one_literal(
+            leaf_subject, _MFWP.planOrdinal, required=True, label="mfwp:planOrdinal"
+        )
+        binds_parameter = tuple(
+            sorted(str(b) for b in graph.objects(leaf_subject, _MFWP.bindsParameter))
+        )
+        leaves[child_model] = ActivityLeaf(  # type: ignore[index]
+            iri=str(leaf_subject),
+            activity_label=activity_label,  # type: ignore[arg-type]
+            implements_action=implements_action,  # type: ignore[arg-type]
+            plan_ordinal=int(plan_ordinal_literal),  # type: ignore[arg-type]
+            binds_parameter=binds_parameter,
+        )
+
+        for binding_iri in binds_parameter:
+            if binding_iri in bindings:
+                continue
+            binding_subject = URIRef(binding_iri)
+            binding_types = {str(t) for t in graph.objects(binding_subject, RDF.type)}
+            if str(_MFWP.ParameterBinding) not in binding_types:
+                raise BridgeError(
+                    f"DANGLING_BINDING: <{leaf_subject}> mfwp:bindsParameter "
+                    f"<{binding_iri}> is not typed mfwp:ParameterBinding"
+                )
+            binding_index_literal = _one_literal(
+                binding_subject, _MFWP.bindingIndex, required=True, label="mfwp:bindingIndex"
+            )
+            parameter = _one_literal(
+                binding_subject, _MFWP.parameter, required=True, label="mfwp:parameter"
+            )
+            bound_object = _one_literal(
+                binding_subject, _MFWP.boundObject, required=True, label="mfwp:boundObject"
+            )
+            bindings[binding_iri] = ParameterBinding(
+                iri=binding_iri,
+                binding_index=int(binding_index_literal),  # type: ignore[arg-type]
+                parameter=parameter,  # type: ignore[arg-type]
+                bound_object=bound_object,  # type: ignore[arg-type]
+            )
+
+    return PowlModel(
+        iri=str(root),
+        types=tuple(sorted({str(t) for t in graph.objects(root, RDF.type)})),
+        derived_from=tuple(sorted(str(d) for d in graph.objects(root, _POWL2.derivedFrom))),
+        was_derived_from=tuple(sorted(str(d) for d in graph.objects(root, _PROV.wasDerivedFrom))),
+        has_child=tuple(sorted(str(c) for c in graph.objects(root, _POWL2.hasChild))),
+        projection=_one_literal(root, _MFWP.projection, required=False, label="mfwp:projection"),
+        planner_run=_one_literal(root, _MFWP.plannerRun, required=False, label="mfwp:plannerRun"),
+        domain_digest=_one_literal(
+            root, _MFWP.domainDigest, required=False, label="mfwp:domainDigest"
+        ),
+        problem_digest=_one_literal(
+            root, _MFWP.problemDigest, required=False, label="mfwp:problemDigest"
+        ),
+        activity_count=int(activity_count_literal) if activity_count_literal is not None else None,
+        children=children,
+        leaves=leaves,
+        bindings=bindings,
+    )
 
 
 def model_to_turtle(model: PowlModel) -> str:
