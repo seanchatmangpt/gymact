@@ -56,10 +56,9 @@ gyms = ["gymnasium>=1.0,<2", "pettingzoo>=1.24,<2", "inspect-ai>=0.3.90,<1", "da
 # a live AWS API call. No credentials, no network. Declared explicitly
 # here since it was previously only an undeclared transitive dependency.
 # The first real gym bridge target: CUBE's own no-Docker reference benchmark
-# (examples/counter-cube), vendored read-only at
-# ~/autofde-lab/vendor/gyms/cube-standard (a lazy git submodule of that repo,
-# pinned per docs/papers/gym-lock.ttl). Optional because cube-standard requires
-# Python >=3.12 while gymact itself supports >=3.11; gated at import time via
+# (examples/counter-cube), pinned to the same exact cube-standard revision as
+# the benchmark lock. Optional because cube-standard requires Python >=3.12
+# while gymact itself supports >=3.11; gated at import time via
 # `pytest.importorskip("cube")` in tests, never mocked when genuinely absent.
 cube = [
   "cube-standard[docker]; python_version >= '3.12'",
@@ -84,9 +83,9 @@ bpmn = [
 override-dependencies = ["playwright>=1.47,<2"]
 
 [tool.uv.sources]
-cube-standard = { path = "/Users/sac/autofde-lab/vendor/gyms/cube-standard", editable = true }
-counter-cube = { path = "/Users/sac/autofde-lab/vendor/gyms/cube-standard/examples/counter-cube", editable = true }
-wasm4pm-compat-pydantic = { path = "/Users/sac/wasm4pm-compat/python", editable = true }
+cube-standard = { git = "https://github.com/The-AI-Alliance/cube-standard.git", rev = "9ca7c062d211450df05eb8318a1e847b5373b689" }
+counter-cube = { git = "https://github.com/The-AI-Alliance/cube-standard.git", rev = "9ca7c062d211450df05eb8318a1e847b5373b689", subdirectory = "examples/counter-cube" }
+wasm4pm-compat-pydantic = { git = "https://github.com/seanchatmangpt/wasm4pm-compat.git", rev = "577e2d1d8bdfe27d96f61c63f3ea120994e8bfda", subdirectory = "python" }
 
 [project.scripts]
 gymact = "gymact.cli:app"
