@@ -13,6 +13,9 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+env:
+  UV_LINK_MODE: copy
+
 jobs:
   core:
     name: Python ${{ matrix.python }} semantic/runtime
@@ -23,33 +26,6 @@ jobs:
       matrix:
         python: ["3.11", "3.12", "3.13"]
     env:
-      # ERRC audit finding (2026-08-09): this job's tests route real,
-      # Chicago-style LOCAL_GYM standings through
-      # `gymact.standing.require_standing`, which fails hard (not a silent
-      # skip) unless a missing real collaborator is explicitly named here.
-      # "*" remains the blanket allow-list because most LOCAL_GYM standings
-      # in this suite (sregym, swegym, mcp-client-session, inspect-evals,
-      # cube-counter, cube-container-counter, ggen, ggen-legacy, wasm4pm)
-      # need external toolchains/services (conda envs, API keys, an MCP
-      # server, a Rust/ggen toolchain, ...) this job does not stand up, and
-      # narrowing the wildcard to a hand-picked subset without auditing each
-      # of those independently would silently flip currently-degrading
-      # standings into hard CI failures. Two specific standings this audit
-      # DID resolve to real infra instead of a degrade (see the "Provision
-      # real kubectl+kind cluster" and Terraform steps below):
-      # LOCAL_GYM:kubernetes-reconciliation and
-      # LOCAL_GYM:terraform-docker-apply now run for real against a real
-      # local `kind` cluster and a real `terraform`/`tofu` binary against
-      # this runner's already-running Docker daemon -- `require_standing`
-      # short-circuits on `available=True` before ever consulting this env
-      # var, so these two no longer degrade here at all.
-      # LOCAL_GYM:terraform-plan is a real, permanent, out-of-repo gap: it
-      # requires `~/autofde-lab/vendor/gyms/terragoat`, a git submodule of a
-      # separate lab repository this workflow does not check out (see
-      # `.claude/rules/explore-exploit.md` on the lab/gymact boundary) --
-      # cloning an entire second private repository into this job is out of
-      # scope for this workflow, so it remains an intentionally-named,
-      # visible skip, covered by the "*" wildcard above.
       GYMACT_ALLOW_DEGRADED_STANDINGS: "*"
     steps:
       - name: Checkout exact subject
@@ -58,68 +34,51 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
-      - name: Admit exact head and two-workflow topology
+      - name: Admit exact head and required workflow graph
         shell: bash
         env:
           EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          for workflow in ci.yml release.yml enterprise-connection-crown.yml; do
+            test -f ".github/workflows/$workflow" || {
+              echo "REFUSED:MISSING_REQUIRED_WORKFLOW:$workflow" >&2
+              exit 1
+            }
+          done
           count="$(find .github/workflows -maxdepth 1 -type f \( -name '*.yml' -o -name '*.yaml' \) | wc -l | tr -d ' ')"
-          test "$count" -eq 2
           printf 'subject_sha=%s workflow_count=%s\n' "$EXPECTED_SHA" "$count"
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-          cache: pip
 
-      # ERRC-audit fix (a): give `tests/test_kubernetes_reconciliation.py`'s
-      # `LOCAL_GYM:kubernetes-reconciliation` standing a real, reachable
-      # local Kubernetes cluster instead of degrading it. `helm/kind-action`
-      # installs real `kubectl` + real `kind` and creates a real single-node
-      # `kind` cluster, writing a real kubeconfig context -- no mock, no
-      # simulated API server. This is a well-known, low-overhead action
-      # (typically well under a minute) and needs no nested virtualization:
-      # `kind` runs its "nodes" as containers on the runner's existing
-      # Docker daemon, which GitHub-hosted ubuntu-24.04 runners already run.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+
+      - name: Resolve admitted dependency graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv sync --extra gyms --group dev
+
       - name: Provision real kubectl + kind cluster
         uses: helm/kind-action@v1
         with:
           install_only: false
 
-      # ERRC-audit fix (a): give `tests/test_terraform_docker_apply.py`'s
-      # `LOCAL_GYM:terraform-docker-apply` and
-      # `tests/test_terraform_plan.py`'s `LOCAL_GYM:terraform-plan` (the
-      # binary half of its two-part gap) a real `terraform` binary on PATH.
-      # `terraform-docker-apply` additionally needs a reachable local Docker
-      # daemon, which this runs against directly -- GitHub-hosted
-      # ubuntu-24.04 runners already run `dockerd` with no extra
-      # provisioning, so no separate "start Docker" step is needed here.
       - name: Provision real terraform binary
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
 
-      - name: Install package and verification tools
-        shell: bash
-        run: |
-          set -euo pipefail
-          python -m pip install --upgrade pip
-          python -m pip install -e '.[gyms]' \
-            'build>=1.2,<2' \
-            'coverage[toml]>=7.6,<8' \
-            'httpx2>=2.9,<3' \
-            'mkdocstrings[python]>=0.30,<1' \
-            'pytest>=8.3,<9' \
-            'pytest-asyncio>=0.25,<2' \
-            'ruff>=0.15,<1' \
-            'twine>=6,<7' \
-            'zensical>=0.0.51,<1'
-
       - name: Semantic profile admission
-        run: gymact validate-profile
+        run: uv run gymact validate-profile
 
       - name: Refuse interaction-verifying test seams
         shell: bash
@@ -135,15 +94,16 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/test-evidence
-          coverage run -m pytest -v --junitxml="artifacts/test-evidence/junit-${{ matrix.python }}.xml"
+          uv run coverage run -m pytest -v \
+            --junitxml="artifacts/test-evidence/junit-${{ matrix.python }}.xml"
 
       - name: Coverage and static contract
         shell: bash
         run: |
           set -euo pipefail
-          coverage report
-          ruff check src tests
-          ruff format --check src tests
+          uv run coverage report
+          uv run ruff check src tests
+          uv run ruff format --check src tests
 
       - name: Upload matrix standing evidence
         uses: actions/upload-artifact@v7.0.1
@@ -182,23 +142,24 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-          cache: pip
 
-      - name: Install simulator verification surface
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+
+      - name: Resolve simulator verification surface
         shell: bash
         run: |
           set -euo pipefail
-          python -m pip install --upgrade pip
-          python -m pip install -e . \
-            'pytest>=8.3,<9' \
-            'pytest-asyncio>=0.25,<2' \
-            'pytest-socket>=0.7,<1'
+          uv sync --group dev
 
       - name: Prove cloud package has no vendor SDK dependency
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PY'
+          uv run python - <<'PY'
           import ast
           from pathlib import Path
 
@@ -231,11 +192,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/cloudsim
-          pytest -v --disable-socket \
+          uv run --with 'pytest-socket>=0.7,<1' pytest -v --disable-socket \
             tests/test_multicloud.py \
             tests/test_cloudsim.py \
             --junitxml=artifacts/cloudsim/junit-cloudsim.xml
-          python - <<'PY'
+          uv run python - <<'PY'
           import json
           import os
           from pathlib import Path
@@ -303,28 +264,30 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-          cache: pip
 
-      - name: Install build and documentation surface
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+
+      - name: Resolve build and documentation surface
         shell: bash
         run: |
           set -euo pipefail
-          python -m pip install --upgrade pip
-          python -m pip install -e . \
-            'build>=1.2,<2' \
-            'twine>=6,<7' \
-            'zensical>=0.0.51,<1' \
-            'mkdocstrings[python]>=0.30,<1'
+          uv sync --group dev
 
       - name: Build and independently install wheel
         shell: bash
         run: |
           set -euo pipefail
           rm -rf dist /tmp/gymact-wheel /tmp/exported-profile /tmp/manufacturing-bundle
-          python -m build
-          python -m twine check dist/*
-          python -m venv /tmp/gymact-wheel
-          /tmp/gymact-wheel/bin/pip install -q dist/*.whl
+          uv run python -m build
+          uv run python -m twine check dist/*
+          uv venv /tmp/gymact-wheel --python 3.13
+          uv pip install --python /tmp/gymact-wheel/bin/python \
+            'wasm4pm-compat-pydantic @ git+https://github.com/seanchatmangpt/wasm4pm-compat.git@577e2d1d8bdfe27d96f61c63f3ea120994e8bfda#subdirectory=python'
+          uv pip install --python /tmp/gymact-wheel/bin/python dist/*.whl
           /tmp/gymact-wheel/bin/gymact version
           /tmp/gymact-wheel/bin/gymact validate-profile
           /tmp/gymact-wheel/bin/gymact contract > /tmp/runtime-contract.json
@@ -350,7 +313,7 @@ jobs:
           PY
 
       - name: Build documentation
-        run: zensical build --clean
+        run: uv run zensical build --clean
 
       - name: Build and probe production container
         shell: bash
@@ -379,9 +342,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/ci
-          PACKAGE_VERSION="$("/tmp/gymact-wheel/bin/python" -c 'from importlib.metadata import version; print(version("gymact"))')"
-          export PACKAGE_VERSION
-          python - <<'PY'
+          PACKAGE_VERSION="$(/tmp/gymact-wheel/bin/python -c 'from importlib.metadata import version; print(version("gymact"))')"
+          WORKFLOW_COUNT="$(find .github/workflows -maxdepth 1 -type f \( -name '*.yml' -o -name '*.yaml' \) | wc -l | tr -d ' ')"
+          export PACKAGE_VERSION WORKFLOW_COUNT
+          uv run python - <<'PY'
           import json
           import os
           import xml.etree.ElementTree as ET
@@ -429,7 +393,8 @@ jobs:
               "degraded_standings_allowed": "*",
               "pytest_tests": tests,
               "pytest_skipped": skipped,
-              "workflow_count": 2,
+              "workflow_count": int(os.environ["WORKFLOW_COUNT"]),
+              "dependency_resolver": "uv",
               "cloudsim_zero_live_cloud": True,
               "boundaries": [
                   "python-3.11",
