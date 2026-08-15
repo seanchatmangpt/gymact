@@ -49,10 +49,13 @@ jobs:
           from pathlib import Path
 
           receipt = json.loads(Path("delivery/artifacts/ci/receipt.json").read_text())
+          required = {"ci.yml", "release.yml", "enterprise-connection-crown.yml"}
+          observed = set(receipt.get("workflow_files", []))
           assert receipt["repository"] == os.environ["GITHUB_REPOSITORY"]
           assert receipt["subject_sha"] == os.environ["EXPECTED_SHA"]
           assert receipt["verifier_standing"] == "ALIVE"
-          assert receipt["workflow_count"] == 2
+          assert required.issubset(observed), (required, observed)
+          assert receipt["workflow_count"] == len(observed)
           assert Path("delivery/site").is_dir()
           PY
 
@@ -157,11 +160,14 @@ jobs:
           from pathlib import Path
 
           receipt = json.loads(Path("delivery/artifacts/ci/receipt.json").read_text())
+          required = {"ci.yml", "release.yml", "enterprise-connection-crown.yml"}
+          observed = set(receipt.get("workflow_files", []))
           assert receipt["repository"] == os.environ["GITHUB_REPOSITORY"]
           assert receipt["subject_sha"] == os.environ["EXPECTED_SHA"]
           assert receipt["verifier_standing"] == "ALIVE"
           assert receipt["standing"] == "ALIVE"
-          assert receipt["workflow_count"] == 2
+          assert required.issubset(observed), (required, observed)
+          assert receipt["workflow_count"] == len(observed)
           wheels = list(Path("delivery/dist").glob("*.whl"))
           sdists = list(Path("delivery/dist").glob("*.tar.gz"))
           assert len(wheels) == 1, wheels

@@ -15,6 +15,7 @@ concurrency:
 
 env:
   UV_LINK_MODE: copy
+  GYMACT_UV_VERSION: "0.11.32"
 
 jobs:
   core:
@@ -55,9 +56,10 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - name: Set up uv
+      - name: Set up admitted uv
         uses: astral-sh/setup-uv@v6
         with:
+          version: ${{ env.GYMACT_UV_VERSION }}
           enable-cache: true
           cache-dependency-glob: pyproject.toml
 
@@ -65,6 +67,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test "$(uv --version | awk '{print $2}')" = "$GYMACT_UV_VERSION"
           uv sync --extra gyms --group dev
 
       - name: Provision real kubectl + kind cluster
@@ -84,10 +87,50 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -RInE 'unittest\.mock|\bMock\b|\bpatch\b|monkeypatch' tests; then
-            echo 'REFUSED:INTERACTION_VERIFYING_TEST_SEAM' >&2
-            exit 1
-          fi
+          uv run python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          violations: list[str] = []
+          forbidden_modules = {"unittest.mock", "mock", "pytest_mock"}
+
+          def record(path: Path, node: ast.AST, reason: str) -> None:
+              violations.append(f"{path}:{getattr(node, 'lineno', 0)}:{reason}")
+
+          for path in sorted(Path("tests").rglob("*.py")):
+              tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.Import):
+                      for alias in node.names:
+                          if alias.name in forbidden_modules or alias.name.startswith("unittest.mock."):
+                              record(path, node, f"forbidden-import:{alias.name}")
+                  elif isinstance(node, ast.ImportFrom):
+                      module = node.module or ""
+                      imported = {alias.name for alias in node.names}
+                      if module in forbidden_modules or module.startswith("unittest.mock."):
+                          record(path, node, f"forbidden-import-from:{module}")
+                      if module == "unittest" and "mock" in imported:
+                          record(path, node, "forbidden-import-from:unittest.mock")
+                  elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                      args = {
+                          arg.arg
+                          for arg in [*node.args.posonlyargs, *node.args.args, *node.args.kwonlyargs]
+                      }
+                      if "mocker" in args:
+                          record(path, node, "pytest-mock-fixture:mocker")
+                  elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                      if (
+                          isinstance(node.func.value, ast.Name)
+                          and node.func.value.id == "monkeypatch"
+                          and node.func.attr in {"setattr", "delattr"}
+                      ):
+                          record(path, node, f"behavior-substitution:monkeypatch.{node.func.attr}")
+
+          if violations:
+              print("\n".join(violations))
+              raise SystemExit("REFUSED:INTERACTION_VERIFYING_TEST_SEAM")
+          print("interaction_verifying_test_seams=0")
+          PY
 
       - name: Runtime and evidence tests
         shell: bash
@@ -143,9 +186,10 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Set up uv
+      - name: Set up admitted uv
         uses: astral-sh/setup-uv@v6
         with:
+          version: ${{ env.GYMACT_UV_VERSION }}
           enable-cache: true
           cache-dependency-glob: pyproject.toml
 
@@ -153,6 +197,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test "$(uv --version | awk '{print $2}')" = "$GYMACT_UV_VERSION"
           uv sync --group dev
 
       - name: Prove cloud package has no vendor SDK dependency
@@ -173,7 +218,7 @@ jobs:
           for root in roots:
               paths.extend(root.glob("*.py") if root.is_dir() else [root])
           for path in paths:
-              tree = ast.parse(path.read_text(), filename=str(path))
+              tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
               for node in ast.walk(tree):
                   if isinstance(node, ast.Import):
                       imported.update(alias.name for alias in node.names)
@@ -185,14 +230,16 @@ jobs:
           print("vendor_cloud_sdk_imports=0")
           PY
 
-      - name: Execute cloud worlds with sockets disabled
+      - name: Execute cloud worlds with external sockets disabled
         shell: bash
         env:
           SUBJECT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
           mkdir -p artifacts/cloudsim
-          uv run --with 'pytest-socket>=0.7,<1' pytest -v --disable-socket \
+          uv run --with 'pytest-socket==0.8.0' pytest -v \
+            --disable-socket \
+            --allow-unix-socket \
             tests/test_multicloud.py \
             tests/test_cloudsim.py \
             --junitxml=artifacts/cloudsim/junit-cloudsim.xml
@@ -207,7 +254,8 @@ jobs:
               "standing": "ALIVE",
               "boundary": "cloudsim-zero-live-cloud",
               "clouds": ["aws", "azure", "gcp"],
-              "network": "SOCKETS_DISABLED",
+              "network": "EXTERNAL_SOCKETS_DISABLED",
+              "unix_socket": "ALLOWED_FOR_ASYNCIO",
               "credentials": "EMPTY",
               "vendor_cloud_sdk_imports": 0,
               "real_cloud_spend_required": False,
@@ -265,9 +313,10 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Set up uv
+      - name: Set up admitted uv
         uses: astral-sh/setup-uv@v6
         with:
+          version: ${{ env.GYMACT_UV_VERSION }}
           enable-cache: true
           cache-dependency-glob: pyproject.toml
 
@@ -275,6 +324,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test "$(uv --version | awk '{print $2}')" = "$GYMACT_UV_VERSION"
           uv sync --group dev
 
       - name: Build and independently install wheel
@@ -343,8 +393,7 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/ci
           PACKAGE_VERSION="$(/tmp/gymact-wheel/bin/python -c 'from importlib.metadata import version; print(version("gymact"))')"
-          WORKFLOW_COUNT="$(find .github/workflows -maxdepth 1 -type f \( -name '*.yml' -o -name '*.yaml' \) | wc -l | tr -d ' ')"
-          export PACKAGE_VERSION WORKFLOW_COUNT
+          export PACKAGE_VERSION
           uv run python - <<'PY'
           import json
           import os
@@ -370,10 +419,26 @@ jobs:
           cloud = json.loads(cloud_receipts[0].read_text())
           if cloud.get("subject_sha") != os.environ["SUBJECT_SHA"]:
               raise SystemExit("cloud-simulation receipt subject does not match exact head")
-          if cloud.get("standing") != "ALIVE" or cloud.get("network") != "SOCKETS_DISABLED":
-              raise SystemExit("cloud-simulation receipt does not prove zero-live-cloud boundary")
+          if cloud.get("standing") != "ALIVE":
+              raise SystemExit("cloud-simulation standing is not ALIVE")
+          if cloud.get("network") != "EXTERNAL_SOCKETS_DISABLED":
+              raise SystemExit("external network boundary was not disabled")
+          if cloud.get("unix_socket") != "ALLOWED_FOR_ASYNCIO":
+              raise SystemExit("asyncio Unix-socket boundary was not explicit")
           if cloud.get("credentials") != "EMPTY" or cloud.get("real_cloud_spend_required") is not False:
               raise SystemExit("cloud-simulation receipt does not prove zero-spend boundary")
+          if cloud.get("vendor_cloud_sdk_imports") != 0:
+              raise SystemExit("cloud-simulation receipt does not prove SDK isolation")
+
+          required_workflows = {"ci.yml", "release.yml", "enterprise-connection-crown.yml"}
+          workflow_files = sorted(
+              path.name
+              for path in Path(".github/workflows").iterdir()
+              if path.is_file() and path.suffix in {".yml", ".yaml"}
+          )
+          missing = sorted(required_workflows.difference(workflow_files))
+          if missing:
+              raise SystemExit(f"required workflows missing at receipt boundary: {missing}")
 
           subject_standing = "ALIVE" if skipped == 0 else "PARTIAL_ALIVE"
           reason = (
@@ -393,8 +458,10 @@ jobs:
               "degraded_standings_allowed": "*",
               "pytest_tests": tests,
               "pytest_skipped": skipped,
-              "workflow_count": int(os.environ["WORKFLOW_COUNT"]),
+              "workflow_count": len(workflow_files),
+              "workflow_files": workflow_files,
               "dependency_resolver": "uv",
+              "uv_version": os.environ["GYMACT_UV_VERSION"],
               "cloudsim_zero_live_cloud": True,
               "boundaries": [
                   "python-3.11",
