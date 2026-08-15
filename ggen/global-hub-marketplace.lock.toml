@@ -1,0 +1,19 @@
+[marketplace]
+repository = "https://github.com/seanchatmangpt/ggen-marketplace"
+revision = "2c2aefdf9eb0b871f5d1db107430e66ae42ed926"
+selection_policy = "deterministic manifest review + architecture fit; pack presence is not execution standing"
+
+[[packs]]
+name = "autofde-semantic-registry-pack"
+version = "1.0.0"
+role = "federated source/capability registry, standing, SHACL admission, deterministic inventory, receipts"
+
+[[packs]]
+name = "automatic-autonomic-operations-pack"
+version = "26.7.31"
+role = "independent positive/refusal/receipt-replay verification for unattended operations"
+
+[[packs]]
+name = "ggen-combinatorial-maximalism-pack"
+version = "26.7.29"
+role = "bounded candidate manufacture, brokered irreversible publication, BLAKE3 receipt/replay"
