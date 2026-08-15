@@ -1,0 +1,55 @@
+---
+to: "src/lib.rs"
+force: true
+sparql:
+  assets: |
+    PREFIX dct: <http://purl.org/dc/terms/>
+    PREFIX prov: <http://www.w3.org/ns/prov#>
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    SELECT ?id ?title ?domain WHERE {
+      ?asset a prov:Entity ; dct:identifier ?id ; dct:title ?title ; dct:type ?domainIri .
+      ?domainIri skos:inScheme <urn:gymact:world-cyber:scheme:domain> ; skos:notation ?domain .
+    } ORDER BY ?id
+  dependencies: |
+    PREFIX dct: <http://purl.org/dc/terms/>
+    PREFIX prov: <http://www.w3.org/ns/prov#>
+    SELECT ?sourceId ?targetId WHERE {
+      ?source a prov:Entity ; dct:identifier ?sourceId ; dct:requires ?target .
+      ?target dct:identifier ?targetId .
+    } ORDER BY ?sourceId ?targetId
+  capabilities: |
+    PREFIX dct: <http://purl.org/dc/terms/>
+    PREFIX sosa: <http://www.w3.org/ns/sosa/>
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    SELECT ?id ?title ?family ?effect WHERE {
+      ?cap a sosa:Procedure ; dct:identifier ?id ; dct:title ?title ; dct:type ?familyIri ; dct:subject ?effectIri .
+      ?familyIri skos:notation ?family .
+      ?effectIri skos:notation ?effect .
+    } ORDER BY ?id
+---
+//! Ephemeral ggen projection of the admitted World Cyber Range ABox.
+//! This is a static catalog/Gall checkpoint only; it has no external actuator.
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Asset { pub id: &'static str, pub title: &'static str, pub domain: &'static str }
+pub const ASSETS: &[Asset] = &[
+{% for row in assets -%}
+    Asset { id: "{{ row.id }}", title: "{{ row.title }}", domain: "{{ row.domain }}" },
+{% endfor -%}
+];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Dependency { pub source: &'static str, pub requires: &'static str }
+pub const DEPENDENCIES: &[Dependency] = &[
+{% for row in dependencies -%}
+    Dependency { source: "{{ row.sourceId }}", requires: "{{ row.targetId }}" },
+{% endfor -%}
+];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Capability { pub id: &'static str, pub title: &'static str, pub family: &'static str, pub effect: &'static str }
+pub const CAPABILITIES: &[Capability] = &[
+{% for row in capabilities -%}
+    Capability { id: "{{ row.id }}", title: "{{ row.title }}", family: "{{ row.family }}", effect: "{{ row.effect }}" },
+{% endfor -%}
+];

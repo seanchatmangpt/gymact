@@ -1,0 +1,4 @@
+[pack]
+name = "world-cyber-gym-pack"
+version = "0.1.0"
+description = "Manufacture a static Rust/WIT enterprise dependency-world checkpoint from the same public-semantic ABox consumed by GymAct's Python-native WorldCyber provider. Disturbance affordances are synthetic-range-only state transitions; no exploit or external-target actuation is represented."
