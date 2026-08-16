@@ -1,0 +1,129 @@
+name: v26.9.1 world execution crown
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v2691-world-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_LINK_MODE: copy
+  GYMACT_UV_VERSION: "0.11.32"
+
+jobs:
+  world-execution:
+    name: GymAct domain world / OCEL / replay
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SUBJECT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      GYMACT_ALLOW_DEGRADED_STANDINGS: "*"
+      AWS_ACCESS_KEY_ID: ""
+      AWS_SECRET_ACCESS_KEY: ""
+      AWS_SESSION_TOKEN: ""
+      AZURE_CLIENT_ID: ""
+      AZURE_CLIENT_SECRET: ""
+      AZURE_TENANT_ID: ""
+      AZURE_SUBSCRIPTION_ID: ""
+      GOOGLE_APPLICATION_CREDENTIALS: ""
+      GOOGLE_CLOUD_PROJECT: ""
+    steps:
+      - name: Checkout exact subject
+        uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Admit exact head and zero-live-cloud boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SUBJECT_SHA"
+          test -z "${AWS_ACCESS_KEY_ID:-}"
+          test -z "${AWS_SECRET_ACCESS_KEY:-}"
+          test -z "${AZURE_CLIENT_ID:-}"
+          test -z "${AZURE_CLIENT_SECRET:-}"
+          test -z "${AZURE_TENANT_ID:-}"
+          test -z "${AZURE_SUBSCRIPTION_ID:-}"
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          printf 'subject_sha=%s live_cloud_authority=BLOCKED:LIVE_AZURE_AUTHORITY\n' "$SUBJECT_SHA"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up admitted uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.GYMACT_UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+
+      - name: Resolve admitted dependency graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uv --version | awk '{print $2}')" = "$GYMACT_UV_VERSION"
+          uv sync --extra gyms --group dev
+
+      - name: Run affected M&A integration court
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run pytest -v tests/test_ggen_agent.py tests/test_mna_gym.py
+
+      - name: Execute canonical world plus independent receipt court
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/v2691-world-execution
+          uv run python scripts/verify_v2691_world_execution.py \
+            --ocel-output artifacts/v2691-world-execution/episode.ocel.json \
+            --report-output artifacts/v2691-world-execution/receipt.json
+
+      - name: Deterministic evidence replay
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp artifacts/v2691-world-execution/receipt.json artifacts/v2691-world-execution/receipt.first.json
+          cp artifacts/v2691-world-execution/episode.ocel.json artifacts/v2691-world-execution/episode.first.ocel.json
+          uv run python scripts/verify_v2691_world_execution.py \
+            --ocel-output artifacts/v2691-world-execution/episode.second.ocel.json \
+            --report-output artifacts/v2691-world-execution/receipt.second.json
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          first = json.loads(Path("artifacts/v2691-world-execution/receipt.first.json").read_text())
+          second = json.loads(Path("artifacts/v2691-world-execution/receipt.second.json").read_text())
+          # Runtime receipt/event identities are intentionally fresh per episode. Replay
+          # determinism is semantic: the bounded frontier, consequence counts, authority
+          # refusal, independent verify and falsifier cardinality must reproduce exactly.
+          for report in (first, second):
+              report["canonical"].pop("receipt_count", None)
+              report["canonical"].pop("manufactured_agent_receipt_count", None)
+              report["independent_court"].pop("ocel_sha256", None)
+              report["independent_court"].pop("standard_authority_refusal_receipt_id", None)
+          if first != second:
+              raise SystemExit("REFUSED:SEMANTIC_REPLAY_DRIFT")
+          print("ALIVE:SEMANTIC_REPLAY")
+          PY
+
+      - name: Compile verifier
+        run: uv run python -m py_compile scripts/verify_v2691_world_execution.py
+
+      - name: Upload exact-head world receipt
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: v2691-world-execution-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/v2691-world-execution/
+          if-no-files-found: error
+          retention-days: 30
