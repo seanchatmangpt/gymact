@@ -34,6 +34,13 @@ API_KEY = os.environ.get("PLATFORM_CONSOLE_API_KEY")
 _RUN_CAPABILITY = PLATFORM_CONSOLE_CAPABILITIES[0]
 assert _RUN_CAPABILITY.binding == "run_inventory_components"
 
+_PROVISION_CAPABILITY = next(
+    c for c in PLATFORM_CONSOLE_CAPABILITIES if c.binding == "provision_project"
+)
+_PROJECT_STATUS_CAPABILITY = next(
+    c for c in PLATFORM_CONSOLE_CAPABILITIES if c.binding == "get_project_status"
+)
+
 _live_reachable = bool(BASE_URL and API_KEY)
 
 
@@ -91,6 +98,99 @@ def test_real_gymact_actuates_platform_console_inventory_components() -> None:
         assert any(r.operation.value == "act" and r.standing.value == "ALIVE" for r in receipts)
 
         await gym.teardown(episode_id, authority_ref=authority_ref)
+
+    anyio.run(run)
+
+
+@pytest.mark.skipif(
+    not _live_reachable,
+    reason=(
+        "PLATFORM_CONSOLE_BASE_URL/PLATFORM_CONSOLE_API_KEY not set -- no reachable "
+        "test-tenant platform-console deployment configured. Skipped, not mocked, "
+        "per docs/DOD-v26.8.18-FDE-ACTUATION.md section 4."
+    ),
+)
+def test_real_gymact_provisions_project_and_polls_real_status() -> None:
+    """Real round trip for the DoD section 4 increment: `POST /api/projects`
+    (provision_project), then `verify()` polling the real `GET /api/projects`
+    list (get_project_status) for the real `ready` field -- never trusting
+    the POST's 201 alone. Requires an owner-role API key (the console's own
+    `requireRole(session, "owner")` gate on POST /api/projects applies
+    identically to Bearer-key auth via `resolveApiKeyAuth`)."""
+    import uuid
+
+    import anyio
+
+    async def run() -> None:
+        authority_ref = "urn:gymact:authority-decision:platform-console-provision-e2e"
+        principal = "urn:prov:agent:gymact-dod-v26.8.18-provision"
+        project_name = f"gymact-dod-{uuid.uuid4().hex[:12]}"
+
+        gym = GymAct(
+            authority_resolver=AllowListAuthorityResolver({authority_ref}),
+            capability_scope=AllowListCapabilityScope(
+                {principal: frozenset(item.iri for item in PLATFORM_CONSOLE_CAPABILITIES)}
+            ),
+        )
+        gym.register_provider(PlatformConsoleProvider())
+
+        materialization = await gym.materialize(
+            MaterializationIntent(
+                provider="platform-console",
+                config={"base_url": BASE_URL},
+                principal=principal,
+            )
+        )
+        assert materialization.accepted, materialization.receipt.reason
+        episode_id = materialization.episode.episode_id
+
+        try:
+            result = await gym.act(
+                ActuationIntent(
+                    episode_id=episode_id,
+                    capability=_PROVISION_CAPABILITY.iri,
+                    payload={"name": project_name, "namespace": project_name},
+                    authority_ref=authority_ref,
+                    principal=principal,
+                )
+            )
+            assert result.accepted, result.receipt.reason
+            assert result.effect is not None
+            assert result.effect["status"] == 201, result.effect["body"]
+            assert result.effect["project_name"] == project_name
+
+            verification = await gym.verify(episode_id, {})
+            assert verification.passed, verification.observed
+            # The real `ready` field lib/k8s.ts's toSupabaseProject derives
+            # from the Project CR's actual status.conditions -- not a
+            # fabricated/assumed value, and not just "the POST returned 201".
+            assert verification.observed.get("ready") in (True, False)
+            assert verification.observed.get("name") == project_name
+
+            status_result = await gym.act(
+                ActuationIntent(
+                    episode_id=episode_id,
+                    capability=_PROJECT_STATUS_CAPABILITY.iri,
+                    payload={"name": project_name},
+                    authority_ref=authority_ref,
+                    principal=principal,
+                )
+            )
+            assert status_result.accepted, status_result.receipt.reason
+            assert status_result.effect is not None
+            assert status_result.effect["status"] == 200
+            assert status_result.effect["project"]["name"] == project_name
+
+            assert gym.verify_evidence_chain()
+        finally:
+            # Real teardown of the real project this test provisioned, via
+            # the same DELETE /api/projects/{name} route the console itself
+            # exposes -- test hygiene, not a claimed gymact capability.
+            environment = gym._episodes[episode_id].environment  # noqa: SLF001
+            await environment._async_request(  # noqa: SLF001
+                "DELETE", f"/api/projects/{project_name}"
+            )
+            await gym.teardown(episode_id, authority_ref=authority_ref)
 
     anyio.run(run)
 

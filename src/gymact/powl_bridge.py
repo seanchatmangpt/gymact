@@ -34,7 +34,7 @@ from collections.abc import Mapping
 from gymact.kernel import GymAct
 from gymact.models import ActuationIntent, ActuationResult
 from gymact.powl.algebra import Atom, PartialOrder, PowlNode
-from gymact.powl.executor import INITIAL_MARKING, DEFAULT_BOUND, enabled, fire, is_final
+from gymact.powl.executor import DEFAULT_BOUND, INITIAL_MARKING, enabled, fire, is_final
 from gymact.powl.turtle_bridge import BridgeError, parse_powl_turtle, powl_model_to_node
 
 __all__ = [

@@ -85,6 +85,45 @@ PLATFORM_CONSOLE_CAPABILITIES = (
         consequence=Consequence.READ,
         binding="get_castle_jobs",
     ),
+    Capability(
+        iri="urn:gymact:platform-console:capability:provision_project",
+        title=(
+            "Provision a real Supabase Project + backing database on "
+            "platform-console via POST /api/projects (app/app/api/projects/"
+            "route.ts), owner-role-gated on the console side. Payload fields "
+            "match that route's own manual body parsing exactly: required "
+            "`name` and `namespace` (str); optional `databaseRefName` (str, "
+            "defaults server-side to `<name>-db`), `hostname` (str, defaults "
+            "to `<name>.supabase.local`), `protocol` ('http'|'https', "
+            "defaults to 'http'), `dbStorageSize` (str, defaults to '1Gi'), "
+            "`tier` ('starter'|'pro'|'enterprise', defaults to the console's "
+            "DEFAULT_PROJECT_TIER). No other fields are read by the route."
+        ),
+        consequence=Consequence.DO,
+        binding="provision_project",
+    ),
+    Capability(
+        iri="urn:gymact:platform-console:capability:get_project_status",
+        title=(
+            "Read a real Project's current status on platform-console. "
+            "app/app/api/projects/[name]/route.ts exposes no GET handler "
+            "today (only DELETE) -- confirmed by reading that file directly, "
+            "not assumed -- so this reads the real `GET /api/projects` list "
+            "route (app/app/api/projects/route.ts) and returns the one real "
+            "SupabaseProject entry matching the requested `name`, including "
+            "its real `ready`/`reason`/`message` fields (lib/k8s.ts's "
+            "toSupabaseProject, derived from the Project CR's own real "
+            "`status.conditions[type=Ready]`, never fabricated)."
+        ),
+        consequence=Consequence.READ,
+        binding="get_project_status",
+    ),
+)
+
+# Used internally by `verify()`'s project-status polling loop to re-actuate
+# the real read capability rather than duplicating its HTTP-call logic.
+_GET_PROJECT_STATUS_CAPABILITY = next(
+    item for item in PLATFORM_CONSOLE_CAPABILITIES if item.binding == "get_project_status"
 )
 
 
@@ -117,6 +156,8 @@ class PlatformConsoleEnvironment:
         self.environment_id = f"urn:gymact:platform-console:environment:{uuid4().hex}"
         self._closed = False
         self._last_run_job_name: str | None = None
+        self._last_provisioned_project_name: str | None = None
+        self._last_actuation_kind: str | None = None
 
     def _ensure_open(self) -> None:
         if self._closed:
@@ -184,23 +225,86 @@ class PlatformConsoleEnvironment:
             job_name = job.get("name") if isinstance(job, dict) else None
             if isinstance(job_name, str):
                 self._last_run_job_name = job_name
+            self._last_actuation_kind = "run_inventory_components"
             return {"status": status, "body": body, "job_name": job_name}
         if binding == "get_castle_jobs":
             status, body = await self._async_request("GET", "/api/castle")
             return {"status": status, "body": body}
+        if binding == "provision_project":
+            name = payload.get("name")
+            namespace = payload.get("namespace")
+            if not isinstance(name, str) or not name.strip():
+                raise ValueError("provision_project requires a non-empty 'name'")
+            if not isinstance(namespace, str) or not namespace.strip():
+                raise ValueError("provision_project requires a non-empty 'namespace'")
+            # Same field set and defaults the real route itself applies
+            # (app/app/api/projects/route.ts) -- only fields that route
+            # actually reads are forwarded; nothing extra, nothing guessed.
+            body_payload: dict[str, Any] = {"name": name, "namespace": namespace}
+            for key in (
+                "databaseRefName",
+                "hostname",
+                "protocol",
+                "dbStorageSize",
+                "tier",
+            ):
+                if key in payload and payload[key] is not None:
+                    body_payload[key] = payload[key]
+            status, body = await self._async_request("POST", "/api/projects", body_payload)
+            project = body.get("project") if isinstance(body, dict) else None
+            project_name = project.get("name") if isinstance(project, dict) else None
+            if isinstance(project_name, str):
+                self._last_provisioned_project_name = project_name
+            self._last_actuation_kind = "provision_project"
+            return {"status": status, "body": body, "project_name": project_name}
+        if binding == "get_project_status":
+            name = payload.get("name") or self._last_provisioned_project_name
+            if not isinstance(name, str) or not name.strip():
+                raise ValueError(
+                    "get_project_status requires a 'name' (or a prior "
+                    "provision_project actuation in this environment)"
+                )
+            status, body = await self._async_request("GET", "/api/projects")
+            projects = body.get("projects") if isinstance(body, dict) else None
+            match = None
+            if isinstance(projects, list):
+                for item in projects:
+                    if isinstance(item, dict) and item.get("name") == name:
+                        match = item
+                        break
+            return {"status": status, "project": match}
         raise ValueError(f"unsupported platform-console binding: {binding}")
 
     async def verify(self, expected: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
-        """Poll the real `GET /api/castle` job list until the job created by
-        the last `run_inventory_components` actuation reaches a real
-        terminal k8s-observed status (never trusting the POST's 201 alone),
-        mirroring `kubernetes_reconciliation.py`'s poll-real-state
-        discipline. `expected` may set `{"status": "Complete"}` (or any
-        subset of one job's real fields) to require a stricter terminal
-        state; an empty `expected` only requires the job to be observed at
-        all with a real (non-Pending-forever) status.
+        """Poll real platform-console state until it reaches a real terminal
+        condition -- never trusting the prior actuation's 2xx alone, mirroring
+        `kubernetes_reconciliation.py`'s poll-real-state discipline. Dispatches
+        on which actuation was last performed in this environment:
+
+        - `run_inventory_components`: polls the real `GET /api/castle` job
+          list for the job this run created, same as before this change.
+        - `provision_project`: polls the real `GET /api/projects` list
+          (app/app/api/projects/route.ts's GET -- app/app/api/projects/
+          [name]/route.ts has no GET handler, confirmed by reading it) for
+          the project this provision created, checking the real `ready`
+          field lib/k8s.ts's `toSupabaseProject` derives from the Project
+          CR's actual `status.conditions[type=Ready]` -- never the POST's
+          201 alone. `expected` may set `{"ready": True}` (or any subset of
+          the project's real fields, e.g. `{"tier": "pro"}`) to require a
+          stricter state; an empty `expected` only requires `ready` to have
+          settled to a real non-null boolean (True or False, not still
+          unreported).
+
+        `expected` applies to whichever kind was last actuated; an empty
+        dict falls back to that kind's own definition of "reached a real
+        terminal state."
         """
         self._ensure_open()
+        if self._last_actuation_kind == "provision_project":
+            return await self._verify_project_status(expected)
+        return await self._verify_castle_job(expected)
+
+    async def _verify_castle_job(self, expected: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
         job_name = self._last_run_job_name
         observed: dict[str, Any] = {}
 
@@ -220,6 +324,28 @@ class PlatformConsoleEnvironment:
             if expected:
                 return all(observed.get(key) == value for key, value in expected.items())
             return observed.get("status") in ("Complete", "Failed")
+
+        passed = await poll_until_async(
+            _check, timeout_seconds=_DEFAULT_VERIFY_TIMEOUT_S, interval_seconds=_POLL_INTERVAL_S
+        )
+        return passed, observed
+
+    async def _verify_project_status(self, expected: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+        project_name = self._last_provisioned_project_name
+        observed: dict[str, Any] = {}
+
+        async def _check() -> bool:
+            nonlocal observed
+            result = await self.actuate(
+                _GET_PROJECT_STATUS_CAPABILITY, {"name": project_name}
+            )
+            match = result.get("project")
+            observed = match if isinstance(match, dict) else {}
+            if not observed:
+                return False
+            if expected:
+                return all(observed.get(key) == value for key, value in expected.items())
+            return observed.get("ready") is not None
 
         passed = await poll_until_async(
             _check, timeout_seconds=_DEFAULT_VERIFY_TIMEOUT_S, interval_seconds=_POLL_INTERVAL_S
