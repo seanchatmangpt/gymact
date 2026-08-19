@@ -3,7 +3,8 @@
 Google's Discovery directory is itself an observed contract. Individual entries
 can become stale before the directory is updated. Stable 404/410 responses are
 preserved as unavailable contract observations; transient transport/5xx/429
-failures receive bounded retry and remain execution failures if exhausted.
+failures receive bounded retry and, when an HTTP response survives exhaustion,
+are preserved as transiently unavailable evidence rather than discarded.
 """
 
 from __future__ import annotations
@@ -78,6 +79,10 @@ class DiscoveryUnavailable:
     def identity(self) -> str:
         return f"{self.name}:{self.version}"
 
+    @property
+    def transient(self) -> bool:
+        return self.reason == "DISCOVERY_DOCUMENT_TRANSIENTLY_UNAVAILABLE"
+
 
 @dataclass(frozen=True, slots=True)
 class ResilientDiscoveryCensus:
@@ -92,6 +97,10 @@ class ResilientDiscoveryCensus:
     @property
     def complete_probe(self) -> bool:
         return self.advertised_entries > 0 and self.probed_entries == self.advertised_entries
+
+    @property
+    def has_transient_gaps(self) -> bool:
+        return any(item.transient for item in self.unavailable)
 
     @property
     def receipt_digest_blake3(self) -> str:
@@ -119,7 +128,7 @@ def load_resilient_discovery_census(
     include_nonpreferred: bool = True,
     timeout: float = 60.0,
 ) -> ResilientDiscoveryCensus:
-    """Probe every advertised Discovery entry and preserve stable unavailability."""
+    """Probe every advertised Discovery entry and preserve all HTTP outcomes."""
     own_client = client is None
     http = client or httpx.Client(timeout=timeout, follow_redirects=True)
     try:
@@ -141,7 +150,12 @@ def load_resilient_discovery_census(
         for item in selected:
             discovery_url = str(item["discoveryRestUrl"])
             doc_response = _get_with_retry(http, discovery_url)
-            if doc_response.status_code in {404, 410}:
+            if doc_response.status_code in {404, 410} | _TRANSIENT_STATUS:
+                reason = (
+                    "DISCOVERY_DOCUMENT_TRANSIENTLY_UNAVAILABLE"
+                    if doc_response.status_code in _TRANSIENT_STATUS
+                    else "ADVERTISED_DISCOVERY_DOCUMENT_UNAVAILABLE"
+                )
                 unavailable.append(
                     DiscoveryUnavailable(
                         name=str(item["name"]),
@@ -149,7 +163,7 @@ def load_resilient_discovery_census(
                         discovery_url=discovery_url,
                         status_code=doc_response.status_code,
                         response_digest_blake3=blake3(doc_response.content).hexdigest(),
-                        reason="ADVERTISED_DISCOVERY_DOCUMENT_UNAVAILABLE",
+                        reason=reason,
                     )
                 )
                 continue
