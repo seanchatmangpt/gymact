@@ -1,657 +1,957 @@
-@prefix mcp:  <urn:gymact:mcp:> .
-@prefix dct:  <http://purl.org/dc/terms/> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix mcp: <urn:gymact:mcp:> .
+@prefix odrl: <http://www.w3.org/ns/odrl/2/> .
 @prefix prov: <http://www.w3.org/ns/prov#> .
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 @prefix sosa: <http://www.w3.org/ns/sosa/> .
-@prefix odrl: <http://www.w3.org/ns/odrl/2/> .
-@prefix dcat: <http://www.w3.org/ns/dcat#> .
-@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-# ---------------------------------------------------------------------------
-# Protocol catalog retained for protocol-gym's existing MCP/A2A/LSP projection.
-# MCP is now linked to an exact revisioned semantic surface instead of being
-# only a name in a three-element list.
-# ---------------------------------------------------------------------------
-
-<urn:gymact:protocol:mcp>
-    a skos:Concept ;
-    dct:identifier "mcp" ;
-    dct:title "MCP" ;
-    dct:conformsTo mcp:revision-2026-07-28 .
-
-<urn:gymact:protocol:a2a>
-    a skos:Concept ;
-    dct:identifier "a2a" ;
-    dct:title "A2A" .
-
-<urn:gymact:protocol:lsp>
-    a skos:Concept ;
-    dct:identifier "lsp" ;
-    dct:title "LSP" .
-
-# Existing protocol-gym fixture stays deliberately tiny. It proves that the
-# protocol pack can manufacture READ/DO authority projections without making
-# the much larger MCP ontology itself an actuation surface.
-
-<urn:gymact:protocol-gym:fixture>
-    a prov:Entity ;
-    dct:identifier "protocol-gym-fixture" ;
-    dct:conformsTo <urn:gymact:protocol:mcp> ;
-    prov:value "fixture-source-digest" .
-
-<urn:gymact:protocol-gym:fixture:read>
-    a sosa:Procedure ;
-    dct:title "Fixture read capability" ;
-    dct:identifier "read" ;
-    dct:type <urn:gymact:consequence:read> ;
-    prov:wasDerivedFrom <urn:gymact:protocol-gym:fixture> .
-
-<urn:gymact:protocol-gym:fixture:do>
-    a sosa:Procedure ;
-    dct:title "Fixture DO capability" ;
-    dct:identifier "do" ;
-    dct:type <urn:gymact:consequence:do> ;
-    prov:wasDerivedFrom <urn:gymact:protocol-gym:fixture> ;
-    skos:note "authority-required" .
-
-# ---------------------------------------------------------------------------
-# MCP semantic vocabulary.
-# Public vocabularies carry identity/provenance/policy/service semantics.
-# mcp:* is restricted to protocol-specific distinctions that those vocabularies
-# do not already express.
-# ---------------------------------------------------------------------------
-
-mcp:ProtocolRevision a rdfs:Class ; rdfs:label "MCP protocol revision" .
-mcp:Facet a rdfs:Class ; rdfs:label "MCP facet" .
-mcp:Method a rdfs:Class ; rdfs:label "MCP method or embedded request kind" .
-mcp:Capability a rdfs:Class ; rdfs:label "MCP advertised capability" .
-mcp:LifecycleStatus a rdfs:Class ; rdfs:label "MCP lifecycle status" .
-mcp:MessageKind a rdfs:Class ; rdfs:label "MCP message kind" .
-mcp:Direction a rdfs:Class ; rdfs:label "MCP semantic direction" .
-mcp:InvocationMode a rdfs:Class ; rdfs:label "MCP invocation mode" .
-mcp:ControlMode a rdfs:Class ; rdfs:label "MCP control mode" .
-mcp:ConsequenceClass a rdfs:Class ; rdfs:label "GymAct consequence class for an MCP surface" .
-mcp:Transport a rdfs:Class ; rdfs:subClassOf dcat:DataService ; rdfs:label "MCP transport" .
-mcp:MetadataField a rdfs:Class ; rdfs:label "MCP _meta field" .
-mcp:Header a rdfs:Class ; rdfs:label "MCP HTTP header contract" .
-mcp:ResultKind a rdfs:Class ; rdfs:label "MCP result kind" .
-mcp:SchemaContract a rdfs:Class ; rdfs:label "MCP schema contract" .
-mcp:Extension a rdfs:Class ; rdfs:label "MCP extension" .
-mcp:TaskStatus a rdfs:Class ; rdfs:label "MCP Tasks status" .
-mcp:ProjectionTarget a rdfs:Class ; rdfs:label "ggen projection target" .
-mcp:Invariant a rdfs:Class ; rdfs:label "MCP/GymAct manufacturing invariant" .
-
-mcp:protocolVersion a rdf:Property ; rdfs:domain mcp:ProtocolRevision ; rdfs:range xsd:string .
-mcp:facet a rdf:Property ; rdfs:domain mcp:Method ; rdfs:range mcp:Facet .
-mcp:methodName a rdf:Property ; rdfs:domain mcp:Method ; rdfs:range xsd:string .
-mcp:messageKind a rdf:Property ; rdfs:domain mcp:Method ; rdfs:range mcp:MessageKind .
-mcp:direction a rdf:Property ; rdfs:domain mcp:Method ; rdfs:range mcp:Direction .
-mcp:invocationMode a rdf:Property ; rdfs:domain mcp:Method ; rdfs:range mcp:InvocationMode .
-mcp:lifecycle a rdf:Property ; rdfs:range mcp:LifecycleStatus .
-mcp:inRevision a rdf:Property ; rdfs:range mcp:ProtocolRevision .
-mcp:introducedIn a rdf:Property ; rdfs:range mcp:ProtocolRevision .
-mcp:removedIn a rdf:Property ; rdfs:range mcp:ProtocolRevision .
-mcp:requiresCapability a rdf:Property ; rdfs:range mcp:Capability .
-mcp:controlMode a rdf:Property ; rdfs:range mcp:ControlMode .
-mcp:consequence a rdf:Property ; rdfs:range mcp:ConsequenceClass .
-mcp:compatibilityOnly a rdf:Property ; rdfs:range xsd:boolean .
-mcp:capabilitySide a rdf:Property ; rdfs:domain mcp:Capability ; rdfs:range xsd:string .
-mcp:capabilityKey a rdf:Property ; rdfs:domain mcp:Capability ; rdfs:range xsd:string .
-mcp:required a rdf:Property ; rdfs:range xsd:boolean .
-mcp:metaKey a rdf:Property ; rdfs:domain mcp:MetadataField ; rdfs:range xsd:string .
-mcp:headerName a rdf:Property ; rdfs:domain mcp:Header ; rdfs:range xsd:string .
-mcp:bodySource a rdf:Property ; rdfs:domain mcp:Header .
-mcp:mismatchRefusal a rdf:Property ; rdfs:range xsd:string .
-mcp:resultType a rdf:Property ; rdfs:domain mcp:ResultKind ; rdfs:range xsd:string .
-mcp:schemaDialect a rdf:Property ; rdfs:domain mcp:SchemaContract ; rdfs:range xsd:string .
-mcp:extensionId a rdf:Property ; rdfs:domain mcp:Extension ; rdfs:range xsd:string .
-mcp:extension a rdf:Property ; rdfs:range mcp:Extension .
-mcp:taskStatus a rdf:Property ; rdfs:range mcp:TaskStatus .
-mcp:terminal a rdf:Property ; rdfs:domain mcp:TaskStatus ; rdfs:range xsd:boolean .
-mcp:projectionPath a rdf:Property ; rdfs:domain mcp:ProjectionTarget ; rdfs:range xsd:string .
-mcp:projectionKind a rdf:Property ; rdfs:domain mcp:ProjectionTarget ; rdfs:range xsd:string .
-mcp:reasonCode a rdf:Property ; rdfs:domain mcp:Invariant ; rdfs:range xsd:string .
-
-# ---------------------------------------------------------------------------
-# Exact modern revision and provenance.
-# ---------------------------------------------------------------------------
-
-mcp:revision-2026-07-28
-    a mcp:ProtocolRevision, dct:Standard, prov:Entity ;
-    dct:identifier "2026-07-28" ;
-    dct:title "Model Context Protocol 2026-07-28" ;
-    mcp:protocolVersion "2026-07-28" ;
-    dct:source <https://github.com/modelcontextprotocol/modelcontextprotocol/blob/4df2d6b6e3588efb46e7542d98498e5c630a0a86/schema/2026-07-28/schema.ts> ;
-    prov:value "schema.ts@9b55feeb412bc3ae877f2eac10b5c01ba29a2eed" .
-
-mcp:json-schema-2020-12
-    a mcp:SchemaContract, prov:Entity ;
-    dct:identifier "json-schema-2020-12" ;
-    dct:title "JSON Schema 2020-12" ;
-    mcp:schemaDialect "https://json-schema.org/draft/2020-12/schema" ;
-    dct:conformsTo mcp:revision-2026-07-28 .
-
-# ---------------------------------------------------------------------------
-# Lifecycle, message, direction, invocation, control, consequence vocabularies.
-# ---------------------------------------------------------------------------
-
-mcp:Active a mcp:LifecycleStatus, skos:Concept ; skos:prefLabel "active" .
-mcp:Deprecated a mcp:LifecycleStatus, skos:Concept ; skos:prefLabel "deprecated" .
-mcp:Removed a mcp:LifecycleStatus, skos:Concept ; skos:prefLabel "removed" .
-mcp:ExtensionLifecycle a mcp:LifecycleStatus, skos:Concept ; skos:prefLabel "extension" .
-
-mcp:Request a mcp:MessageKind, skos:Concept ; skos:prefLabel "request" .
-mcp:Notification a mcp:MessageKind, skos:Concept ; skos:prefLabel "notification" .
-mcp:EmbeddedInputRequest a mcp:MessageKind, skos:Concept ; skos:prefLabel "embedded input request" .
-
-mcp:ClientToServer a mcp:Direction, skos:Concept ; skos:prefLabel "client to server" .
-mcp:ServerToClient a mcp:Direction, skos:Concept ; skos:prefLabel "server to client" .
-mcp:Bidirectional a mcp:Direction, skos:Concept ; skos:prefLabel "bidirectional" .
-mcp:ServerIntentClientResponse a mcp:Direction, skos:Concept ;
-    skos:prefLabel "server intent embedded in result, client responds on retry/update" .
-
-mcp:DirectJSONRPC a mcp:InvocationMode, skos:Concept ; skos:prefLabel "direct JSON-RPC" .
-mcp:RequestScopedNotification a mcp:InvocationMode, skos:Concept ; skos:prefLabel "request-scoped notification" .
-mcp:LongLivedStream a mcp:InvocationMode, skos:Concept ; skos:prefLabel "long-lived stream" .
-mcp:EmbeddedMRTR a mcp:InvocationMode, skos:Concept ; skos:prefLabel "embedded MRTR" .
-mcp:ExtensionRPC a mcp:InvocationMode, skos:Concept ; skos:prefLabel "extension RPC" .
-
-mcp:ModelControlled a mcp:ControlMode, skos:Concept ; skos:prefLabel "model-controlled" .
-mcp:ApplicationControlled a mcp:ControlMode, skos:Concept ; skos:prefLabel "application-controlled" .
-mcp:UserControlled a mcp:ControlMode, skos:Concept ; skos:prefLabel "user-controlled" .
-mcp:ProtocolControlled a mcp:ControlMode, skos:Concept ; skos:prefLabel "protocol-controlled" .
-
-mcp:ReadOnly a mcp:ConsequenceClass, skos:Concept ; skos:prefLabel "read-only" .
-mcp:ConditionalEffect a mcp:ConsequenceClass, skos:Concept ;
-    skos:prefLabel "effect depends on selected tool/extension operation" .
-mcp:Interaction a mcp:ConsequenceClass, skos:Concept ; skos:prefLabel "interaction" .
-mcp:ProtocolBookkeeping a mcp:ConsequenceClass, skos:Concept ; skos:prefLabel "protocol bookkeeping" .
-
-# ---------------------------------------------------------------------------
-# Facets. These are the ontology partition used by ggen projections.
-# ---------------------------------------------------------------------------
-
-mcp:facet-base a mcp:Facet, skos:Concept ; dct:identifier "base" ; skos:prefLabel "Base / JSON-RPC" .
-mcp:facet-discovery a mcp:Facet, skos:Concept ; dct:identifier "discovery" ; skos:prefLabel "Discovery" .
-mcp:facet-tools a mcp:Facet, skos:Concept ; dct:identifier "tools" ; skos:prefLabel "Tools" .
-mcp:facet-resources a mcp:Facet, skos:Concept ; dct:identifier "resources" ; skos:prefLabel "Resources" .
-mcp:facet-prompts a mcp:Facet, skos:Concept ; dct:identifier "prompts" ; skos:prefLabel "Prompts" .
-mcp:facet-completion a mcp:Facet, skos:Concept ; dct:identifier "completion" ; skos:prefLabel "Completion" .
-mcp:facet-elicitation a mcp:Facet, skos:Concept ; dct:identifier "elicitation" ; skos:prefLabel "Elicitation" .
-mcp:facet-sampling a mcp:Facet, skos:Concept ; dct:identifier "sampling" ; skos:prefLabel "Sampling" .
-mcp:facet-roots a mcp:Facet, skos:Concept ; dct:identifier "roots" ; skos:prefLabel "Roots" .
-mcp:facet-subscriptions a mcp:Facet, skos:Concept ; dct:identifier "subscriptions" ; skos:prefLabel "Subscriptions" .
-mcp:facet-progress a mcp:Facet, skos:Concept ; dct:identifier "progress" ; skos:prefLabel "Progress" .
-mcp:facet-logging a mcp:Facet, skos:Concept ; dct:identifier "logging" ; skos:prefLabel "Logging" .
-mcp:facet-transport a mcp:Facet, skos:Concept ; dct:identifier "transport" ; skos:prefLabel "Transport" .
-mcp:facet-authorization a mcp:Facet, skos:Concept ; dct:identifier "authorization" ; skos:prefLabel "Authorization" .
-mcp:facet-content a mcp:Facet, skos:Concept ; dct:identifier "content" ; skos:prefLabel "Content and schemas" .
-mcp:facet-errors a mcp:Facet, skos:Concept ; dct:identifier "errors" ; skos:prefLabel "Errors" .
-mcp:facet-extensions a mcp:Facet, skos:Concept ; dct:identifier "extensions" ; skos:prefLabel "Extensions" .
-mcp:facet-tasks a mcp:Facet, skos:Concept ; dct:identifier "tasks" ; skos:prefLabel "Tasks extension" .
-
-# ---------------------------------------------------------------------------
-# Capability vocabulary for the 2026-07-28 per-request model.
-# ---------------------------------------------------------------------------
-
-mcp:client-elicitation a mcp:Capability ;
-    mcp:capabilitySide "client" ; mcp:capabilityKey "elicitation" ; mcp:lifecycle mcp:Active .
 mcp:client-extensions a mcp:Capability ;
-    mcp:capabilitySide "client" ; mcp:capabilityKey "extensions" ; mcp:lifecycle mcp:Active .
-mcp:client-roots a mcp:Capability ;
-    mcp:capabilitySide "client" ; mcp:capabilityKey "roots" ; mcp:lifecycle mcp:Deprecated .
-mcp:client-sampling a mcp:Capability ;
-    mcp:capabilitySide "client" ; mcp:capabilityKey "sampling" ; mcp:lifecycle mcp:Deprecated .
+    mcp:capabilityKey "extensions" ;
+    mcp:capabilitySide "client" ;
+    mcp:lifecycle mcp:Active .
 
-mcp:server-completions a mcp:Capability ;
-    mcp:capabilitySide "server" ; mcp:capabilityKey "completions" ; mcp:lifecycle mcp:Active .
-mcp:server-prompts a mcp:Capability ;
-    mcp:capabilitySide "server" ; mcp:capabilityKey "prompts" ; mcp:lifecycle mcp:Active .
-mcp:server-resources a mcp:Capability ;
-    mcp:capabilitySide "server" ; mcp:capabilityKey "resources" ; mcp:lifecycle mcp:Active .
-mcp:server-tools a mcp:Capability ;
-    mcp:capabilitySide "server" ; mcp:capabilityKey "tools" ; mcp:lifecycle mcp:Active .
-mcp:server-extensions a mcp:Capability ;
-    mcp:capabilitySide "server" ; mcp:capabilityKey "extensions" ; mcp:lifecycle mcp:Active .
-mcp:server-logging a mcp:Capability ;
-    mcp:capabilitySide "server" ; mcp:capabilityKey "logging" ; mcp:lifecycle mcp:Deprecated .
+mcp:facet-authorization a skos:Concept,
+        mcp:Facet ;
+    dct:identifier "authorization" ;
+    skos:prefLabel "Authorization" .
 
-# ---------------------------------------------------------------------------
-# Current 2026-07-28 method closure.
-# The exact 21 names mirror the official schema reference. Elicitation,
-# sampling, and roots are represented as EmbeddedMRTR because the modern
-# protocol disallows independent server-to-client JSON-RPC requests.
-# ---------------------------------------------------------------------------
+mcp:facet-content a skos:Concept,
+        mcp:Facet ;
+    dct:identifier "content" ;
+    skos:prefLabel "Content and schemas" .
 
-mcp:method-completion-complete a mcp:Method ;
-    mcp:methodName "completion/complete" ; mcp:facet mcp:facet-completion ;
-    mcp:messageKind mcp:Request ; mcp:direction mcp:ClientToServer ;
-    mcp:invocationMode mcp:DirectJSONRPC ; mcp:lifecycle mcp:Active ;
-    mcp:inRevision mcp:revision-2026-07-28 ; mcp:requiresCapability mcp:server-completions ;
-    mcp:controlMode mcp:ApplicationControlled ; mcp:consequence mcp:ReadOnly .
+mcp:facet-errors a skos:Concept,
+        mcp:Facet ;
+    dct:identifier "errors" ;
+    skos:prefLabel "Errors" .
 
-mcp:method-elicitation-create a mcp:Method ;
-    mcp:methodName "elicitation/create" ; mcp:facet mcp:facet-elicitation ;
-    mcp:messageKind mcp:EmbeddedInputRequest ; mcp:direction mcp:ServerIntentClientResponse ;
-    mcp:invocationMode mcp:EmbeddedMRTR ; mcp:lifecycle mcp:Active ;
-    mcp:inRevision mcp:revision-2026-07-28 ; mcp:requiresCapability mcp:client-elicitation ;
-    mcp:controlMode mcp:UserControlled ; mcp:consequence mcp:Interaction .
+mcp:facet-extensions a skos:Concept,
+        mcp:Facet ;
+    dct:identifier "extensions" ;
+    skos:prefLabel "Extensions" .
 
-mcp:method-notifications-cancelled a mcp:Method ;
-    mcp:methodName "notifications/cancelled" ; mcp:facet mcp:facet-base ;
-    mcp:messageKind mcp:Notification ; mcp:direction mcp:Bidirectional ;
-    mcp:invocationMode mcp:RequestScopedNotification ; mcp:lifecycle mcp:Active ;
-    mcp:inRevision mcp:revision-2026-07-28 ;
-    mcp:controlMode mcp:ProtocolControlled ; mcp:consequence mcp:ProtocolBookkeeping .
+mcp:facet-transport a skos:Concept,
+        mcp:Facet ;
+    dct:identifier "transport" ;
+    skos:prefLabel "Transport" .
 
-mcp:method-notifications-message a mcp:Method ;
-    mcp:methodName "notifications/message" ; mcp:facet mcp:facet-logging ;
-    mcp:messageKind mcp:Notification ; mcp:direction mcp:ServerToClient ;
-    mcp:invocationMode mcp:RequestScopedNotification ; mcp:lifecycle mcp:Deprecated ;
-    mcp:inRevision mcp:revision-2026-07-28 ; mcp:requiresCapability mcp:server-logging ;
-    mcp:controlMode mcp:ProtocolControlled ; mcp:consequence mcp:ProtocolBookkeeping .
-
-mcp:method-notifications-progress a mcp:Method ;
-    mcp:methodName "notifications/progress" ; mcp:facet mcp:facet-progress ;
-    mcp:messageKind mcp:Notification ; mcp:direction mcp:Bidirectional ;
-    mcp:invocationMode mcp:RequestScopedNotification ; mcp:lifecycle mcp:Active ;
-    mcp:inRevision mcp:revision-2026-07-28 ;
-    mcp:controlMode mcp:ProtocolControlled ; mcp:consequence mcp:ProtocolBookkeeping .
-
-mcp:method-notifications-prompts-list-changed a mcp:Method ;
-    mcp:methodName "notifications/prompts/list_changed" ; mcp:facet mcp:facet-prompts ;
-    mcp:messageKind mcp:Notification ; mcp:direction mcp:ServerToClient ;
-    mcp:invocationMode mcp:LongLivedStream ; mcp:lifecycle mcp:Active ;
-    mcp:inRevision mcp:revision-2026-07-28 ; mcp:requiresCapability mcp:server-prompts ;
-    mcp:controlMode mcp:UserControlled ; mcp:consequence mcp:ProtocolBookkeeping .
-
-mcp:method-notifications-resources-list-changed a mcp:Method ;
-    mcp:methodName "notifications/resources/list_changed" ; mcp:facet mcp:facet-resources ;
-    mcp:messageKind mcp:Notification ; mcp:direction mcp:ServerToClient ;
-    mcp:invocationMode mcp:LongLivedStream ; mcp:lifecycle mcp:Active ;
-    mcp:inRevision mcp:revision-2026-07-28 ; mcp:requiresCapability mcp:server-resources ;
-    mcp:controlMode mcp:ApplicationControlled ; mcp:consequence mcp:ProtocolBookkeeping .
-
-mcp:method-notifications-resources-updated a mcp:Method ;
-    mcp:methodName "notifications/resources/updated" ; mcp:facet mcp:facet-resources ;
-    mcp:messageKind mcp:Notification ; mcp:direction mcp:ServerToClient ;
-    mcp:invocationMode mcp:LongLivedStream ; mcp:lifecycle mcp:Active ;
-    mcp:inRevision mcp:revision-2026-07-28 ; mcp:requiresCapability mcp:server-resources ;
-    mcp:controlMode mcp:ApplicationControlled ; mcp:consequence mcp:ProtocolBookkeeping .
-
-mcp:method-notifications-subscriptions-acknowledged a mcp:Method ;
-    mcp:methodName "notifications/subscriptions/acknowledged" ; mcp:facet mcp:facet-subscriptions ;
-    mcp:messageKind mcp:Notification ; mcp:direction mcp:ServerToClient ;
-    mcp:invocationMode mcp:LongLivedStream ; mcp:lifecycle mcp:Active ;
-    mcp:inRevision mcp:revision-2026-07-28 ;
-    mcp:controlMode mcp:ProtocolControlled ; mcp:consequence mcp:ProtocolBookkeeping .
-
-mcp:method-notifications-tools-list-changed a mcp:Method ;
-    mcp:methodName "notifications/tools/list_changed" ; mcp:facet mcp:facet-tools ;
-    mcp:messageKind mcp:Notification ; mcp:direction mcp:ServerToClient ;
-    mcp:invocationMode mcp:LongLivedStream ; mcp:lifecycle mcp:Active ;
-    mcp:inRevision mcp:revision-2026-07-28 ; mcp:requiresCapability mcp:server-tools ;
-    mcp:controlMode mcp:ModelControlled ; mcp:consequence mcp:ProtocolBookkeeping .
-
-mcp:method-prompts-get a mcp:Method ;
-    mcp:methodName "prompts/get" ; mcp:facet mcp:facet-prompts ;
-    mcp:messageKind mcp:Request ; mcp:direction mcp:ClientToServer ;
-    mcp:invocationMode mcp:DirectJSONRPC ; mcp:lifecycle mcp:Active ;
-    mcp:inRevision mcp:revision-2026-07-28 ; mcp:requiresCapability mcp:server-prompts ;
-    mcp:controlMode mcp:UserControlled ; mcp:consequence mcp:ReadOnly .
-
-mcp:method-prompts-list a mcp:Method ;
-    mcp:methodName "prompts/list" ; mcp:facet mcp:facet-prompts ;
-    mcp:messageKind mcp:Request ; mcp:direction mcp:ClientToServer ;
-    mcp:invocationMode mcp:DirectJSONRPC ; mcp:lifecycle mcp:Active ;
-    mcp:inRevision mcp:revision-2026-07-28 ; mcp:requiresCapability mcp:server-prompts ;
-    mcp:controlMode mcp:UserControlled ; mcp:consequence mcp:ReadOnly .
-
-mcp:method-resources-list a mcp:Method ;
-    mcp:methodName "resources/list" ; mcp:facet mcp:facet-resources ;
-    mcp:messageKind mcp:Request ; mcp:direction mcp:ClientToServer ;
-    mcp:invocationMode mcp:DirectJSONRPC ; mcp:lifecycle mcp:Active ;
-    mcp:inRevision mcp:revision-2026-07-28 ; mcp:requiresCapability mcp:server-resources ;
-    mcp:controlMode mcp:ApplicationControlled ; mcp:consequence mcp:ReadOnly .
-
-mcp:method-resources-read a mcp:Method ;
-    mcp:methodName "resources/read" ; mcp:facet mcp:facet-resources ;
-    mcp:messageKind mcp:Request ; mcp:direction mcp:ClientToServer ;
-    mcp:invocationMode mcp:DirectJSONRPC ; mcp:lifecycle mcp:Active ;
-    mcp:inRevision mcp:revision-2026-07-28 ; mcp:requiresCapability mcp:server-resources ;
-    mcp:controlMode mcp:ApplicationControlled ; mcp:consequence mcp:ReadOnly .
-
-mcp:method-resources-templates-list a mcp:Method ;
-    mcp:methodName "resources/templates/list" ; mcp:facet mcp:facet-resources ;
-    mcp:messageKind mcp:Request ; mcp:direction mcp:ClientToServer ;
-    mcp:invocationMode mcp:DirectJSONRPC ; mcp:lifecycle mcp:Active ;
-    mcp:inRevision mcp:revision-2026-07-28 ; mcp:requiresCapability mcp:server-resources ;
-    mcp:controlMode mcp:ApplicationControlled ; mcp:consequence mcp:ReadOnly .
-
-mcp:method-roots-list a mcp:Method ;
-    mcp:methodName "roots/list" ; mcp:facet mcp:facet-roots ;
-    mcp:messageKind mcp:EmbeddedInputRequest ; mcp:direction mcp:ServerIntentClientResponse ;
-    mcp:invocationMode mcp:EmbeddedMRTR ; mcp:lifecycle mcp:Deprecated ;
-    mcp:inRevision mcp:revision-2026-07-28 ; mcp:requiresCapability mcp:client-roots ;
-    mcp:controlMode mcp:ApplicationControlled ; mcp:consequence mcp:ReadOnly .
-
-mcp:method-sampling-create-message a mcp:Method ;
-    mcp:methodName "sampling/createMessage" ; mcp:facet mcp:facet-sampling ;
-    mcp:messageKind mcp:EmbeddedInputRequest ; mcp:direction mcp:ServerIntentClientResponse ;
-    mcp:invocationMode mcp:EmbeddedMRTR ; mcp:lifecycle mcp:Deprecated ;
-    mcp:inRevision mcp:revision-2026-07-28 ; mcp:requiresCapability mcp:client-sampling ;
-    mcp:controlMode mcp:ModelControlled ; mcp:consequence mcp:Interaction .
-
-mcp:method-server-discover a mcp:Method ;
-    mcp:methodName "server/discover" ; mcp:facet mcp:facet-discovery ;
-    mcp:messageKind mcp:Request ; mcp:direction mcp:ClientToServer ;
-    mcp:invocationMode mcp:DirectJSONRPC ; mcp:lifecycle mcp:Active ;
-    mcp:inRevision mcp:revision-2026-07-28 ;
-    mcp:controlMode mcp:ProtocolControlled ; mcp:consequence mcp:ReadOnly .
-
-mcp:method-subscriptions-listen a mcp:Method ;
-    mcp:methodName "subscriptions/listen" ; mcp:facet mcp:facet-subscriptions ;
-    mcp:messageKind mcp:Request ; mcp:direction mcp:ClientToServer ;
-    mcp:invocationMode mcp:LongLivedStream ; mcp:lifecycle mcp:Active ;
-    mcp:inRevision mcp:revision-2026-07-28 ;
-    mcp:controlMode mcp:ProtocolControlled ; mcp:consequence mcp:ProtocolBookkeeping .
-
-mcp:method-tools-call a mcp:Method ;
-    mcp:methodName "tools/call" ; mcp:facet mcp:facet-tools ;
-    mcp:messageKind mcp:Request ; mcp:direction mcp:ClientToServer ;
-    mcp:invocationMode mcp:DirectJSONRPC ; mcp:lifecycle mcp:Active ;
-    mcp:inRevision mcp:revision-2026-07-28 ; mcp:requiresCapability mcp:server-tools ;
-    mcp:controlMode mcp:ModelControlled ; mcp:consequence mcp:ConditionalEffect .
-
-mcp:method-tools-list a mcp:Method ;
-    mcp:methodName "tools/list" ; mcp:facet mcp:facet-tools ;
-    mcp:messageKind mcp:Request ; mcp:direction mcp:ClientToServer ;
-    mcp:invocationMode mcp:DirectJSONRPC ; mcp:lifecycle mcp:Active ;
-    mcp:inRevision mcp:revision-2026-07-28 ; mcp:requiresCapability mcp:server-tools ;
-    mcp:controlMode mcp:ModelControlled ; mcp:consequence mcp:ReadOnly .
-
-# ---------------------------------------------------------------------------
-# Request/result metadata and result kinds.
-# ---------------------------------------------------------------------------
-
-mcp:meta-protocol-version a mcp:MetadataField ;
-    mcp:metaKey "io.modelcontextprotocol/protocolVersion" ;
-    mcp:required true ; mcp:lifecycle mcp:Active ; mcp:inRevision mcp:revision-2026-07-28 .
-
-mcp:meta-client-capabilities a mcp:MetadataField ;
-    mcp:metaKey "io.modelcontextprotocol/clientCapabilities" ;
-    mcp:required true ; mcp:lifecycle mcp:Active ; mcp:inRevision mcp:revision-2026-07-28 .
-
-mcp:meta-client-info a mcp:MetadataField ;
-    mcp:metaKey "io.modelcontextprotocol/clientInfo" ;
-    mcp:required false ; mcp:lifecycle mcp:Active ; mcp:inRevision mcp:revision-2026-07-28 .
-
-mcp:meta-progress-token a mcp:MetadataField ;
-    mcp:metaKey "progressToken" ;
-    mcp:required false ; mcp:lifecycle mcp:Active ; mcp:inRevision mcp:revision-2026-07-28 .
-
-mcp:meta-log-level a mcp:MetadataField ;
-    mcp:metaKey "io.modelcontextprotocol/logLevel" ;
-    mcp:required false ; mcp:lifecycle mcp:Deprecated ; mcp:inRevision mcp:revision-2026-07-28 .
-
-mcp:meta-server-info a mcp:MetadataField ;
-    mcp:metaKey "io.modelcontextprotocol/serverInfo" ;
-    mcp:required false ; mcp:lifecycle mcp:Active ; mcp:inRevision mcp:revision-2026-07-28 .
-
-mcp:meta-subscription-id a mcp:MetadataField ;
-    mcp:metaKey "io.modelcontextprotocol/subscriptionId" ;
-    mcp:required false ; mcp:lifecycle mcp:Active ; mcp:inRevision mcp:revision-2026-07-28 .
-
-mcp:result-complete a mcp:ResultKind ;
-    mcp:resultType "complete" ; mcp:lifecycle mcp:Active ; mcp:inRevision mcp:revision-2026-07-28 .
-
-mcp:result-input-required a mcp:ResultKind ;
-    mcp:resultType "input_required" ; mcp:lifecycle mcp:Active ; mcp:inRevision mcp:revision-2026-07-28 .
-
-# ---------------------------------------------------------------------------
-# Transport and HTTP body/header correspondence.
-# ---------------------------------------------------------------------------
-
-mcp:transport-stdio a mcp:Transport ;
-    dct:identifier "stdio" ; dct:title "stdio" ;
-    mcp:lifecycle mcp:Active ; mcp:inRevision mcp:revision-2026-07-28 ;
-    mcp:compatibilityOnly false .
-
-mcp:transport-streamable-http a mcp:Transport ;
-    dct:identifier "streamable-http" ; dct:title "Streamable HTTP" ;
-    mcp:lifecycle mcp:Active ; mcp:inRevision mcp:revision-2026-07-28 ;
-    mcp:compatibilityOnly false .
-
-mcp:transport-legacy-http-sse a mcp:Transport ;
-    dct:identifier "legacy-http-sse" ; dct:title "Legacy HTTP+SSE" ;
-    mcp:lifecycle mcp:Deprecated ; mcp:compatibilityOnly true .
-
-mcp:header-protocol-version a mcp:Header ;
-    mcp:headerName "MCP-Protocol-Version" ;
-    mcp:bodySource mcp:meta-protocol-version ;
-    mcp:mismatchRefusal "UNSUPPORTED_OR_MISMATCHED_PROTOCOL_VERSION" ;
-    mcp:lifecycle mcp:Active ; mcp:inRevision mcp:revision-2026-07-28 .
+mcp:gymact-brce-do-policy a odrl:Policy,
+        prov:Entity ;
+    dct:description "An MCP tool projection classified DO by its admitted ontology may not execute merely because tools/call is valid; it must be converted to a GymAct actuation intent and pass capability scope plus authority admission." ;
+    dct:title "GymAct BRCE consequence policy for MCP tools" ;
+    odrl:prohibition [ a odrl:Prohibition ;
+            odrl:action odrl:execute ;
+            odrl:target mcp:ConditionalEffect ] .
 
 mcp:header-param-mirror a mcp:Header ;
-    mcp:headerName "Mcp-Param-*" ;
+    dct:description "x-mcp-header projects selected tool arguments into HTTP headers; the body remains the semantic source of truth." ;
     mcp:bodySource mcp:json-schema-2020-12 ;
-    mcp:mismatchRefusal "HEADER_MISMATCH" ;
-    mcp:lifecycle mcp:Active ; mcp:inRevision mcp:revision-2026-07-28 ;
-    dct:description "x-mcp-header projects selected tool arguments into HTTP headers; the body remains the semantic source of truth." .
+    mcp:headerName "Mcp-Param-*" ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:lifecycle mcp:Active ;
+    mcp:mismatchRefusal "HEADER_MISMATCH" .
 
-# ---------------------------------------------------------------------------
-# Authorization overlay. MCP authorization is optional at the protocol level;
-# GymAct's BRCE authority requirement is strictly stronger for consequential DO.
-# ---------------------------------------------------------------------------
+mcp:header-protocol-version a mcp:Header ;
+    mcp:bodySource mcp:meta-protocol-version ;
+    mcp:headerName "MCP-Protocol-Version" ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:lifecycle mcp:Active ;
+    mcp:mismatchRefusal "UNSUPPORTED_OR_MISMATCHED_PROTOCOL_VERSION" .
 
-mcp:http-oauth-resource-policy
-    a odrl:Policy, prov:Entity ;
-    dct:title "MCP HTTP OAuth resource-server profile" ;
+mcp:http-oauth-resource-policy a odrl:Policy,
+        prov:Entity ;
     dct:conformsTo mcp:revision-2026-07-28 ;
-    odrl:permission [
-        a odrl:Permission ;
-        odrl:action odrl:use ;
-        odrl:target mcp:transport-streamable-http
-    ] ;
-    dct:description "When authorization is used with HTTP MCP, the MCP server acts as an OAuth resource server and bearer credentials are carried at the HTTP layer." .
-
-mcp:gymact-brce-do-policy
-    a odrl:Policy, prov:Entity ;
-    dct:title "GymAct BRCE consequence policy for MCP tools" ;
-    odrl:prohibition [
-        a odrl:Prohibition ;
-        odrl:action odrl:execute ;
-        odrl:target mcp:ConditionalEffect
-    ] ;
-    dct:description "An MCP tool projection classified DO by its admitted ontology may not execute merely because tools/call is valid; it must be converted to a GymAct actuation intent and pass capability scope plus authority admission." .
-
-# ---------------------------------------------------------------------------
-# Formal extension mechanism and Tasks.
-# ---------------------------------------------------------------------------
-
-mcp:extension-tasks a mcp:Extension, skos:Concept ;
-    mcp:extensionId "io.modelcontextprotocol/tasks" ;
-    dct:title "MCP Tasks" ;
-    mcp:lifecycle mcp:ExtensionLifecycle ;
-    dct:source <https://github.com/modelcontextprotocol/modelcontextprotocol/blob/4df2d6b6e3588efb46e7542d98498e5c630a0a86/docs/extensions/tasks/overview.mdx> .
-
-mcp:method-tasks-get a mcp:Method ;
-    mcp:methodName "tasks/get" ; mcp:facet mcp:facet-tasks ;
-    mcp:messageKind mcp:Request ; mcp:direction mcp:ClientToServer ;
-    mcp:invocationMode mcp:ExtensionRPC ; mcp:lifecycle mcp:ExtensionLifecycle ;
-    mcp:extension mcp:extension-tasks ; mcp:controlMode mcp:ProtocolControlled ;
-    mcp:consequence mcp:ReadOnly .
-
-mcp:method-tasks-update a mcp:Method ;
-    mcp:methodName "tasks/update" ; mcp:facet mcp:facet-tasks ;
-    mcp:messageKind mcp:Request ; mcp:direction mcp:ClientToServer ;
-    mcp:invocationMode mcp:ExtensionRPC ; mcp:lifecycle mcp:ExtensionLifecycle ;
-    mcp:extension mcp:extension-tasks ; mcp:controlMode mcp:UserControlled ;
-    mcp:consequence mcp:Interaction .
-
-mcp:method-tasks-cancel a mcp:Method ;
-    mcp:methodName "tasks/cancel" ; mcp:facet mcp:facet-tasks ;
-    mcp:messageKind mcp:Request ; mcp:direction mcp:ClientToServer ;
-    mcp:invocationMode mcp:ExtensionRPC ; mcp:lifecycle mcp:ExtensionLifecycle ;
-    mcp:extension mcp:extension-tasks ; mcp:controlMode mcp:UserControlled ;
-    mcp:consequence mcp:ConditionalEffect .
-
-mcp:method-notifications-tasks a mcp:Method ;
-    mcp:methodName "notifications/tasks" ; mcp:facet mcp:facet-tasks ;
-    mcp:messageKind mcp:Notification ; mcp:direction mcp:ServerToClient ;
-    mcp:invocationMode mcp:LongLivedStream ; mcp:lifecycle mcp:ExtensionLifecycle ;
-    mcp:extension mcp:extension-tasks ; mcp:controlMode mcp:ProtocolControlled ;
-    mcp:consequence mcp:ProtocolBookkeeping .
-
-mcp:result-task a mcp:ResultKind ;
-    mcp:resultType "task" ; mcp:lifecycle mcp:ExtensionLifecycle ;
-    mcp:extension mcp:extension-tasks .
-
-mcp:task-working a mcp:TaskStatus ; dct:identifier "working" ; mcp:terminal false .
-mcp:task-input-required a mcp:TaskStatus ; dct:identifier "input_required" ; mcp:terminal false .
-mcp:task-completed a mcp:TaskStatus ; dct:identifier "completed" ; mcp:terminal true .
-mcp:task-failed a mcp:TaskStatus ; dct:identifier "failed" ; mcp:terminal true .
-mcp:task-cancelled a mcp:TaskStatus ; dct:identifier "cancelled" ; mcp:terminal true .
-
-# ---------------------------------------------------------------------------
-# Explicit legacy compatibility facts. They must never leak into a modern
-# projection merely because they still exist in an SDK compatibility layer.
-# ---------------------------------------------------------------------------
-
-mcp:legacy-initialize a mcp:Method ;
-    mcp:methodName "initialize" ; mcp:facet mcp:facet-discovery ;
-    mcp:messageKind mcp:Request ; mcp:direction mcp:ClientToServer ;
-    mcp:invocationMode mcp:DirectJSONRPC ; mcp:lifecycle mcp:Removed ;
-    mcp:controlMode mcp:ProtocolControlled ; mcp:consequence mcp:ProtocolBookkeeping ;
-    mcp:compatibilityOnly true .
-
-mcp:legacy-notifications-initialized a mcp:Method ;
-    mcp:methodName "notifications/initialized" ; mcp:facet mcp:facet-discovery ;
-    mcp:messageKind mcp:Notification ; mcp:direction mcp:ClientToServer ;
-    mcp:invocationMode mcp:DirectJSONRPC ; mcp:lifecycle mcp:Removed ;
-    mcp:controlMode mcp:ProtocolControlled ; mcp:consequence mcp:ProtocolBookkeeping ;
-    mcp:compatibilityOnly true .
-
-mcp:legacy-ping a mcp:Method ;
-    mcp:methodName "ping" ; mcp:facet mcp:facet-base ;
-    mcp:messageKind mcp:Request ; mcp:direction mcp:Bidirectional ;
-    mcp:invocationMode mcp:DirectJSONRPC ; mcp:lifecycle mcp:Removed ;
-    mcp:controlMode mcp:ProtocolControlled ; mcp:consequence mcp:ProtocolBookkeeping ;
-    mcp:compatibilityOnly true .
-
-mcp:legacy-logging-set-level a mcp:Method ;
-    mcp:methodName "logging/setLevel" ; mcp:facet mcp:facet-logging ;
-    mcp:messageKind mcp:Request ; mcp:direction mcp:ClientToServer ;
-    mcp:invocationMode mcp:DirectJSONRPC ; mcp:lifecycle mcp:Removed ;
-    mcp:controlMode mcp:ProtocolControlled ; mcp:consequence mcp:ProtocolBookkeeping ;
-    mcp:compatibilityOnly true .
-
-mcp:legacy-resources-subscribe a mcp:Method ;
-    mcp:methodName "resources/subscribe" ; mcp:facet mcp:facet-subscriptions ;
-    mcp:messageKind mcp:Request ; mcp:direction mcp:ClientToServer ;
-    mcp:invocationMode mcp:DirectJSONRPC ; mcp:lifecycle mcp:Removed ;
-    mcp:controlMode mcp:ApplicationControlled ; mcp:consequence mcp:ProtocolBookkeeping ;
-    mcp:compatibilityOnly true .
-
-mcp:legacy-resources-unsubscribe a mcp:Method ;
-    mcp:methodName "resources/unsubscribe" ; mcp:facet mcp:facet-subscriptions ;
-    mcp:messageKind mcp:Request ; mcp:direction mcp:ClientToServer ;
-    mcp:invocationMode mcp:DirectJSONRPC ; mcp:lifecycle mcp:Removed ;
-    mcp:controlMode mcp:ApplicationControlled ; mcp:consequence mcp:ProtocolBookkeeping ;
-    mcp:compatibilityOnly true .
-
-mcp:legacy-tasks-list a mcp:Method ;
-    mcp:methodName "tasks/list" ; mcp:facet mcp:facet-tasks ;
-    mcp:messageKind mcp:Request ; mcp:direction mcp:ClientToServer ;
-    mcp:invocationMode mcp:DirectJSONRPC ; mcp:lifecycle mcp:Removed ;
-    mcp:controlMode mcp:ProtocolControlled ; mcp:consequence mcp:ReadOnly ;
-    mcp:compatibilityOnly true .
-
-mcp:legacy-tasks-result a mcp:Method ;
-    mcp:methodName "tasks/result" ; mcp:facet mcp:facet-tasks ;
-    mcp:messageKind mcp:Request ; mcp:direction mcp:ClientToServer ;
-    mcp:invocationMode mcp:DirectJSONRPC ; mcp:lifecycle mcp:Removed ;
-    mcp:controlMode mcp:ProtocolControlled ; mcp:consequence mcp:ReadOnly ;
-    mcp:compatibilityOnly true .
-
-mcp:legacy-session-header a mcp:Header ;
-    mcp:headerName "Mcp-Session-Id" ;
-    mcp:lifecycle mcp:Removed ;
-    mcp:compatibilityOnly true .
-
-# ---------------------------------------------------------------------------
-# ggen manufacturing targets. These are not MCP protocol claims; they are the
-# projection surfaces that one admitted ontology must manufacture so MCP facts
-# cannot drift independently across code, schemas, policy, and documentation.
-# ---------------------------------------------------------------------------
-
-mcp:projection-server-capabilities a mcp:ProjectionTarget ;
-    dct:identifier "server-capabilities" ; mcp:projectionKind "manifest" ;
-    mcp:projectionPath "generated/mcp/server-capabilities.json" .
-mcp:projection-client-capabilities a mcp:ProjectionTarget ;
-    dct:identifier "client-capabilities" ; mcp:projectionKind "manifest" ;
-    mcp:projectionPath "generated/mcp/client-capabilities.json" .
-mcp:projection-method-router a mcp:ProjectionTarget ;
-    dct:identifier "method-router" ; mcp:projectionKind "code" ;
-    mcp:projectionPath "generated/mcp/method-router" .
-mcp:projection-json-schemas a mcp:ProjectionTarget ;
-    dct:identifier "json-schemas" ; mcp:projectionKind "schema" ;
-    mcp:projectionPath "generated/mcp/schema" .
-mcp:projection-header-policy a mcp:ProjectionTarget ;
-    dct:identifier "header-policy" ; mcp:projectionKind "policy" ;
-    mcp:projectionPath "generated/mcp/header-policy" .
-mcp:projection-brce-map a mcp:ProjectionTarget ;
-    dct:identifier "brce-map" ; mcp:projectionKind "authority" ;
-    mcp:projectionPath "generated/mcp/brce-map" .
-mcp:projection-subscription-map a mcp:ProjectionTarget ;
-    dct:identifier "subscription-map" ; mcp:projectionKind "state-machine" ;
-    mcp:projectionPath "generated/mcp/subscriptions" .
-mcp:projection-mrtr-machine a mcp:ProjectionTarget ;
-    dct:identifier "mrtr-machine" ; mcp:projectionKind "state-machine" ;
-    mcp:projectionPath "generated/mcp/mrtr" .
-mcp:projection-extension-adapters a mcp:ProjectionTarget ;
-    dct:identifier "extension-adapters" ; mcp:projectionKind "adapter" ;
-    mcp:projectionPath "generated/mcp/extensions" .
-mcp:projection-conformance a mcp:ProjectionTarget ;
-    dct:identifier "conformance-fixtures" ; mcp:projectionKind "test" ;
-    mcp:projectionPath "generated/mcp/conformance" .
-mcp:projection-rust a mcp:ProjectionTarget ;
-    dct:identifier "rust-verifier" ; mcp:projectionKind "proof-projection" ;
-    mcp:projectionPath "rust/protocol_gym/src/mcp_surface.rs" .
-mcp:projection-wit a mcp:ProjectionTarget ;
-    dct:identifier "wit-abi" ; mcp:projectionKind "abi" ;
-    mcp:projectionPath "rust/protocol_gym/wit/mcp-surface.wit" .
-mcp:projection-docs a mcp:ProjectionTarget ;
-    dct:identifier "reference-docs" ; mcp:projectionKind "documentation" ;
-    mcp:projectionPath "rust/protocol_gym/docs/mcp-surface.md" .
-
-# ---------------------------------------------------------------------------
-# Manufacturing invariants. These are the semantic version of gdmcp's
-# fail-closed rules: the ontology admits the surface; generation echoes it.
-# ---------------------------------------------------------------------------
-
-mcp:invariant-exact-revision a mcp:Invariant ;
-    dct:title "Exact protocol revision" ;
-    mcp:reasonCode "MCP_PROTOCOL_REVISION_MISMATCH" .
-
-mcp:invariant-method-closure a mcp:Invariant ;
-    dct:title "Current method closure equals the admitted revision" ;
-    mcp:reasonCode "MCP_METHOD_CLOSURE_MISMATCH" .
+    dct:description "When authorization is used with HTTP MCP, the MCP server acts as an OAuth resource server and bearer credentials are carried at the HTTP layer." ;
+    dct:title "MCP HTTP OAuth resource-server profile" ;
+    odrl:permission [ a odrl:Permission ;
+            odrl:action odrl:use ;
+            odrl:target mcp:transport-streamable-http ] .
 
 mcp:invariant-deprecated-compat-only a mcp:Invariant ;
     dct:title "Removed features are compatibility-only" ;
     mcp:reasonCode "MCP_REMOVED_FEATURE_IN_MODERN_PROFILE" .
 
-mcp:invariant-header-body-consistency a mcp:Invariant ;
-    dct:title "HTTP mirrors cannot disagree with the JSON-RPC body" ;
-    mcp:reasonCode "MCP_HEADER_BODY_MISMATCH" .
+mcp:invariant-exact-revision a mcp:Invariant ;
+    dct:title "Exact protocol revision" ;
+    mcp:reasonCode "MCP_PROTOCOL_REVISION_MISMATCH" .
 
 mcp:invariant-extension-negotiation a mcp:Invariant ;
     dct:title "Extension methods require negotiated extension support" ;
     mcp:reasonCode "MCP_EXTENSION_NOT_NEGOTIATED" .
 
+mcp:invariant-header-body-consistency a mcp:Invariant ;
+    dct:title "HTTP mirrors cannot disagree with the JSON-RPC body" ;
+    mcp:reasonCode "MCP_HEADER_BODY_MISMATCH" .
+
+mcp:invariant-method-closure a mcp:Invariant ;
+    dct:title "Current method closure equals the admitted revision" ;
+    mcp:reasonCode "MCP_METHOD_CLOSURE_MISMATCH" .
+
 mcp:invariant-no-ambient-do a mcp:Invariant ;
     dct:title "MCP validity never grants GymAct DO authority" ;
     mcp:reasonCode "MCP_AMBIENT_DO_REFUSED" .
+
+mcp:legacy-initialize a mcp:Method ;
+    mcp:compatibilityOnly true ;
+    mcp:consequence mcp:ProtocolBookkeeping ;
+    mcp:controlMode mcp:ProtocolControlled ;
+    mcp:direction mcp:ClientToServer ;
+    mcp:facet mcp:facet-discovery ;
+    mcp:invocationMode mcp:DirectJSONRPC ;
+    mcp:lifecycle mcp:Removed ;
+    mcp:messageKind mcp:Request ;
+    mcp:methodName "initialize" .
+
+mcp:legacy-logging-set-level a mcp:Method ;
+    mcp:compatibilityOnly true ;
+    mcp:consequence mcp:ProtocolBookkeeping ;
+    mcp:controlMode mcp:ProtocolControlled ;
+    mcp:direction mcp:ClientToServer ;
+    mcp:facet mcp:facet-logging ;
+    mcp:invocationMode mcp:DirectJSONRPC ;
+    mcp:lifecycle mcp:Removed ;
+    mcp:messageKind mcp:Request ;
+    mcp:methodName "logging/setLevel" .
+
+mcp:legacy-notifications-initialized a mcp:Method ;
+    mcp:compatibilityOnly true ;
+    mcp:consequence mcp:ProtocolBookkeeping ;
+    mcp:controlMode mcp:ProtocolControlled ;
+    mcp:direction mcp:ClientToServer ;
+    mcp:facet mcp:facet-discovery ;
+    mcp:invocationMode mcp:DirectJSONRPC ;
+    mcp:lifecycle mcp:Removed ;
+    mcp:messageKind mcp:Notification ;
+    mcp:methodName "notifications/initialized" .
+
+mcp:legacy-ping a mcp:Method ;
+    mcp:compatibilityOnly true ;
+    mcp:consequence mcp:ProtocolBookkeeping ;
+    mcp:controlMode mcp:ProtocolControlled ;
+    mcp:direction mcp:Bidirectional ;
+    mcp:facet mcp:facet-base ;
+    mcp:invocationMode mcp:DirectJSONRPC ;
+    mcp:lifecycle mcp:Removed ;
+    mcp:messageKind mcp:Request ;
+    mcp:methodName "ping" .
+
+mcp:legacy-resources-subscribe a mcp:Method ;
+    mcp:compatibilityOnly true ;
+    mcp:consequence mcp:ProtocolBookkeeping ;
+    mcp:controlMode mcp:ApplicationControlled ;
+    mcp:direction mcp:ClientToServer ;
+    mcp:facet mcp:facet-subscriptions ;
+    mcp:invocationMode mcp:DirectJSONRPC ;
+    mcp:lifecycle mcp:Removed ;
+    mcp:messageKind mcp:Request ;
+    mcp:methodName "resources/subscribe" .
+
+mcp:legacy-resources-unsubscribe a mcp:Method ;
+    mcp:compatibilityOnly true ;
+    mcp:consequence mcp:ProtocolBookkeeping ;
+    mcp:controlMode mcp:ApplicationControlled ;
+    mcp:direction mcp:ClientToServer ;
+    mcp:facet mcp:facet-subscriptions ;
+    mcp:invocationMode mcp:DirectJSONRPC ;
+    mcp:lifecycle mcp:Removed ;
+    mcp:messageKind mcp:Request ;
+    mcp:methodName "resources/unsubscribe" .
+
+mcp:legacy-session-header a mcp:Header ;
+    mcp:compatibilityOnly true ;
+    mcp:headerName "Mcp-Session-Id" ;
+    mcp:lifecycle mcp:Removed .
+
+mcp:legacy-tasks-list a mcp:Method ;
+    mcp:compatibilityOnly true ;
+    mcp:consequence mcp:ReadOnly ;
+    mcp:controlMode mcp:ProtocolControlled ;
+    mcp:direction mcp:ClientToServer ;
+    mcp:facet mcp:facet-tasks ;
+    mcp:invocationMode mcp:DirectJSONRPC ;
+    mcp:lifecycle mcp:Removed ;
+    mcp:messageKind mcp:Request ;
+    mcp:methodName "tasks/list" .
+
+mcp:legacy-tasks-result a mcp:Method ;
+    mcp:compatibilityOnly true ;
+    mcp:consequence mcp:ReadOnly ;
+    mcp:controlMode mcp:ProtocolControlled ;
+    mcp:direction mcp:ClientToServer ;
+    mcp:facet mcp:facet-tasks ;
+    mcp:invocationMode mcp:DirectJSONRPC ;
+    mcp:lifecycle mcp:Removed ;
+    mcp:messageKind mcp:Request ;
+    mcp:methodName "tasks/result" .
+
+mcp:meta-client-capabilities a mcp:MetadataField ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:lifecycle mcp:Active ;
+    mcp:metaKey "io.modelcontextprotocol/clientCapabilities" ;
+    mcp:required true .
+
+mcp:meta-client-info a mcp:MetadataField ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:lifecycle mcp:Active ;
+    mcp:metaKey "io.modelcontextprotocol/clientInfo" ;
+    mcp:required false .
+
+mcp:meta-log-level a mcp:MetadataField ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:lifecycle mcp:Deprecated ;
+    mcp:metaKey "io.modelcontextprotocol/logLevel" ;
+    mcp:required false .
+
+mcp:meta-progress-token a mcp:MetadataField ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:lifecycle mcp:Active ;
+    mcp:metaKey "progressToken" ;
+    mcp:required false .
+
+mcp:meta-server-info a mcp:MetadataField ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:lifecycle mcp:Active ;
+    mcp:metaKey "io.modelcontextprotocol/serverInfo" ;
+    mcp:required false .
+
+mcp:meta-subscription-id a mcp:MetadataField ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:lifecycle mcp:Active ;
+    mcp:metaKey "io.modelcontextprotocol/subscriptionId" ;
+    mcp:required false .
+
+mcp:method-completion-complete a mcp:Method ;
+    mcp:consequence mcp:ReadOnly ;
+    mcp:controlMode mcp:ApplicationControlled ;
+    mcp:direction mcp:ClientToServer ;
+    mcp:facet mcp:facet-completion ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:invocationMode mcp:DirectJSONRPC ;
+    mcp:lifecycle mcp:Active ;
+    mcp:messageKind mcp:Request ;
+    mcp:methodName "completion/complete" ;
+    mcp:requiresCapability mcp:server-completions .
+
+mcp:method-elicitation-create a mcp:Method ;
+    mcp:consequence mcp:Interaction ;
+    mcp:controlMode mcp:UserControlled ;
+    mcp:direction mcp:ServerIntentClientResponse ;
+    mcp:facet mcp:facet-elicitation ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:invocationMode mcp:EmbeddedMRTR ;
+    mcp:lifecycle mcp:Active ;
+    mcp:messageKind mcp:EmbeddedInputRequest ;
+    mcp:methodName "elicitation/create" ;
+    mcp:requiresCapability mcp:client-elicitation .
+
+mcp:method-notifications-cancelled a mcp:Method ;
+    mcp:consequence mcp:ProtocolBookkeeping ;
+    mcp:controlMode mcp:ProtocolControlled ;
+    mcp:direction mcp:Bidirectional ;
+    mcp:facet mcp:facet-base ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:invocationMode mcp:RequestScopedNotification ;
+    mcp:lifecycle mcp:Active ;
+    mcp:messageKind mcp:Notification ;
+    mcp:methodName "notifications/cancelled" .
+
+mcp:method-notifications-message a mcp:Method ;
+    mcp:consequence mcp:ProtocolBookkeeping ;
+    mcp:controlMode mcp:ProtocolControlled ;
+    mcp:direction mcp:ServerToClient ;
+    mcp:facet mcp:facet-logging ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:invocationMode mcp:RequestScopedNotification ;
+    mcp:lifecycle mcp:Deprecated ;
+    mcp:messageKind mcp:Notification ;
+    mcp:methodName "notifications/message" ;
+    mcp:requiresCapability mcp:server-logging .
+
+mcp:method-notifications-progress a mcp:Method ;
+    mcp:consequence mcp:ProtocolBookkeeping ;
+    mcp:controlMode mcp:ProtocolControlled ;
+    mcp:direction mcp:Bidirectional ;
+    mcp:facet mcp:facet-progress ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:invocationMode mcp:RequestScopedNotification ;
+    mcp:lifecycle mcp:Active ;
+    mcp:messageKind mcp:Notification ;
+    mcp:methodName "notifications/progress" .
+
+mcp:method-notifications-prompts-list-changed a mcp:Method ;
+    mcp:consequence mcp:ProtocolBookkeeping ;
+    mcp:controlMode mcp:UserControlled ;
+    mcp:direction mcp:ServerToClient ;
+    mcp:facet mcp:facet-prompts ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:invocationMode mcp:LongLivedStream ;
+    mcp:lifecycle mcp:Active ;
+    mcp:messageKind mcp:Notification ;
+    mcp:methodName "notifications/prompts/list_changed" ;
+    mcp:requiresCapability mcp:server-prompts .
+
+mcp:method-notifications-resources-list-changed a mcp:Method ;
+    mcp:consequence mcp:ProtocolBookkeeping ;
+    mcp:controlMode mcp:ApplicationControlled ;
+    mcp:direction mcp:ServerToClient ;
+    mcp:facet mcp:facet-resources ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:invocationMode mcp:LongLivedStream ;
+    mcp:lifecycle mcp:Active ;
+    mcp:messageKind mcp:Notification ;
+    mcp:methodName "notifications/resources/list_changed" ;
+    mcp:requiresCapability mcp:server-resources .
+
+mcp:method-notifications-resources-updated a mcp:Method ;
+    mcp:consequence mcp:ProtocolBookkeeping ;
+    mcp:controlMode mcp:ApplicationControlled ;
+    mcp:direction mcp:ServerToClient ;
+    mcp:facet mcp:facet-resources ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:invocationMode mcp:LongLivedStream ;
+    mcp:lifecycle mcp:Active ;
+    mcp:messageKind mcp:Notification ;
+    mcp:methodName "notifications/resources/updated" ;
+    mcp:requiresCapability mcp:server-resources .
+
+mcp:method-notifications-subscriptions-acknowledged a mcp:Method ;
+    mcp:consequence mcp:ProtocolBookkeeping ;
+    mcp:controlMode mcp:ProtocolControlled ;
+    mcp:direction mcp:ServerToClient ;
+    mcp:facet mcp:facet-subscriptions ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:invocationMode mcp:LongLivedStream ;
+    mcp:lifecycle mcp:Active ;
+    mcp:messageKind mcp:Notification ;
+    mcp:methodName "notifications/subscriptions/acknowledged" .
+
+mcp:method-notifications-tasks a mcp:Method ;
+    mcp:consequence mcp:ProtocolBookkeeping ;
+    mcp:controlMode mcp:ProtocolControlled ;
+    mcp:direction mcp:ServerToClient ;
+    mcp:extension mcp:extension-tasks ;
+    mcp:facet mcp:facet-tasks ;
+    mcp:invocationMode mcp:LongLivedStream ;
+    mcp:lifecycle mcp:ExtensionLifecycle ;
+    mcp:messageKind mcp:Notification ;
+    mcp:methodName "notifications/tasks" .
+
+mcp:method-notifications-tools-list-changed a mcp:Method ;
+    mcp:consequence mcp:ProtocolBookkeeping ;
+    mcp:controlMode mcp:ModelControlled ;
+    mcp:direction mcp:ServerToClient ;
+    mcp:facet mcp:facet-tools ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:invocationMode mcp:LongLivedStream ;
+    mcp:lifecycle mcp:Active ;
+    mcp:messageKind mcp:Notification ;
+    mcp:methodName "notifications/tools/list_changed" ;
+    mcp:requiresCapability mcp:server-tools .
+
+mcp:method-prompts-get a mcp:Method ;
+    mcp:consequence mcp:ReadOnly ;
+    mcp:controlMode mcp:UserControlled ;
+    mcp:direction mcp:ClientToServer ;
+    mcp:facet mcp:facet-prompts ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:invocationMode mcp:DirectJSONRPC ;
+    mcp:lifecycle mcp:Active ;
+    mcp:messageKind mcp:Request ;
+    mcp:methodName "prompts/get" ;
+    mcp:requiresCapability mcp:server-prompts .
+
+mcp:method-prompts-list a mcp:Method ;
+    mcp:consequence mcp:ReadOnly ;
+    mcp:controlMode mcp:UserControlled ;
+    mcp:direction mcp:ClientToServer ;
+    mcp:facet mcp:facet-prompts ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:invocationMode mcp:DirectJSONRPC ;
+    mcp:lifecycle mcp:Active ;
+    mcp:messageKind mcp:Request ;
+    mcp:methodName "prompts/list" ;
+    mcp:requiresCapability mcp:server-prompts .
+
+mcp:method-resources-list a mcp:Method ;
+    mcp:consequence mcp:ReadOnly ;
+    mcp:controlMode mcp:ApplicationControlled ;
+    mcp:direction mcp:ClientToServer ;
+    mcp:facet mcp:facet-resources ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:invocationMode mcp:DirectJSONRPC ;
+    mcp:lifecycle mcp:Active ;
+    mcp:messageKind mcp:Request ;
+    mcp:methodName "resources/list" ;
+    mcp:requiresCapability mcp:server-resources .
+
+mcp:method-resources-read a mcp:Method ;
+    mcp:consequence mcp:ReadOnly ;
+    mcp:controlMode mcp:ApplicationControlled ;
+    mcp:direction mcp:ClientToServer ;
+    mcp:facet mcp:facet-resources ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:invocationMode mcp:DirectJSONRPC ;
+    mcp:lifecycle mcp:Active ;
+    mcp:messageKind mcp:Request ;
+    mcp:methodName "resources/read" ;
+    mcp:requiresCapability mcp:server-resources .
+
+mcp:method-resources-templates-list a mcp:Method ;
+    mcp:consequence mcp:ReadOnly ;
+    mcp:controlMode mcp:ApplicationControlled ;
+    mcp:direction mcp:ClientToServer ;
+    mcp:facet mcp:facet-resources ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:invocationMode mcp:DirectJSONRPC ;
+    mcp:lifecycle mcp:Active ;
+    mcp:messageKind mcp:Request ;
+    mcp:methodName "resources/templates/list" ;
+    mcp:requiresCapability mcp:server-resources .
+
+mcp:method-roots-list a mcp:Method ;
+    mcp:consequence mcp:ReadOnly ;
+    mcp:controlMode mcp:ApplicationControlled ;
+    mcp:direction mcp:ServerIntentClientResponse ;
+    mcp:facet mcp:facet-roots ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:invocationMode mcp:EmbeddedMRTR ;
+    mcp:lifecycle mcp:Deprecated ;
+    mcp:messageKind mcp:EmbeddedInputRequest ;
+    mcp:methodName "roots/list" ;
+    mcp:requiresCapability mcp:client-roots .
+
+mcp:method-sampling-create-message a mcp:Method ;
+    mcp:consequence mcp:Interaction ;
+    mcp:controlMode mcp:ModelControlled ;
+    mcp:direction mcp:ServerIntentClientResponse ;
+    mcp:facet mcp:facet-sampling ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:invocationMode mcp:EmbeddedMRTR ;
+    mcp:lifecycle mcp:Deprecated ;
+    mcp:messageKind mcp:EmbeddedInputRequest ;
+    mcp:methodName "sampling/createMessage" ;
+    mcp:requiresCapability mcp:client-sampling .
+
+mcp:method-server-discover a mcp:Method ;
+    mcp:consequence mcp:ReadOnly ;
+    mcp:controlMode mcp:ProtocolControlled ;
+    mcp:direction mcp:ClientToServer ;
+    mcp:facet mcp:facet-discovery ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:invocationMode mcp:DirectJSONRPC ;
+    mcp:lifecycle mcp:Active ;
+    mcp:messageKind mcp:Request ;
+    mcp:methodName "server/discover" .
+
+mcp:method-subscriptions-listen a mcp:Method ;
+    mcp:consequence mcp:ProtocolBookkeeping ;
+    mcp:controlMode mcp:ProtocolControlled ;
+    mcp:direction mcp:ClientToServer ;
+    mcp:facet mcp:facet-subscriptions ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:invocationMode mcp:LongLivedStream ;
+    mcp:lifecycle mcp:Active ;
+    mcp:messageKind mcp:Request ;
+    mcp:methodName "subscriptions/listen" .
+
+mcp:method-tasks-cancel a mcp:Method ;
+    mcp:consequence mcp:ConditionalEffect ;
+    mcp:controlMode mcp:UserControlled ;
+    mcp:direction mcp:ClientToServer ;
+    mcp:extension mcp:extension-tasks ;
+    mcp:facet mcp:facet-tasks ;
+    mcp:invocationMode mcp:ExtensionRPC ;
+    mcp:lifecycle mcp:ExtensionLifecycle ;
+    mcp:messageKind mcp:Request ;
+    mcp:methodName "tasks/cancel" .
+
+mcp:method-tasks-get a mcp:Method ;
+    mcp:consequence mcp:ReadOnly ;
+    mcp:controlMode mcp:ProtocolControlled ;
+    mcp:direction mcp:ClientToServer ;
+    mcp:extension mcp:extension-tasks ;
+    mcp:facet mcp:facet-tasks ;
+    mcp:invocationMode mcp:ExtensionRPC ;
+    mcp:lifecycle mcp:ExtensionLifecycle ;
+    mcp:messageKind mcp:Request ;
+    mcp:methodName "tasks/get" .
+
+mcp:method-tasks-update a mcp:Method ;
+    mcp:consequence mcp:Interaction ;
+    mcp:controlMode mcp:UserControlled ;
+    mcp:direction mcp:ClientToServer ;
+    mcp:extension mcp:extension-tasks ;
+    mcp:facet mcp:facet-tasks ;
+    mcp:invocationMode mcp:ExtensionRPC ;
+    mcp:lifecycle mcp:ExtensionLifecycle ;
+    mcp:messageKind mcp:Request ;
+    mcp:methodName "tasks/update" .
+
+mcp:method-tools-call a mcp:Method ;
+    mcp:consequence mcp:ConditionalEffect ;
+    mcp:controlMode mcp:ModelControlled ;
+    mcp:direction mcp:ClientToServer ;
+    mcp:facet mcp:facet-tools ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:invocationMode mcp:DirectJSONRPC ;
+    mcp:lifecycle mcp:Active ;
+    mcp:messageKind mcp:Request ;
+    mcp:methodName "tools/call" ;
+    mcp:requiresCapability mcp:server-tools .
+
+mcp:method-tools-list a mcp:Method ;
+    mcp:consequence mcp:ReadOnly ;
+    mcp:controlMode mcp:ModelControlled ;
+    mcp:direction mcp:ClientToServer ;
+    mcp:facet mcp:facet-tools ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:invocationMode mcp:DirectJSONRPC ;
+    mcp:lifecycle mcp:Active ;
+    mcp:messageKind mcp:Request ;
+    mcp:methodName "tools/list" ;
+    mcp:requiresCapability mcp:server-tools .
+
+mcp:projection-brce-map a mcp:ProjectionTarget ;
+    dct:identifier "brce-map" ;
+    mcp:projectionKind "authority" ;
+    mcp:projectionPath "generated/mcp/brce-map" .
+
+mcp:projection-client-capabilities a mcp:ProjectionTarget ;
+    dct:identifier "client-capabilities" ;
+    mcp:projectionKind "manifest" ;
+    mcp:projectionPath "generated/mcp/client-capabilities.json" .
+
+mcp:projection-conformance a mcp:ProjectionTarget ;
+    dct:identifier "conformance-fixtures" ;
+    mcp:projectionKind "test" ;
+    mcp:projectionPath "generated/mcp/conformance" .
+
+mcp:projection-docs a mcp:ProjectionTarget ;
+    dct:identifier "reference-docs" ;
+    mcp:projectionKind "documentation" ;
+    mcp:projectionPath "rust/protocol_gym/docs/mcp-surface.md" .
+
+mcp:projection-extension-adapters a mcp:ProjectionTarget ;
+    dct:identifier "extension-adapters" ;
+    mcp:projectionKind "adapter" ;
+    mcp:projectionPath "generated/mcp/extensions" .
+
+mcp:projection-header-policy a mcp:ProjectionTarget ;
+    dct:identifier "header-policy" ;
+    mcp:projectionKind "policy" ;
+    mcp:projectionPath "generated/mcp/header-policy" .
+
+mcp:projection-json-schemas a mcp:ProjectionTarget ;
+    dct:identifier "json-schemas" ;
+    mcp:projectionKind "schema" ;
+    mcp:projectionPath "generated/mcp/schema" .
+
+mcp:projection-method-router a mcp:ProjectionTarget ;
+    dct:identifier "method-router" ;
+    mcp:projectionKind "code" ;
+    mcp:projectionPath "generated/mcp/method-router" .
+
+mcp:projection-mrtr-machine a mcp:ProjectionTarget ;
+    dct:identifier "mrtr-machine" ;
+    mcp:projectionKind "state-machine" ;
+    mcp:projectionPath "generated/mcp/mrtr" .
+
+mcp:projection-rust a mcp:ProjectionTarget ;
+    dct:identifier "rust-verifier" ;
+    mcp:projectionKind "proof-projection" ;
+    mcp:projectionPath "rust/protocol_gym/src/mcp_surface.rs" .
+
+mcp:projection-server-capabilities a mcp:ProjectionTarget ;
+    dct:identifier "server-capabilities" ;
+    mcp:projectionKind "manifest" ;
+    mcp:projectionPath "generated/mcp/server-capabilities.json" .
+
+mcp:projection-subscription-map a mcp:ProjectionTarget ;
+    dct:identifier "subscription-map" ;
+    mcp:projectionKind "state-machine" ;
+    mcp:projectionPath "generated/mcp/subscriptions" .
+
+mcp:projection-wit a mcp:ProjectionTarget ;
+    dct:identifier "wit-abi" ;
+    mcp:projectionKind "abi" ;
+    mcp:projectionPath "rust/protocol_gym/wit/mcp-surface.wit" .
+
+mcp:result-complete a mcp:ResultKind ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:lifecycle mcp:Active ;
+    mcp:resultType "complete" .
+
+mcp:result-input-required a mcp:ResultKind ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:lifecycle mcp:Active ;
+    mcp:resultType "input_required" .
+
+mcp:result-task a mcp:ResultKind ;
+    mcp:extension mcp:extension-tasks ;
+    mcp:lifecycle mcp:ExtensionLifecycle ;
+    mcp:resultType "task" .
+
+mcp:server-extensions a mcp:Capability ;
+    mcp:capabilityKey "extensions" ;
+    mcp:capabilitySide "server" ;
+    mcp:lifecycle mcp:Active .
+
+mcp:task-cancelled a mcp:TaskStatus ;
+    dct:identifier "cancelled" ;
+    mcp:terminal true .
+
+mcp:task-completed a mcp:TaskStatus ;
+    dct:identifier "completed" ;
+    mcp:terminal true .
+
+mcp:task-failed a mcp:TaskStatus ;
+    dct:identifier "failed" ;
+    mcp:terminal true .
+
+mcp:task-input-required a mcp:TaskStatus ;
+    dct:identifier "input_required" ;
+    mcp:terminal false .
+
+mcp:task-working a mcp:TaskStatus ;
+    dct:identifier "working" ;
+    mcp:terminal false .
+
+mcp:transport-legacy-http-sse a mcp:Transport ;
+    dct:identifier "legacy-http-sse" ;
+    dct:title "Legacy HTTP+SSE" ;
+    mcp:compatibilityOnly true ;
+    mcp:lifecycle mcp:Deprecated .
+
+mcp:transport-stdio a mcp:Transport ;
+    dct:identifier "stdio" ;
+    dct:title "stdio" ;
+    mcp:compatibilityOnly false ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:lifecycle mcp:Active .
+
+<urn:gymact:protocol-gym:fixture:do> a sosa:Procedure ;
+    dct:identifier "do" ;
+    dct:title "Fixture DO capability" ;
+    dct:type <urn:gymact:consequence:do> ;
+    skos:note "authority-required" ;
+    prov:wasDerivedFrom <urn:gymact:protocol-gym:fixture> .
+
+<urn:gymact:protocol-gym:fixture:read> a sosa:Procedure ;
+    dct:identifier "read" ;
+    dct:title "Fixture read capability" ;
+    dct:type <urn:gymact:consequence:read> ;
+    prov:wasDerivedFrom <urn:gymact:protocol-gym:fixture> .
+
+<urn:gymact:protocol:a2a> a skos:Concept ;
+    dct:identifier "a2a" ;
+    dct:title "A2A" .
+
+<urn:gymact:protocol:lsp> a skos:Concept ;
+    dct:identifier "lsp" ;
+    dct:title "LSP" .
+
+mcp:Extension a skos:Concept ;
+    skos:prefLabel "MCP extension" .
+
+mcp:ProtocolRevision a skos:Concept ;
+    skos:prefLabel "MCP protocol revision" .
+
+mcp:SchemaContract a skos:Concept ;
+    skos:prefLabel "MCP schema contract" .
+
+mcp:client-elicitation a mcp:Capability ;
+    mcp:capabilityKey "elicitation" ;
+    mcp:capabilitySide "client" ;
+    mcp:lifecycle mcp:Active .
+
+mcp:client-roots a mcp:Capability ;
+    mcp:capabilityKey "roots" ;
+    mcp:capabilitySide "client" ;
+    mcp:lifecycle mcp:Deprecated .
+
+mcp:client-sampling a mcp:Capability ;
+    mcp:capabilityKey "sampling" ;
+    mcp:capabilitySide "client" ;
+    mcp:lifecycle mcp:Deprecated .
+
+mcp:facet-completion a skos:Concept,
+        mcp:Facet ;
+    dct:identifier "completion" ;
+    skos:prefLabel "Completion" .
+
+mcp:facet-elicitation a skos:Concept,
+        mcp:Facet ;
+    dct:identifier "elicitation" ;
+    skos:prefLabel "Elicitation" .
+
+mcp:facet-progress a skos:Concept,
+        mcp:Facet ;
+    dct:identifier "progress" ;
+    skos:prefLabel "Progress" .
+
+mcp:facet-roots a skos:Concept,
+        mcp:Facet ;
+    dct:identifier "roots" ;
+    skos:prefLabel "Roots" .
+
+mcp:facet-sampling a skos:Concept,
+        mcp:Facet ;
+    dct:identifier "sampling" ;
+    skos:prefLabel "Sampling" .
+
+mcp:json-schema-2020-12 a prov:Entity,
+        mcp:SchemaContract ;
+    dct:conformsTo mcp:revision-2026-07-28 ;
+    dct:identifier "json-schema-2020-12" ;
+    dct:title "JSON Schema 2020-12" ;
+    mcp:schemaDialect "https://json-schema.org/draft/2020-12/schema" .
+
+mcp:meta-protocol-version a mcp:MetadataField ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:lifecycle mcp:Active ;
+    mcp:metaKey "io.modelcontextprotocol/protocolVersion" ;
+    mcp:required true .
+
+mcp:server-completions a mcp:Capability ;
+    mcp:capabilityKey "completions" ;
+    mcp:capabilitySide "server" ;
+    mcp:lifecycle mcp:Active .
+
+mcp:server-logging a mcp:Capability ;
+    mcp:capabilityKey "logging" ;
+    mcp:capabilitySide "server" ;
+    mcp:lifecycle mcp:Deprecated .
+
+mcp:transport-streamable-http a mcp:Transport ;
+    dct:identifier "streamable-http" ;
+    dct:title "Streamable HTTP" ;
+    mcp:compatibilityOnly false ;
+    mcp:inRevision mcp:revision-2026-07-28 ;
+    mcp:lifecycle mcp:Active .
+
+<urn:gymact:protocol:mcp> a skos:Concept ;
+    dct:conformsTo mcp:revision-2026-07-28 ;
+    dct:identifier "mcp" ;
+    dct:title "MCP" .
+
+mcp:facet-base a skos:Concept,
+        mcp:Facet ;
+    dct:identifier "base" ;
+    skos:prefLabel "Base / JSON-RPC" .
+
+mcp:facet-logging a skos:Concept,
+        mcp:Facet ;
+    dct:identifier "logging" ;
+    skos:prefLabel "Logging" .
+
+<urn:gymact:protocol-gym:fixture> a prov:Entity ;
+    dct:conformsTo <urn:gymact:protocol:mcp> ;
+    dct:identifier "protocol-gym-fixture" ;
+    prov:value "fixture-source-digest" .
+
+mcp:Bidirectional a skos:Concept,
+        mcp:Direction ;
+    skos:prefLabel "bidirectional" .
+
+mcp:ConditionalEffect a skos:Concept,
+        mcp:ConsequenceClass ;
+    skos:prefLabel "effect depends on selected tool/extension operation" .
+
+mcp:EmbeddedInputRequest a skos:Concept,
+        mcp:MessageKind ;
+    skos:prefLabel "embedded input request" .
+
+mcp:EmbeddedMRTR a skos:Concept,
+        mcp:InvocationMode ;
+    skos:prefLabel "embedded MRTR" .
+
+mcp:ExtensionRPC a skos:Concept,
+        mcp:InvocationMode ;
+    skos:prefLabel "extension RPC" .
+
+mcp:Header a skos:Concept ;
+    skos:prefLabel "MCP HTTP header contract" .
+
+mcp:Interaction a skos:Concept,
+        mcp:ConsequenceClass ;
+    skos:prefLabel "interaction" .
+
+mcp:MessageKind a skos:Concept ;
+    skos:prefLabel "MCP message kind" .
+
+mcp:RequestScopedNotification a skos:Concept,
+        mcp:InvocationMode ;
+    skos:prefLabel "request-scoped notification" .
+
+mcp:ResultKind a skos:Concept ;
+    skos:prefLabel "MCP result kind" .
+
+mcp:ServerIntentClientResponse a skos:Concept,
+        mcp:Direction ;
+    skos:prefLabel "server intent embedded in result, client responds on retry/update" .
+
+mcp:Transport a skos:Concept ;
+    skos:prefLabel "MCP transport" .
+
+mcp:facet-discovery a skos:Concept,
+        mcp:Facet ;
+    dct:identifier "discovery" ;
+    skos:prefLabel "Discovery" .
+
+mcp:facet-prompts a skos:Concept,
+        mcp:Facet ;
+    dct:identifier "prompts" ;
+    skos:prefLabel "Prompts" .
+
+mcp:facet-tools a skos:Concept,
+        mcp:Facet ;
+    dct:identifier "tools" ;
+    skos:prefLabel "Tools" .
+
+mcp:server-prompts a mcp:Capability ;
+    mcp:capabilityKey "prompts" ;
+    mcp:capabilitySide "server" ;
+    mcp:lifecycle mcp:Active .
+
+mcp:server-tools a mcp:Capability ;
+    mcp:capabilityKey "tools" ;
+    mcp:capabilitySide "server" ;
+    mcp:lifecycle mcp:Active .
+
+mcp:ConsequenceClass a skos:Concept ;
+    skos:prefLabel "GymAct consequence class for an MCP surface" .
+
+mcp:ControlMode a skos:Concept ;
+    skos:prefLabel "MCP control mode" .
+
+mcp:Direction a skos:Concept ;
+    skos:prefLabel "MCP semantic direction" .
+
+mcp:LifecycleStatus a skos:Concept ;
+    skos:prefLabel "MCP lifecycle status" .
+
+mcp:ModelControlled a skos:Concept,
+        mcp:ControlMode ;
+    skos:prefLabel "model-controlled" .
+
+mcp:facet-subscriptions a skos:Concept,
+        mcp:Facet ;
+    dct:identifier "subscriptions" ;
+    skos:prefLabel "Subscriptions" .
+
+mcp:InvocationMode a skos:Concept ;
+    skos:prefLabel "MCP invocation mode" .
+
+mcp:TaskStatus a skos:Concept ;
+    skos:prefLabel "MCP Tasks status" .
+
+mcp:extension-tasks a skos:Concept,
+        mcp:Extension ;
+    dct:source <https://github.com/modelcontextprotocol/modelcontextprotocol/blob/4df2d6b6e3588efb46e7542d98498e5c630a0a86/docs/extensions/tasks/overview.mdx> ;
+    dct:title "MCP Tasks" ;
+    mcp:extensionId "io.modelcontextprotocol/tasks" ;
+    mcp:lifecycle mcp:ExtensionLifecycle .
+
+mcp:facet-resources a skos:Concept,
+        mcp:Facet ;
+    dct:identifier "resources" ;
+    skos:prefLabel "Resources" .
+
+mcp:server-resources a mcp:Capability ;
+    mcp:capabilityKey "resources" ;
+    mcp:capabilitySide "server" ;
+    mcp:lifecycle mcp:Active .
+
+mcp:ExtensionLifecycle a skos:Concept,
+        mcp:LifecycleStatus ;
+    skos:prefLabel "extension" .
+
+mcp:Invariant a skos:Concept ;
+    skos:prefLabel "MCP/GymAct manufacturing invariant" .
+
+mcp:UserControlled a skos:Concept,
+        mcp:ControlMode ;
+    skos:prefLabel "user-controlled" .
+
+mcp:facet-tasks a skos:Concept,
+        mcp:Facet ;
+    dct:identifier "tasks" ;
+    skos:prefLabel "Tasks extension" .
+
+mcp:LongLivedStream a skos:Concept,
+        mcp:InvocationMode ;
+    skos:prefLabel "long-lived stream" .
+
+mcp:MetadataField a skos:Concept ;
+    skos:prefLabel "MCP _meta field" .
+
+mcp:ServerToClient a skos:Concept,
+        mcp:Direction ;
+    skos:prefLabel "server to client" .
+
+mcp:Deprecated a skos:Concept,
+        mcp:LifecycleStatus ;
+    skos:prefLabel "deprecated" .
+
+mcp:ApplicationControlled a skos:Concept,
+        mcp:ControlMode ;
+    skos:prefLabel "application-controlled" .
+
+mcp:Removed a skos:Concept,
+        mcp:LifecycleStatus ;
+    skos:prefLabel "removed" .
+
+mcp:Capability a skos:Concept ;
+    skos:prefLabel "MCP advertised capability" .
+
+mcp:Notification a skos:Concept,
+        mcp:MessageKind ;
+    skos:prefLabel "notification" .
+
+mcp:ReadOnly a skos:Concept,
+        mcp:ConsequenceClass ;
+    skos:prefLabel "read-only" .
+
+mcp:ProjectionTarget a skos:Concept ;
+    skos:prefLabel "ggen projection target" .
+
+mcp:ProtocolControlled a skos:Concept,
+        mcp:ControlMode ;
+    skos:prefLabel "protocol-controlled" .
+
+mcp:ProtocolBookkeeping a skos:Concept,
+        mcp:ConsequenceClass ;
+    skos:prefLabel "protocol bookkeeping" .
+
+mcp:DirectJSONRPC a skos:Concept,
+        mcp:InvocationMode ;
+    skos:prefLabel "direct JSON-RPC" .
+
+mcp:Facet a skos:Concept ;
+    skos:prefLabel "MCP facet" .
+
+mcp:ClientToServer a skos:Concept,
+        mcp:Direction ;
+    skos:prefLabel "client to server" .
+
+mcp:Request a skos:Concept,
+        mcp:MessageKind ;
+    skos:prefLabel "request" .
+
+mcp:Method a skos:Concept ;
+    skos:prefLabel "MCP method or embedded request kind" .
+
+mcp:Active a skos:Concept,
+        mcp:LifecycleStatus ;
+    skos:prefLabel "active" .
+
+mcp:revision-2026-07-28 a dct:Standard,
+        prov:Entity,
+        mcp:ProtocolRevision ;
+    dct:identifier "2026-07-28" ;
+    dct:source <https://github.com/modelcontextprotocol/modelcontextprotocol/blob/4df2d6b6e3588efb46e7542d98498e5c630a0a86/schema/2026-07-28/schema.ts> ;
+    dct:title "Model Context Protocol 2026-07-28" ;
+    prov:value "schema.ts@9b55feeb412bc3ae877f2eac10b5c01ba29a2eed" ;
+    mcp:protocolVersion "2026-07-28" .
+
