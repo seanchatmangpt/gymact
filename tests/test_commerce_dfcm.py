@@ -6,6 +6,7 @@ from gymact.gyms.commerce_dfcm import (
     CommercialAgreement,
     EntitlementEvent,
     EntitlementState,
+    EvidenceOrigin,
     EventKind,
     ExternalAcceptance,
     ExternalBlocker,
@@ -55,13 +56,27 @@ def event(eid, kind, rev, entitlement="ent-1", agreement_id="a-1", tenant="tenan
 def activate(world, entitlement="ent-1", agreement_id="a-1", tenant="tenant-1"):
     created, receipt = world.apply_entitlement_event(
         "external",
-        event("e-create-"+entitlement, EventKind.CREATE, 1, entitlement, agreement_id, tenant),
+        event(
+            "e-create-" + entitlement,
+            EventKind.CREATE,
+            1,
+            entitlement,
+            agreement_id,
+            tenant,
+        ),
         grant=grant(entitlement),
     )
     assert created and not isinstance(receipt, Refusal)
     active, receipt = world.apply_entitlement_event(
         "external",
-        event("e-active-"+entitlement, EventKind.ACTIVATE, 2, entitlement, agreement_id, tenant),
+        event(
+            "e-active-" + entitlement,
+            EventKind.ACTIVATE,
+            2,
+            entitlement,
+            agreement_id,
+            tenant,
+        ),
         grant=grant(entitlement),
     )
     assert active and active.state is EntitlementState.ACTIVE
@@ -124,7 +139,14 @@ def test_full_internal_usage_to_settlement_path_requires_real_external_acceptanc
     activate(world)
 
     world.observe_usage(
-        UsageObservation("u-1", "ent-1", "tenant-1", "api_calls", 20, "2026-08-19T01:00:00Z")
+        UsageObservation(
+            "u-1",
+            "ent-1",
+            "tenant-1",
+            "api_calls",
+            20,
+            "2026-08-19T01:00:00Z",
+        )
     )
     admitted, _ = world.admit_usage("u-1")
     assert admitted and admitted.admitted
@@ -143,7 +165,15 @@ def test_full_internal_usage_to_settlement_path_requires_real_external_acceptanc
     assert refusal.code is RefusalCode.PROVIDER_ACCEPTANCE_NOT_OBSERVED
 
     accepted, receipt = world.admit_external_acceptance(
-        ExternalAcceptance("acc-1", "m-1", "provider", True, "provider:receipt:123", 20)
+        ExternalAcceptance(
+            "acc-1",
+            "m-1",
+            "provider",
+            True,
+            "provider:receipt:123",
+            20,
+            EvidenceOrigin.LIVE_EXTERNAL,
+        )
     )
     assert accepted and receipt.receipt_id
     settlement, receipt = world.reconcile(settlement_id="s-1", acceptance_id="acc-1")
@@ -160,7 +190,9 @@ def test_suspension_fences_future_usage_and_cancel_is_terminal():
     assert suspended and suspended.state is EntitlementState.SUSPENDED
 
     world.observe_usage(
-        UsageObservation("u-2", "ent-1", "tenant-1", "api_calls", 1, "2026-08-19T02:00:00Z")
+        UsageObservation(
+            "u-2", "ent-1", "tenant-1", "api_calls", 1, "2026-08-19T02:00:00Z"
+        )
     )
     admitted, refusal = world.admit_usage("u-2")
     assert admitted is None
@@ -182,13 +214,22 @@ def test_pricing_and_tenant_boundaries_fail_closed():
     world.admit_agreement(agreement())
     activate(world)
     world.observe_usage(
-        UsageObservation("u-3", "ent-1", "other-tenant", "api_calls", 2, "2026-08-19T02:00:00Z")
+        UsageObservation(
+            "u-3",
+            "ent-1",
+            "other-tenant",
+            "api_calls",
+            2,
+            "2026-08-19T02:00:00Z",
+        )
     )
     _, refusal = world.admit_usage("u-3")
     assert refusal.code is RefusalCode.CROSS_TENANT_ENTITLEMENT
 
     world.observe_usage(
-        UsageObservation("u-4", "ent-1", "tenant-1", "unpriced", 2, "2026-08-19T02:00:00Z")
+        UsageObservation(
+            "u-4", "ent-1", "tenant-1", "unpriced", 2, "2026-08-19T02:00:00Z"
+        )
     )
     _, refusal = world.admit_usage("u-4")
     assert refusal.code is RefusalCode.PRICING_DIMENSION_MISMATCH
@@ -199,7 +240,9 @@ def test_readiness_separates_internal_execution_from_external_authority():
     world.admit_agreement(agreement())
     activate(world)
     world.observe_usage(
-        UsageObservation("u-5", "ent-1", "tenant-1", "api_calls", 3, "2026-08-19T02:00:00Z")
+        UsageObservation(
+            "u-5", "ent-1", "tenant-1", "api_calls", 3, "2026-08-19T02:00:00Z"
+        )
     )
     world.admit_usage("u-5")
     world.construct_meter_intent(intent_id="m-5", observation_ids=["u-5"])
@@ -210,14 +253,26 @@ def test_readiness_separates_internal_execution_from_external_authority():
     assert report.external_standing is Standing.BLOCKED
     assert report.external_blockers
 
+    # Fixture evidence can exercise the shape, but can never crown external standing.
     for blocker in ExternalBlocker:
-        receipt = world.admit_external_blocker_evidence(blocker, f"external:{blocker}")
+        refusal = world.admit_external_blocker_evidence(blocker, f"fixture:{blocker}")
+        assert refusal.code is RefusalCode.PROVIDER_ACCEPTANCE_NOT_OBSERVED
+
+    report = world.readiness(packaging)
+    assert report.external_standing is Standing.BLOCKED
+    assert not report.marketplace_ready
+
+    # Future adapters may supply observed external evidence; the gym does not manufacture it.
+    for blocker in ExternalBlocker:
+        receipt = world.admit_external_blocker_evidence(
+            blocker,
+            f"external:{blocker}",
+            origin=EvidenceOrigin.LIVE_EXTERNAL,
+        )
         assert receipt.receipt_id
 
     report = world.readiness(packaging)
-    assert report.internal_standing is Standing.ALIVE
     assert report.external_standing is Standing.ALIVE
-    assert report.marketplace_ready
 
 
 def test_packaging_is_not_crowned_when_portability_or_supply_chain_evidence_is_missing():
