@@ -1,10 +1,12 @@
 """Whole-GCP exactness crown.
 
 A method census can be complete inside its own admitted REST scope without
-proving GCP as a whole.  Likewise, a source census can be complete while the
-simulator still has unmodeled method transitions.  This module is the only
+proving GCP as a whole. Likewise, a source census can be complete while the
+simulator still has unmodeled transitions, and a method-level happy-path match
+can hide divergent error/quota/pagination/LRO behavior. This module is the only
 whole-GCP promotion boundary: source topology, executable behavior coverage,
-and paired differential method evidence must all close.
+method-level differential evidence, and generated validation-case evidence must
+all close.
 """
 
 from __future__ import annotations
@@ -14,6 +16,7 @@ from dataclasses import dataclass
 from gymact.gyms.gcp_behavior import GcpBehaviorCoverage
 from gymact.gyms.gcp_exact import GcpCoverageReport
 from gymact.gyms.gcp_sources import GcpSourceAdmissionReport
+from gymact.gyms.gcp_validation import GcpValidationCoverage
 
 __all__ = ["GcpExactnessCrown", "evaluate_gcp_exactness"]
 
@@ -23,6 +26,7 @@ class GcpExactnessCrown:
     method_coverage: GcpCoverageReport
     source_admission: GcpSourceAdmissionReport
     behavior_coverage: GcpBehaviorCoverage | None
+    validation_coverage: GcpValidationCoverage | None
 
     @property
     def exact(self) -> bool:
@@ -31,6 +35,8 @@ class GcpExactnessCrown:
             and self.source_admission.complete
             and self.behavior_coverage is not None
             and self.behavior_coverage.structural_complete
+            and self.validation_coverage is not None
+            and self.validation_coverage.exact
         )
 
     @property
@@ -43,6 +49,10 @@ class GcpExactnessCrown:
             or (
                 self.behavior_coverage is not None
                 and self.behavior_coverage.structurally_executable_methods > 0
+            )
+            or (
+                self.validation_coverage is not None
+                and self.validation_coverage.alive_cases > 0
             )
         ):
             return "PARTIAL_ALIVE"
@@ -57,6 +67,10 @@ class GcpExactnessCrown:
             failures.append("SIMULATOR_BEHAVIOR_COVERAGE_UNOBSERVED")
         elif not self.behavior_coverage.structural_complete:
             failures.append("SIMULATOR_BEHAVIOR_COVERAGE_OPEN")
+        if self.validation_coverage is None:
+            failures.append("VALIDATION_CASE_COVERAGE_UNOBSERVED")
+        elif not self.validation_coverage.exact:
+            failures.append("VALIDATION_CASE_COVERAGE_OPEN")
         if self.source_admission.missing_sources:
             failures.append("CONTRACT_SOURCE_FAMILIES_MISSING")
         if self.source_admission.duplicate_sources:
@@ -74,17 +88,19 @@ def evaluate_gcp_exactness(
     method_coverage: GcpCoverageReport,
     source_admission: GcpSourceAdmissionReport,
     behavior_coverage: GcpBehaviorCoverage | None = None,
+    validation_coverage: GcpValidationCoverage | None = None,
 ) -> GcpExactnessCrown:
     """Evaluate whole-cloud standing without ambient evidence transfer.
 
-    ``behavior_coverage`` intentionally defaults to ``None`` for compatibility
-    with older callers, but absence now *blocks* the exact crown.  An existing
-    caller therefore cannot inherit ALIVE merely because a new proof obligation
-    was added after it was written.
+    New proof obligations default to ``None`` for compatibility with older
+    callers, but absence blocks the crown. Existing integrations therefore
+    cannot inherit a stronger ALIVE claim merely because the exactness calculus
+    expanded after they were written.
     """
 
     return GcpExactnessCrown(
         method_coverage=method_coverage,
         source_admission=source_admission,
         behavior_coverage=behavior_coverage,
+        validation_coverage=validation_coverage,
     )
