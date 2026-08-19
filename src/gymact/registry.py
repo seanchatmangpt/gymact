@@ -29,6 +29,7 @@ from gymact.gyms.lock_and_key import LockAndKeyProvider, LOCK_AND_KEY_CAPABILITI
 from gymact.gyms.mcp_client_session import McpClientSessionProvider, MCP_LIST_TOOLS_CAPABILITY, MCP_CALL_TOOL_CAPABILITY
 from gymact.providers import MemoryProvider, MEMORY_CAPABILITIES
 from gymact.gyms.multicloud import MulticloudProvider, CAPABILITY_REGISTRY as MULTICLOUD_CAPABILITIES
+from gymact.gyms.platform_console_provider import PlatformConsoleProvider, PLATFORM_CONSOLE_CAPABILITIES
 from gymact.gyms.resource_flow import ResourceFlowProvider, RESOURCE_FLOW_CAPABILITIES
 from gymact.local_providers import SQLiteProvider, SQLITE_CAPABILITIES
 from gymact.gyms.sregym_ontology import SregymOntologyProvider, SREGYM_CAPABILITIES
@@ -63,6 +64,7 @@ _BUILTINS = {
     "mcp-client-session": (McpClientSessionProvider, (MCP_LIST_TOOLS_CAPABILITY, MCP_CALL_TOOL_CAPABILITY)),
     "memory": (MemoryProvider, MEMORY_CAPABILITIES),
     "multicloud": (MulticloudProvider, MULTICLOUD_CAPABILITIES),
+    "platform-console": (PlatformConsoleProvider, PLATFORM_CONSOLE_CAPABILITIES),
     "resource-flow": (ResourceFlowProvider, RESOURCE_FLOW_CAPABILITIES),
     "sqlite": (SQLiteProvider, SQLITE_CAPABILITIES),
     "sregym": (SregymOntologyProvider, SREGYM_CAPABILITIES),
