@@ -43,11 +43,17 @@ def _canonical_json(value: Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
-def _receipt(namespace: str, payload: Any) -> str:
-    return f"{namespace}:blake3:{blake3(_canonical_json(payload).encode()).hexdigest()}"
-
-
 def discovery_source_observation(census: GcpContractCensus) -> ContractSourceObservation:
+    if not census.apis or not census.methods or not census.schemas:
+        return ContractSourceObservation(
+            family=ContractSourceFamily.DISCOVERY,
+            disposition="BLOCKED",
+            artifacts=(),
+            receipt=None,
+            reason="EMPTY_DISCOVERY_CENSUS",
+            source_revision=census.directory_digest_sha256,
+        )
+
     artifact = ContractArtifact(
         family=ContractSourceFamily.DISCOVERY,
         identity=f"google-discovery:{census.contract_digest_blake3}",
@@ -135,7 +141,9 @@ def load_cloud_docs_corpus(
                 family=ContractSourceFamily.HUMAN_DOCS,
                 identity=url,
                 locator=url,
-                digest=sha256(_canonical_json({"url": url, "lastmod": lastmod}).encode()).hexdigest(),
+                digest=sha256(
+                    _canonical_json({"url": url, "lastmod": lastmod}).encode()
+                ).hexdigest(),
                 digest_algorithm="sha256",
                 media_type="text/html",
                 metadata=(("lastmod", lastmod),) if lastmod else (),
