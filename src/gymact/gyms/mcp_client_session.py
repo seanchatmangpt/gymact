@@ -15,14 +15,14 @@ from gymact.models import Capability, Consequence
 
 MCP_LIST_TOOLS_CAPABILITY = Capability(
     iri="urn:gymact:mcp:capability:list_tools",
-    title="List the real tools currently exposed by the subject MCP server",
+    title="List tools from MCP server",
     consequence=Consequence.READ,
     binding="list_tools",
 )
 
 MCP_CALL_TOOL_CAPABILITY = Capability(
     iri="urn:gymact:mcp:capability:call_tool",
-    title="Call a named, side-effect-safe tool on the subject MCP server",
+    title="Call a tool through MCP client",
     consequence=Consequence.DO,
     binding="call_tool",
 )
