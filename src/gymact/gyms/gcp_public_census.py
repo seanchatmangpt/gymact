@@ -4,6 +4,10 @@ The public census closes every GCP source family that can be grounded from
 Google's published Discovery directory, canonical googleapis tree, and Cloud
 documentation corpus. Empirical execution remains a separate source family and
 cannot be manufactured from static contracts.
+
+A transient failure in one advertised public endpoint is evidence about the
+current subject, not absence of evidence.  Such a run preserves artifacts and a
+receipt as PARTIAL_ALIVE while remaining ineligible for source admission.
 """
 
 from __future__ import annotations
@@ -50,12 +54,14 @@ def _canonical_json(value: Any) -> str:
 def discovery_source_observation(
     observed: GcpContractCensus | ResilientDiscoveryCensus,
 ) -> ContractSourceObservation:
+    transient_gaps = False
     if isinstance(observed, ResilientDiscoveryCensus):
         census = observed.census
         unavailable = observed.unavailable
         advertised = observed.advertised_entries
         complete_probe = observed.complete_probe
         receipt_digest = observed.receipt_digest_blake3
+        transient_gaps = observed.has_transient_gaps
     else:
         census = observed
         unavailable = ()
@@ -85,6 +91,7 @@ def discovery_source_observation(
                 ("advertised_api_versions", str(advertised)),
                 ("available_api_versions", str(len(census.apis))),
                 ("unavailable_api_versions", str(len(unavailable))),
+                ("transiently_unavailable_api_versions", str(sum(item.transient for item in unavailable))),
                 ("methods", str(len(census.methods))),
                 ("schemas", str(len(census.schemas))),
                 ("directory_sha256", census.directory_digest_sha256),
@@ -103,15 +110,17 @@ def discovery_source_observation(
                 metadata=(
                     ("status_code", str(item.status_code)),
                     ("reason", item.reason),
+                    ("transient", str(item.transient).lower()),
                 ),
             )
         )
 
     return ContractSourceObservation(
         family=ContractSourceFamily.DISCOVERY,
-        disposition="ALIVE",
+        disposition="PARTIAL_ALIVE" if transient_gaps else "ALIVE",
         artifacts=tuple(artifacts),
         receipt=f"gcp-discovery:blake3:{receipt_digest}",
+        reason="TRANSIENT_DISCOVERY_DOCUMENTS_UNAVAILABLE" if transient_gaps else None,
         source_revision=census.directory_digest_sha256,
     )
 
@@ -224,10 +233,32 @@ class GcpPublicContractCensus:
     def public_sources_alive(self) -> bool:
         return len(self.public_sources) == 9 and all(source.admitted for source in self.public_sources)
 
+    @property
+    def public_sources_receipted(self) -> bool:
+        """True when every public family produced preserved evidence.
+
+        This is deliberately weaker than ``public_sources_alive``: a transiently
+        unavailable Discovery document can still yield a complete, replayable
+        observation receipt while remaining ineligible for ALIVE admission.
+        """
+
+        return len(self.public_sources) == 9 and all(
+            bool(source.receipt) and bool(source.artifacts) for source in self.public_sources
+        )
+
+    @property
+    def standing(self) -> str:
+        if self.public_sources_alive:
+            return "PARTIAL_ALIVE"  # empirical observation is intentionally still absent
+        if self.public_sources_receipted:
+            return "PARTIAL_ALIVE"
+        return "BLOCKED"
+
     def summary(self) -> dict[str, Any]:
         return {
-            "standing": "PARTIAL_ALIVE" if self.public_sources_alive else "BLOCKED",
+            "standing": self.standing,
             "public_sources_alive": self.public_sources_alive,
+            "public_sources_receipted": self.public_sources_receipted,
             "public_source_count": len(self.public_sources),
             "whole_source_graph_complete": self.admission.complete,
             "source_graph_digest_blake3": self.admission.graph_digest_blake3,
@@ -242,6 +273,7 @@ class GcpPublicContractCensus:
                 for source in self.public_sources
             },
             "missing_required_sources": list(self.admission.missing_sources),
+            "non_alive_required_sources": [list(item) for item in self.admission.non_alive_sources],
         }
 
 
