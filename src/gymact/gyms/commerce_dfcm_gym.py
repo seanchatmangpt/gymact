@@ -1,9 +1,11 @@
 """First-class GymAct provider for the provider-neutral Post-AGI DfCM commerce world.
 
-This adapter deliberately exposes the complete 32-capability commerce class closure
-without embedding any AWS, Microsoft, Google Cloud, Stripe, CRM, banking, tax, KYC,
-or marketplace SDK. External authority edges are represented and refused; they are
-never simulated into success.
+The semantic model contains 32 capabilities. Only the 25 bounded internal
+capabilities are exposed through ``Environment.capabilities()``. The seven
+marketplace/legal DO edges remain visible in the semantic closure and DfCM
+frontier but are structurally absent from GymAct's executable provider surface.
+That distinction makes it impossible for the generic kernel to wrap a refused
+external marketplace action in an ALIVE actuation receipt.
 """
 
 from __future__ import annotations
@@ -37,8 +39,8 @@ from .commerce_dfcm import (
 from .commerce_dfcm_enterprise import EnterpriseCommerceWorld
 
 
-COMMERCE_DFCM_CAPABILITIES: tuple[GymCapability, ...] = tuple(
-    GymCapability(
+def _gym_capability(item: Any) -> GymCapability:
+    return GymCapability(
         iri=f"urn:gymact:commerce-dfcm:capability:{item.capability_id}",
         title=(
             f"{item.description} "
@@ -50,15 +52,29 @@ COMMERCE_DFCM_CAPABILITIES: tuple[GymCapability, ...] = tuple(
         ),
         binding=item.capability_id,
     )
-    for item in CAPABILITIES
-)
 
-_CAPABILITY_BY_BINDING = {item.binding: item for item in COMMERCE_DFCM_CAPABILITIES}
+
+COMMERCE_DFCM_SEMANTIC_CAPABILITIES: tuple[GymCapability, ...] = tuple(
+    _gym_capability(item) for item in CAPABILITIES
+)
 _EXTERNAL_DO_BINDINGS = frozenset(
     item.capability_id
     for item in CAPABILITIES
     if item.operation_kind is OperationKind.DO and item.external_authority_required
 )
+COMMERCE_DFCM_CAPABILITIES: tuple[GymCapability, ...] = tuple(
+    capability
+    for capability in COMMERCE_DFCM_SEMANTIC_CAPABILITIES
+    if capability.binding not in _EXTERNAL_DO_BINDINGS
+)
+COMMERCE_DFCM_EXTERNAL_FRONTIER: tuple[GymCapability, ...] = tuple(
+    capability
+    for capability in COMMERCE_DFCM_SEMANTIC_CAPABILITIES
+    if capability.binding in _EXTERNAL_DO_BINDINGS
+)
+_CAPABILITY_BY_BINDING = {
+    item.binding: item for item in COMMERCE_DFCM_SEMANTIC_CAPABILITIES
+}
 _PACKAGING_BINDINGS = frozenset(
     {
         "packaging.helm",
@@ -235,6 +251,14 @@ class CommerceDfcmEnvironment:
         self._ensure_open()
         return COMMERCE_DFCM_CAPABILITIES
 
+    def semantic_capabilities(self) -> tuple[GymCapability, ...]:
+        self._ensure_open()
+        return COMMERCE_DFCM_SEMANTIC_CAPABILITIES
+
+    def external_frontier(self) -> tuple[GymCapability, ...]:
+        self._ensure_open()
+        return COMMERCE_DFCM_EXTERNAL_FRONTIER
+
     def _state(self) -> dict[str, Any]:
         return {
             "agreement_ids": sorted(self.world.agreements),
@@ -249,6 +273,9 @@ class CommerceDfcmEnvironment:
             "receipt_count": len(self.world.receipts),
             "external_evidence": sorted(item.value for item in self.world.external_evidence),
             "packaging_admitted": self.world.packaging_admission is not None,
+            "semantic_capability_count": len(COMMERCE_DFCM_SEMANTIC_CAPABILITIES),
+            "executable_capability_count": len(COMMERCE_DFCM_CAPABILITIES),
+            "external_frontier_count": len(COMMERCE_DFCM_EXTERNAL_FRONTIER),
         }
 
     async def observe(self) -> dict[str, Any]:
