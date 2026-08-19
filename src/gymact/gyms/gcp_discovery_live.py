@@ -3,7 +3,8 @@
 Google's Discovery directory is itself an observed contract. Individual entries
 can become stale before the directory is updated. Stable 404/410 responses are
 preserved as unavailable contract observations; transient transport/5xx/429
-failures receive bounded retry and remain execution failures if exhausted.
+failures receive bounded retry and are preserved as typed unavailable evidence
+when exhausted so one failed edge cannot erase the rest of the census.
 """
 
 from __future__ import annotations
@@ -113,13 +114,19 @@ class ResilientDiscoveryCensus:
         return blake3(_canonical_json(payload).encode()).hexdigest()
 
 
+def _transport_failure_digest(discovery_url: str, exc: httpx.HTTPError) -> str:
+    """Digest stable transport-failure identity without volatile exception text."""
+    payload = f"{type(exc).__name__}:{discovery_url}".encode()
+    return blake3(payload).hexdigest()
+
+
 def load_resilient_discovery_census(
     *,
     client: httpx.Client | None = None,
     include_nonpreferred: bool = True,
     timeout: float = 60.0,
 ) -> ResilientDiscoveryCensus:
-    """Probe every advertised Discovery entry and preserve stable unavailability."""
+    """Probe every advertised Discovery entry and preserve all unavailability."""
     own_client = client is None
     http = client or httpx.Client(timeout=timeout, follow_redirects=True)
     try:
@@ -140,7 +147,21 @@ def load_resilient_discovery_census(
 
         for item in selected:
             discovery_url = str(item["discoveryRestUrl"])
-            doc_response = _get_with_retry(http, discovery_url)
+            try:
+                doc_response = _get_with_retry(http, discovery_url)
+            except (httpx.ConnectError, httpx.ReadError, httpx.RemoteProtocolError) as exc:
+                unavailable.append(
+                    DiscoveryUnavailable(
+                        name=str(item["name"]),
+                        version=str(item["version"]),
+                        discovery_url=discovery_url,
+                        status_code=0,
+                        response_digest_blake3=_transport_failure_digest(discovery_url, exc),
+                        reason="ADVERTISED_DISCOVERY_TRANSPORT_EXHAUSTED",
+                    )
+                )
+                continue
+
             if doc_response.status_code in {404, 410}:
                 unavailable.append(
                     DiscoveryUnavailable(
@@ -153,6 +174,20 @@ def load_resilient_discovery_census(
                     )
                 )
                 continue
+
+            if doc_response.status_code in _TRANSIENT_STATUS:
+                unavailable.append(
+                    DiscoveryUnavailable(
+                        name=str(item["name"]),
+                        version=str(item["version"]),
+                        discovery_url=discovery_url,
+                        status_code=doc_response.status_code,
+                        response_digest_blake3=blake3(doc_response.content).hexdigest(),
+                        reason="ADVERTISED_DISCOVERY_TRANSIENT_EXHAUSTED",
+                    )
+                )
+                continue
+
             doc_response.raise_for_status()
 
             api = DiscoveryApi(
