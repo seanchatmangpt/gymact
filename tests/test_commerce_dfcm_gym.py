@@ -5,12 +5,20 @@ import pytest
 from gymact.gyms.commerce_dfcm import CAPABILITIES
 from gymact.gyms.commerce_dfcm_gym import (
     COMMERCE_DFCM_CAPABILITIES,
+    COMMERCE_DFCM_EXTERNAL_FRONTIER,
+    COMMERCE_DFCM_SEMANTIC_CAPABILITIES,
     CommerceDfcmProvider,
 )
 
 
 def cap(binding: str):
     return next(item for item in COMMERCE_DFCM_CAPABILITIES if item.binding == binding)
+
+
+def semantic_cap(binding: str):
+    return next(
+        item for item in COMMERCE_DFCM_SEMANTIC_CAPABILITIES if item.binding == binding
+    )
 
 
 def grant(subject: str, operation: str) -> dict[str, str]:
@@ -55,14 +63,21 @@ def event(kind: str, revision: int, event_id: str) -> dict[str, object]:
 
 
 @pytest.mark.asyncio
-async def test_provider_exposes_exact_32_capability_class_closure() -> None:
+async def test_provider_separates_32_semantic_capabilities_from_25_executable() -> None:
     provider = CommerceDfcmProvider()
     env = await provider.materialize(scenario="provider-neutral", config={})
-    bindings = tuple(item.binding for item in env.capabilities())
+    semantic = tuple(item.binding for item in env.semantic_capabilities())
+    executable = tuple(item.binding for item in env.capabilities())
+    external = tuple(item.binding for item in env.external_frontier())
 
-    assert len(bindings) == 32
-    assert set(bindings) == {item.capability_id for item in CAPABILITIES}
-    assert len(bindings) == len(set(bindings))
+    assert len(semantic) == 32
+    assert set(semantic) == {item.capability_id for item in CAPABILITIES}
+    assert len(semantic) == len(set(semantic))
+    assert len(executable) == 25
+    assert len(external) == 7
+    assert set(executable).isdisjoint(external)
+    assert set(executable) | set(external) == set(semantic)
+    assert tuple(COMMERCE_DFCM_EXTERNAL_FRONTIER) == env.external_frontier()
 
 
 @pytest.mark.asyncio
@@ -140,14 +155,20 @@ async def test_provider_executes_internal_commerce_pipeline_and_receipts_every_s
     assert state["entitlement_ids"] == ["entitlement-1"]
     assert state["meter_intent_ids"] == ["meter-1"]
     assert state["packaging_admitted"] is True
+    assert state["semantic_capability_count"] == 32
+    assert state["executable_capability_count"] == 25
+    assert state["external_frontier_count"] == 7
     assert state["receipt_count"] >= 7
 
 
 @pytest.mark.asyncio
-async def test_external_do_is_refused_and_fixture_cannot_become_provider_acceptance() -> None:
+async def test_external_do_is_semantic_frontier_and_fixture_cannot_become_acceptance() -> None:
     env = await CommerceDfcmProvider().materialize(scenario=None, config={})
 
-    external = await env.actuate(cap("meter.submit"), {"intent_id": "anything"})
+    assert "meter.submit" not in {item.binding for item in env.capabilities()}
+    external = await env.actuate(
+        semantic_cap("meter.submit"), {"intent_id": "anything"}
+    )
     assert external["standing"] == "REFUSED"
     assert external["refusal"]["code"] == "REFUSED:EXTERNAL_DO_WITHOUT_AUTHORITY"
 
