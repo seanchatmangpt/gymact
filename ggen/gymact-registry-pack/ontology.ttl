@@ -40,6 +40,10 @@ rg:p-cloud-topology a rg:RegisteredProvider ;
     rg:registryKey "cloud-topology" ; rg:providerModule "gymact.gyms.cloud_topology_gym" ; rg:providerClassName "CloudTopologyProvider" ;
     rg:capabilitiesModule "gymact.gyms.cloud_topology_gym" ; rg:capabilitiesImportClause "CLOUD_TOPOLOGY_CAPABILITIES" ; rg:capabilitiesExpr "CLOUD_TOPOLOGY_CAPABILITIES" .
 
+rg:p-commerce-dfcm a rg:RegisteredProvider ;
+    rg:registryKey "commerce-dfcm" ; rg:providerModule "gymact.gyms.commerce_dfcm_gym" ; rg:providerClassName "CommerceDfcmProvider" ;
+    rg:capabilitiesModule "gymact.gyms.commerce_dfcm_gym" ; rg:capabilitiesImportClause "COMMERCE_DFCM_CAPABILITIES" ; rg:capabilitiesExpr "COMMERCE_DFCM_CAPABILITIES" .
+
 rg:p-discovered a rg:RegisteredProvider ;
     rg:registryKey "discovered" ; rg:providerModule "gymact.gyms.discovered" ; rg:providerClassName "GenericDiscoveredProvider" ;
     rg:capabilitiesModule "gymact.gyms.discovered" ; rg:capabilitiesImportClause "DISCOVERED_RUN_CAPABILITY" ; rg:capabilitiesExpr "(DISCOVERED_RUN_CAPABILITY,)" .
