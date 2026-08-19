@@ -34,8 +34,9 @@ from gymact.models import ActuationIntent, Operation, Standing  # noqa: E402
 from gymact.ocel import receipts_to_ocel, validate_ocel_log  # noqa: E402
 from gymact.process import ConformanceChecker  # noqa: E402
 
-LIST_TOOLS = "urn:gymact:mcp-client-session:capability:list_tools"
-CALL_TOOL = "urn:gymact:mcp-client-session:capability:call_tool"
+# Capability identity is ontology-owned by ggen/protocol-gym-pack/mcp-consumers.ttl.
+LIST_TOOLS = "urn:gymact:mcp:capability:list_tools"
+CALL_TOOL = "urn:gymact:mcp:capability:call_tool"
 # mcp_client_session.py's requires_authority now defaults to True (a real DO
 # capability invoking a real subject MCP tool must not run unauthorized) --
 # every act()-driving test below explicitly admits AUTHORITY.
