@@ -1,0 +1,76 @@
+name: Protocol Gym ABox Repair
+
+on:
+  push:
+    branches: [agent/protocol-gym-aabox-repair-20260819]
+
+permissions:
+  contents: write
+
+env:
+  UV_LINK_MODE: copy
+  GYMACT_UV_VERSION: "0.11.32"
+
+jobs:
+  manufacture:
+    if: ${{ !contains(github.event.head_commit.message, '[protocol-aabox-generated]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact repair subject
+        uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Assert exact subject identity
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up admitted uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.GYMACT_UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+
+      - name: Resolve runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uv --version | awk '{print $2}')" = "$GYMACT_UV_VERSION"
+          uv sync --group dev
+
+      - name: Manufacture ABox and Rust projection
+        run: uv run python scripts/repair_protocol_gym_aabox.py
+
+      - name: Court protocol semantic closure
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run pytest -q \
+            tests/test_mcp_protocol_ontology.py \
+            tests/test_ggen_protocol_gym_pack.py \
+            tests/test_protocol_gym_ontology_parity.py \
+            tests/test_mcp_consumer_ontology_closure.py
+
+      - name: Court Rust projection
+        shell: bash
+        run: cargo test --manifest-path rust/protocol_gym/Cargo.toml
+
+      - name: Commit manufactured projection
+        shell: bash
+        run: |
+          set -euo pipefail
+          git status --short
+          test -n "$(git status --porcelain)" || { echo 'REFUSED:PROTOCOL_REPAIR_NO_DIFF' >&2; exit 2; }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ggen/protocol-gym-pack/ontology.ttl rust/protocol_gym/src/lib.rs rust/protocol_gym/src/mcp_surface.rs
+          git commit -m 'fix(protocol-gym): manufacture ABox semantic projection [protocol-aabox-generated]'
+          git push origin HEAD:agent/protocol-gym-aabox-repair-20260819
