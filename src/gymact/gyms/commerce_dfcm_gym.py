@@ -21,6 +21,7 @@ from .commerce_dfcm import (
     CAPABILITIES,
     BillingAuthority,
     BrokerGrant,
+    CommercialAgreement,
     EntitlementEvent,
     EventKind,
     EvidenceOrigin,
@@ -31,7 +32,6 @@ from .commerce_dfcm import (
     Refusal,
     RefusalCode,
     UsageObservation,
-    CommercialAgreement,
     _receipt,
 )
 from .commerce_dfcm_enterprise import EnterpriseCommerceWorld
