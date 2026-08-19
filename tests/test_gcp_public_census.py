@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import httpx
 
-from gymact.gyms.gcp_exact import GcpContractCensus
+from gymact.gyms.gcp_exact import (
+    DiscoveryApi,
+    DiscoveryMethod,
+    DiscoverySchema,
+    GcpContractCensus,
+)
 from gymact.gyms.gcp_public_census import (
     GcpPublicContractCensus,
     discovery_source_observation,
@@ -34,7 +39,7 @@ def source(family: ContractSourceFamily) -> ContractSourceObservation:
     )
 
 
-def test_discovery_census_becomes_receipted_source_observation() -> None:
+def test_empty_discovery_census_is_blocked() -> None:
     census = GcpContractCensus(
         apis=(),
         methods=(),
@@ -43,12 +48,55 @@ def test_discovery_census_becomes_receipted_source_observation() -> None:
     )
     observation = discovery_source_observation(census)
     assert observation.family is ContractSourceFamily.DISCOVERY
+    assert observation.disposition == "BLOCKED"
+    assert observation.receipt is None
+    assert observation.artifacts == ()
+    assert observation.reason == "EMPTY_DISCOVERY_CENSUS"
+
+
+def test_nonempty_discovery_census_becomes_receipted_source_observation() -> None:
+    census = GcpContractCensus(
+        apis=(
+            DiscoveryApi(
+                name="example",
+                version="v1",
+                title="Example",
+                preferred=True,
+                discovery_url="https://example.test/discovery",
+            ),
+        ),
+        methods=(
+            DiscoveryMethod(
+                api="example",
+                version="v1",
+                resource_path="resources",
+                name="get",
+                http_method="GET",
+                path="v1/{name}",
+                request_schema=None,
+                response_schema="Resource",
+                scopes=(),
+            ),
+        ),
+        schemas=(
+            DiscoverySchema(
+                api="example",
+                version="v1",
+                name="Resource",
+                canonical_json='{"type":"object"}',
+                digest_sha256="c" * 64,
+            ),
+        ),
+        directory_digest_sha256="b" * 64,
+    )
+    observation = discovery_source_observation(census)
     assert observation.disposition == "ALIVE"
     assert observation.receipt is not None
     assert len(observation.artifacts) == 1
     metadata = dict(observation.artifacts[0].metadata)
-    assert metadata["api_versions"] == "0"
-    assert metadata["methods"] == "0"
+    assert metadata["api_versions"] == "1"
+    assert metadata["methods"] == "1"
+    assert metadata["schemas"] == "1"
 
 
 def test_cloud_docs_sitemap_index_closes_over_every_child() -> None:
