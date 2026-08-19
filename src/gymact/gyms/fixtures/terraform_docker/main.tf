@@ -5,13 +5,13 @@
  * Fixed, small, auditable blast radius:
  *   - exactly one docker_image resource (pinned nginx:alpine)
  *   - exactly one docker_container resource built from that image
- *   - the docker provider host is colima's real LOCAL Docker socket, never
- *     a cloud endpoint or cloud credentials
+ *   - the docker provider host is a real LOCAL Docker socket, never a cloud
+ *     endpoint or cloud credentials
  *
- * The provider host is parameterized via `var.docker_host` (default: the
- * standard colima socket path) so it can be overridden per-machine with
- * `-var docker_host=...` or `TF_VAR_docker_host=...` without editing this
- * checked-in file.
+ * The provider host is parameterized via `var.docker_host` and defaults to
+ * Docker's standard local Unix socket. Colima and other local runtimes can
+ * override it with `-var docker_host=...` or `TF_VAR_docker_host=...` without
+ * editing this checked-in file.
  */
 
 terraform {
@@ -24,9 +24,9 @@ terraform {
 }
 
 variable "docker_host" {
-  description = "Real local Docker daemon socket URI (colima by default). Never a cloud endpoint."
+  description = "Real local Docker daemon socket URI. Never a cloud endpoint."
   type        = string
-  default     = "unix:///Users/sac/.colima/default/docker.sock"
+  default     = "unix:///var/run/docker.sock"
 }
 
 variable "container_name" {
