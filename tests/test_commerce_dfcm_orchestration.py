@@ -43,7 +43,7 @@ def test_commerce_dfcm_preserves_full_reversible_design_and_agent_frontiers() ->
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("concurrent", [False, True])
-async def test_post_agi_dfcm_executes_every_internal_capability_and_stops_at_marketplace(
+async def test_post_agi_dfcm_executes_internal_closure_and_stops_at_marketplace(
     concurrent: bool,
 ) -> None:
     result = await execute_commerce_dfcm(selected_plan(concurrent=concurrent))
@@ -52,9 +52,13 @@ async def test_post_agi_dfcm_executes_every_internal_capability_and_stops_at_mar
     assert result.internal_standing is Standing.ALIVE
     assert result.external_standing is Standing.BLOCKED
     assert result.verified
+    assert result.possibility_graph_digest
     assert result.design_frontier_cardinality == 2592
     assert result.agent_frontier_cardinality == 216
     assert result.semantic_capability_count == 32
+    assert result.reversible_capability_count == 20
+    assert result.do_frontier_count == 12
+    assert result.bounded_internal_do_count == 5
     assert result.executable_capability_count == 25
     assert result.external_frontier_count == 7
     assert len(set(result.executed_alive_bindings)) == 22
