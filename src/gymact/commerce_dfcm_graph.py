@@ -27,8 +27,6 @@ from gymact.gyms.commerce_dfcm import CAPABILITIES, OperationKind
 from gymact.models import FrozenModel, Standing
 
 _ROOT_ID = "commerce:subject"
-_INTERNAL_POLICY = "urn:gymact:commerce-dfcm:policy:bounded-internal"
-_EXTERNAL_POLICY = "urn:gymact:commerce-dfcm:policy:external-authority"
 
 
 class CommerceDfcmFrontier(FrozenModel):
@@ -89,9 +87,6 @@ def commerce_possibility_graph() -> PossibilityGraph:
             )
         )
         do_edge = phase is DecisionPhase.DO
-        policy_refs: tuple[str, ...] = ()
-        if do_edge:
-            policy_refs = (_EXTERNAL_POLICY if external else _INTERNAL_POLICY,)
         morphisms.append(
             PossibilityMorphism(
                 morphism_id=f"commerce:morphism:{binding}",
@@ -105,7 +100,6 @@ def commerce_possibility_graph() -> PossibilityGraph:
                     else ReversalClass.IRREVERSIBLE
                 ),
                 requirements=MorphismRequirements(
-                    policy_refs=policy_refs,
                     execution_grant_required=do_edge,
                 ),
                 standing=Standing.CANDIDATE,
