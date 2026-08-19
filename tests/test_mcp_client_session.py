@@ -29,13 +29,17 @@ require_standing(
 )
 
 from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent  # noqa: E402
-from gymact.gyms.mcp_client_session import McpClientSessionProvider  # noqa: E402
+from gymact.gyms.mcp_client_session import (  # noqa: E402
+    MCP_CALL_TOOL_CAPABILITY,
+    MCP_LIST_TOOLS_CAPABILITY,
+    McpClientSessionProvider,
+)
 from gymact.models import ActuationIntent, Operation, Standing  # noqa: E402
 from gymact.ocel import receipts_to_ocel, validate_ocel_log  # noqa: E402
 from gymact.process import ConformanceChecker  # noqa: E402
 
-LIST_TOOLS = "urn:gymact:mcp-client-session:capability:list_tools"
-CALL_TOOL = "urn:gymact:mcp-client-session:capability:call_tool"
+LIST_TOOLS = MCP_LIST_TOOLS_CAPABILITY.iri
+CALL_TOOL = MCP_CALL_TOOL_CAPABILITY.iri
 # mcp_client_session.py's requires_authority now defaults to True (a real DO
 # capability invoking a real subject MCP tool must not run unauthorized) --
 # every act()-driving test below explicitly admits AUTHORITY.
@@ -62,22 +66,21 @@ async def _run_real_mcp_session_episode() -> list:
     receipts.append(materialization.receipt)
     episode_id = materialization.episode.episode_id
 
-    # list_tools is a READ capability -- exercised through the real
-    # observe() path, which does not itself mint a receipt (matching
-    # gymact.models.Observation carrying no `receipt` field).
-    await gym.observe(episode_id)
+    try:
+        # list_tools is a READ capability -- exercised through the real
+        # observe() path, which does not itself mint a receipt (matching
+        # gymact.models.Observation carrying no `receipt` field).
+        await gym.observe(episode_id)
 
-    receipts.append(
-        (
-            await gym.act(
-                ActuationIntent(
-                    episode_id=episode_id, capability=CALL_TOOL, authority_ref=AUTHORITY
-                )
+        result = await gym.act(
+            ActuationIntent(
+                episode_id=episode_id, capability=CALL_TOOL, authority_ref=AUTHORITY
             )
-        ).receipt
-    )
-
-    receipts.append(await gym.teardown(episode_id, authority_ref=AUTHORITY))
+        )
+        assert result.accepted is True
+        receipts.append(result.receipt)
+    finally:
+        receipts.append(await gym.teardown(episode_id, authority_ref=AUTHORITY))
     return receipts
 
 
@@ -90,16 +93,16 @@ async def test_real_materialize_opens_a_real_fastmcp_client_session() -> None:
     )
     assert materialization.accepted is True
     episode_id = materialization.episode.episode_id
-
-    # The subject server (gymact's own create_mcp()) really exposes its own
-    # named tools -- this is not a canned tool catalog.
-    tool_names = materialization.observation.state["tool_names"]
-    assert "discover" in tool_names
-    assert "create_episode" in tool_names
-    assert "observe" in tool_names
-    assert "teardown" in tool_names
-
-    await gym.teardown(episode_id)
+    try:
+        # The subject server (gymact's own create_mcp()) really exposes its own
+        # named tools -- this is not a canned tool catalog.
+        tool_names = materialization.observation.state["tool_names"]
+        assert "discover" in tool_names
+        assert "create_episode" in tool_names
+        assert "observe" in tool_names
+        assert "teardown" in tool_names
+    finally:
+        await gym.teardown(episode_id)
 
 
 async def test_call_tool_capability_really_invokes_the_subject_servers_discover_tool() -> None:
@@ -113,18 +116,19 @@ async def test_call_tool_capability_really_invokes_the_subject_servers_discover_
     )
     episode_id = materialization.episode.episode_id
 
-    result = await gym.act(
-        ActuationIntent(episode_id=episode_id, capability=CALL_TOOL, authority_ref=AUTHORITY)
-    )
-    assert result.accepted is True
-    # The subject server's real `discover()` tool returns its registered
-    # provider names as a JSON text block -- assert the real content came
-    # back, not that a client method was merely called.
-    result_text = result.effect["result_text"]
-    assert result_text
-    assert any("memory" in str(block) for block in result_text)
-
-    await gym.teardown(episode_id, authority_ref=AUTHORITY)
+    try:
+        result = await gym.act(
+            ActuationIntent(episode_id=episode_id, capability=CALL_TOOL, authority_ref=AUTHORITY)
+        )
+        assert result.accepted is True
+        # The subject server's real `discover()` tool returns its registered
+        # provider names as a JSON text block -- assert the real content came
+        # back, not that a client method was merely called.
+        result_text = result.effect["result_text"]
+        assert result_text
+        assert any("memory" in str(block) for block in result_text)
+    finally:
+        await gym.teardown(episode_id, authority_ref=AUTHORITY)
 
 
 async def test_list_tools_capability_observes_a_stable_real_tool_catalog() -> None:
@@ -136,16 +140,17 @@ async def test_list_tools_capability_observes_a_stable_real_tool_catalog() -> No
     )
     episode_id = materialization.episode.episode_id
 
-    # list_tools is READ; per gymact.kernel, a READ capability is refused by
-    # act() ("READ_CAPABILITY_IS_NOT_ACTUATION") -- it is exercised through
-    # the real observe() path instead, exactly like every other READ
-    # capability in this codebase.
-    first = await gym.observe(episode_id)
-    second = await gym.observe(episode_id)
-    assert first.state["tool_names"] == second.state["tool_names"]
-    assert "discover" in first.state["tool_names"]
-
-    await gym.teardown(episode_id)
+    try:
+        # list_tools is READ; per gymact.kernel, a READ capability is refused by
+        # act() ("READ_CAPABILITY_IS_NOT_ACTUATION") -- it is exercised through
+        # the real observe() path instead, exactly like every other READ
+        # capability in this codebase.
+        first = await gym.observe(episode_id)
+        second = await gym.observe(episode_id)
+        assert first.state["tool_names"] == second.state["tool_names"]
+        assert "discover" in first.state["tool_names"]
+    finally:
+        await gym.teardown(episode_id)
 
 
 async def test_mcp_session_episode_replays_conformant_and_produces_a_valid_ocel_log() -> None:
