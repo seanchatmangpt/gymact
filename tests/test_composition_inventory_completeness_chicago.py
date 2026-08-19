@@ -333,6 +333,30 @@ _INTENTIONALLY_UNCATALOGED: dict[str, str] = {
         "real, buildable provider (src/gymact/gyms/terraform_plan.py) -- not yet "
         "composition-evidenced against a real contract."
     ),
+    "CommerceDfcmProvider": (
+        "first-class provider-neutral commerce world with 25 bounded executable "
+        "capabilities while seven marketplace/legal DO edges are structurally absent "
+        "from its provider surface; no static ComponentCapabilities claim is admitted "
+        "until a real composition contract independently evidences which mechanisms "
+        "this domain provider supplies."
+    ),
+    "DependencyWorldProvider": (
+        "real dependency-world provider introduced for bounded dependency topology "
+        "execution; it has not yet been matched to a real composition-admission "
+        "contract, so Court A records the discovery without manufacturing an ALIVE "
+        "ComponentCapabilities claim."
+    ),
+    "SharedDependencyWorldProvider": (
+        "real shared dependency-world provider whose supplied capabilities depend on "
+        "the admitted shared-world construction; no independently evidenced static "
+        "ComponentCapabilities tuple exists yet."
+    ),
+    "PlatformConsoleProvider": (
+        "real platform-console provider whose consequential surface requires a "
+        "reachable configured test tenant; CI explicitly skips live execution when "
+        "PLATFORM_CONSOLE_BASE_URL/API_KEY are absent, so source discovery alone is "
+        "insufficient to manufacture composition ALIVE standing."
+    ),
     # -- capability scopes / postcondition verifiers.
     "AllowAllCapabilityScope": (
         "the permissive default (src/gymact/agent.py:58-68) -- every principal "
@@ -365,6 +389,7 @@ _INTENTIONALLY_UNCATALOGED: dict[str, str] = {
     "multicloud-gym-pack": "SPARQL admission gate over multicloud's required/single-valued/no-custom-tbox graph, not a runtime capability supplier.",
     "public-ontology-admission-pack": "SPARQL admission gate over public-ontology admission-completeness graph, not a runtime capability supplier.",
     "togaf-gym-pack": "SPARQL admission gate over togaf-gym's no-custom-tbox/ADM-phase/projection graph, not a runtime capability supplier.",
+    "world-cyber-gym-pack": "SPARQL admission gates over the bounded synthetic cyber world's own graph, not a runtime capability supplier.",
     "sregym-e2e-pack": "SPARQL admission gate over sregym's own e2e contract graph, not a runtime capability supplier.",
     "consumer-bridge-pack-template": (
         "template pack (not a real consumer's admitted graph itself) with its own "
