@@ -1,10 +1,9 @@
 """Live, credential-free GCP public contract census.
 
-This is deliberately not the whole-cloud crown. It executes the three source
-families that Google publishes for unauthenticated bulk enumeration today:
-Discovery REST metadata, canonical googleapis interface/config blobs, and the
-Google Cloud documentation sitemap corpus. The remaining required families
-enter through credentialed or empirical collectors and therefore remain open.
+The public census closes every GCP source family that can be grounded from
+Google's published Discovery directory, canonical googleapis tree, and Cloud
+documentation corpus. Empirical execution remains a separate source family and
+cannot be manufactured from static contracts.
 """
 
 from __future__ import annotations
@@ -19,7 +18,12 @@ from xml.etree import ElementTree
 from blake3 import blake3
 import httpx
 
-from gymact.gyms.gcp_exact import GcpContractCensus, load_discovery_census
+from gymact.gyms.gcp_discovery_live import (
+    ResilientDiscoveryCensus,
+    load_resilient_discovery_census,
+)
+from gymact.gyms.gcp_exact import GcpContractCensus
+from gymact.gyms.gcp_public_families import derive_googleapis_family_observations
 from gymact.gyms.gcp_sources import (
     ContractArtifact,
     ContractSourceFamily,
@@ -43,36 +47,71 @@ def _canonical_json(value: Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
-def discovery_source_observation(census: GcpContractCensus) -> ContractSourceObservation:
-    if not census.apis or not census.methods or not census.schemas:
+def discovery_source_observation(
+    observed: GcpContractCensus | ResilientDiscoveryCensus,
+) -> ContractSourceObservation:
+    if isinstance(observed, ResilientDiscoveryCensus):
+        census = observed.census
+        unavailable = observed.unavailable
+        advertised = observed.advertised_entries
+        complete_probe = observed.complete_probe
+        receipt_digest = observed.receipt_digest_blake3
+    else:
+        census = observed
+        unavailable = ()
+        advertised = len(census.apis)
+        complete_probe = bool(census.apis)
+        receipt_digest = census.contract_digest_blake3
+
+    if not census.apis or not census.methods or not census.schemas or not complete_probe:
         return ContractSourceObservation(
             family=ContractSourceFamily.DISCOVERY,
             disposition="BLOCKED",
             artifacts=(),
             receipt=None,
-            reason="EMPTY_DISCOVERY_CENSUS",
+            reason="EMPTY_OR_INCOMPLETE_DISCOVERY_CENSUS",
             source_revision=census.directory_digest_sha256,
         )
 
-    artifact = ContractArtifact(
-        family=ContractSourceFamily.DISCOVERY,
-        identity=f"google-discovery:{census.contract_digest_blake3}",
-        locator="https://discovery.googleapis.com/discovery/v1/apis",
-        digest=census.contract_digest_blake3,
-        digest_algorithm="blake3-256",
-        media_type="application/json",
-        metadata=(
-            ("api_versions", str(len(census.apis))),
-            ("methods", str(len(census.methods))),
-            ("schemas", str(len(census.schemas))),
-            ("directory_sha256", census.directory_digest_sha256),
-        ),
-    )
+    artifacts: list[ContractArtifact] = [
+        ContractArtifact(
+            family=ContractSourceFamily.DISCOVERY,
+            identity=f"google-discovery:{census.contract_digest_blake3}",
+            locator="https://discovery.googleapis.com/discovery/v1/apis",
+            digest=census.contract_digest_blake3,
+            digest_algorithm="blake3-256",
+            media_type="application/json",
+            metadata=(
+                ("advertised_api_versions", str(advertised)),
+                ("available_api_versions", str(len(census.apis))),
+                ("unavailable_api_versions", str(len(unavailable))),
+                ("methods", str(len(census.methods))),
+                ("schemas", str(len(census.schemas))),
+                ("directory_sha256", census.directory_digest_sha256),
+            ),
+        )
+    ]
+    for item in unavailable:
+        artifacts.append(
+            ContractArtifact(
+                family=ContractSourceFamily.DISCOVERY,
+                identity=f"google-discovery-unavailable:{item.identity}",
+                locator=item.discovery_url,
+                digest=item.response_digest_blake3,
+                digest_algorithm="blake3-256",
+                media_type="application/problem+json",
+                metadata=(
+                    ("status_code", str(item.status_code)),
+                    ("reason", item.reason),
+                ),
+            )
+        )
+
     return ContractSourceObservation(
         family=ContractSourceFamily.DISCOVERY,
         disposition="ALIVE",
-        artifacts=(artifact,),
-        receipt=f"gcp-discovery:blake3:{census.contract_digest_blake3}",
+        artifacts=tuple(artifacts),
+        receipt=f"gcp-discovery:blake3:{receipt_digest}",
         source_revision=census.directory_digest_sha256,
     )
 
@@ -173,20 +212,23 @@ def load_cloud_docs_corpus(
 class GcpPublicContractCensus:
     discovery: ContractSourceObservation
     googleapis: ContractSourceObservation
+    derived_sources: tuple[ContractSourceObservation, ...]
     human_docs: ContractSourceObservation
     admission: GcpSourceAdmissionReport
 
     @property
+    def public_sources(self) -> tuple[ContractSourceObservation, ...]:
+        return (self.discovery, self.googleapis, *self.derived_sources, self.human_docs)
+
+    @property
     def public_sources_alive(self) -> bool:
-        return all(
-            source.admitted
-            for source in (self.discovery, self.googleapis, self.human_docs)
-        )
+        return len(self.public_sources) == 9 and all(source.admitted for source in self.public_sources)
 
     def summary(self) -> dict[str, Any]:
         return {
             "standing": "PARTIAL_ALIVE" if self.public_sources_alive else "BLOCKED",
             "public_sources_alive": self.public_sources_alive,
+            "public_source_count": len(self.public_sources),
             "whole_source_graph_complete": self.admission.complete,
             "source_graph_digest_blake3": self.admission.graph_digest_blake3,
             "sources": {
@@ -197,21 +239,24 @@ class GcpPublicContractCensus:
                     "source_revision": source.source_revision,
                     "reason": source.reason,
                 }
-                for source in (self.discovery, self.googleapis, self.human_docs)
+                for source in self.public_sources
             },
             "missing_required_sources": list(self.admission.missing_sources),
         }
 
 
 def load_public_contract_census(*, timeout: float = 60.0) -> GcpPublicContractCensus:
-    discovery_census = load_discovery_census(timeout=timeout)
-    discovery = discovery_source_observation(discovery_census)
+    discovery_result = load_resilient_discovery_census(timeout=timeout)
+    discovery = discovery_source_observation(discovery_result)
     googleapis = load_googleapis_tree(timeout=timeout)
+    derived_sources = derive_googleapis_family_observations(googleapis)
     human_docs = load_cloud_docs_corpus(timeout=timeout)
-    admission = evaluate_source_admission((discovery, googleapis, human_docs))
+    observations = (discovery, googleapis, *derived_sources, human_docs)
+    admission = evaluate_source_admission(observations)
     return GcpPublicContractCensus(
         discovery=discovery,
         googleapis=googleapis,
+        derived_sources=derived_sources,
         human_docs=human_docs,
         admission=admission,
     )
