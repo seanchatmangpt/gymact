@@ -1,0 +1,78 @@
+name: GCP Public Contract Census
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gcp-public-contract-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_LINK_MODE: copy
+  GYMACT_UV_VERSION: "0.11.32"
+
+jobs:
+  census:
+    name: Live Discovery + googleapis + Cloud docs census
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: ""
+      GOOGLE_CLOUD_PROJECT: ""
+      CLOUDSDK_CORE_PROJECT: ""
+    steps:
+      - name: Checkout exact subject
+        uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Assert exact subject identity
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          printf 'subject_sha=%s\n' "$EXPECTED_SHA"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up admitted uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.GYMACT_UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+
+      - name: Resolve census runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uv --version | awk '{print $2}')" = "$GYMACT_UV_VERSION"
+          uv sync --group dev
+
+      - name: Execute real public-source census
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run python scripts/gcp_public_contract_census.py \
+            --output artifacts/gcp/public-contract-census.json \
+            --timeout 60
+
+      - name: Preserve public contract receipt
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: gcp-public-contract-census-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/gcp/public-contract-census.json
+          if-no-files-found: error
+          retention-days: 14
