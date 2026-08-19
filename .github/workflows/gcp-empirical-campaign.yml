@@ -8,6 +8,10 @@ on:
         required: true
         default: "campaigns/gcp/read-only.json"
         type: string
+      project_id:
+        description: "Exact GCP project id used to render the campaign subject"
+        required: true
+        type: string
       allow_do:
         description: "Admit consequential campaign cases"
         required: true
@@ -32,6 +36,7 @@ jobs:
     timeout-minutes: 60
     env:
       GYMACT_GCP_ACCESS_TOKEN: ${{ secrets.GCP_ACCESS_TOKEN }}
+      GOOGLE_CLOUD_PROJECT: ${{ inputs.project_id }}
     steps:
       - name: Checkout exact subject
         uses: actions/checkout@v6.0.2
@@ -42,6 +47,12 @@ jobs:
       - name: Assert exact subject identity
         shell: bash
         run: test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+
+      - name: Refuse absent project subject
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GOOGLE_CLOUD_PROJECT" || { echo 'REFUSED:GCP_PROJECT_SUBJECT_REQUIRED' >&2; exit 2; }
 
       - name: Set up Python
         uses: actions/setup-python@v5
