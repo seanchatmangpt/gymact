@@ -2,9 +2,11 @@
 """Execute a declared GCP empirical validation corpus.
 
 Input is a JSON object with ``cases``. Each case supplies case_id, method_id,
-effect, http_method, url, and optional query/body/headers. Credentials are read
-only from ``GYMACT_GCP_ACCESS_TOKEN`` and are never serialized. Consequential
-cases require both ``--allow-do`` and ``--authority-ref``.
+effect, http_method, url, and optional query/body/headers. String values expand
+ordinary environment variables (for example ``$GOOGLE_CLOUD_PROJECT``) before
+request construction. Credentials are read only from
+``GYMACT_GCP_ACCESS_TOKEN`` and are never serialized. Consequential cases
+require both ``--allow-do`` and ``--authority-ref``.
 """
 
 from __future__ import annotations
@@ -19,8 +21,18 @@ from gymact.gyms.gcp_behavior import GcpBehaviorEffect
 from gymact.gyms.gcp_live_probe import GcpLiveProbeRequest, execute_live_probe
 
 
+def _render(value: Any) -> Any:
+    if isinstance(value, str):
+        return os.path.expandvars(value)
+    if isinstance(value, list):
+        return [_render(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _render(item) for key, item in value.items()}
+    return value
+
+
 def _load_cases(path: Path, *, authority_ref: str | None) -> tuple[GcpLiveProbeRequest, ...]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload = _render(json.loads(path.read_text(encoding="utf-8")))
     raw_cases = payload.get("cases")
     if not isinstance(raw_cases, list) or not raw_cases:
         raise ValueError("campaign.cases must be a non-empty array")
@@ -40,6 +52,8 @@ def _load_cases(path: Path, *, authority_ref: str | None) -> tuple[GcpLiveProbeR
             headers=dict(raw.get("headers", {})),
             authority_ref=authority_ref,
         )
+        if "$" in request.url:
+            raise ValueError(f"UNRESOLVED_GCP_CAMPAIGN_SUBJECT:{request.case_id}")
         if request.case_id in identities:
             raise ValueError(f"DUPLICATE_GCP_CAMPAIGN_CASE:{request.case_id}")
         identities.add(request.case_id)
