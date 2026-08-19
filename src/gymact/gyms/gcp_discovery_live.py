@@ -1,8 +1,9 @@
 """Resilient live Google Discovery census.
 
 Google's Discovery directory is itself an observed contract. Individual entries
-can become stale before the directory is updated. A stale advertised document
-must be preserved as evidence, not crash the census and not silently vanish.
+can become stale before the directory is updated. Stable 404/410 responses are
+preserved as unavailable contract observations; transient transport/5xx/429
+failures receive bounded retry and remain execution failures if exhausted.
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from hashlib import sha256
 import json
+import time
 from typing import Any
 
 from blake3 import blake3
@@ -30,10 +32,37 @@ __all__ = [
 ]
 
 _DISCOVERY_DIRECTORY = "https://discovery.googleapis.com/discovery/v1/apis"
+_TRANSIENT_STATUS = {408, 429, 500, 502, 503, 504}
 
 
 def _canonical_json(value: Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _get_with_retry(
+    http: httpx.Client,
+    url: str,
+    *,
+    attempts: int = 4,
+    base_delay: float = 0.25,
+) -> httpx.Response:
+    """Retry only failures that do not establish contract absence."""
+    last_error: httpx.HTTPError | None = None
+    for attempt in range(attempts):
+        try:
+            response = http.get(url)
+        except (httpx.ConnectError, httpx.ReadError, httpx.RemoteProtocolError) as exc:
+            last_error = exc
+            if attempt + 1 == attempts:
+                raise
+            time.sleep(base_delay * (2**attempt))
+            continue
+        if response.status_code not in _TRANSIENT_STATUS or attempt + 1 == attempts:
+            return response
+        time.sleep(base_delay * (2**attempt))
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError("DISCOVERY_RETRY_EXHAUSTED_WITHOUT_RESPONSE")
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,18 +119,11 @@ def load_resilient_discovery_census(
     include_nonpreferred: bool = True,
     timeout: float = 60.0,
 ) -> ResilientDiscoveryCensus:
-    """Probe every advertised Discovery entry and preserve stable unavailability.
-
-    HTTP 404/410 means the directory advertises a document that is no longer
-    available. Those entries are retained as explicit observations. Other HTTP
-    failures remain execution failures because they can represent transient or
-    authorization/network problems and therefore cannot be reclassified as
-    absent contracts.
-    """
+    """Probe every advertised Discovery entry and preserve stable unavailability."""
     own_client = client is None
     http = client or httpx.Client(timeout=timeout, follow_redirects=True)
     try:
-        response = http.get(_DISCOVERY_DIRECTORY)
+        response = _get_with_retry(http, _DISCOVERY_DIRECTORY)
         response.raise_for_status()
         directory = response.json()
         canonical_directory = _canonical_json(directory)
@@ -118,7 +140,7 @@ def load_resilient_discovery_census(
 
         for item in selected:
             discovery_url = str(item["discoveryRestUrl"])
-            doc_response = http.get(discovery_url)
+            doc_response = _get_with_retry(http, discovery_url)
             if doc_response.status_code in {404, 410}:
                 unavailable.append(
                     DiscoveryUnavailable(
