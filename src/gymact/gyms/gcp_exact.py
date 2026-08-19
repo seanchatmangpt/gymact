@@ -1,17 +1,8 @@
-"""GCP exactness as a falsifiable, evidence-bounded conformance contract.
+"""Evidence-bounded GCP contract census and differential conformance.
 
-This module deliberately does not claim to reproduce Google's private backend.
-It defines the externally observable surface GymAct can prove equivalent:
-Google-published API discovery contracts plus receipted differential observations
-against a real GCP project.
-
-The core law is:
-
-    simulator exactness == complete admitted contract coverage
-                          + observed behavioral equivalence
-                          + zero silent exclusions
-
-Anything not published or not empirically observed remains UNKNOWN.
+"Exact GCP" means equality over an admitted externally observable projection.
+Private Google implementation details are outside the claim. Unpublished or
+unobserved behavior remains UNKNOWN and can never be silently promoted.
 """
 
 from __future__ import annotations
@@ -22,8 +13,9 @@ from hashlib import sha256
 import json
 from typing import Any, Iterable, Mapping
 
+from blake3 import blake3
 import httpx
-from rdflib import DCTERMS, RDF, URIRef, Graph, Literal, Namespace
+from rdflib import DCTERMS, RDF, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import DCAT, SKOS
 
 __all__ = [
@@ -34,18 +26,22 @@ __all__ = [
     "GcpContractCensus",
     "GcpCoverageRecord",
     "GcpCoverageReport",
+    "GcpDifferentialEvidence",
+    "GcpObservation",
+    "ObservationProjection",
     "build_contract_rdf",
+    "compare_observations",
     "flatten_discovery_document",
     "load_discovery_census",
+    "normalize_http_response",
 ]
 
 _DISCOVERY_DIRECTORY = "https://discovery.googleapis.com/discovery/v1/apis"
 _GCP = Namespace("urn:gymact:gcp:")
+_DEFAULT_HEADERS = ("content-type", "etag", "location", "retry-after")
 
 
 class CoverageDisposition(StrEnum):
-    """Standing of one externally observable GCP contract unit."""
-
     UNKNOWN = "UNKNOWN"
     PARTIAL_ALIVE = "PARTIAL_ALIVE"
     ALIVE = "ALIVE"
@@ -113,6 +109,74 @@ class GcpContractCensus:
     def method_ids(self) -> frozenset[str]:
         return frozenset(method.identity for method in self.methods)
 
+    @property
+    def contract_digest_blake3(self) -> str:
+        payload = {
+            "directory_sha256": self.directory_digest_sha256,
+            "apis": [api.identity for api in self.apis],
+            "methods": [
+                {
+                    "id": method.identity,
+                    "verb": method.http_method,
+                    "path": method.path,
+                    "request": method.request_schema,
+                    "response": method.response_schema,
+                    "scopes": method.scopes,
+                }
+                for method in self.methods
+            ],
+            "schemas": [
+                {"id": schema.identity, "sha256": schema.digest_sha256}
+                for schema in self.schemas
+            ],
+        }
+        return blake3(_canonical_json(payload).encode()).hexdigest()
+
+
+@dataclass(frozen=True, slots=True)
+class ObservationProjection:
+    """Declared comparison boundary for a real/simulator observation pair."""
+
+    headers: tuple[str, ...] = _DEFAULT_HEADERS
+    ignored_json_fields: frozenset[str] = frozenset()
+
+
+@dataclass(frozen=True, slots=True)
+class GcpObservation:
+    status_code: int
+    headers: tuple[tuple[str, str], ...]
+    body_kind: str
+    canonical_body: str
+    digest_blake3: str
+
+
+@dataclass(frozen=True, slots=True)
+class GcpDifferentialEvidence:
+    method_id: str
+    real: GcpObservation
+    simulator: GcpObservation
+    real_receipt: str
+    simulator_receipt: str
+    projection_digest_blake3: str
+    evidence_digest_blake3: str
+    equivalent: bool
+    mismatches: tuple[str, ...]
+
+    def coverage_record(self) -> "GcpCoverageRecord":
+        disposition = (
+            CoverageDisposition.ALIVE
+            if self.equivalent
+            else CoverageDisposition.PARTIAL_ALIVE
+        )
+        return GcpCoverageRecord(
+            method_id=self.method_id,
+            disposition=disposition,
+            real_receipt=self.real_receipt,
+            simulator_receipt=self.simulator_receipt,
+            evidence_digest=self.evidence_digest_blake3,
+            reason=None if self.equivalent else ";".join(self.mismatches),
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class GcpCoverageRecord:
@@ -122,6 +186,10 @@ class GcpCoverageRecord:
     simulator_receipt: str | None = None
     evidence_digest: str | None = None
     reason: str | None = None
+
+    @property
+    def has_paired_evidence(self) -> bool:
+        return bool(self.real_receipt and self.simulator_receipt and self.evidence_digest)
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,6 +203,8 @@ class GcpCoverageReport:
     refused_methods: int
     missing_method_ids: tuple[str, ...] = field(default_factory=tuple)
     extra_method_ids: tuple[str, ...] = field(default_factory=tuple)
+    duplicate_method_ids: tuple[str, ...] = field(default_factory=tuple)
+    unreceipted_alive_method_ids: tuple[str, ...] = field(default_factory=tuple)
 
     @property
     def exact(self) -> bool:
@@ -143,6 +213,8 @@ class GcpCoverageReport:
             and self.alive_methods == self.admitted_methods
             and not self.missing_method_ids
             and not self.extra_method_ids
+            and not self.duplicate_method_ids
+            and not self.unreceipted_alive_method_ids
             and self.partial_methods == 0
             and self.unknown_methods == 0
             and self.blocked_methods == 0
@@ -156,16 +228,40 @@ class GcpCoverageReport:
         census: GcpContractCensus,
         records: Iterable[GcpCoverageRecord],
     ) -> "GcpCoverageReport":
-        by_id = {record.method_id: record for record in records}
+        records_list = list(records)
+        counts_by_id: dict[str, int] = {}
+        by_id: dict[str, GcpCoverageRecord] = {}
+        for record in records_list:
+            counts_by_id[record.method_id] = counts_by_id.get(record.method_id, 0) + 1
+            by_id[record.method_id] = record
+
         admitted = census.method_ids
         observed = frozenset(by_id)
         missing = tuple(sorted(admitted - observed))
         extra = tuple(sorted(observed - admitted))
+        duplicates = tuple(sorted(key for key, count in counts_by_id.items() if count > 1))
+        unreceipted = tuple(
+            sorted(
+                method_id
+                for method_id in admitted
+                if (record := by_id.get(method_id)) is not None
+                and record.disposition is CoverageDisposition.ALIVE
+                and not record.has_paired_evidence
+            )
+        )
 
         counts = {disposition: 0 for disposition in CoverageDisposition}
         for method_id in admitted:
             record = by_id.get(method_id)
-            disposition = record.disposition if record else CoverageDisposition.UNKNOWN
+            if record is None:
+                disposition = CoverageDisposition.UNKNOWN
+            elif (
+                record.disposition is CoverageDisposition.ALIVE
+                and not record.has_paired_evidence
+            ):
+                disposition = CoverageDisposition.PARTIAL_ALIVE
+            else:
+                disposition = record.disposition
             counts[disposition] += 1
 
         return cls(
@@ -178,6 +274,8 @@ class GcpCoverageReport:
             refused_methods=counts[CoverageDisposition.REFUSED],
             missing_method_ids=missing,
             extra_method_ids=extra,
+            duplicate_method_ids=duplicates,
+            unreceipted_alive_method_ids=unreceipted,
         )
 
 
@@ -203,7 +301,6 @@ def _walk_resources(
     for resource_name, resource in sorted(resources.items()):
         resource_path = f"{prefix}.{resource_name}" if prefix else resource_name
         for method_name, method in sorted(resource.get("methods", {}).items()):
-            scopes = tuple(sorted(str(scope) for scope in method.get("scopes", ())))
             methods.append(
                 DiscoveryMethod(
                     api=api,
@@ -214,7 +311,7 @@ def _walk_resources(
                     path=str(method.get("path", "")),
                     request_schema=_schema_ref(method.get("request")),
                     response_schema=_schema_ref(method.get("response")),
-                    scopes=scopes,
+                    scopes=tuple(sorted(str(scope) for scope in method.get("scopes", ()))),
                     description=method.get("description"),
                 )
             )
@@ -229,8 +326,10 @@ def _walk_resources(
     return methods
 
 
-def flatten_discovery_document(document: Mapping[str, Any]) -> tuple[tuple[DiscoveryMethod, ...], tuple[DiscoverySchema, ...]]:
-    """Flatten one Google Discovery document into deterministic contract units."""
+def flatten_discovery_document(
+    document: Mapping[str, Any],
+) -> tuple[tuple[DiscoveryMethod, ...], tuple[DiscoverySchema, ...]]:
+    """Flatten one Google Discovery document into deterministic units."""
     api = str(document["name"])
     version = str(document["version"])
     methods: list[DiscoveryMethod] = []
@@ -270,7 +369,11 @@ def flatten_discovery_document(document: Mapping[str, Any]) -> tuple[tuple[Disco
                 digest_sha256=sha256(canonical.encode()).hexdigest(),
             )
         )
-    return tuple(methods), tuple(schemas)
+
+    return (
+        tuple(sorted(methods, key=lambda value: value.identity)),
+        tuple(sorted(schemas, key=lambda value: value.identity)),
+    )
 
 
 def load_discovery_census(
@@ -279,11 +382,7 @@ def load_discovery_census(
     include_nonpreferred: bool = True,
     timeout: float = 60.0,
 ) -> GcpContractCensus:
-    """Load every API/version currently published by Google Discovery.
-
-    This is intentionally live and credential-free. Network failure is an execution
-    blocker; callers must not replace it with a fabricated static catalog.
-    """
+    """Load every API/version currently published by Google Discovery."""
     own_client = client is None
     http = client or httpx.Client(timeout=timeout, follow_redirects=True)
     try:
@@ -326,11 +425,112 @@ def load_discovery_census(
             http.close()
 
 
-def build_contract_rdf(census: GcpContractCensus) -> Graph:
-    """Project the census to RDF using public vocabularies only.
+def _project_json(value: Any, ignored_fields: frozenset[str]) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _project_json(item, ignored_fields)
+            for key, item in sorted(value.items())
+            if key not in ignored_fields
+        }
+    if isinstance(value, list):
+        return [_project_json(item, ignored_fields) for item in value]
+    return value
 
-    `urn:gymact:gcp:*` values are ABox identities, never GymAct-owned TBox terms.
-    """
+
+def normalize_http_response(
+    response: httpx.Response,
+    *,
+    projection: ObservationProjection = ObservationProjection(),
+) -> GcpObservation:
+    """Normalize one externally visible HTTP result for deterministic comparison."""
+    selected_headers = tuple(
+        sorted(
+            (name.lower(), response.headers[name])
+            for name in projection.headers
+            if name in response.headers
+        )
+    )
+    raw = response.content
+    if not raw:
+        body_kind = "empty"
+        canonical_body = ""
+    else:
+        try:
+            decoded = response.json()
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            body_kind = "bytes"
+            canonical_body = raw.hex()
+        else:
+            body_kind = "json"
+            canonical_body = _canonical_json(
+                _project_json(decoded, projection.ignored_json_fields)
+            )
+
+    payload = {
+        "status_code": response.status_code,
+        "headers": selected_headers,
+        "body_kind": body_kind,
+        "canonical_body": canonical_body,
+    }
+    return GcpObservation(
+        status_code=response.status_code,
+        headers=selected_headers,
+        body_kind=body_kind,
+        canonical_body=canonical_body,
+        digest_blake3=blake3(_canonical_json(payload).encode()).hexdigest(),
+    )
+
+
+def compare_observations(
+    *,
+    method_id: str,
+    real: GcpObservation,
+    simulator: GcpObservation,
+    real_receipt: str,
+    simulator_receipt: str,
+    projection: ObservationProjection = ObservationProjection(),
+) -> GcpDifferentialEvidence:
+    """Compare a paired real-GCP/simulator observation and manufacture evidence."""
+    mismatches: list[str] = []
+    if real.status_code != simulator.status_code:
+        mismatches.append("status_code")
+    if real.headers != simulator.headers:
+        mismatches.append("headers")
+    if real.body_kind != simulator.body_kind:
+        mismatches.append("body_kind")
+    if real.canonical_body != simulator.canonical_body:
+        mismatches.append("body")
+
+    projection_payload = {
+        "headers": projection.headers,
+        "ignored_json_fields": sorted(projection.ignored_json_fields),
+    }
+    projection_digest = blake3(_canonical_json(projection_payload).encode()).hexdigest()
+    evidence_payload = {
+        "method_id": method_id,
+        "real_digest": real.digest_blake3,
+        "simulator_digest": simulator.digest_blake3,
+        "real_receipt": real_receipt,
+        "simulator_receipt": simulator_receipt,
+        "projection_digest": projection_digest,
+        "mismatches": mismatches,
+    }
+    evidence_digest = blake3(_canonical_json(evidence_payload).encode()).hexdigest()
+    return GcpDifferentialEvidence(
+        method_id=method_id,
+        real=real,
+        simulator=simulator,
+        real_receipt=real_receipt,
+        simulator_receipt=simulator_receipt,
+        projection_digest_blake3=projection_digest,
+        evidence_digest_blake3=evidence_digest,
+        equivalent=not mismatches,
+        mismatches=tuple(mismatches),
+    )
+
+
+def build_contract_rdf(census: GcpContractCensus) -> Graph:
+    """Project the census to RDF using public vocabularies only."""
     graph = Graph()
     graph.bind("dcat", DCAT)
     graph.bind("dcterms", DCTERMS)
@@ -338,10 +538,12 @@ def build_contract_rdf(census: GcpContractCensus) -> Graph:
 
     catalog = URIRef(_GCP["discovery-catalog"])
     graph.add((catalog, RDF.type, DCAT.Catalog))
-    graph.add((catalog, DCTERMS.identifier, Literal(census.directory_digest_sha256)))
+    graph.add((catalog, DCTERMS.identifier, Literal(census.contract_digest_blake3)))
 
+    api_refs: dict[str, URIRef] = {}
     for api in census.apis:
         api_ref = URIRef(_GCP[f"api/{api.name}/{api.version}"])
+        api_refs[api.identity] = api_ref
         graph.add((api_ref, RDF.type, DCAT.Dataset))
         graph.add((api_ref, DCTERMS.identifier, Literal(api.identity)))
         graph.add((api_ref, DCTERMS.title, Literal(api.title)))
@@ -355,5 +557,8 @@ def build_contract_rdf(census: GcpContractCensus) -> Graph:
         graph.add((method_ref, SKOS.prefLabel, Literal(method.identity)))
         graph.add((method_ref, DCTERMS.identifier, Literal(method.identity)))
         graph.add((method_ref, DCTERMS.format, Literal(method.http_method)))
+        api_ref = api_refs.get(f"{method.api}:{method.version}")
+        if api_ref is not None:
+            graph.add((method_ref, SKOS.inScheme, api_ref))
 
     return graph
