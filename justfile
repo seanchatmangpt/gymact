@@ -36,7 +36,15 @@ test version="":
     uv run playwright install chromium
     uv run gymact validate-profile
     uv run python -c 'from gymact.gyms.browsergym import BROWSERGYM_CAPABILITIES; from gymact.semantic import ProfileAuthority; r = ProfileAuthority().validate_capabilities(BROWSERGYM_CAPABILITIES); print(r.model_dump_json()); assert r.conforms, r.report_text'
-    if grep -RInE 'unittest\.mock|\bMock\b|\bpatch\b|monkeypatch' tests; then
+    # monkeypatch.setenv/delenv/chdir/syspath_prepend control the real
+    # environment (e.g. installing a real fake binary earlier on PATH) --
+    # they do not fake a collaborator's interactions, so they are not
+    # banned here. monkeypatch.setattr/delattr/setitem/delitem substitute
+    # real objects/attributes and ARE the interaction-faking this guard
+    # exists to catch. See tests/gyms/test_dev_portfolio_unit.py's module
+    # docstring for the real, documented monkeypatch.setenv use this
+    # narrower pattern is written to allow.
+    if grep -RInE 'unittest\.mock|\bMock\b|\bpatch\b|monkeypatch\.(setattr|delattr|setitem|delitem)' tests; then
       echo 'mock-grep: forbidden test seam found' >&2
       exit 1
     else
