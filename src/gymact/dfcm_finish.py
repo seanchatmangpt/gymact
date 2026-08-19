@@ -4,9 +4,9 @@ This module turns an evidence-bounded set of unfinished work items into a maxima
 reversible completion frontier, then manufactures one deterministic cut without
 silently granting execution authority.
 
-It is deliberately *not* an autonomous actuator.  The output is CONSTRUCT-only:
+It is deliberately *not* an autonomous actuator. The output is CONSTRUCT-only:
 SELECT chooses among already-declared reversible moves; DO remains downstream of
-GymAct/BRCE authority.  UNKNOWN work never becomes admitted merely because the
+GymAct/BRCE authority. UNKNOWN work never becomes admitted merely because the
 planner can enumerate a move for it.
 """
 
@@ -88,6 +88,7 @@ class CompletionFrontier(FrozenModel):
     total_cardinality: int
     truncated: bool
     plans: tuple[CompletionPlan, ...]
+    source_digest_blake3: str
     frontier_digest_blake3: str
 
 
@@ -98,6 +99,7 @@ class CompletionCut(FrozenModel):
     standing: Standing
     selected: CompletionPlan | None
     reason: str
+    source_digest_blake3: str
     frontier_digest_blake3: str
     cut_digest_blake3: str
 
@@ -113,8 +115,16 @@ def _canonical_digest(value: object) -> str:
     return blake3(payload.encode("utf-8")).hexdigest()
 
 
+def _source_payload(items: tuple[CompletionItem, ...]) -> list[dict[str, object]]:
+    return [
+        item.model_dump(mode="json")
+        for item in sorted(items, key=lambda candidate: candidate.item_id)
+    ]
+
+
 def _validate_items(items: tuple[CompletionItem, ...]) -> dict[str, CompletionItem]:
     by_id: dict[str, CompletionItem] = {}
+    move_ids: set[str] = set()
     for item in items:
         if item.item_id in by_id:
             raise ValueError(f"DUPLICATE_COMPLETION_ITEM:{item.item_id}")
@@ -124,6 +134,9 @@ def _validate_items(items: tuple[CompletionItem, ...]) -> dict[str, CompletionIt
                 raise ValueError(
                     f"MOVE_ITEM_MISMATCH:{move.move_id}:{move.item_id}:{item.item_id}"
                 )
+            if move.move_id in move_ids:
+                raise ValueError(f"DUPLICATE_COMPLETION_MOVE:{move.move_id}")
+            move_ids.add(move.move_id)
             if move.cost < 0:
                 raise ValueError(f"NEGATIVE_MOVE_COST:{move.move_id}:{move.cost}")
 
@@ -135,7 +148,9 @@ def _validate_items(items: tuple[CompletionItem, ...]) -> dict[str, CompletionIt
 
 
 def _dependency_ready(item: CompletionItem, by_id: dict[str, CompletionItem]) -> bool:
-    return all(by_id[dependency].standing in _TERMINAL_STANDINGS for dependency in item.dependencies)
+    # REFUSED and UNSUPPORTED are terminal observations, but they do not satisfy
+    # a dependency. Only observed ALIVE standing admits a dependent node.
+    return all(by_id[dependency].standing == "ALIVE" for dependency in item.dependencies)
 
 
 def _reversible_moves(item: CompletionItem) -> tuple[CompletionMove, ...]:
@@ -163,12 +178,13 @@ def manufacture_completion_frontier(
 
     The function is intentionally conservative:
       * terminal ALIVE/UNSUPPORTED/REFUSED items are removed from WIP;
-      * dependencies must already be terminal before an item is actionable;
+      * dependencies require ALIVE standing before a child is actionable;
       * DO, irreversible, or authority-requiring moves are excluded from the
         CONSTRUCT frontier rather than being downgraded;
       * an unresolved item with no lawful reversible move is BLOCKED;
       * enumeration is deterministically truncated at ``max_plans`` while the
-        exact pre-truncation cardinality remains visible.
+        exact pre-truncation cardinality remains visible;
+      * source item/move/evidence identity is bound into a BLAKE3 source digest.
     """
     if not subject_ref.strip():
         raise ValueError("EMPTY_COMPLETION_SUBJECT")
@@ -176,8 +192,10 @@ def manufacture_completion_frontier(
         raise ValueError("max_plans must be >= 1")
 
     by_id = _validate_items(items)
+    source_digest = _canonical_digest(_source_payload(items))
     unresolved = tuple(
-        item for item in sorted(items, key=lambda item: item.item_id)
+        item
+        for item in sorted(items, key=lambda item: item.item_id)
         if item.standing not in _TERMINAL_STANDINGS
     )
 
@@ -221,6 +239,7 @@ def manufacture_completion_frontier(
 
     digest_payload = {
         "subject_ref": subject_ref,
+        "source_digest_blake3": source_digest,
         "standing": standing,
         "unresolved_items": unresolved_ids,
         "blocked_items": blocked_ids,
@@ -236,8 +255,20 @@ def manufacture_completion_frontier(
         total_cardinality=total_cardinality,
         truncated=truncated,
         plans=tuple(plans),
+        source_digest_blake3=source_digest,
         frontier_digest_blake3=_canonical_digest(digest_payload),
     )
+
+
+def _cut_payload(cut: CompletionCut) -> dict[str, object]:
+    return {
+        "subject_ref": cut.subject_ref,
+        "source_digest_blake3": cut.source_digest_blake3,
+        "frontier_digest_blake3": cut.frontier_digest_blake3,
+        "standing": cut.standing,
+        "selected": cut.selected.model_dump(mode="json") if cut.selected else None,
+        "reason": cut.reason,
+    }
 
 
 def select_completion_cut(frontier: CompletionFrontier) -> CompletionCut:
@@ -256,20 +287,17 @@ def select_completion_cut(frontier: CompletionFrontier) -> CompletionCut:
         standing = "PARTIAL_ALIVE"
         reason = "REVERSIBLE_CUT_SELECTED_CONSTRUCT_ONLY"
 
-    digest_payload = {
-        "subject_ref": frontier.subject_ref,
-        "frontier_digest_blake3": frontier.frontier_digest_blake3,
-        "standing": standing,
-        "selected": selected.model_dump(mode="json") if selected else None,
-        "reason": reason,
-    }
-    return CompletionCut(
+    provisional = CompletionCut(
         subject_ref=frontier.subject_ref,
         standing=standing,
         selected=selected,
         reason=reason,
+        source_digest_blake3=frontier.source_digest_blake3,
         frontier_digest_blake3=frontier.frontier_digest_blake3,
-        cut_digest_blake3=_canonical_digest(digest_payload),
+        cut_digest_blake3="",
+    )
+    return provisional.model_copy(
+        update={"cut_digest_blake3": _canonical_digest(_cut_payload(provisional))}
     )
 
 
@@ -278,18 +306,28 @@ def admit_completion_cut(
     cut: CompletionCut,
     items: tuple[CompletionItem, ...],
 ) -> CompletionCut:
-    """Prove a cut is still CONSTRUCT-only against the admitted source items.
+    """Prove a cut is intact and still CONSTRUCT-only against source items.
 
-    This is the authority fence.  A move can only be admitted here when the exact
+    This is the authority fence. A move can only be admitted here when the exact
     move id exists on the exact item and is reversible, authority-free, and not
-    DO.  Anything else is a typed refusal rather than ambient execution authority.
+    DO. Anything else is a typed refusal rather than ambient execution authority.
     """
     by_id = _validate_items(items)
+    observed_source_digest = _canonical_digest(_source_payload(items))
+    if observed_source_digest != cut.source_digest_blake3:
+        raise CompletionAdmissionError("REFUSED:SOURCE_IDENTITY_MISMATCH")
+    if _canonical_digest(_cut_payload(cut)) != cut.cut_digest_blake3:
+        raise CompletionAdmissionError("REFUSED:CUT_DIGEST_MISMATCH")
+
     if cut.selected is None:
         if cut.standing == "ALIVE":
             return cut
         raise CompletionAdmissionError(f"REFUSED:NO_SELECTED_CUT:{cut.reason}")
 
+    if len(set(cut.selected.item_ids)) != len(cut.selected.item_ids):
+        raise CompletionAdmissionError("REFUSED:DUPLICATE_SELECTED_ITEM")
+
+    observed_cost = 0
     for item_id, move_id in zip(cut.selected.item_ids, cut.selected.move_ids, strict=True):
         item = by_id.get(item_id)
         if item is None:
@@ -305,7 +343,12 @@ def admit_completion_cut(
             raise CompletionAdmissionError(f"REFUSED:AUTHORITY_REQUIRED:{move_id}")
         if move.kind not in _CONSTRUCT_KINDS:
             raise CompletionAdmissionError(f"REFUSED:UNSUPPORTED_MOVE_KIND:{move_id}:{move.kind}")
+        observed_cost += move.cost
 
+    if observed_cost != cut.selected.total_cost:
+        raise CompletionAdmissionError(
+            f"REFUSED:SELECTED_COST_MISMATCH:{cut.selected.total_cost}:{observed_cost}"
+        )
     return cut
 
 
