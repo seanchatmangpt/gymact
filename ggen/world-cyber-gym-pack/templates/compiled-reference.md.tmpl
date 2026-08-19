@@ -1,0 +1,29 @@
+---
+to: "docs/compiled-reference.md"
+force: true
+sparql:
+  assets: |
+    PREFIX dct: <http://purl.org/dc/terms/>
+    PREFIX prov: <http://www.w3.org/ns/prov#>
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    SELECT ?id ?title ?domain WHERE { ?asset a prov:Entity ; dct:identifier ?id ; dct:title ?title ; dct:type ?d . ?d skos:notation ?domain . } ORDER BY ?id
+  capabilities: |
+    PREFIX dct: <http://purl.org/dc/terms/>
+    PREFIX sosa: <http://www.w3.org/ns/sosa/>
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    SELECT ?id ?family ?effect WHERE { ?cap a sosa:Procedure ; dct:identifier ?id ; dct:type ?f ; dct:subject ?e . ?f skos:notation ?family . ?e skos:notation ?effect . } ORDER BY ?id
+---
+# Compiled World Cyber Range reference
+
+Generated from the admitted public-semantic ABox. The RDF graph remains canonical.
+
+## Assets
+{% for row in assets %}- `{{ row.id }}` — {{ row.title }} (`{{ row.domain }}`)
+{% endfor %}
+
+## Capabilities
+{% for row in capabilities %}- `{{ row.id }}` — family `{{ row.family }}`, effect `{{ row.effect }}`
+{% endfor %}
+
+## Safety boundary
+Disturbance capabilities are synthetic range transitions only. This projection exports catalog data and no real-world actuator.

@@ -57,11 +57,13 @@ _EXPECTED_TASKS = {
     "togaf.70.phase-g",
     "togaf.80.phase-h",
 }
+_GGEN_VERSION = "26.8.11"
+_GGEN_RELEASE_COMMIT = "402cecdff8784767eb9f26e235d87c759610c066"
 _GGEN_URL = (
-    "https://github.com/seanchatmangpt/ggen/releases/download/v26.8.8/"
+    f"https://github.com/seanchatmangpt/ggen/releases/download/v{_GGEN_VERSION}/"
     "ggen-x86_64-unknown-linux-gnu.tar.gz"
 )
-_GGEN_SHA256 = "c651d873c2aeb6bd71c3d5356634f0b3f4adafd2454ee354c817a7079c2ea802"
+_GGEN_SHA256 = "790f8eab8b038e746af45cf70adde47c0df65fbcc5514c2c6ac8e5f80b2fe792"
 
 
 def _data_graph() -> Graph:
@@ -86,6 +88,12 @@ def _targets() -> tuple[str, ...]:
         assert match is not None
         targets.append(match.group(1))
     return tuple(targets)
+
+
+def test_ggen_pin_matches_current_release_identity() -> None:
+    assert (ROOT / ".ggen-version").read_text().strip() == _GGEN_VERSION
+    assert len(_GGEN_RELEASE_COMMIT) == 40
+    assert len(_GGEN_SHA256) == 64
 
 
 def test_togaf_alignment_is_public_vocabulary_abox() -> None:
@@ -215,10 +223,6 @@ def test_ggen_templates_are_projection_only() -> None:
     assert len(targets) == len(set(targets))
     assert all("generated" not in target.lower() for target in targets)
     assert all(not (CONSUMER / target).exists() for target in targets)
-    # Not a literal "../../..." path: the installed ggen CLI's config
-    # validator refuses any ontology.source/packs.path value containing ".."
-    # as path traversal (FM-CONFIG-003) -- ontology.ttl and togaf-gym-pack
-    # are real relative symlinks into ../../ggen/togaf-gym-pack instead.
     manifest = (CONSUMER / "ggen.toml").read_text()
     assert 'source = "ontology.ttl"' in manifest
     assert 'togaf-gym-pack = { path = "togaf-gym-pack" }' in manifest
@@ -234,12 +238,6 @@ def test_ggen_templates_are_projection_only() -> None:
 def test_ggen_sync_run_against_the_real_installed_binary_manufactures_the_projection(
     tmp_path: Path,
 ) -> None:
-    """Real local coverage this pack previously had none of: the pinned-CI-only
-    test above never runs outside GitHub Actions, and this pack's own
-    committed `rust/togaf_gym/` consumer was never actually exercised by a
-    real `ggen sync run` before the path-traversal/shapes.ttl fixes above --
-    both real, local defects that this test (via `shutil.which("ggen")`
-    gating, not the CI-pinned-version download) would have caught."""
     workspace = tmp_path / "workspace"
     pack_copy = workspace / "ggen" / "togaf-gym-pack"
     consumer_copy = workspace / "rust" / "togaf_gym"
@@ -269,7 +267,7 @@ def test_ggen_sync_run_against_the_real_installed_binary_manufactures_the_projec
     assert "togaf.80.phase-h" in generated
 
 
-def test_ggen_v26_8_8_manufactures_ephemeral_projection_on_ci_313(tmp_path: Path) -> None:
+def test_ggen_v26_8_11_manufactures_ephemeral_projection_on_ci_313(tmp_path: Path) -> None:
     if os.environ.get("GITHUB_ACTIONS") != "true" or sys.version_info[:2] != (3, 13):
         pytest.skip("pinned ggen toolchain capsule executes on the GitHub Python 3.13 leg")
 
@@ -285,6 +283,11 @@ def test_ggen_v26_8_8_manufactures_ephemeral_projection_on_ci_313(tmp_path: Path
     assert len(executables) == 1
     executable = executables[0]
     executable.chmod(executable.stat().st_mode | stat.S_IXUSR)
+
+    version_result = subprocess.run(
+        [str(executable), "--version"], capture_output=True, text=True, check=True
+    )
+    assert f"ggen {_GGEN_VERSION}" in version_result.stdout
 
     workspace = tmp_path / "workspace"
     pack_copy = workspace / "ggen" / "togaf-gym-pack"

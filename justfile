@@ -86,6 +86,13 @@ docs:
     uv sync --group dev
     uv run zensical build --clean
 
+# composition-court — named exact-subject court for merge/composition standing.
+# It is also part of the normal pytest suite; this target exists so a local
+# merge can cheaply requalify the exact composed subject before inheriting any
+# branch-local standing.
+composition-court:
+    uv run pytest -v tests/test_default_head_composition_court.py
+
 # ggen-bridge-check — NOT a CI job, NOT part of `all`: this repo has no
 # Rust toolchain and CI never sets one up (confirmed: none of
 # .github/workflows/*.yml touch rust/cargo/ggen). Requires a real `ggen`
@@ -95,37 +102,26 @@ docs:
 # actually generates from ontology/profile.{ttl,shacl.ttl} (real symlinks
 # into src/gymact/ontology/, not a copy) by running a real `ggen sync run`
 # against a scratch consumer project, the same way
-# ~/ggen/crates/ggen-engine/tests/gymact_bridge_pack_e2e.rs does from the
-# Rust side.
+# ~/ggen/crates/ggen-engine/tests/gymact_bridge_pack_e2e.rs historically did
+# from the Rust side.
 ggen-bridge-check:
     #!/usr/bin/env bash
     set -euo pipefail
     GGEN_BIN="${GGEN_BIN:-ggen}"
     if ! command -v "$GGEN_BIN" >/dev/null 2>&1; then
         echo "ggen-bridge-check: no '$GGEN_BIN' binary on PATH." >&2
-        echo "  Build one from the sibling ggen repo (cargo build --release -p ggen-cli)" >&2
-        echo "  and either add target/release/ to PATH or set GGEN_BIN to its exact path." >&2
+        echo "  Build one from the sibling ggen repo and either add target/release/" >&2
+        echo "  to PATH or set GGEN_BIN to its exact path." >&2
         exit 2
     fi
-    # Version pin check: warn, don't fail. This repo pins a known-working
-    # local-dev ggen version in .ggen-version (currently 26.8.8, the same
-    # version tests/test_ggen_togaf_gym_pack.py's CI leg pins via
-    # _GGEN_URL/_GGEN_SHA256). A mismatch is deliberately non-fatal here --
-    # unlike "no binary at all" above, we don't yet know whether e.g.
-    # 26.8.6 vs 26.8.8 behavioral differences actually matter for this
-    # bridge-pack projection, so a stricter contributor on a slightly
-    # different (but still-working) ggen build shouldn't be hard-blocked.
-    # Real observed `ggen --version` output on this binary is two lines:
-    #   ggen 26.8.8
-    #   2026-08-11T21:54:03.324613Z  INFO ggen.cli{command=--version version="26.8.8"}: ...
-    # so parse the version off the first line's second field, not the
-    # tracing log line.
-    if [ -f "$(pwd)/.ggen-version" ]; then
-        PINNED_VERSION="$(tr -d '[:space:]' < "$(pwd)/.ggen-version")"
-        INSTALLED_VERSION="$("$GGEN_BIN" --version | head -n1 | awk '{print $2}')"
-        if [ "$INSTALLED_VERSION" != "$PINNED_VERSION" ]; then
-            echo "ggen-bridge-check: WARNING — installed ggen version '$INSTALLED_VERSION' does not match pinned '$PINNED_VERSION' (.ggen-version). Continuing anyway." >&2
-        fi
+    # Manufacturer identity is standing-bearing, not advisory. The repository
+    # and CI capsule now pin ggen 26.8.11; another version is a different
+    # subject and must not inherit that qualification.
+    PINNED_VERSION="$(tr -d '[:space:]' < "$(pwd)/.ggen-version")"
+    INSTALLED_VERSION="$("$GGEN_BIN" --version | head -n1 | awk '{print $2}')"
+    if [ "$INSTALLED_VERSION" != "$PINNED_VERSION" ]; then
+        echo "REFUSED:GGEN_VERSION_DRIFT:installed=$INSTALLED_VERSION pinned=$PINNED_VERSION" >&2
+        exit 3
     fi
     PACK_ROOT="$(pwd)/ggen/gymact-bridge-pack"
     SCRATCH="$(mktemp -d)"
@@ -150,7 +146,7 @@ ggen-bridge-check:
     for f in src/gymact_operation_catalog.rs src/gymact_mcp_tools.rs docs/gymact-bridge/reference.md tests/gymact_bridge_operation_catalog_proof.rs; do
         test -s "$SCRATCH/consumer/$f" || { echo "ggen-bridge-check: expected generated file missing: $f" >&2; exit 1; }
     done
-    echo "ggen-bridge-check: OK — all 4 expected files generated"
+    echo "ggen-bridge-check: OK — all 4 expected files generated with ggen $PINNED_VERSION"
 
 # ggen-gates-check — NOT part of `all`: runs every ggen/*/gates/*.rq SPARQL
 # gate against its own pack's ontology.ttl via rdflib. Unlike
@@ -184,14 +180,10 @@ ocel-standing:
 capability-manifest:
     uv run python scripts/capability_manifest.py
 
-# observe-independence-check — NOT part of `all`: a coarse, ADVISORY-ONLY
-# static lint (AST-based, source-level) flagging gym `observe()` methods
-# with zero detected real I/O, per .claude/rules/actuation-authority.md's
-# "observe() must be an independent read" section. This is a human-review
-# aid, never a gate -- the in-memory-only pattern it flags is legitimate for
-# genuinely simulated/synthetic worlds (e.g. opaque_procedure.py,
-# multicloud.py) and only a human can judge legitimacy per provider. The
-# script's own exit code is always 0.
+# observe-independence-check — raw report remains advisory because fully
+# simulated worlds legitimately have no external I/O channel. The exact-head
+# composition court hard-fails if any already-proven live external provider
+# silently loses its independently detectable I/O read path.
 observe-independence-check:
     uv run python scripts/check_observe_independence.py
 

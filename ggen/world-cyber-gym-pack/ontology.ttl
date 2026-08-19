@@ -1,0 +1,108 @@
+# World Cyber Range public-semantic ABox.
+# Safety fence: this graph models a synthetic bounded range. Disturbance procedures are
+# abstract state-transition intents only. It contains no exploit implementation, target
+# address, credential, shell command, malware, persistence mechanism, or external actuator.
+# Vocabulary search: PROV-O, P-PLAN, SOSA/SSN, WoT TD, ODRL, SHACL, EARL, DQV,
+# QUDT, DCAT, SKOS, DCTERMS and GeoSPARQL cover the required semantics; therefore
+# no GymAct-owned class/property is introduced. Local IRIs are ABox resources,
+# SKOS concepts, metrics, profile resources, and SHACL shapes only.
+
+@prefix wc: <urn:gymact:world-cyber:> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix prof: <http://www.w3.org/ns/dx/prof/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix pplan: <http://purl.org/net/p-plan#> .
+@prefix sosa: <http://www.w3.org/ns/sosa/> .
+@prefix td: <https://www.w3.org/2019/wot/td#> .
+@prefix odrl: <http://www.w3.org/ns/odrl/2/> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix earl: <http://www.w3.org/ns/earl#> .
+@prefix dqv: <http://www.w3.org/ns/dqv#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+wc:profile a prof:Profile ;
+    dct:title "GymAct World Cyber Range profile" ;
+    dct:description "Synthetic global dependency-world profile for defensive planning, bounded disturbance injection, recovery, observation uncertainty, and deterministic replay." ;
+    prof:isProfileOf <http://www.w3.org/ns/prov#>, <http://purl.org/net/p-plan#>, <http://www.w3.org/ns/sosa/>, <https://www.w3.org/2019/wot/td#>, <http://www.w3.org/ns/odrl/2/>, <http://www.w3.org/ns/shacl#>, <http://www.w3.org/ns/earl#>, <http://www.w3.org/ns/dqv#>, <http://www.w3.org/2004/02/skos/core#>, <http://purl.org/dc/terms/> ;
+    dct:source <https://attack.mitre.org/>, <https://d3fend.mitre.org/> .
+wc:profile:synthetic-only a prof:Profile ; dct:title "Synthetic range only" ; dct:isPartOf wc:profile ; dct:description "Procedure is admitted only against assets declared inside the materialized synthetic graph." .
+
+wc:scheme:actor-role a skos:ConceptScheme ; dct:title "World cyber actor roles" .
+wc:role:blue a skos:Concept ; skos:inScheme wc:scheme:actor-role ; skos:notation "blue" ; skos:prefLabel "Defender" .
+wc:role:red a skos:Concept ; skos:inScheme wc:scheme:actor-role ; skos:notation "red" ; skos:prefLabel "Synthetic disturbance actor" .
+wc:role:gray a skos:Concept ; skos:inScheme wc:scheme:actor-role ; skos:notation "gray" ; skos:prefLabel "Environmental fault actor" .
+wc:role:observer a skos:Concept ; skos:inScheme wc:scheme:actor-role ; skos:notation "observer" ; skos:prefLabel "Ground-truth observer" .
+
+wc:scheme:domain a skos:ConceptScheme ; dct:title "Enterprise dependency domains" .
+wc:domain:identity a skos:Concept ; skos:inScheme wc:scheme:domain ; skos:notation "identity" ; skos:prefLabel "Identity" .
+wc:domain:cloud a skos:Concept ; skos:inScheme wc:scheme:domain ; skos:notation "cloud" ; skos:prefLabel "Cloud control plane" .
+wc:domain:telecom a skos:Concept ; skos:inScheme wc:scheme:domain ; skos:notation "telecom" ; skos:prefLabel "Telecommunications" .
+wc:domain:finance a skos:Concept ; skos:inScheme wc:scheme:domain ; skos:notation "finance" ; skos:prefLabel "Financial services" .
+wc:domain:logistics a skos:Concept ; skos:inScheme wc:scheme:domain ; skos:notation "logistics" ; skos:prefLabel "Logistics" .
+wc:domain:energy a skos:Concept ; skos:inScheme wc:scheme:domain ; skos:notation "energy" ; skos:prefLabel "Energy" .
+wc:domain:healthcare a skos:Concept ; skos:inScheme wc:scheme:domain ; skos:notation "healthcare" ; skos:prefLabel "Healthcare" .
+
+wc:scheme:capability-family a skos:ConceptScheme ; dct:title "Capability families" .
+wc:family:defense a skos:Concept ; skos:inScheme wc:scheme:capability-family ; skos:notation "defense" ; skos:prefLabel "Defensive recovery" .
+wc:family:disturbance a skos:Concept ; skos:inScheme wc:scheme:capability-family ; skos:notation "disturbance" ; skos:prefLabel "Synthetic disturbance" .
+wc:family:environmental a skos:Concept ; skos:inScheme wc:scheme:capability-family ; skos:notation "environmental" ; skos:prefLabel "Environmental failure" .
+wc:scheme:consequence a skos:ConceptScheme ; dct:title "Consequence classes" .
+wc:consequence:do a skos:Concept ; skos:inScheme wc:scheme:consequence ; skos:notation "DO" ; skos:prefLabel "Consequential" .
+wc:scheme:status a skos:ConceptScheme ; dct:title "Synthetic asset status" .
+wc:status:healthy a skos:Concept, sosa:Result ; skos:inScheme wc:scheme:status ; skos:notation "healthy" ; skos:prefLabel "Healthy" .
+wc:status:degraded a skos:Concept, sosa:Result ; skos:inScheme wc:scheme:status ; skos:notation "degraded" ; skos:prefLabel "Degraded" .
+wc:status:unavailable a skos:Concept, sosa:Result ; skos:inScheme wc:scheme:status ; skos:notation "unavailable" ; skos:prefLabel "Unavailable" .
+wc:status:isolated a skos:Concept, sosa:Result ; skos:inScheme wc:scheme:status ; skos:notation "isolated" ; skos:prefLabel "Isolated" .
+wc:status:partitioned a skos:Concept, sosa:Result ; skos:inScheme wc:scheme:status ; skos:notation "partitioned" ; skos:prefLabel "Partitioned" .
+wc:status:exhausted a skos:Concept, sosa:Result ; skos:inScheme wc:scheme:status ; skos:notation "exhausted" ; skos:prefLabel "Capacity exhausted" .
+wc:scheme:scenario-type a skos:ConceptScheme ; dct:title "Scenario types" .
+wc:scenario-type:global-range a skos:Concept ; skos:inScheme wc:scheme:scenario-type ; skos:notation "global-range" ; skos:prefLabel "Synthetic global cyber dependency range" .
+
+wc:scenario:global-enterprise a pplan:Plan ; dct:identifier "world-cyber.global-enterprise.v1" ; dct:title "Synthetic global enterprise dependency range" ; dct:type wc:scenario-type:global-range ; dct:conformsTo wc:profile ; dct:hasPart wc:asset:identity-core, wc:asset:telecom-backbone, wc:asset:cloud-control, wc:asset:payments, wc:asset:warehouse, wc:asset:grid-control, wc:asset:hospital-ops .
+wc:actor:blue a prov:Agent ; dct:identifier "blue" ; dct:type wc:role:blue ; dct:title "Defensive operator" .
+wc:actor:red a prov:Agent ; dct:identifier "red" ; dct:type wc:role:red ; dct:title "Synthetic disturbance injector" .
+wc:actor:gray a prov:Agent ; dct:identifier "gray" ; dct:type wc:role:gray ; dct:title "Environmental fault injector" .
+wc:actor:observer a prov:Agent ; dct:identifier "observer" ; dct:type wc:role:observer ; dct:title "Scoring-only ground-truth observer" .
+
+wc:asset:identity-core a prov:Entity, sosa:FeatureOfInterest ; dct:identifier "identity-core" ; dct:title "Global workload identity" ; dct:type wc:domain:identity .
+wc:asset:telecom-backbone a prov:Entity, sosa:FeatureOfInterest ; dct:identifier "telecom-backbone" ; dct:title "Inter-region telecom backbone" ; dct:type wc:domain:telecom .
+wc:asset:cloud-control a prov:Entity, sosa:FeatureOfInterest ; dct:identifier "cloud-control" ; dct:title "Cloud control plane" ; dct:type wc:domain:cloud ; dct:requires wc:asset:identity-core, wc:asset:telecom-backbone .
+wc:asset:payments a prov:Entity, sosa:FeatureOfInterest ; dct:identifier "payments" ; dct:title "Payments service" ; dct:type wc:domain:finance ; dct:requires wc:asset:cloud-control, wc:asset:identity-core .
+wc:asset:warehouse a prov:Entity, sosa:FeatureOfInterest ; dct:identifier "warehouse" ; dct:title "Warehouse scheduling" ; dct:type wc:domain:logistics ; dct:requires wc:asset:cloud-control, wc:asset:telecom-backbone .
+wc:asset:grid-control a prov:Entity, sosa:FeatureOfInterest ; dct:identifier "grid-control" ; dct:title "Synthetic grid operations" ; dct:type wc:domain:energy ; dct:requires wc:asset:identity-core, wc:asset:telecom-backbone .
+wc:asset:hospital-ops a prov:Entity, sosa:FeatureOfInterest ; dct:identifier "hospital-ops" ; dct:title "Hospital operations" ; dct:type wc:domain:healthcare ; dct:requires wc:asset:payments, wc:asset:grid-control .
+wc:obs:identity-initial a sosa:Observation ; sosa:hasFeatureOfInterest wc:asset:identity-core ; sosa:hasResult wc:status:healthy .
+wc:obs:telecom-initial a sosa:Observation ; sosa:hasFeatureOfInterest wc:asset:telecom-backbone ; sosa:hasResult wc:status:healthy .
+wc:obs:cloud-initial a sosa:Observation ; sosa:hasFeatureOfInterest wc:asset:cloud-control ; sosa:hasResult wc:status:healthy .
+wc:obs:payments-initial a sosa:Observation ; sosa:hasFeatureOfInterest wc:asset:payments ; sosa:hasResult wc:status:healthy .
+wc:obs:warehouse-initial a sosa:Observation ; sosa:hasFeatureOfInterest wc:asset:warehouse ; sosa:hasResult wc:status:healthy .
+wc:obs:grid-initial a sosa:Observation ; sosa:hasFeatureOfInterest wc:asset:grid-control ; sosa:hasResult wc:status:healthy .
+wc:obs:hospital-initial a sosa:Observation ; sosa:hasFeatureOfInterest wc:asset:hospital-ops ; sosa:hasResult wc:status:healthy .
+
+wc:cap:isolate-resource a sosa:Procedure, td:ActionAffordance ; dct:identifier "isolate-resource" ; dct:title "Isolate a synthetic resource" ; dct:type wc:family:defense ; dct:accessRights wc:consequence:do ; dct:subject wc:status:isolated .
+wc:cap:restore-resource a sosa:Procedure, td:ActionAffordance ; dct:identifier "restore-resource" ; dct:title "Restore a synthetic resource to healthy direct state" ; dct:type wc:family:defense ; dct:accessRights wc:consequence:do ; dct:subject wc:status:healthy .
+wc:cap:failover-service a sosa:Procedure, td:ActionAffordance ; dct:identifier "failover-service" ; dct:title "Fail over a synthetic service" ; dct:type wc:family:defense ; dct:accessRights wc:consequence:do ; dct:subject wc:status:healthy .
+wc:cap:reroute-service a sosa:Procedure, td:ActionAffordance ; dct:identifier "reroute-service" ; dct:title "Reroute a synthetic service" ; dct:type wc:family:defense ; dct:accessRights wc:consequence:do ; dct:subject wc:status:healthy .
+wc:cap:degrade-service a sosa:Procedure, td:ActionAffordance ; dct:identifier "degrade-service" ; dct:title "Inject synthetic service degradation" ; dct:type wc:family:disturbance ; dct:accessRights wc:consequence:do ; dct:subject wc:status:degraded ; dct:conformsTo wc:profile:synthetic-only .
+wc:cap:interrupt-identity a sosa:Procedure, td:ActionAffordance ; dct:identifier "interrupt-identity" ; dct:title "Inject synthetic identity interruption" ; dct:type wc:family:disturbance ; dct:accessRights wc:consequence:do ; dct:subject wc:status:unavailable ; dct:conformsTo wc:profile:synthetic-only .
+wc:cap:partition-network a sosa:Procedure, td:ActionAffordance ; dct:identifier "partition-network" ; dct:title "Inject synthetic network partition" ; dct:type wc:family:disturbance ; dct:accessRights wc:consequence:do ; dct:subject wc:status:partitioned ; dct:conformsTo wc:profile:synthetic-only .
+wc:cap:exhaust-quota a sosa:Procedure, td:ActionAffordance ; dct:identifier "exhaust-quota" ; dct:title "Inject synthetic capacity exhaustion" ; dct:type wc:family:disturbance ; dct:accessRights wc:consequence:do ; dct:subject wc:status:exhausted ; dct:conformsTo wc:profile:synthetic-only .
+wc:cap:cause-region-failure a sosa:Procedure, td:ActionAffordance ; dct:identifier "cause-region-failure" ; dct:title "Inject synthetic regional resource failure" ; dct:type wc:family:environmental ; dct:accessRights wc:consequence:do ; dct:subject wc:status:unavailable ; dct:conformsTo wc:profile:synthetic-only .
+
+wc:policy:blue a odrl:Set ; odrl:permission [ a odrl:Permission ; odrl:assignee wc:actor:blue ; odrl:action wc:cap:isolate-resource ], [ a odrl:Permission ; odrl:assignee wc:actor:blue ; odrl:action wc:cap:restore-resource ], [ a odrl:Permission ; odrl:assignee wc:actor:blue ; odrl:action wc:cap:failover-service ], [ a odrl:Permission ; odrl:assignee wc:actor:blue ; odrl:action wc:cap:reroute-service ], [ a odrl:Permission ; odrl:assignee wc:actor:blue ; odrl:action odrl:read ; odrl:target wc:asset:identity-core, wc:asset:telecom-backbone, wc:asset:cloud-control, wc:asset:payments, wc:asset:warehouse, wc:asset:grid-control, wc:asset:hospital-ops ] .
+wc:policy:red a odrl:Set ; odrl:permission [ a odrl:Permission ; odrl:assignee wc:actor:red ; odrl:action wc:cap:degrade-service ], [ a odrl:Permission ; odrl:assignee wc:actor:red ; odrl:action wc:cap:interrupt-identity ], [ a odrl:Permission ; odrl:assignee wc:actor:red ; odrl:action wc:cap:partition-network ], [ a odrl:Permission ; odrl:assignee wc:actor:red ; odrl:action wc:cap:exhaust-quota ], [ a odrl:Permission ; odrl:assignee wc:actor:red ; odrl:action odrl:read ; odrl:target wc:asset:telecom-backbone, wc:asset:cloud-control, wc:asset:payments ] .
+wc:policy:gray a odrl:Set ; odrl:permission [ a odrl:Permission ; odrl:assignee wc:actor:gray ; odrl:action wc:cap:cause-region-failure ], [ a odrl:Permission ; odrl:assignee wc:actor:gray ; odrl:action odrl:read ; odrl:target wc:asset:telecom-backbone, wc:asset:cloud-control, wc:asset:grid-control ] .
+wc:policy:observer a odrl:Set ; odrl:permission [ a odrl:Permission ; odrl:assignee wc:actor:observer ; odrl:action odrl:read ; odrl:target wc:asset:identity-core, wc:asset:telecom-backbone, wc:asset:cloud-control, wc:asset:payments, wc:asset:warehouse, wc:asset:grid-control, wc:asset:hospital-ops ] .
+
+wc:metric:max-depth a dqv:Metric ; skos:prefLabel "Maximum propagation depth" .
+wc:metric:max-events a dqv:Metric ; skos:prefLabel "Maximum events per actuation" .
+wc:metric:max-impacted-resources a dqv:Metric ; skos:prefLabel "Maximum impacted resources per actuation" .
+wc:metric:observation-lag-steps a dqv:Metric ; skos:prefLabel "Observation lag in world steps" .
+wc:measurement:max-depth a dqv:QualityMeasurement ; dqv:isMeasurementOf wc:metric:max-depth ; dqv:value 6 .
+wc:measurement:max-events a dqv:QualityMeasurement ; dqv:isMeasurementOf wc:metric:max-events ; dqv:value 64 .
+wc:measurement:max-impacted-resources a dqv:QualityMeasurement ; dqv:isMeasurementOf wc:metric:max-impacted-resources ; dqv:value 32 .
+wc:measurement:lag-blue a dqv:QualityMeasurement ; dqv:isMeasurementOf wc:metric:observation-lag-steps ; dqv:computedOn wc:actor:blue ; dqv:value 1 .
+wc:measurement:lag-red a dqv:QualityMeasurement ; dqv:isMeasurementOf wc:metric:observation-lag-steps ; dqv:computedOn wc:actor:red ; dqv:value 2 .
+wc:measurement:lag-gray a dqv:QualityMeasurement ; dqv:isMeasurementOf wc:metric:observation-lag-steps ; dqv:computedOn wc:actor:gray ; dqv:value 1 .
+wc:measurement:lag-observer a dqv:QualityMeasurement ; dqv:isMeasurementOf wc:metric:observation-lag-steps ; dqv:computedOn wc:actor:observer ; dqv:value 0 .
+wc:shape:world-contract a sh:NodeShape, earl:TestCriterion ; sh:targetClass pplan:Plan ; sh:property [ sh:path dct:conformsTo ; sh:hasValue wc:profile ; sh:minCount 1 ] .
