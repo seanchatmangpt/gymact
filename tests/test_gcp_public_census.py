@@ -101,6 +101,7 @@ def test_nonempty_discovery_census_becomes_receipted_source_observation() -> Non
     assert metadata["advertised_api_versions"] == "1"
     assert metadata["available_api_versions"] == "1"
     assert metadata["unavailable_api_versions"] == "0"
+    assert metadata["transiently_unavailable_api_versions"] == "0"
     assert metadata["methods"] == "1"
     assert metadata["schemas"] == "1"
 
@@ -159,9 +160,65 @@ def test_stale_advertised_discovery_document_is_preserved_not_dropped() -> None:
     assert metadata["advertised_api_versions"] == "2"
     assert metadata["available_api_versions"] == "1"
     assert metadata["unavailable_api_versions"] == "1"
+    assert metadata["transiently_unavailable_api_versions"] == "0"
     unavailable = observation.artifacts[1]
     assert unavailable.identity == "google-discovery-unavailable:stale:v1alpha1"
     assert dict(unavailable.metadata)["status_code"] == "404"
+    assert dict(unavailable.metadata)["transient"] == "false"
+
+
+def test_exhausted_transient_discovery_is_receipted_partial_not_alive() -> None:
+    directory = {
+        "items": [
+            {
+                "name": "example",
+                "version": "v1",
+                "title": "Example",
+                "preferred": True,
+                "discoveryRestUrl": "https://example.test/discovery",
+            },
+            {
+                "name": "flaky",
+                "version": "v1beta1",
+                "title": "Flaky",
+                "preferred": True,
+                "discoveryRestUrl": "https://flaky.test/discovery",
+            },
+        ]
+    }
+    document = {
+        "name": "example",
+        "version": "v1",
+        "methods": {"get": {"httpMethod": "GET", "path": "v1/{name}", "response": {"$ref": "R"}}},
+        "schemas": {"R": {"type": "object"}},
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url == "https://discovery.googleapis.com/discovery/v1/apis":
+            return httpx.Response(200, json=directory)
+        if url == "https://example.test/discovery":
+            return httpx.Response(200, json=document)
+        if url == "https://flaky.test/discovery":
+            return httpx.Response(502, content=b"upstream unavailable")
+        return httpx.Response(500)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    result = load_resilient_discovery_census(client=client)
+    assert result.complete_probe
+    assert result.has_transient_gaps
+
+    observation = discovery_source_observation(result)
+    assert observation.disposition == "PARTIAL_ALIVE"
+    assert not observation.admitted
+    assert observation.receipt is not None
+    assert observation.artifacts
+    assert observation.reason == "TRANSIENT_DISCOVERY_DOCUMENTS_UNAVAILABLE"
+    metadata = dict(observation.artifacts[0].metadata)
+    assert metadata["transiently_unavailable_api_versions"] == "1"
+    transient = observation.artifacts[1]
+    assert dict(transient.metadata)["status_code"] == "502"
+    assert dict(transient.metadata)["transient"] == "true"
 
 
 def test_cloud_docs_sitemap_index_closes_over_every_child() -> None:
@@ -240,9 +297,45 @@ def test_public_census_closes_nine_families_and_leaves_only_empirical_open() -> 
         admission=admission,
     )
     assert census.public_sources_alive
+    assert census.public_sources_receipted
     assert not census.admission.complete
     summary = census.summary()
     assert summary["standing"] == "PARTIAL_ALIVE"
     assert summary["public_source_count"] == 9
     assert not summary["whole_source_graph_complete"]
     assert summary["missing_required_sources"] == ["empirical-observation"]
+
+
+def test_receipted_partial_public_source_stays_partial_and_not_admitted() -> None:
+    discovery = ContractSourceObservation(
+        family=ContractSourceFamily.DISCOVERY,
+        disposition="PARTIAL_ALIVE",
+        artifacts=source(ContractSourceFamily.DISCOVERY).artifacts,
+        receipt="receipt:partial-discovery",
+        reason="TRANSIENT_DISCOVERY_DOCUMENTS_UNAVAILABLE",
+    )
+    googleapis = source(ContractSourceFamily.GOOGLEAPIS_PROTO)
+    derived = tuple(
+        source(family)
+        for family in (
+            ContractSourceFamily.SERVICE_CONFIG,
+            ContractSourceFamily.ASSET_INVENTORY,
+            ContractSourceFamily.AUDIT_LOGS,
+            ContractSourceFamily.IAM,
+            ContractSourceFamily.QUOTA,
+            ContractSourceFamily.LONG_RUNNING_OPERATIONS,
+        )
+    )
+    docs = source(ContractSourceFamily.HUMAN_DOCS)
+    admission = evaluate_source_admission((discovery, googleapis, *derived, docs))
+    census = GcpPublicContractCensus(
+        discovery=discovery,
+        googleapis=googleapis,
+        derived_sources=derived,
+        human_docs=docs,
+        admission=admission,
+    )
+    assert not census.public_sources_alive
+    assert census.public_sources_receipted
+    assert census.standing == "PARTIAL_ALIVE"
+    assert ("discovery", "PARTIAL_ALIVE") in admission.non_alive_sources
