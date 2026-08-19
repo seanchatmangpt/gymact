@@ -96,6 +96,10 @@ rg:p-multicloud a rg:RegisteredProvider ;
     rg:registryKey "multicloud" ; rg:providerModule "gymact.gyms.multicloud" ; rg:providerClassName "MulticloudProvider" ;
     rg:capabilitiesModule "gymact.gyms.multicloud" ; rg:capabilitiesImportClause "CAPABILITY_REGISTRY as MULTICLOUD_CAPABILITIES" ; rg:capabilitiesExpr "MULTICLOUD_CAPABILITIES" .
 
+rg:p-platform-console a rg:RegisteredProvider ;
+    rg:registryKey "platform-console" ; rg:providerModule "gymact.gyms.platform_console_provider" ; rg:providerClassName "PlatformConsoleProvider" ;
+    rg:capabilitiesModule "gymact.gyms.platform_console_provider" ; rg:capabilitiesImportClause "PLATFORM_CONSOLE_CAPABILITIES" ; rg:capabilitiesExpr "PLATFORM_CONSOLE_CAPABILITIES" .
+
 rg:p-resource-flow a rg:RegisteredProvider ;
     rg:registryKey "resource-flow" ; rg:providerModule "gymact.gyms.resource_flow" ; rg:providerClassName "ResourceFlowProvider" ;
     rg:capabilitiesModule "gymact.gyms.resource_flow" ; rg:capabilitiesImportClause "RESOURCE_FLOW_CAPABILITIES" ; rg:capabilitiesExpr "RESOURCE_FLOW_CAPABILITIES" .
