@@ -70,6 +70,7 @@ jobs:
             --timeout 60
 
       - name: Preserve public contract receipt
+        if: always()
         uses: actions/upload-artifact@v7.0.1
         with:
           name: gcp-public-contract-census-${{ github.event.pull_request.head.sha || github.sha }}
