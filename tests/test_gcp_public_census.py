@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import httpx
 
+from gymact.gyms.gcp_discovery_live import load_resilient_discovery_census
 from gymact.gyms.gcp_exact import (
     DiscoveryApi,
     DiscoveryMethod,
@@ -39,23 +40,8 @@ def source(family: ContractSourceFamily) -> ContractSourceObservation:
     )
 
 
-def test_empty_discovery_census_is_blocked() -> None:
-    census = GcpContractCensus(
-        apis=(),
-        methods=(),
-        schemas=(),
-        directory_digest_sha256="b" * 64,
-    )
-    observation = discovery_source_observation(census)
-    assert observation.family is ContractSourceFamily.DISCOVERY
-    assert observation.disposition == "BLOCKED"
-    assert observation.receipt is None
-    assert observation.artifacts == ()
-    assert observation.reason == "EMPTY_DISCOVERY_CENSUS"
-
-
-def test_nonempty_discovery_census_becomes_receipted_source_observation() -> None:
-    census = GcpContractCensus(
+def _nonempty_census() -> GcpContractCensus:
+    return GcpContractCensus(
         apis=(
             DiscoveryApi(
                 name="example",
@@ -89,14 +75,93 @@ def test_nonempty_discovery_census_becomes_receipted_source_observation() -> Non
         ),
         directory_digest_sha256="b" * 64,
     )
+
+
+def test_empty_discovery_census_is_blocked() -> None:
+    census = GcpContractCensus(
+        apis=(),
+        methods=(),
+        schemas=(),
+        directory_digest_sha256="b" * 64,
+    )
     observation = discovery_source_observation(census)
+    assert observation.family is ContractSourceFamily.DISCOVERY
+    assert observation.disposition == "BLOCKED"
+    assert observation.receipt is None
+    assert observation.artifacts == ()
+    assert observation.reason == "EMPTY_OR_INCOMPLETE_DISCOVERY_CENSUS"
+
+
+def test_nonempty_discovery_census_becomes_receipted_source_observation() -> None:
+    observation = discovery_source_observation(_nonempty_census())
     assert observation.disposition == "ALIVE"
     assert observation.receipt is not None
     assert len(observation.artifacts) == 1
     metadata = dict(observation.artifacts[0].metadata)
-    assert metadata["api_versions"] == "1"
+    assert metadata["advertised_api_versions"] == "1"
+    assert metadata["available_api_versions"] == "1"
+    assert metadata["unavailable_api_versions"] == "0"
     assert metadata["methods"] == "1"
     assert metadata["schemas"] == "1"
+
+
+def test_stale_advertised_discovery_document_is_preserved_not_dropped() -> None:
+    directory = {
+        "items": [
+            {
+                "name": "example",
+                "version": "v1",
+                "title": "Example",
+                "preferred": True,
+                "discoveryRestUrl": "https://example.test/discovery",
+            },
+            {
+                "name": "stale",
+                "version": "v1alpha1",
+                "title": "Stale",
+                "preferred": False,
+                "discoveryRestUrl": "https://stale.test/discovery",
+            },
+        ]
+    }
+    document = {
+        "name": "example",
+        "version": "v1",
+        "methods": {
+            "get": {
+                "httpMethod": "GET",
+                "path": "v1/resources/{name}",
+                "response": {"$ref": "Resource"},
+            }
+        },
+        "schemas": {"Resource": {"type": "object"}},
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url == "https://discovery.googleapis.com/discovery/v1/apis":
+            return httpx.Response(200, json=directory)
+        if url == "https://example.test/discovery":
+            return httpx.Response(200, json=document)
+        if url == "https://stale.test/discovery":
+            return httpx.Response(404, content=b"gone")
+        return httpx.Response(500)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    result = load_resilient_discovery_census(client=client)
+    assert result.complete_probe
+    assert result.advertised_entries == 2
+    assert [item.identity for item in result.unavailable] == ["stale:v1alpha1"]
+
+    observation = discovery_source_observation(result)
+    assert observation.admitted
+    metadata = dict(observation.artifacts[0].metadata)
+    assert metadata["advertised_api_versions"] == "2"
+    assert metadata["available_api_versions"] == "1"
+    assert metadata["unavailable_api_versions"] == "1"
+    unavailable = observation.artifacts[1]
+    assert unavailable.identity == "google-discovery-unavailable:stale:v1alpha1"
+    assert dict(unavailable.metadata)["status_code"] == "404"
 
 
 def test_cloud_docs_sitemap_index_closes_over_every_child() -> None:
@@ -151,14 +216,26 @@ def test_cloud_docs_unknown_sitemap_root_is_blocked() -> None:
     assert observation.reason == "UNSUPPORTED_SITEMAP_ROOT:feed"
 
 
-def test_public_census_is_partial_until_credentialed_sources_arrive() -> None:
+def test_public_census_closes_nine_families_and_leaves_only_empirical_open() -> None:
     discovery = source(ContractSourceFamily.DISCOVERY)
     googleapis = source(ContractSourceFamily.GOOGLEAPIS_PROTO)
+    derived = tuple(
+        source(family)
+        for family in (
+            ContractSourceFamily.SERVICE_CONFIG,
+            ContractSourceFamily.ASSET_INVENTORY,
+            ContractSourceFamily.AUDIT_LOGS,
+            ContractSourceFamily.IAM,
+            ContractSourceFamily.QUOTA,
+            ContractSourceFamily.LONG_RUNNING_OPERATIONS,
+        )
+    )
     docs = source(ContractSourceFamily.HUMAN_DOCS)
-    admission = evaluate_source_admission((discovery, googleapis, docs))
+    admission = evaluate_source_admission((discovery, googleapis, *derived, docs))
     census = GcpPublicContractCensus(
         discovery=discovery,
         googleapis=googleapis,
+        derived_sources=derived,
         human_docs=docs,
         admission=admission,
     )
@@ -166,5 +243,6 @@ def test_public_census_is_partial_until_credentialed_sources_arrive() -> None:
     assert not census.admission.complete
     summary = census.summary()
     assert summary["standing"] == "PARTIAL_ALIVE"
+    assert summary["public_source_count"] == 9
     assert not summary["whole_source_graph_complete"]
-    assert "service-config" in summary["missing_required_sources"]
+    assert summary["missing_required_sources"] == ["empirical-observation"]
