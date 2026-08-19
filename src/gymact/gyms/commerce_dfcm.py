@@ -1,14 +1,9 @@
 """Provider-neutral post-AGI DfCM commerce world.
 
-This module deliberately stops at the external-provider boundary.  It can execute
-and receipt internal commercial semantics, but marketplace acceptance, seller
-registration, tax/banking/KYC, and legal agreement execution are evidence inputs,
-never simulator-manufactured facts.
-
-The world preserves SELECT -> CONSTRUCT -> DO separation and enforces BRCE for
-consequential internal transitions.  A provider adapter can later project this
-contract to AWS, Microsoft, Google Cloud, or direct Stripe without changing the
-commercial ontology.
+The gym executes commercial semantics without pretending to be a cloud
+marketplace. Provider acceptance and seller/legal facts are admitted only when
+their origin is LIVE_EXTERNAL. Fixtures can exercise shape, never external
+standing.
 """
 
 from __future__ import annotations
@@ -60,6 +55,11 @@ class EventKind(StrEnum):
     EXPIRE = "EXPIRE"
 
 
+class EvidenceOrigin(StrEnum):
+    FIXTURE = "FIXTURE"
+    LIVE_EXTERNAL = "LIVE_EXTERNAL"
+
+
 class RefusalCode(StrEnum):
     MULTIPLE_BILLING_AUTHORITIES = "REFUSED:MULTIPLE_BILLING_AUTHORITIES"
     MISSING_AGREEMENT_ID = "REFUSED:MISSING_AGREEMENT_ID"
@@ -75,10 +75,8 @@ class RefusalCode(StrEnum):
     PROVIDER_ACCEPTANCE_NOT_OBSERVED = "REFUSED:PROVIDER_ACCEPTANCE_NOT_OBSERVED"
     EXTERNAL_DO_WITHOUT_AUTHORITY = "REFUSED:EXTERNAL_DO_WITHOUT_AUTHORITY"
     BRCE_REQUIRED = "REFUSED:BRCE_REQUIRED"
-    RECEIPT_REQUIRED = "REFUSED:RECEIPT_REQUIRED"
     PRICING_DIMENSION_MISMATCH = "REFUSED:PRICING_DIMENSION_MISMATCH"
     ENTITLEMENT_IDENTITY_COLLAPSE = "REFUSED:ENTITLEMENT_IDENTITY_COLLAPSE"
-    INCOMPLETE_PACKAGING_EVIDENCE = "REFUSED:INCOMPLETE_PACKAGING_EVIDENCE"
 
 
 class ExternalBlocker(StrEnum):
@@ -189,6 +187,7 @@ class ExternalAcceptance:
     observed: bool
     evidence_ref: str
     accepted_quantity: int
+    evidence_origin: EvidenceOrigin = EvidenceOrigin.FIXTURE
 
 
 @dataclass(frozen=True, slots=True)
@@ -243,15 +242,15 @@ class PackagingEvidence:
 
     @property
     def missing(self) -> tuple[str, ...]:
-        values = {
-            "helm_chart": self.helm_chart,
-            "stable_kubernetes_apis": self.stable_kubernetes_apis,
-            "sbom": self.sbom,
-            "vulnerability_scan": self.vulnerability_scan,
-            "signed_provenance": self.signed_provenance,
-            "portable_registry_artifact": self.portable_registry_artifact,
-        }
-        return tuple(name for name, present in values.items() if not present)
+        fields = (
+            "helm_chart",
+            "stable_kubernetes_apis",
+            "sbom",
+            "vulnerability_scan",
+            "signed_provenance",
+            "portable_registry_artifact",
+        )
+        return tuple(name for name in fields if not getattr(self, name))
 
 
 @dataclass(frozen=True, slots=True)
@@ -283,43 +282,53 @@ class Capability:
     description: str
 
 
-CAPABILITIES: tuple[Capability, ...] = (
-    Capability("agreement.admit", OperationKind.CONSTRUCT, True, False, True, "Admit one commercial agreement without collapsing concurrent agreements."),
-    Capability("billing-authority.fence", OperationKind.CONSTRUCT, True, False, True, "Require exactly one billing authority for an agreement."),
-    Capability("entitlement.apply-event", OperationKind.DO, False, False, True, "Apply source-neutral entitlement lifecycle events through BRCE."),
-    Capability("entitlement.concurrent", OperationKind.CONSTRUCT, True, False, True, "Preserve multiple entitlements for one account/product."),
-    Capability("entitlement.lifecycle", OperationKind.DO, False, False, True, "Activate, amend, suspend, reinstate, renew, cancel and expire."),
-    Capability("identity.bind", OperationKind.CONSTRUCT, True, False, True, "Bind external account identity to tenant identity without granting billing authority."),
-    Capability("usage.observe", OperationKind.SELECT, True, False, True, "Observe usage without making it billable."),
-    Capability("usage.admit", OperationKind.CONSTRUCT, True, False, True, "Admit usage only against an active entitlement."),
-    Capability("meter.construct", OperationKind.CONSTRUCT, True, False, True, "Construct deterministic meter intent from admitted usage."),
-    Capability("meter.submit", OperationKind.DO, False, True, True, "Submit meter intent only through an external-authority adapter."),
-    Capability("provider.acceptance.admit", OperationKind.CONSTRUCT, True, True, True, "Admit observed provider acceptance; never synthesize it."),
-    Capability("settlement.reconcile", OperationKind.CONSTRUCT, True, False, True, "Reconcile accepted provider quantity and price."),
-    Capability("agreement.amend", OperationKind.DO, False, False, True, "Apply receipted agreement amendments."),
-    Capability("agreement.renew", OperationKind.DO, False, False, True, "Renew without changing agreement identity semantics."),
-    Capability("agreement.cancel", OperationKind.DO, False, False, True, "Cancel and fence further usage."),
-    Capability("credit.construct", OperationKind.CONSTRUCT, True, False, True, "Construct auditable credit intent."),
-    Capability("refund.construct", OperationKind.CONSTRUCT, True, False, True, "Construct auditable refund intent."),
-    Capability("support.entitle", OperationKind.CONSTRUCT, True, False, True, "Project support/SLA tier from entitlement."),
-    Capability("pricing.validate", OperationKind.CONSTRUCT, True, False, True, "Reject dimensions absent from the agreement."),
-    Capability("replay.idempotent", OperationKind.CONSTRUCT, True, False, True, "Reject duplicate/stale commercial events."),
-    Capability("packaging.helm", OperationKind.CONSTRUCT, True, False, True, "Require Helm as a portable deployment projection."),
-    Capability("packaging.k8s-stable-api", OperationKind.CONSTRUCT, True, False, True, "Reject alpha/deprecated Kubernetes APIs at the portability boundary."),
-    Capability("supply-chain.sbom", OperationKind.CONSTRUCT, True, False, True, "Require SBOM evidence."),
-    Capability("supply-chain.vulnerability-scan", OperationKind.CONSTRUCT, True, False, True, "Require vulnerability scan evidence."),
-    Capability("supply-chain.provenance", OperationKind.CONSTRUCT, True, False, True, "Require signed artifact provenance."),
-    Capability("artifact.portable-registry", OperationKind.CONSTRUCT, True, False, True, "Require registry-neutral publishable artifact identity."),
-    Capability("external.seller-registration", OperationKind.DO, False, True, True, "External evidence only."),
-    Capability("external.kyc", OperationKind.DO, False, True, True, "External evidence only."),
-    Capability("external.tax", OperationKind.DO, False, True, True, "External evidence only."),
-    Capability("external.banking", OperationKind.DO, False, True, True, "External evidence only."),
-    Capability("external.eula", OperationKind.DO, False, True, True, "External legal authority only."),
-    Capability("external.provider-review", OperationKind.DO, False, True, True, "External provider authority only."),
+def _cap(
+    capability_id: str,
+    kind: OperationKind,
+    reversible: bool,
+    external: bool,
+    description: str,
+) -> Capability:
+    return Capability(capability_id, kind, reversible, external, True, description)
+
+
+CAPABILITIES = (
+    _cap("agreement.admit", OperationKind.CONSTRUCT, True, False, "Admit agreement."),
+    _cap("billing-authority.fence", OperationKind.CONSTRUCT, True, False, "One authority."),
+    _cap("entitlement.apply-event", OperationKind.DO, False, False, "BRCE lifecycle."),
+    _cap("entitlement.concurrent", OperationKind.CONSTRUCT, True, False, "No ID collapse."),
+    _cap("entitlement.lifecycle", OperationKind.DO, False, False, "Full lifecycle."),
+    _cap("identity.bind", OperationKind.CONSTRUCT, True, False, "External identity binding."),
+    _cap("usage.observe", OperationKind.SELECT, True, False, "Observe only."),
+    _cap("usage.admit", OperationKind.CONSTRUCT, True, False, "Admit active usage."),
+    _cap("meter.construct", OperationKind.CONSTRUCT, True, False, "Meter intent."),
+    _cap("meter.submit", OperationKind.DO, False, True, "External submission."),
+    _cap("provider.acceptance.admit", OperationKind.CONSTRUCT, True, True, "Observed only."),
+    _cap("settlement.reconcile", OperationKind.CONSTRUCT, True, False, "Reconcile."),
+    _cap("agreement.amend", OperationKind.DO, False, False, "Amend."),
+    _cap("agreement.renew", OperationKind.DO, False, False, "Renew."),
+    _cap("agreement.cancel", OperationKind.DO, False, False, "Cancel."),
+    _cap("credit.construct", OperationKind.CONSTRUCT, True, False, "Credit intent."),
+    _cap("refund.construct", OperationKind.CONSTRUCT, True, False, "Refund intent."),
+    _cap("support.entitle", OperationKind.CONSTRUCT, True, False, "Support/SLA."),
+    _cap("pricing.validate", OperationKind.CONSTRUCT, True, False, "Pricing dimensions."),
+    _cap("replay.idempotent", OperationKind.CONSTRUCT, True, False, "Replay fence."),
+    _cap("packaging.helm", OperationKind.CONSTRUCT, True, False, "Helm projection."),
+    _cap("packaging.k8s-stable-api", OperationKind.CONSTRUCT, True, False, "Stable APIs."),
+    _cap("supply-chain.sbom", OperationKind.CONSTRUCT, True, False, "SBOM."),
+    _cap("supply-chain.vulnerability-scan", OperationKind.CONSTRUCT, True, False, "Scan."),
+    _cap("supply-chain.provenance", OperationKind.CONSTRUCT, True, False, "Provenance."),
+    _cap("artifact.portable-registry", OperationKind.CONSTRUCT, True, False, "Registry-neutral."),
+    _cap("external.seller-registration", OperationKind.DO, False, True, "External evidence."),
+    _cap("external.kyc", OperationKind.DO, False, True, "External evidence."),
+    _cap("external.tax", OperationKind.DO, False, True, "External evidence."),
+    _cap("external.banking", OperationKind.DO, False, True, "External evidence."),
+    _cap("external.eula", OperationKind.DO, False, True, "External legal authority."),
+    _cap("external.provider-review", OperationKind.DO, False, True, "Provider authority."),
 )
 
 
-_TRANSITIONS: dict[EntitlementState, dict[EventKind, EntitlementState]] = {
+_TRANSITIONS = {
     EntitlementState.PENDING: {
         EventKind.ACTIVATE: EntitlementState.ACTIVE,
         EventKind.CANCEL: EntitlementState.CANCELLED,
@@ -350,30 +359,27 @@ def _digest(value: Any) -> str:
 
 
 def _receipt(
-    *,
     operation: str,
     subject_id: str,
     authority: str,
     consequence: Mapping[str, Any],
     replay_key: str,
 ) -> CommerceReceipt:
-    digest = _digest(consequence)
-    rid = _digest(
-        {
-            "operation": operation,
-            "subject_id": subject_id,
-            "authority": authority,
-            "consequence_digest": digest,
-            "replay_key": replay_key,
-        }
-    )
+    consequence_digest = _digest(consequence)
+    payload = {
+        "operation": operation,
+        "subject": subject_id,
+        "authority": authority,
+        "consequence": consequence_digest,
+        "replay": replay_key,
+    }
     return CommerceReceipt(
-        receipt_id=rid,
-        operation=operation,
-        subject_id=subject_id,
-        authority=authority,
-        consequence_digest=digest,
-        replay_key=replay_key,
+        _digest(payload),
+        operation,
+        subject_id,
+        authority,
+        consequence_digest,
+        replay_key,
     )
 
 
@@ -387,44 +393,50 @@ class CommerceWorld:
     settlements: dict[str, Settlement] = field(default_factory=dict)
     processed_events: set[str] = field(default_factory=set)
     receipts: dict[str, CommerceReceipt] = field(default_factory=dict)
-    external_evidence: dict[ExternalBlocker, str] = field(default_factory=dict)
+    external_evidence: dict[ExternalBlocker, tuple[str, EvidenceOrigin]] = field(
+        default_factory=dict
+    )
+
+    def _store(self, receipt: CommerceReceipt) -> CommerceReceipt:
+        self.receipts[receipt.receipt_id] = receipt
+        return receipt
 
     def admit_agreement(
         self, agreement: CommercialAgreement
     ) -> tuple[CommercialAgreement | None, CommerceReceipt | Refusal]:
         if not agreement.agreement_id:
-            return None, Refusal(RefusalCode.MISSING_AGREEMENT_ID, "agreement_id is required")
+            return None, Refusal(RefusalCode.MISSING_AGREEMENT_ID, "agreement_id required")
         existing = self.agreements.get(agreement.agreement_id)
         if existing and existing.billing_authority is not agreement.billing_authority:
             return None, Refusal(
                 RefusalCode.MULTIPLE_BILLING_AUTHORITIES,
-                f"{agreement.agreement_id} already bound to {existing.billing_authority}",
+                "agreement already has a different billing authority",
             )
         dimensions = [item.dimension_id for item in agreement.pricing]
         if len(dimensions) != len(set(dimensions)):
             return None, Refusal(
                 RefusalCode.PRICING_DIMENSION_MISMATCH,
-                "pricing dimensions must be unique within an agreement",
+                "pricing dimensions must be unique",
             )
         self.agreements[agreement.agreement_id] = agreement
-        receipt = _receipt(
-            operation="agreement.admit",
-            subject_id=agreement.agreement_id,
-            authority="commerce-kernel",
-            consequence={
-                "billing_authority": agreement.billing_authority,
-                "pricing": dimensions,
-                "account_id": agreement.account_id,
-                "product_id": agreement.product_id,
-            },
-            replay_key=f"agreement:{agreement.agreement_id}",
+        receipt = self._store(
+            _receipt(
+                "agreement.admit",
+                agreement.agreement_id,
+                "commerce-kernel",
+                {
+                    "authority": agreement.billing_authority,
+                    "account": agreement.account_id,
+                    "product": agreement.product_id,
+                    "pricing": dimensions,
+                },
+                f"agreement:{agreement.agreement_id}",
+            )
         )
-        self.receipts[receipt.receipt_id] = receipt
         return agreement, receipt
 
     def _brce(
         self,
-        *,
         operation: str,
         subject_id: str,
         grant: BrokerGrant | None,
@@ -432,21 +444,12 @@ class CommerceWorld:
         replay_key: str,
     ) -> CommerceReceipt | Refusal:
         if grant is None:
-            return Refusal(RefusalCode.BRCE_REQUIRED, f"{operation} requires broker grant")
+            return Refusal(RefusalCode.BRCE_REQUIRED, f"{operation} requires BRCE")
         if grant.subject_id != subject_id or grant.allowed_operation != operation:
-            return Refusal(
-                RefusalCode.BRCE_REQUIRED,
-                f"grant {grant.grant_id} does not authorize {operation} on {subject_id}",
-            )
-        receipt = _receipt(
-            operation=operation,
-            subject_id=subject_id,
-            authority=grant.authority,
-            consequence=consequence,
-            replay_key=replay_key,
+            return Refusal(RefusalCode.BRCE_REQUIRED, "broker grant does not match operation")
+        return self._store(
+            _receipt(operation, subject_id, grant.authority, consequence, replay_key)
         )
-        self.receipts[receipt.receipt_id] = receipt
-        return receipt
 
     def apply_entitlement_event(
         self,
@@ -457,28 +460,18 @@ class CommerceWorld:
     ) -> tuple[Entitlement | None, CommerceReceipt | Refusal]:
         if source != event.source:
             return None, Refusal(
-                RefusalCode.EXTERNAL_DO_WITHOUT_AUTHORITY,
-                "declared event source must equal routed source",
+                RefusalCode.EXTERNAL_DO_WITHOUT_AUTHORITY, "routed source mismatch"
             )
         if not event.entitlement_id:
-            return None, Refusal(
-                RefusalCode.MISSING_ENTITLEMENT_ID, "entitlement_id is required"
-            )
+            return None, Refusal(RefusalCode.MISSING_ENTITLEMENT_ID, "id required")
         agreement = self.agreements.get(event.agreement_id)
         if agreement is None:
-            return None, Refusal(
-                RefusalCode.MISSING_AGREEMENT_ID,
-                f"unknown agreement {event.agreement_id}",
-            )
+            return None, Refusal(RefusalCode.MISSING_AGREEMENT_ID, "unknown agreement")
         if event.event_id in self.processed_events:
-            return None, Refusal(
-                RefusalCode.DUPLICATE_OR_STALE_EVENT,
-                f"event {event.event_id} was already applied",
-            )
+            return None, Refusal(RefusalCode.DUPLICATE_OR_STALE_EVENT, "event replay")
         if event.product_id != agreement.product_id:
             return None, Refusal(
-                RefusalCode.CROSS_TENANT_ENTITLEMENT,
-                "event product does not belong to agreement",
+                RefusalCode.CROSS_TENANT_ENTITLEMENT, "product/agreement mismatch"
             )
 
         current = self.entitlements.get(event.entitlement_id)
@@ -490,15 +483,17 @@ class CommerceWorld:
                 )
             target = EntitlementState.PENDING
         else:
-            if current.agreement_id != event.agreement_id or current.tenant_id != event.tenant_id:
+            if (
+                current.agreement_id != event.agreement_id
+                or current.tenant_id != event.tenant_id
+            ):
                 return None, Refusal(
                     RefusalCode.CROSS_TENANT_ENTITLEMENT,
-                    "entitlement identity cannot move across agreement/tenant",
+                    "entitlement cannot move agreement/tenant",
                 )
             if event.revision <= current.revision:
                 return None, Refusal(
-                    RefusalCode.DUPLICATE_OR_STALE_EVENT,
-                    f"revision {event.revision} is not newer than {current.revision}",
+                    RefusalCode.DUPLICATE_OR_STALE_EVENT, "stale revision"
                 )
             target = _TRANSITIONS[current.state].get(event.kind)
             if target is None:
@@ -508,52 +503,50 @@ class CommerceWorld:
                 )
 
         candidate = Entitlement(
-            entitlement_id=event.entitlement_id,
-            agreement_id=event.agreement_id,
-            tenant_id=event.tenant_id,
-            product_id=event.product_id,
-            state=target,
-            quantity=event.quantity,
-            revision=event.revision,
-            last_event_id=event.event_id,
-            capabilities=event.capabilities,
-            support_tier=event.support_tier,
+            event.entitlement_id,
+            event.agreement_id,
+            event.tenant_id,
+            event.product_id,
+            target,
+            event.quantity,
+            event.revision,
+            event.event_id,
+            event.capabilities,
+            event.support_tier,
         )
-        consequence = {
-            "state": candidate.state,
-            "revision": candidate.revision,
-            "quantity": candidate.quantity,
-            "capabilities": sorted(candidate.capabilities),
-        }
         receipt = self._brce(
-            operation="entitlement.apply-event",
-            subject_id=event.entitlement_id,
-            grant=grant,
-            consequence=consequence,
-            replay_key=f"event:{event.event_id}",
+            "entitlement.apply-event",
+            event.entitlement_id,
+            grant,
+            {
+                "state": target,
+                "revision": event.revision,
+                "quantity": event.quantity,
+                "capabilities": sorted(event.capabilities),
+            },
+            f"event:{event.event_id}",
         )
         if isinstance(receipt, Refusal):
             return None, receipt
-
         self.entitlements[event.entitlement_id] = candidate
         self.processed_events.add(event.event_id)
         return candidate, receipt
 
     def observe_usage(self, observation: UsageObservation) -> CommerceReceipt:
         self.usage[observation.observation_id] = replace(observation, admitted=False)
-        receipt = _receipt(
-            operation="usage.observe",
-            subject_id=observation.observation_id,
-            authority="observation",
-            consequence={
-                "entitlement_id": observation.entitlement_id,
-                "dimension_id": observation.dimension_id,
-                "quantity": observation.quantity,
-            },
-            replay_key=f"usage:{observation.observation_id}",
+        return self._store(
+            _receipt(
+                "usage.observe",
+                observation.observation_id,
+                "observation",
+                {
+                    "entitlement": observation.entitlement_id,
+                    "dimension": observation.dimension_id,
+                    "quantity": observation.quantity,
+                },
+                f"usage:{observation.observation_id}",
+            )
         )
-        self.receipts[receipt.receipt_id] = receipt
-        return receipt
 
     def admit_usage(
         self, observation_id: str
@@ -562,118 +555,115 @@ class CommerceWorld:
         entitlement = self.entitlements.get(observation.entitlement_id)
         if entitlement is None or entitlement.state is not EntitlementState.ACTIVE:
             return None, Refusal(
-                RefusalCode.USAGE_WITHOUT_ACTIVE_ENTITLEMENT,
-                f"{observation.entitlement_id} is not active",
+                RefusalCode.USAGE_WITHOUT_ACTIVE_ENTITLEMENT, "entitlement not active"
             )
         if entitlement.tenant_id != observation.tenant_id:
             return None, Refusal(
-                RefusalCode.CROSS_TENANT_ENTITLEMENT,
-                "usage tenant does not own entitlement",
+                RefusalCode.CROSS_TENANT_ENTITLEMENT, "usage tenant mismatch"
             )
         agreement = self.agreements[entitlement.agreement_id]
         if observation.dimension_id not in agreement.pricing_by_id:
             return None, Refusal(
-                RefusalCode.PRICING_DIMENSION_MISMATCH,
-                f"{observation.dimension_id} not present in agreement",
+                RefusalCode.PRICING_DIMENSION_MISMATCH, "dimension not priced"
             )
         admitted = replace(observation, admitted=True)
         self.usage[observation_id] = admitted
-        receipt = _receipt(
-            operation="usage.admit",
-            subject_id=observation_id,
-            authority="commerce-kernel",
-            consequence={"admitted": True, "entitlement_id": observation.entitlement_id},
-            replay_key=f"usage-admit:{observation_id}",
+        receipt = self._store(
+            _receipt(
+                "usage.admit",
+                observation_id,
+                "commerce-kernel",
+                {"admitted": True, "entitlement": observation.entitlement_id},
+                f"usage-admit:{observation_id}",
+            )
         )
-        self.receipts[receipt.receipt_id] = receipt
         return admitted, receipt
 
     def construct_meter_intent(
-        self,
-        *,
-        intent_id: str,
-        observation_ids: Sequence[str],
+        self, *, intent_id: str, observation_ids: Sequence[str]
     ) -> tuple[MeterIntent | None, CommerceReceipt | Refusal]:
         observations = [self.usage[item] for item in observation_ids]
         if not observations or any(not item.admitted for item in observations):
             return None, Refusal(
-                RefusalCode.METER_WITHOUT_ADMITTED_USAGE,
-                "every meter input must be admitted usage",
+                RefusalCode.METER_WITHOUT_ADMITTED_USAGE, "all usage must be admitted"
             )
-        entitlement_ids = {item.entitlement_id for item in observations}
+        entitlements = {item.entitlement_id for item in observations}
         dimensions = {item.dimension_id for item in observations}
-        if len(entitlement_ids) != 1 or len(dimensions) != 1:
+        if len(entitlements) != 1 or len(dimensions) != 1:
             return None, Refusal(
                 RefusalCode.METER_WITHOUT_ADMITTED_USAGE,
-                "one meter intent must bind exactly one entitlement and dimension",
+                "intent must bind one entitlement/dimension",
             )
-        entitlement_id = next(iter(entitlement_ids))
-        dimension = next(iter(dimensions))
+        entitlement_id = next(iter(entitlements))
+        dimension_id = next(iter(dimensions))
         entitlement = self.entitlements[entitlement_id]
         agreement = self.agreements[entitlement.agreement_id]
-        pricing = agreement.pricing_by_id.get(dimension)
-        if pricing is None:
+        price = agreement.pricing_by_id.get(dimension_id)
+        if price is None:
             return None, Refusal(
-                RefusalCode.PRICING_DIMENSION_MISMATCH,
-                f"{dimension} not priced by agreement",
+                RefusalCode.PRICING_DIMENSION_MISMATCH, "dimension not priced"
             )
         quantity = sum(item.quantity for item in observations)
-        amount = quantity * pricing.unit_price_micros
-        construct_receipt = _receipt(
-            operation="meter.construct",
-            subject_id=intent_id,
-            authority="commerce-kernel",
-            consequence={
-                "agreement_id": agreement.agreement_id,
-                "entitlement_id": entitlement_id,
-                "dimension_id": dimension,
-                "quantity": quantity,
-                "amount_micros": amount,
-                "observations": sorted(observation_ids),
-            },
-            replay_key=f"meter:{intent_id}",
+        amount = quantity * price.unit_price_micros
+        receipt = self._store(
+            _receipt(
+                "meter.construct",
+                intent_id,
+                "commerce-kernel",
+                {
+                    "agreement": agreement.agreement_id,
+                    "entitlement": entitlement_id,
+                    "dimension": dimension_id,
+                    "quantity": quantity,
+                    "amount": amount,
+                    "observations": sorted(observation_ids),
+                },
+                f"meter:{intent_id}",
+            )
         )
-        self.receipts[construct_receipt.receipt_id] = construct_receipt
         intent = MeterIntent(
-            intent_id=intent_id,
-            agreement_id=agreement.agreement_id,
-            entitlement_id=entitlement_id,
-            dimension_id=dimension,
-            quantity=quantity,
-            observation_ids=tuple(sorted(observation_ids)),
-            amount_micros=amount,
-            constructed_receipt=construct_receipt.receipt_id,
+            intent_id,
+            agreement.agreement_id,
+            entitlement_id,
+            dimension_id,
+            quantity,
+            tuple(sorted(observation_ids)),
+            amount,
+            receipt.receipt_id,
         )
         self.meter_intents[intent_id] = intent
-        return intent, construct_receipt
+        return intent, receipt
 
     def admit_external_acceptance(
         self, acceptance: ExternalAcceptance
     ) -> tuple[ExternalAcceptance | None, CommerceReceipt | Refusal]:
-        if not acceptance.observed or not acceptance.evidence_ref:
+        if (
+            not acceptance.observed
+            or not acceptance.evidence_ref
+            or acceptance.evidence_origin is not EvidenceOrigin.LIVE_EXTERNAL
+        ):
             return None, Refusal(
                 RefusalCode.PROVIDER_ACCEPTANCE_NOT_OBSERVED,
-                "provider acceptance must be observed external evidence",
+                "provider acceptance requires observed LIVE_EXTERNAL evidence",
             )
-        intent = self.meter_intents.get(acceptance.intent_id)
-        if intent is None:
+        if acceptance.intent_id not in self.meter_intents:
             return None, Refusal(
-                RefusalCode.METER_WITHOUT_ADMITTED_USAGE,
-                f"unknown meter intent {acceptance.intent_id}",
+                RefusalCode.METER_WITHOUT_ADMITTED_USAGE, "unknown meter intent"
             )
         self.acceptances[acceptance.acceptance_id] = acceptance
-        receipt = _receipt(
-            operation="provider.acceptance.admit",
-            subject_id=acceptance.acceptance_id,
-            authority=acceptance.provider,
-            consequence={
-                "intent_id": acceptance.intent_id,
-                "accepted_quantity": acceptance.accepted_quantity,
-                "evidence_ref": acceptance.evidence_ref,
-            },
-            replay_key=f"acceptance:{acceptance.acceptance_id}",
+        receipt = self._store(
+            _receipt(
+                "provider.acceptance.admit",
+                acceptance.acceptance_id,
+                acceptance.provider,
+                {
+                    "intent": acceptance.intent_id,
+                    "quantity": acceptance.accepted_quantity,
+                    "evidence": acceptance.evidence_ref,
+                },
+                f"acceptance:{acceptance.acceptance_id}",
+            )
         )
-        self.receipts[receipt.receipt_id] = receipt
         return acceptance, receipt
 
     def reconcile(
@@ -683,63 +673,61 @@ class CommerceWorld:
         if acceptance is None:
             return None, Refusal(
                 RefusalCode.SETTLEMENT_WITHOUT_PROVIDER_ACCEPTANCE,
-                f"{acceptance_id} has no admitted provider acceptance",
+                "acceptance is not admitted",
             )
         intent = self.meter_intents[acceptance.intent_id]
         if acceptance.accepted_quantity != intent.quantity:
             return None, Refusal(
                 RefusalCode.SETTLEMENT_WITHOUT_PROVIDER_ACCEPTANCE,
-                "provider quantity differs from constructed meter quantity",
+                "accepted quantity differs from meter intent",
             )
-        receipt = _receipt(
-            operation="settlement.reconcile",
-            subject_id=settlement_id,
-            authority="commerce-kernel",
-            consequence={
-                "intent_id": intent.intent_id,
-                "acceptance_id": acceptance.acceptance_id,
-                "amount_micros": intent.amount_micros,
-            },
-            replay_key=f"settlement:{settlement_id}",
+        receipt = self._store(
+            _receipt(
+                "settlement.reconcile",
+                settlement_id,
+                "commerce-kernel",
+                {
+                    "intent": intent.intent_id,
+                    "acceptance": acceptance_id,
+                    "amount": intent.amount_micros,
+                },
+                f"settlement:{settlement_id}",
+            )
         )
-        self.receipts[receipt.receipt_id] = receipt
         settlement = Settlement(
-            settlement_id=settlement_id,
-            intent_id=intent.intent_id,
-            acceptance_id=acceptance.acceptance_id,
-            amount_micros=intent.amount_micros,
-            receipt=receipt.receipt_id,
+            settlement_id,
+            intent.intent_id,
+            acceptance_id,
+            intent.amount_micros,
+            receipt.receipt_id,
         )
         self.settlements[settlement_id] = settlement
         return settlement, receipt
 
     def admit_external_blocker_evidence(
-        self, blocker: ExternalBlocker, evidence_ref: str
+        self,
+        blocker: ExternalBlocker,
+        evidence_ref: str,
+        *,
+        origin: EvidenceOrigin = EvidenceOrigin.FIXTURE,
     ) -> CommerceReceipt | Refusal:
-        if not evidence_ref:
+        if not evidence_ref or origin is not EvidenceOrigin.LIVE_EXTERNAL:
             return Refusal(
                 RefusalCode.PROVIDER_ACCEPTANCE_NOT_OBSERVED,
-                f"{blocker} requires an external evidence reference",
+                f"{blocker} requires observed LIVE_EXTERNAL evidence",
             )
-        self.external_evidence[blocker] = evidence_ref
-        receipt = _receipt(
-            operation="external-evidence.admit",
-            subject_id=blocker,
-            authority="external",
-            consequence={"evidence_ref": evidence_ref},
-            replay_key=f"external:{blocker}:{evidence_ref}",
+        self.external_evidence[blocker] = (evidence_ref, origin)
+        return self._store(
+            _receipt(
+                "external-evidence.admit",
+                blocker,
+                "external",
+                {"evidence": evidence_ref, "origin": origin},
+                f"external:{blocker}:{evidence_ref}",
+            )
         )
-        self.receipts[receipt.receipt_id] = receipt
-        return receipt
 
     def assert_identity_preservation(self) -> Refusal | None:
-        """Refuse any collapse of distinct concurrent agreement/entitlement identities."""
-        by_account_product: dict[tuple[str, str], set[str]] = {}
-        for agreement in self.agreements.values():
-            by_account_product.setdefault(
-                (agreement.account_id, agreement.product_id), set()
-            ).add(agreement.agreement_id)
-        # Multiple agreements are lawful; each entitlement must still point to an exact agreement.
         for entitlement in self.entitlements.values():
             if entitlement.agreement_id not in self.agreements:
                 return Refusal(
@@ -754,43 +742,46 @@ class CommerceWorld:
         *,
         required_external: Iterable[ExternalBlocker] = tuple(ExternalBlocker),
     ) -> ReadinessReport:
-        findings: list[str] = []
-        identity = self.assert_identity_preservation()
-        if identity:
-            findings.append(identity.code)
-        # Internal standing is earned only when the core path has actually executed.
+        finding = self.assert_identity_preservation()
+        findings = (str(finding.code),) if finding else ()
+        active = any(
+            item.state is EntitlementState.ACTIVE for item in self.entitlements.values()
+        )
         internal_executed = bool(
             self.agreements
-            and self.entitlements
-            and any(item.state is EntitlementState.ACTIVE for item in self.entitlements.values())
+            and active
             and any(item.admitted for item in self.usage.values())
             and self.meter_intents
             and self.receipts
         )
-        internal = Standing.ALIVE if internal_executed and packaging.complete and not findings else Standing.PARTIAL_ALIVE
+        internal = (
+            Standing.ALIVE
+            if internal_executed and packaging.complete and not findings
+            else Standing.PARTIAL_ALIVE
+        )
         missing_external = tuple(
-            blocker for blocker in required_external if blocker not in self.external_evidence
+            item for item in required_external if item not in self.external_evidence
         )
         external = Standing.ALIVE if not missing_external else Standing.BLOCKED
         return ReadinessReport(
-            internal_standing=internal,
-            external_standing=external,
-            missing_packaging=packaging.missing,
-            external_blockers=missing_external,
-            findings=tuple(findings),
+            internal,
+            external,
+            packaging.missing,
+            missing_external,
+            findings,
         )
 
 
 def capability_digest() -> str:
-    """Stable class-closure digest for a later ggen-marketplace pack binding."""
+    """Stable class-closure digest for the ggen-marketplace projection."""
     return _digest(
         [
             {
                 "id": item.capability_id,
                 "operation": item.operation_kind,
                 "reversible": item.reversible,
-                "external_authority_required": item.external_authority_required,
-                "receipt_required": item.receipt_required,
+                "external": item.external_authority_required,
+                "receipt": item.receipt_required,
                 "description": item.description,
             }
             for item in CAPABILITIES
