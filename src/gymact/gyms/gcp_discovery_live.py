@@ -81,7 +81,7 @@ class DiscoveryUnavailable:
 
     @property
     def transient(self) -> bool:
-        return self.reason == "DISCOVERY_DOCUMENT_TRANSIENTLY_UNAVAILABLE"
+        return self.reason == "ADVERTISED_DISCOVERY_TRANSIENT_EXHAUSTED"
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,7 +152,7 @@ def load_resilient_discovery_census(
             doc_response = _get_with_retry(http, discovery_url)
             if doc_response.status_code in {404, 410} | _TRANSIENT_STATUS:
                 reason = (
-                    "DISCOVERY_DOCUMENT_TRANSIENTLY_UNAVAILABLE"
+                    "ADVERTISED_DISCOVERY_TRANSIENT_EXHAUSTED"
                     if doc_response.status_code in _TRANSIENT_STATUS
                     else "ADVERTISED_DISCOVERY_DOCUMENT_UNAVAILABLE"
                 )
