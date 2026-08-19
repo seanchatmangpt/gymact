@@ -38,6 +38,7 @@ def test_dfcm_preserves_full_reversible_cross_product_before_selection() -> None
         CompletionItem(
             item_id="registry",
             standing="BUILD_BROKEN",
+            evidence_refs=("urn:test:evidence:registry",),
             moves=(
                 _move("registry", "adapt-registry", kind="ADAPT", cost=2),
                 _move("registry", "compose-registry", kind="COMPOSE", cost=1),
@@ -46,6 +47,7 @@ def test_dfcm_preserves_full_reversible_cross_product_before_selection() -> None
         CompletionItem(
             item_id="mcp",
             standing="PARTIAL_ALIVE",
+            evidence_refs=("urn:test:evidence:mcp",),
             moves=(
                 _move("mcp", "repair-ontology", kind="CONSTRUCT", cost=1),
                 _move("mcp", "repair-runtime", kind="CONSTRUCT", cost=3),
@@ -60,12 +62,14 @@ def test_dfcm_preserves_full_reversible_cross_product_before_selection() -> None
     assert frontier.truncated is False
     assert len(frontier.plans) == 4
     assert frontier.plans[0].move_ids == ("compose-registry", "repair-ontology")
+    assert len(frontier.source_digest_blake3) == 64
     assert len(frontier.frontier_digest_blake3) == 64
 
     cut = select_completion_cut(frontier)
     assert cut.selected is not None
     assert cut.selected.move_ids == ("compose-registry", "repair-ontology")
     assert cut.reason == "REVERSIBLE_CUT_SELECTED_CONSTRUCT_ONLY"
+    assert cut.source_digest_blake3 == frontier.source_digest_blake3
     assert len(cut.cut_digest_blake3) == 64
     assert admit_completion_cut(cut=cut, items=items) == cut
 
@@ -99,12 +103,11 @@ def test_unknown_or_authority_only_edges_are_blocked_not_promoted_to_do() -> Non
     assert cut.selected is None
 
 
-def test_dependency_must_have_terminal_standing_before_child_enters_frontier() -> None:
+def test_dependency_requires_alive_not_merely_terminal_standing() -> None:
     items = (
         CompletionItem(
             item_id="source",
-            standing="PARTIAL_ALIVE",
-            moves=(_move("source", "verify-source", kind="VERIFY"),),
+            standing="UNSUPPORTED",
         ),
         CompletionItem(
             item_id="projection",
@@ -117,8 +120,7 @@ def test_dependency_must_have_terminal_standing_before_child_enters_frontier() -
     frontier = manufacture_completion_frontier(subject_ref="urn:test:head:ghi", items=items)
 
     assert frontier.blocked_items == ("projection",)
-    assert frontier.total_cardinality == 1
-    assert frontier.plans[0].move_ids == ("verify-source",)
+    assert frontier.total_cardinality == 0
 
 
 def test_terminal_subject_is_alive_without_manufacturing_fake_work() -> None:
@@ -168,7 +170,7 @@ def test_frontier_is_deterministic_and_bounded_without_losing_true_cardinality()
     assert first == second
 
 
-def test_admission_refuses_tampered_cut_that_reintroduces_do() -> None:
+def test_admission_refuses_tampered_cut_before_reaching_do() -> None:
     items = (
         CompletionItem(
             item_id="subject",
@@ -192,8 +194,27 @@ def test_admission_refuses_tampered_cut_that_reintroduces_do() -> None:
     tampered_plan = cut.selected.model_copy(update={"move_ids": ("do",)})
     tampered_cut = cut.model_copy(update={"selected": tampered_plan})
 
-    with pytest.raises(CompletionAdmissionError, match="REFUSED:DO_REQUIRES_BRCE"):
+    with pytest.raises(CompletionAdmissionError, match="REFUSED:CUT_DIGEST_MISMATCH"):
         admit_completion_cut(cut=tampered_cut, items=items)
+
+
+def test_admission_refuses_source_evidence_drift() -> None:
+    items = (
+        CompletionItem(
+            item_id="subject",
+            standing="PARTIAL_ALIVE",
+            evidence_refs=("urn:test:evidence:before",),
+            moves=(_move("subject", "construct"),),
+        ),
+    )
+    frontier = manufacture_completion_frontier(subject_ref="urn:test:head:source", items=items)
+    cut = select_completion_cut(frontier)
+    drifted = (
+        items[0].model_copy(update={"evidence_refs": ("urn:test:evidence:after",)}),
+    )
+
+    with pytest.raises(CompletionAdmissionError, match="REFUSED:SOURCE_IDENTITY_MISMATCH"):
+        admit_completion_cut(cut=cut, items=drifted)
 
 
 def test_invalid_graph_edges_are_typed_refusals() -> None:
@@ -218,6 +239,23 @@ def test_invalid_graph_edges_are_typed_refusals() -> None:
                     item_id="one",
                     standing="UNKNOWN",
                     moves=(_move("other", "bad"),),
+                ),
+            ),
+        )
+
+    with pytest.raises(ValueError, match="DUPLICATE_COMPLETION_MOVE"):
+        manufacture_completion_frontier(
+            subject_ref="urn:test:head:yz",
+            items=(
+                CompletionItem(
+                    item_id="one",
+                    standing="UNKNOWN",
+                    moves=(_move("one", "same"),),
+                ),
+                CompletionItem(
+                    item_id="two",
+                    standing="UNKNOWN",
+                    moves=(_move("two", "same"),),
                 ),
             ),
         )
