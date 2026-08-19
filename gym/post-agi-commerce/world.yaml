@@ -1,12 +1,21 @@
 version: post-agi-commerce/1
 subject: provider-neutral-fortune-5-commerce
 provider: commerce-dfcm
-capability_count: 32
+selected_plan: gym/post-agi-commerce/plan.json
+semantic_capability_count: 32
+reversible_capability_count: 20
+do_frontier_count: 12
+bounded_internal_do_count: 5
+executable_capability_count: 25
+external_frontier_count: 7
+design_frontier_cardinality: 2592
+agent_frontier_cardinality: 216
 capability_digest: c9a429501b79b7f799b7b6e8fc12d065bb1452fdd8021761d34242f257cd9032
 objective:
   internal_commerce_semantics_executable: true
   marketplace_provider_actuation: false
   class_closure_exportable_to_ggen_marketplace: true
+  llm_calls: 0
 invariants:
   billing_authorities_per_agreement: 1
   entitlement_identity_preserved: true
@@ -21,7 +30,14 @@ invariants:
   consequential_internal_do_requires_brce: true
   select_construct_do_separated: true
   every_internal_capability_has_handler: true
-  exact_capability_closure: 32
+  exact_semantic_capability_closure: 32
+  exact_reversible_closure: 20
+  exact_do_frontier: 12
+  exact_bounded_internal_do: 5
+  exact_executable_closure: 25
+  exact_external_frontier: 7
+  exact_design_frontier: 2592
+  exact_agent_frontier: 216
 falsifiers:
   - id: F01
     predicate: billing_authorities_per_agreement != 1
@@ -48,7 +64,21 @@ falsifiers:
   - id: F12
     predicate: every_internal_capability_has_handler == false
   - id: F13
-    predicate: exact_capability_closure != 32
+    predicate: exact_semantic_capability_closure != 32
+  - id: F14
+    predicate: exact_reversible_closure != 20
+  - id: F15
+    predicate: exact_do_frontier != 12
+  - id: F16
+    predicate: exact_bounded_internal_do != 5
+  - id: F17
+    predicate: exact_executable_closure != 25
+  - id: F18
+    predicate: exact_external_frontier != 7
+  - id: F19
+    predicate: exact_design_frontier != 2592
+  - id: F20
+    predicate: exact_agent_frontier != 216
 pipeline:
   - agreement.admit
   - entitlement.apply-event
@@ -58,6 +88,12 @@ pipeline:
   - meter.construct
   - provider.acceptance.admit
   - settlement.reconcile
+bounded_internal_do_edges:
+  - entitlement.apply-event
+  - entitlement.lifecycle
+  - agreement.amend
+  - agreement.renew
+  - agreement.cancel
 external_authority_edges:
   - meter.submit
   - external.seller-registration
@@ -80,7 +116,7 @@ authority:
   SELECT: bounded-observation
   CONSTRUCT: deterministic-reversible-construction
   INTERNAL_DO: brce-only
-  EXTERNAL_DO: refused
+  EXTERNAL_DO: not-exposed
 standing:
-  internal_target: ALIVE
+  bounded_world_target: ALIVE
   external_without_live_evidence: BLOCKED
