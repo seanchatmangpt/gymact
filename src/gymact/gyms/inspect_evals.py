@@ -35,10 +35,11 @@ display selection, async-filesystem wrapping, task-display lifetime, and the
 inner `eval_async()` call. GymAct remains async by awaiting the worker thread,
 while `display="none"` prevents UI/display resources and `ctl_server=False`
 prevents the default AF_UNIX control endpoint. For the locked Inspect release,
-GymAct also closes the sample-event receive endpoint that Inspect's drain path
-otherwise drops without closing; the compatibility bracket is restored after
-each evaluation and does not suppress resource warnings. The returned objects
-are real `inspect_ai.log.EvalLog` values populated by Inspect's own scorer.
+GymAct tracks every sample-event receive endpoint at creation, closes it at
+drain completion, and performs a final idempotent close at eval return. The
+compatibility bracket is restored after each evaluation and does not suppress
+resource warnings. The returned objects are real `inspect_ai.log.EvalLog`
+values populated by Inspect's own scorer.
 """
 
 from __future__ import annotations
@@ -76,22 +77,32 @@ def _run_inspect_eval(
     model_args: dict[str, Any],
     log_dir: str,
 ) -> list[Any]:
-    """Run Inspect while closing its dropped sample-event receive endpoint.
+    """Run Inspect while deterministically closing sample-event receivers.
 
-    Inspect's sample runner creates an AnyIO memory-object stream for every
-    sample. In the locked release, `drain_sample_events()` closes the sender,
-    drains the receiver, then drops both references without closing the
-    receiver. AnyIO correctly reports that as an unclosed resource later.
+    Inspect creates an AnyIO memory-object receive stream for every sample.
+    In the locked release its drain path closes the sender and clears both
+    active references without closing the receive endpoint. Capturing only the
+    receiver visible at drain time is insufficient when lifecycle transitions
+    replace or clear the active sample before adapter cleanup.
 
-    The repair is intentionally scoped to the adapter boundary: preserve the
-    real Inspect eval, preserve its warnings as falsifiers, and close exactly
-    the endpoint whose ownership ends at drain completion. The lock is needed
-    because `inspect_ai.hooks._hooks.drain_sample_events` is process-global
-    while GymAct executes the synchronous wrapper on worker threads.
+    The repair stays at the adapter boundary: wrap Inspect's real emitter start
+    to record every receive endpoint it creates, wrap the real drain to close
+    the current endpoint when ownership ends, then idempotently close all
+    captured endpoints after the public `eval()` lifecycle returns. No warning
+    is filtered and no Inspect scoring or authority behavior is replaced.
     """
     from inspect_ai.hooks import _hooks as inspect_hooks
 
+    original_start = inspect_hooks.start_sample_event_emitter
     original_drain = inspect_hooks.drain_sample_events
+    owned_receives: list[Any] = []
+
+    def start_sample_event_emitter_tracking_receive() -> None:
+        original_start()
+        active = inspect_hooks.sample_active()
+        receive = active.event_receive if active is not None else None
+        if receive is not None:
+            owned_receives.append(receive)
 
     async def drain_sample_events_closing_receive() -> None:
         active = inspect_hooks.sample_active()
@@ -100,9 +111,10 @@ def _run_inspect_eval(
             await original_drain()
         finally:
             if receive is not None:
-                await receive.aclose()
+                receive.close()
 
     with _INSPECT_EVENT_DRAIN_LOCK:
+        inspect_hooks.start_sample_event_emitter = start_sample_event_emitter_tracking_receive
         inspect_hooks.drain_sample_events = drain_sample_events_closing_receive
         try:
             return inspect_eval(
@@ -114,7 +126,10 @@ def _run_inspect_eval(
                 ctl_server=False,
             )
         finally:
+            inspect_hooks.start_sample_event_emitter = original_start
             inspect_hooks.drain_sample_events = original_drain
+            for receive in owned_receives:
+                receive.close()
 
 
 class InspectEvalsEnvironment:
