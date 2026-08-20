@@ -17,10 +17,10 @@ import tracemalloc
 
 from gymact.standing import require_standing as require_standing
 
-# 25 frames is deep enough to retain the transport/client allocation path while
-# remaining bounded for the 953-test matrix. This is diagnostic evidence only:
+# Five frames retain the owning allocation edge without turning the full
+# 953-test matrix into a tracing benchmark. This is diagnostic evidence only:
 # warnings remain errors and no standing is promoted by tracing itself.
 if not tracemalloc.is_tracing():
-    tracemalloc.start(25)
+    tracemalloc.start(5)
 
 __all__ = ["require_standing"]
