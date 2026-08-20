@@ -14,7 +14,7 @@ cannot see its checked-out tree.
 
 What is genuinely real and installable in this sandbox: the `inspect-ai`
 PyPI package itself. This module depends on that real package directly --
-`inspect_ai.Task`, `inspect_ai.eval_async()`, `inspect_ai.dataset.Sample`,
+`inspect_ai.Task`, `inspect_ai.eval()`, `inspect_ai.dataset.Sample`,
 `inspect_ai.solver.generate`, `inspect_ai.scorer.match`, and
 `inspect_ai.model.ModelOutput` are all real Inspect internals, not
 GymAct-owned reimplementations. Because a full `inspect_evals` task package
@@ -29,23 +29,23 @@ stub. This module defaults to it so real fully-local no-network-credential
 episodes are possible. A caller with credentials may instead select a real
 paid provider; this module does not special-case that path.
 
-`actuate()` really calls `inspect_ai.eval_async()` for real -- one real
-subprocess-free, in-process Inspect run over the real `Task`, producing a real
-`inspect_ai.log.EvalLog` populated by Inspect's own `match()` scorer. GymAct
-explicitly disables Inspect's control server because that endpoint is not part
-of this bounded provider contract. The async API itself owns its direct-call
-noninteractive display lifecycle, initializing its plain display when no
-display type has already been established; unlike synchronous `eval()`, the
-locked async API does not accept a `display` keyword.
+`actuate()` delegates execution to Inspect's public synchronous `eval()`
+lifecycle owner on a worker thread. That wrapper owns Inspect platform init,
+display selection, async-filesystem wrapping, task-display lifetime, and the
+inner `eval_async()` call. GymAct remains async by awaiting the worker thread,
+while `display="none"` prevents UI/display resources and `ctl_server=False`
+prevents the default AF_UNIX control endpoint. The returned objects are real
+`inspect_ai.log.EvalLog` values populated by Inspect's own scorer.
 """
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 from uuid import uuid4
 
 from inspect_ai import Task
-from inspect_ai import eval_async as inspect_eval_async
+from inspect_ai import eval as inspect_eval
 from inspect_ai.dataset import Sample
 from inspect_ai.model import ModelOutput
 from inspect_ai.scorer import CORRECT, match
@@ -111,16 +111,19 @@ class InspectEvalsEnvironment:
 
         before = dict(self._last_result)
 
-        # Inspect's direct eval_async() path owns its noninteractive display
-        # lifecycle and initializes a plain display when no display type is
-        # established. The async signature does not accept the synchronous
-        # eval() `display` selector. GymAct only disables the optional control
-        # endpoint that would otherwise bind an AF_UNIX socket by default.
-        logs = await inspect_eval_async(
+        # Inspect's public synchronous eval() is the lifecycle owner around
+        # eval_async(): it initializes the platform/display, wraps async file
+        # services, runs the task display, and waits for those resources to
+        # finish. Run that wrapper off GymAct's event-loop thread so GymAct's
+        # asynchronous provider contract remains nonblocking and Inspect can
+        # own/close its complete evaluation lifecycle deterministically.
+        logs = await asyncio.to_thread(
+            inspect_eval,
             self._task,
             model=self._model,
             model_args=self._model_args,
             log_dir=self._log_dir,
+            display="none",
             ctl_server=False,
         )
         log = logs[0]
