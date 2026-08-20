@@ -10,34 +10,29 @@ from gymact.cli import app as cli_app
 from gymact.surfaces.fastapi import create_app
 
 
-def test_fastapi_contract_and_evidence_share_runtime_identity(request) -> None:
+def test_fastapi_contract_and_evidence_share_runtime_identity() -> None:
     runtime = GymAct()
     runtime.register_provider(MemoryProvider())
-    client = TestClient(create_app(runtime))
-    # See the matching comment in
-    # `tests/test_core.py::test_fastapi_surface_executes_real_episode_and_contract_routes`
-    # -- an unclosed `TestClient` leaks anyio memory streams, surfaced by
-    # pytest's unraisable-exception plugin against a later, unrelated test
-    # (this test itself was one of the ones misattributed a failure that
-    # way in a prior full-suite run).
-    request.addfinalizer(client.close)
+    # Own the TestClient portal/lifespan for the exact duration of this test.
+    # Deferred close() finalizers can leave AnyIO streams/event-loop sockets
+    # observable by pytest's later unraisable-exception collection.
+    with TestClient(create_app(runtime)) as client:
+        health = client.get("/health")
+        assert health.status_code == 200
+        assert health.json()["contract_digest"] == build_contract().contract_digest
 
-    health = client.get("/health")
-    assert health.status_code == 200
-    assert health.json()["contract_digest"] == build_contract().contract_digest
+        contract = client.get("/contract")
+        assert contract.status_code == 200
+        assert contract.json()["contract_digest"] == build_contract().contract_digest
+        assert contract.json()["canonicalization"] == "RFC8785-JCS"
 
-    contract = client.get("/contract")
-    assert contract.status_code == 200
-    assert contract.json()["contract_digest"] == build_contract().contract_digest
-    assert contract.json()["canonicalization"] == "RFC8785-JCS"
+        evidence = client.get("/evidence")
+        assert evidence.status_code == 200
+        assert evidence.json() == {"verified": True, "records": []}
 
-    evidence = client.get("/evidence")
-    assert evidence.status_code == 200
-    assert evidence.json() == {"verified": True, "records": []}
-
-    prov = client.get("/evidence/prov")
-    assert prov.status_code == 200
-    assert prov.headers["content-type"].startswith("text/turtle")
+        prov = client.get("/evidence/prov")
+        assert prov.status_code == 200
+        assert prov.headers["content-type"].startswith("text/turtle")
 
 
 def test_cli_contract_and_manufacturing_bundle_are_same_contract(tmp_path) -> None:
