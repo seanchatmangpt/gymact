@@ -34,13 +34,17 @@ lifecycle owner on a worker thread. That wrapper owns Inspect platform init,
 display selection, async-filesystem wrapping, task-display lifetime, and the
 inner `eval_async()` call. GymAct remains async by awaiting the worker thread,
 while `display="none"` prevents UI/display resources and `ctl_server=False`
-prevents the default AF_UNIX control endpoint. The returned objects are real
-`inspect_ai.log.EvalLog` values populated by Inspect's own scorer.
+prevents the default AF_UNIX control endpoint. For the locked Inspect release,
+GymAct also closes the sample-event receive endpoint that Inspect's drain path
+otherwise drops without closing; the compatibility bracket is restored after
+each evaluation and does not suppress resource warnings. The returned objects
+are real `inspect_ai.log.EvalLog` values populated by Inspect's own scorer.
 """
 
 from __future__ import annotations
 
 import asyncio
+from threading import Lock
 from typing import Any
 from uuid import uuid4
 
@@ -62,6 +66,55 @@ INSPECT_SOLVE_SAMPLE_CAPABILITY = Capability(
 )
 
 _DEFAULT_MODEL = "mockllm/model"
+_INSPECT_EVENT_DRAIN_LOCK = Lock()
+
+
+def _run_inspect_eval(
+    *,
+    task: Task,
+    model: str,
+    model_args: dict[str, Any],
+    log_dir: str,
+) -> list[Any]:
+    """Run Inspect while closing its dropped sample-event receive endpoint.
+
+    Inspect's sample runner creates an AnyIO memory-object stream for every
+    sample. In the locked release, `drain_sample_events()` closes the sender,
+    drains the receiver, then drops both references without closing the
+    receiver. AnyIO correctly reports that as an unclosed resource later.
+
+    The repair is intentionally scoped to the adapter boundary: preserve the
+    real Inspect eval, preserve its warnings as falsifiers, and close exactly
+    the endpoint whose ownership ends at drain completion. The lock is needed
+    because `inspect_ai.hooks._hooks.drain_sample_events` is process-global
+    while GymAct executes the synchronous wrapper on worker threads.
+    """
+    from inspect_ai.hooks import _hooks as inspect_hooks
+
+    original_drain = inspect_hooks.drain_sample_events
+
+    async def drain_sample_events_closing_receive() -> None:
+        active = inspect_hooks.sample_active()
+        receive = active.event_receive if active is not None else None
+        try:
+            await original_drain()
+        finally:
+            if receive is not None:
+                await receive.aclose()
+
+    with _INSPECT_EVENT_DRAIN_LOCK:
+        inspect_hooks.drain_sample_events = drain_sample_events_closing_receive
+        try:
+            return inspect_eval(
+                task,
+                model=model,
+                model_args=model_args,
+                log_dir=log_dir,
+                display="none",
+                ctl_server=False,
+            )
+        finally:
+            inspect_hooks.drain_sample_events = original_drain
 
 
 class InspectEvalsEnvironment:
@@ -111,20 +164,12 @@ class InspectEvalsEnvironment:
 
         before = dict(self._last_result)
 
-        # Inspect's public synchronous eval() is the lifecycle owner around
-        # eval_async(): it initializes the platform/display, wraps async file
-        # services, runs the task display, and waits for those resources to
-        # finish. Run that wrapper off GymAct's event-loop thread so GymAct's
-        # asynchronous provider contract remains nonblocking and Inspect can
-        # own/close its complete evaluation lifecycle deterministically.
         logs = await asyncio.to_thread(
-            inspect_eval,
-            self._task,
+            _run_inspect_eval,
+            task=self._task,
             model=self._model,
             model_args=self._model_args,
             log_dir=self._log_dir,
-            display="none",
-            ctl_server=False,
         )
         log = logs[0]
 
