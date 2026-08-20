@@ -219,11 +219,12 @@ def manufacture_completion_frontier(
     if actionable:
         move_sets = [moves for _item, moves in actionable]
         for combination in islice(product(*move_sets), max_plans):
+            canonical = tuple(sorted(combination, key=lambda move: move.move_id))
             plans.append(
                 CompletionPlan(
-                    move_ids=tuple(move.move_id for move in combination),
-                    item_ids=tuple(move.item_id for move in combination),
-                    total_cost=sum(move.cost for move in combination),
+                    move_ids=tuple(move.move_id for move in canonical),
+                    item_ids=tuple(move.item_id for move in canonical),
+                    total_cost=sum(move.cost for move in canonical),
                 )
             )
         plans.sort(key=lambda plan: (plan.total_cost, plan.move_ids))
