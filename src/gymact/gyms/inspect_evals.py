@@ -37,9 +37,10 @@ while `display="none"` prevents UI/display resources and `ctl_server=False`
 prevents the default AF_UNIX control endpoint. For the locked Inspect release,
 GymAct tracks every sample-event receive endpoint at creation, closes it at
 drain completion, and performs a final idempotent close at eval return. The
-compatibility bracket is restored after each evaluation and does not suppress
-resource warnings. The returned objects are real `inspect_ai.log.EvalLog`
-values populated by Inspect's own scorer.
+compatibility bracket patches both the defining hooks module and the task
+runner's imported aliases, then restores both after each evaluation. It does
+not suppress resource warnings. The returned objects are real
+`inspect_ai.log.EvalLog` values populated by Inspect's own scorer.
 """
 
 from __future__ import annotations
@@ -85,16 +86,22 @@ def _run_inspect_eval(
     receiver visible at drain time is insufficient when lifecycle transitions
     replace or clear the active sample before adapter cleanup.
 
-    The repair stays at the adapter boundary: wrap Inspect's real emitter start
-    to record every receive endpoint it creates, wrap the real drain to close
-    the current endpoint when ownership ends, then idempotently close all
-    captured endpoints after the public `eval()` lifecycle returns. No warning
-    is filtered and no Inspect scoring or authority behavior is replaced.
+    Inspect's task runner imports the hook lifecycle callables into its own
+    module namespace. Replacing only ``inspect_ai.hooks._hooks`` therefore
+    does not intercept an already-bound runner alias. The adapter temporarily
+    installs the same tracking wrappers at both call sites, closes each owned
+    receiver when drain completes, performs an idempotent final close after
+    public ``eval()`` returns, and restores every replaced callable in
+    ``finally``. No warning is filtered and no scoring or authority behavior is
+    replaced.
     """
+    from inspect_ai._eval.task import run as inspect_task_run
     from inspect_ai.hooks import _hooks as inspect_hooks
 
     original_start = inspect_hooks.start_sample_event_emitter
     original_drain = inspect_hooks.drain_sample_events
+    runner_start = getattr(inspect_task_run, "start_sample_event_emitter", None)
+    runner_drain = getattr(inspect_task_run, "drain_sample_events", None)
     owned_receives: list[Any] = []
 
     def start_sample_event_emitter_tracking_receive() -> None:
@@ -116,6 +123,10 @@ def _run_inspect_eval(
     with _INSPECT_EVENT_DRAIN_LOCK:
         inspect_hooks.start_sample_event_emitter = start_sample_event_emitter_tracking_receive
         inspect_hooks.drain_sample_events = drain_sample_events_closing_receive
+        if runner_start is original_start:
+            inspect_task_run.start_sample_event_emitter = start_sample_event_emitter_tracking_receive
+        if runner_drain is original_drain:
+            inspect_task_run.drain_sample_events = drain_sample_events_closing_receive
         try:
             return inspect_eval(
                 task,
@@ -128,6 +139,10 @@ def _run_inspect_eval(
         finally:
             inspect_hooks.start_sample_event_emitter = original_start
             inspect_hooks.drain_sample_events = original_drain
+            if runner_start is original_start:
+                inspect_task_run.start_sample_event_emitter = runner_start
+            if runner_drain is original_drain:
+                inspect_task_run.drain_sample_events = runner_drain
             for receive in owned_receives:
                 receive.close()
 
