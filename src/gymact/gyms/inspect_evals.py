@@ -31,11 +31,12 @@ paid provider; this module does not special-case that path.
 
 `actuate()` really calls `inspect_ai.eval_async()` for real -- one real
 subprocess-free, in-process Inspect run over the real `Task`, producing a real
-`inspect_ai.log.EvalLog` populated by Inspect's own `match()` scorer. The
-adapter explicitly disables Inspect's interactive display and control server
-because GymAct is the owning noninteractive runtime. That keeps lifecycle
-ownership with the component that created the evaluation and prevents
-background display/control resources from surviving the bounded actuation.
+`inspect_ai.log.EvalLog` populated by Inspect's own `match()` scorer. GymAct
+explicitly disables Inspect's control server because that endpoint is not part
+of this bounded provider contract. The async API itself owns its direct-call
+noninteractive display lifecycle, initializing its plain display when no
+display type has already been established; unlike synchronous `eval()`, the
+locked async API does not accept a `display` keyword.
 """
 
 from __future__ import annotations
@@ -110,17 +111,16 @@ class InspectEvalsEnvironment:
 
         before = dict(self._last_result)
 
-        # GymAct owns this noninteractive evaluation boundary. Inspect's
-        # default display/control surfaces are useful for CLI/TUI operation,
-        # but they are not part of this provider's contract and create
-        # event-loop/socket resources. Disable them at their owner rather
-        # than suppressing ResourceWarning after garbage collection.
+        # Inspect's direct eval_async() path owns its noninteractive display
+        # lifecycle and initializes a plain display when no display type is
+        # established. The async signature does not accept the synchronous
+        # eval() `display` selector. GymAct only disables the optional control
+        # endpoint that would otherwise bind an AF_UNIX socket by default.
         logs = await inspect_eval_async(
             self._task,
             model=self._model,
             model_args=self._model_args,
             log_dir=self._log_dir,
-            display="none",
             ctl_server=False,
         )
         log = logs[0]
