@@ -84,3 +84,43 @@ async def test_fortune5_mna_executes_with_zero_llms_and_receipted_close() -> Non
     )
     assert result.external_transaction_attempted is False
     assert result.external_transaction_reason == "NO_EXTERNAL_TRANSACTION_PORT"
+
+
+async def test_mna_observed_state_replanning_across_two_chained_episodes() -> None:
+    """Gate G08 ('replanning'): a second episode's external SELECT is
+    genuinely conditioned on the first episode's real observed final facts,
+    not a hardcoded second plan -- matching mna.py's own SELECT-is-external
+    law (plan re-selection happens outside GymAct, between two episodes, not
+    by mutating the immutable MnaSelectedPlan mid-episode)."""
+    from gymact.mna import MnaSelectedPlan as _Plan
+
+    episode_1_plan = _Plan(
+        transaction_form="stock_purchase",
+        consideration="mixed",
+        integration_topology="federate",
+        operating_model="business_unit",
+        separation_strategy="transitional_services",
+        regulatory_sequence="clear_then_sign",
+    )
+    episode_1 = await execute_fortune5_mna_simulation(episode_1_plan)
+
+    trigger_facts = {
+        "urn:gymact:mna:artifact-cyber-diligence",
+        "urn:gymact:mna:artifact-technology-diligence",
+    }
+    observed = set(episode_1.facts)
+    assert trigger_facts.issubset(observed), (
+        "replan trigger facts must be genuinely present in episode 1's real "
+        "observed output, not assumed"
+    )
+
+    episode_2_plan = episode_1_plan.model_copy(
+        update={"integration_topology": "platform"}
+    )
+    episode_2 = await execute_fortune5_mna_simulation(episode_2_plan)
+
+    assert episode_1.episode_id != episode_2.episode_id
+    assert episode_1.selected_plan != episode_2.selected_plan
+    assert episode_1.verified is True
+    assert episode_2.verified is True
+    assert episode_1.selection_digest != episode_2.selection_digest
