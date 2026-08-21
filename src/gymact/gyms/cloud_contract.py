@@ -25,11 +25,18 @@ class CloudValuePrefixRule:
 
 @dataclass(frozen=True, slots=True)
 class CloudOperationContract:
-    """Declarative admission contract for one public cloud operation."""
+    """Declarative admission contract for one public cloud operation.
+
+    ``required_paths`` apply to every observed outcome. ``success_required_paths``
+    apply only when the provider-visible ``error_code`` is ``None``. Keeping the
+    conditions distinct prevents success response schemas from falsely refusing
+    legitimate provider-error traces.
+    """
 
     surface: str
     operation: str
     required_paths: tuple[JsonPath, ...] = ()
+    success_required_paths: tuple[JsonPath, ...] = ()
     string_prefix_rules: tuple[CloudValuePrefixRule, ...] = ()
     allowed_status_codes: tuple[int | None, ...] = ()
     allowed_error_codes: tuple[str | None, ...] = ()
@@ -94,6 +101,9 @@ def _profile_payload(profile: CloudContractProfile) -> dict[str, Any]:
                 "operation": contract.operation,
                 "required_paths": sorted(
                     (_path_payload(path) for path in contract.required_paths), key=repr
+                ),
+                "success_required_paths": sorted(
+                    (_path_payload(path) for path in contract.success_required_paths), key=repr
                 ),
                 "string_prefix_rules": [
                     {"path": _path_payload(rule.path), "prefix": rule.prefix}
@@ -261,6 +271,23 @@ def _profile_index(
     return index
 
 
+def _validate_required_paths(
+    *,
+    index: int,
+    step: CloudTraceStep,
+    paths: Iterable[JsonPath],
+    side: str,
+    reason: str,
+    differences: list[FidelityDifference],
+) -> None:
+    for path in paths:
+        found, _ = _lookup_path(step, path)
+        if not found:
+            differences.append(
+                FidelityDifference(index, path, f"{side}_{reason}", "present", None)
+            )
+
+
 def validate_cloud_trace_contract(
     trace: Iterable[CloudTraceStep],
     profile: CloudContractProfile,
@@ -287,18 +314,23 @@ def validate_cloud_trace_contract(
             )
             continue
 
-        for path in contract.required_paths:
-            found, _ = _lookup_path(step, path)
-            if not found:
-                differences.append(
-                    FidelityDifference(
-                        index,
-                        path,
-                        f"{side}_contract_missing_required_path",
-                        "present",
-                        None,
-                    )
-                )
+        _validate_required_paths(
+            index=index,
+            step=step,
+            paths=contract.required_paths,
+            side=side,
+            reason="contract_missing_required_path",
+            differences=differences,
+        )
+        if step.error_code is None:
+            _validate_required_paths(
+                index=index,
+                step=step,
+                paths=contract.success_required_paths,
+                side=side,
+                reason="contract_missing_success_required_path",
+                differences=differences,
+            )
 
         for rule in contract.string_prefix_rules:
             found, value = _lookup_path(step, rule.path)
