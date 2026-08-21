@@ -28,16 +28,21 @@ def _mapping(value: Any, field: str) -> dict[str, Any]:
     return value
 
 
-def _required_request_paths(
-    shapes: dict[str, Any], shape_ref: Any, operation: str
+def _required_shape_paths(
+    shapes: dict[str, Any],
+    shape_ref: Any,
+    operation: str,
+    *,
+    field: str,
+    root: str,
 ) -> tuple[tuple[str, str], ...]:
     if shape_ref is None:
         return ()
-    ref = _mapping(shape_ref, f"operations.{operation}.input")
+    ref = _mapping(shape_ref, f"operations.{operation}.{field}")
     shape_name = ref.get("shape")
     if not isinstance(shape_name, str) or not shape_name:
         raise AwsBotocoreContractCompilationError(
-            f"operations.{operation}.input.shape must be a non-empty string"
+            f"operations.{operation}.{field}.shape must be a non-empty string"
         )
     shape = _mapping(shapes.get(shape_name), f"shapes.{shape_name}")
     required = shape.get("required", [])
@@ -47,7 +52,7 @@ def _required_request_paths(
         raise AwsBotocoreContractCompilationError(
             f"shapes.{shape_name}.required must be a list of non-empty strings"
         )
-    return tuple(("request", member) for member in sorted(set(required)))
+    return tuple((root, member) for member in sorted(set(required)))
 
 
 def _error_contract(
@@ -94,8 +99,8 @@ def compile_aws_botocore_contract(
     """Compile exact botocore service-model bytes into a boto3 fidelity contract.
 
     Input-shape requirements are universal request constraints. Output-shape
-    requirements are success-only in botocore, while the current GymAct path
-    contract is unconditional, so this compiler does not overclaim them.
+    requirements are admitted only for successful provider-visible outcomes,
+    so legitimate AWS error traces are not forced to carry success payloads.
     """
     if not isinstance(source_document, bytes):
         raise TypeError("source_document must be bytes")
@@ -121,7 +126,20 @@ def compile_aws_botocore_contract(
     contracts: list[CloudOperationContract] = []
     for operation_name in sorted(operations):
         operation = _mapping(operations[operation_name], f"operations.{operation_name}")
-        required_paths = _required_request_paths(shapes, operation.get("input"), operation_name)
+        required_paths = _required_shape_paths(
+            shapes,
+            operation.get("input"),
+            operation_name,
+            field="input",
+            root="request",
+        )
+        success_required_paths = _required_shape_paths(
+            shapes,
+            operation.get("output"),
+            operation_name,
+            field="output",
+            root="response",
+        )
         http = _mapping(operation.get("http", {}), f"operations.{operation_name}.http")
         success_status = http.get("responseCode", 200)
         if not isinstance(success_status, int) or isinstance(success_status, bool):
@@ -136,6 +154,7 @@ def compile_aws_botocore_contract(
                 surface="boto3",
                 operation=f"{service}.{_pascal_to_snake(operation_name)}",
                 required_paths=required_paths,
+                success_required_paths=success_required_paths,
                 allowed_status_codes=tuple(sorted({success_status, *error_statuses})),
                 allowed_error_codes=error_codes,
             )
