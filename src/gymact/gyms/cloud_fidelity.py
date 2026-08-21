@@ -3,6 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Sequence
 
+import blake3
+import rfc8785
+
 JsonValue = None | bool | int | float | str | list["JsonValue"] | dict[str, "JsonValue"]
 JsonPath = tuple[str | int, ...]
 
@@ -41,6 +44,48 @@ class CloudFidelityResult:
     equivalent: bool
     compared_steps: int
     differences: tuple[FidelityDifference, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class CloudTraceReceipt:
+    """Deterministic identity for one ordered agent-visible cloud trace."""
+
+    digest: str
+    step_count: int
+
+
+def _trace_payload(trace: Iterable[CloudTraceStep]) -> tuple[tuple[CloudTraceStep, ...], list[dict[str, Any]]]:
+    steps = tuple(trace)
+    payload = [
+        {
+            "surface": step.surface,
+            "operation": step.operation,
+            "request": step.request,
+            "response": step.response,
+            "status_code": step.status_code,
+            "error_code": step.error_code,
+        }
+        for step in steps
+    ]
+    return steps, payload
+
+
+def receipt_cloud_trace(trace: Iterable[CloudTraceStep]) -> CloudTraceReceipt:
+    """Bind an ordered public trace to canonical JSON and a BLAKE3 digest."""
+
+    steps, payload = _trace_payload(trace)
+    canonical = rfc8785.dumps(payload)
+    return CloudTraceReceipt(
+        digest=blake3.blake3(canonical).hexdigest(),
+        step_count=len(steps),
+    )
+
+
+def replay_cloud_trace(trace: Iterable[CloudTraceStep], receipt: CloudTraceReceipt) -> bool:
+    """Replay trace identity without granting execution or mutation authority."""
+
+    replayed = receipt_cloud_trace(trace)
+    return replayed == receipt
 
 
 def _path_is_ignored(path: JsonPath, ignored_paths: frozenset[JsonPath]) -> bool:
