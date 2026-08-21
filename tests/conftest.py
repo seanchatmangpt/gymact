@@ -47,13 +47,20 @@ def pytest_runtest_call(item: pytest.Item) -> None:
     item, prevents those unreachable resources from being attributed to a later
     unrelated test. This hook does not close sockets/loops itself and does not
     filter, catch, downgrade, or ignore warnings anywhere else.
+
+    Pytest 8.4's own unraisable-exception cleanup deliberately performs five GC
+    passes because one pass does not necessarily finalize everything. Mirror
+    that bounded cleanup depth here only at the owning FastMCP boundary; the
+    predecessor's single pass was insufficient and left event-loop self-pipes
+    to surface during unrelated later tests and session unconfigure.
     """
     if (
         item.path.name == "test_sregym_provider.py"
         and item.cls is not None
         and item.cls.__name__ == "ConcurrentMcpDispatchTests"
     ):
-        gc.collect()
+        for _ in range(5):
+            gc.collect()
 
 
 __all__ = ["require_standing"]
