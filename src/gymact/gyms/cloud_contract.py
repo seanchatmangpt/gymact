@@ -50,6 +50,31 @@ class CloudContractReceipt:
 
 
 @dataclass(frozen=True, slots=True)
+class CloudContractSource:
+    """Content-addressed identity for the source used to author a contract profile."""
+
+    uri: str
+    digest: str
+    media_type: str
+
+
+@dataclass(frozen=True, slots=True)
+class CloudContractEvidence:
+    """Bind a declarative profile to the exact source bytes it claims to represent."""
+
+    profile: CloudContractProfile
+    source: CloudContractSource
+
+
+@dataclass(frozen=True, slots=True)
+class CloudContractEvidenceReceipt:
+    digest: str
+    profile_digest: str
+    source_digest: str
+    operation_count: int
+
+
+@dataclass(frozen=True, slots=True)
 class CloudContractResult:
     admitted: bool
     checked_steps: int
@@ -67,10 +92,15 @@ def _profile_payload(profile: CloudContractProfile) -> dict[str, Any]:
             {
                 "surface": contract.surface,
                 "operation": contract.operation,
-                "required_paths": sorted((_path_payload(path) for path in contract.required_paths), key=repr),
+                "required_paths": sorted(
+                    (_path_payload(path) for path in contract.required_paths), key=repr
+                ),
                 "string_prefix_rules": [
                     {"path": _path_payload(rule.path), "prefix": rule.prefix}
-                    for rule in sorted(contract.string_prefix_rules, key=lambda rule: (repr(rule.path), rule.prefix))
+                    for rule in sorted(
+                        contract.string_prefix_rules,
+                        key=lambda rule: (repr(rule.path), rule.prefix),
+                    )
                 ],
                 "allowed_status_codes": sorted(contract.allowed_status_codes, key=repr),
                 "allowed_error_codes": sorted(contract.allowed_error_codes, key=repr),
@@ -89,10 +119,103 @@ def receipt_cloud_contract_profile(profile: CloudContractProfile) -> CloudContra
     )
 
 
-def replay_cloud_contract_profile(profile: CloudContractProfile, receipt: CloudContractReceipt) -> bool:
+def replay_cloud_contract_profile(
+    profile: CloudContractProfile, receipt: CloudContractReceipt
+) -> bool:
     """Recompute profile identity without granting any execution authority."""
 
     return receipt_cloud_contract_profile(profile) == receipt
+
+
+def digest_cloud_contract_source(source_document: bytes) -> str:
+    """Content-address exact provider-contract source bytes without fetching them."""
+
+    if not isinstance(source_document, bytes):
+        raise TypeError("source_document must be bytes")
+    return blake3.blake3(source_document).hexdigest()
+
+
+def _evidence_payload(evidence: CloudContractEvidence) -> dict[str, Any]:
+    profile_receipt = receipt_cloud_contract_profile(evidence.profile)
+    return {
+        "profile_digest": profile_receipt.digest,
+        "operation_count": profile_receipt.operation_count,
+        "source": {
+            "uri": evidence.source.uri,
+            "digest": evidence.source.digest,
+            "media_type": evidence.source.media_type,
+        },
+    }
+
+
+def receipt_cloud_contract_evidence(
+    evidence: CloudContractEvidence,
+) -> CloudContractEvidenceReceipt:
+    """Bind profile identity and claimed source provenance into one replayable receipt."""
+
+    profile_receipt = receipt_cloud_contract_profile(evidence.profile)
+    canonical = rfc8785.dumps(_evidence_payload(evidence))
+    return CloudContractEvidenceReceipt(
+        digest=blake3.blake3(canonical).hexdigest(),
+        profile_digest=profile_receipt.digest,
+        source_digest=evidence.source.digest,
+        operation_count=profile_receipt.operation_count,
+    )
+
+
+def replay_cloud_contract_evidence(
+    evidence: CloudContractEvidence,
+    receipt: CloudContractEvidenceReceipt,
+) -> bool:
+    """Replay evidence identity only; source authority is not implied by receipt equality."""
+
+    return receipt_cloud_contract_evidence(evidence) == receipt
+
+
+def validate_cloud_contract_source(
+    evidence: CloudContractEvidence,
+    source_document: bytes,
+) -> CloudContractResult:
+    """Fail closed unless the supplied source bytes match the declared provenance identity."""
+
+    differences: list[FidelityDifference] = []
+    source = evidence.source
+    if not source.uri.strip():
+        differences.append(
+            FidelityDifference(
+                None,
+                ("contract_source", "uri"),
+                "contract_source_uri_missing",
+                "non-empty source identity",
+                source.uri,
+            )
+        )
+    if not source.media_type.strip():
+        differences.append(
+            FidelityDifference(
+                None,
+                ("contract_source", "media_type"),
+                "contract_source_media_type_missing",
+                "non-empty media type",
+                source.media_type,
+            )
+        )
+    actual_digest = digest_cloud_contract_source(source_document)
+    if actual_digest != source.digest:
+        differences.append(
+            FidelityDifference(
+                None,
+                ("contract_source", "digest"),
+                "contract_source_digest_mismatch",
+                source.digest,
+                actual_digest,
+            )
+        )
+    return CloudContractResult(
+        admitted=not differences,
+        checked_steps=0,
+        differences=tuple(differences),
+    )
 
 
 def _lookup_path(step: CloudTraceStep, path: JsonPath) -> tuple[bool, Any]:
@@ -225,21 +348,48 @@ def compare_cloud_traces_under_contract(
     profile: CloudContractProfile,
     **comparison_kwargs: Any,
 ) -> CloudFidelityResult:
-    """Require independent contract admission before accepting trace equivalence.
-
-    This closes the vacuity where a malformed reference and an identically
-    malformed twin compare equal. The ordinary fidelity comparator remains the
-    final equality court; this wrapper only adds independent contract evidence.
-    """
+    """Require independent contract admission before accepting trace equivalence."""
 
     reference_steps = tuple(reference)
     twin_steps = tuple(twin)
-    reference_contract = validate_cloud_trace_contract(reference_steps, profile, side="reference")
+    reference_contract = validate_cloud_trace_contract(
+        reference_steps, profile, side="reference"
+    )
     twin_contract = validate_cloud_trace_contract(twin_steps, profile, side="twin")
     fidelity = compare_cloud_traces(reference_steps, twin_steps, **comparison_kwargs)
-    differences = (*reference_contract.differences, *twin_contract.differences, *fidelity.differences)
+    differences = (
+        *reference_contract.differences,
+        *twin_contract.differences,
+        *fidelity.differences,
+    )
     return CloudFidelityResult(
         equivalent=not differences,
         compared_steps=fidelity.compared_steps,
+        differences=tuple(differences),
+    )
+
+
+def compare_cloud_traces_under_evidence(
+    reference: Iterable[CloudTraceStep],
+    twin: Iterable[CloudTraceStep],
+    evidence: CloudContractEvidence,
+    source_document: bytes,
+    **comparison_kwargs: Any,
+) -> CloudFidelityResult:
+    """Require source-bound contract evidence before the ordinary contract/equality courts."""
+
+    reference_steps = tuple(reference)
+    twin_steps = tuple(twin)
+    source_result = validate_cloud_contract_source(evidence, source_document)
+    qualified = compare_cloud_traces_under_contract(
+        reference_steps,
+        twin_steps,
+        evidence.profile,
+        **comparison_kwargs,
+    )
+    differences = (*source_result.differences, *qualified.differences)
+    return CloudFidelityResult(
+        equivalent=not differences,
+        compared_steps=qualified.compared_steps,
         differences=tuple(differences),
     )
