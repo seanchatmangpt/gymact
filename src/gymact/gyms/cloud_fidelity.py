@@ -89,7 +89,13 @@ def _compare_json(
     if isinstance(reference, Sequence) and not isinstance(reference, (str, bytes)):
         if not (isinstance(twin, Sequence) and not isinstance(twin, (str, bytes))):
             differences.append(
-                FidelityDifference(step, path, "type_mismatch", type(reference).__name__, type(twin).__name__)
+                FidelityDifference(
+                    step,
+                    path,
+                    "type_mismatch",
+                    type(reference).__name__,
+                    type(twin).__name__,
+                )
             )
             return
         if len(reference) != len(twin):
