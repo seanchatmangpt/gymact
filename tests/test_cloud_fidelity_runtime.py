@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import Any
 
 import pytest
 
@@ -21,10 +22,10 @@ CREATE = {
 }
 
 
-async def _world():
+async def _world(**config: Any):
     return await CloudSimProvider(requires_authority=False).materialize(
         scenario="cloud-fidelity-runtime",
-        config={"requires_authority": False},
+        config={"requires_authority": False, **config},
     )
 
 
@@ -56,19 +57,25 @@ async def test_independent_worlds_emit_equivalent_receipted_public_traces() -> N
 @pytest.mark.asyncio
 async def test_failed_actuation_is_traced_without_committing_world_change() -> None:
     capability = CAPABILITY_BY_BINDING["aws_cloudsim_apply"]
-    world = await _world()
-
-    await world.actuate_traced(surface="aws-cli", capability=capability, payload=CREATE)
+    fault_key = "aws:compute:CreateInstance"
+    world = await _world(faults={fault_key: 1})
     before = await world.observe()
 
-    with pytest.raises(ValueError, match="resource already exists"):
+    with pytest.raises(RuntimeError, match=f"injected cloud fault: {fault_key}"):
         await world.actuate_traced(surface="aws-cli", capability=capability, payload=CREATE)
 
     after = await world.observe()
     assert after == before
-    assert len(world.trace()) == 2
-    assert world.trace()[1].error_code == "ValueError"
+    assert len(world.trace()) == 1
+    assert world.trace()[0].error_code == "RuntimeError"
+    assert world.trace()[0].response == {"message": f"injected cloud fault: {fault_key}"}
     assert replay_cloud_trace(world.trace(), world.trace_receipt()) is True
+
+    # The admitted fault budget is consumed by the failed attempt. A retry therefore
+    # exercises the ordinary simulator path and proves the failure did not poison state.
+    await world.actuate_traced(surface="aws-cli", capability=capability, payload=CREATE)
+    assert len(world.trace()) == 2
+    assert world.trace()[1].error_code is None
 
 
 @pytest.mark.asyncio
