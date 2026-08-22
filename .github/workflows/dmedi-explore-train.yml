@@ -1,0 +1,29 @@
+name: DMEDI EXPLORE train court
+
+on:
+  pull_request:
+    paths:
+      - 'src/gymact/explore_train/**'
+      - 'tests/test_dmedi_explore_train.py'
+      - '.github/workflows/dmedi-explore-train.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  explore-train:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Admit exact head
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile authored control plane
+        run: PYTHONPATH=src python -m compileall -q src/gymact/explore_train tests/test_dmedi_explore_train.py
+      - name: Execute differential and refusal court
+        run: PYTHONPATH=src python -m unittest discover -s tests -p 'test_dmedi_explore_train.py' -v
