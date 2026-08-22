@@ -14,9 +14,10 @@ from pathlib import Path
 import anyio
 import pytest
 
-from gymact.gyms.ontology_gym import TieredAuthorityResolver, capability_iri
+from gymact.gyms.ontology_gym import OntologyTask, TieredAuthorityResolver, capability_iri
 from gymact.gyms.platform_console_ontology_provider import (
     PLATFORM_CONSOLE_GYM_PACK_DIR,
+    PlatformConsoleOntologyDrivenProvider,
     build_platform_console_ontology_provider,
 )
 from gymact.kernel import GymAct
@@ -25,10 +26,16 @@ from gymact.models import ActuationIntent, MaterializationIntent, Standing
 STANDARD_REF = "urn:gymact:authority-decision:pc-current-standard"
 ELEVATED_REF = "urn:gymact:authority-decision:pc-current-elevated"
 PROVIDER_NAME = "platform-console-ontology"
-PCC = "https://seanchatmangpt.github.io/chatman-ecosystem/ontology/platform-console-capabilities#"
+PCC = (
+    "https://seanchatmangpt.github.io/chatman-ecosystem/ontology/"
+    "platform-console-capabilities#"
+)
 
 EXPECTED = {
-    "castle.verb.inventory-components": (f"{PCC}CastleVerbInventoryComponents", "family-read"),
+    "castle.verb.inventory-components": (
+        f"{PCC}CastleVerbInventoryComponents",
+        "family-read",
+    ),
     "castle.verb.inventory-goals": (f"{PCC}CastleVerbInventoryGoals", "family-read"),
     "approval.freeze-override": (f"{PCC}ApprovalFreezeOverride", "family-approval"),
 }
@@ -59,8 +66,10 @@ def _write_pack(tmp_path: Path) -> Path:
     return pack_dir
 
 
-def _task_map(provider: object) -> dict[str, object]:
-    return {task.identifier: task for task in provider.tasks()}  # type: ignore[attr-defined]
+def _task_map(
+    provider: PlatformConsoleOntologyDrivenProvider,
+) -> dict[str, OntologyTask]:
+    return {task.identifier: task for task in provider.tasks()}
 
 
 def test_explicit_pack_admission_compiles_current_three_procedures(tmp_path: Path) -> None:
@@ -79,7 +88,9 @@ def test_explicit_pack_admission_compiles_current_three_procedures(tmp_path: Pat
 def test_default_pack_preserves_canonical_public_semantic_identities() -> None:
     ontology = PLATFORM_CONSOLE_GYM_PACK_DIR / "ontology.ttl"
     if not ontology.is_file():
-        pytest.skip(f"canonical platform-console ontology pack not materialized at {ontology}")
+        pytest.skip(
+            f"canonical platform-console ontology pack not materialized at {ontology}"
+        )
 
     provider = build_platform_console_ontology_provider()
     tasks = _task_map(provider)
@@ -105,18 +116,28 @@ def test_standard_authority_admits_reads_and_refuses_approval_without_effect(
         gym = GymAct(authority_resolver=resolver)
         gym.register_provider(provider)
         materialized = await gym.materialize(
-            MaterializationIntent(provider=PROVIDER_NAME, config={"requires_authority": True})
+            MaterializationIntent(
+                provider=PROVIDER_NAME,
+                config={"requires_authority": True},
+            )
         )
         assert materialized.accepted is True, materialized.receipt.reason
         assert materialized.episode is not None
         episode_id = materialized.episode.episode_id
 
-        for identifier in ("castle.verb.inventory-components", "castle.verb.inventory-goals"):
+        read_identifiers = (
+            "castle.verb.inventory-components",
+            "castle.verb.inventory-goals",
+        )
+        for identifier in read_identifiers:
             task = tasks[identifier]
             result = await gym.act(
                 ActuationIntent(
                     episode_id=episode_id,
-                    capability=capability_iri(provider_name=PROVIDER_NAME, task=task),
+                    capability=capability_iri(
+                        provider_name=PROVIDER_NAME,
+                        task=task,
+                    ),
                     authority_ref=STANDARD_REF,
                 )
             )
@@ -127,7 +148,8 @@ def test_standard_authority_admits_reads_and_refuses_approval_without_effect(
             ActuationIntent(
                 episode_id=episode_id,
                 capability=capability_iri(
-                    provider_name=PROVIDER_NAME, task=elevated_task
+                    provider_name=PROVIDER_NAME,
+                    task=elevated_task,
                 ),
                 authority_ref=STANDARD_REF,
             )
@@ -138,9 +160,8 @@ def test_standard_authority_admits_reads_and_refuses_approval_without_effect(
 
         observed = await gym.observe(episode_id)
         assert elevated_task.task_iri not in observed.state["facts"]
-        assert {tasks[name].task_iri for name in EXPECTED if name != "approval.freeze-override"} <= set(
-            observed.state["facts"]
-        )
+        expected_read_facts = {tasks[name].task_iri for name in read_identifiers}
+        assert expected_read_facts <= set(observed.state["facts"])
         await gym.teardown(episode_id, authority_ref=ELEVATED_REF)
 
     anyio.run(run)
@@ -159,7 +180,10 @@ def test_elevated_authority_admits_approval_through_real_kernel(tmp_path: Path) 
         gym = GymAct(authority_resolver=resolver)
         gym.register_provider(provider)
         materialized = await gym.materialize(
-            MaterializationIntent(provider=PROVIDER_NAME, config={"requires_authority": True})
+            MaterializationIntent(
+                provider=PROVIDER_NAME,
+                config={"requires_authority": True},
+            )
         )
         assert materialized.accepted is True, materialized.receipt.reason
         assert materialized.episode is not None
@@ -168,7 +192,10 @@ def test_elevated_authority_admits_approval_through_real_kernel(tmp_path: Path) 
         result = await gym.act(
             ActuationIntent(
                 episode_id=episode_id,
-                capability=capability_iri(provider_name=PROVIDER_NAME, task=approval),
+                capability=capability_iri(
+                    provider_name=PROVIDER_NAME,
+                    task=approval,
+                ),
                 authority_ref=ELEVATED_REF,
             )
         )
@@ -190,7 +217,10 @@ def test_missing_admitted_pack_refuses_materialization_instead_of_inventing_task
     provider = build_platform_console_ontology_provider(pack_dir=missing)
 
     async def run() -> None:
-        await provider.materialize(scenario=None, config={"requires_authority": True})
+        await provider.materialize(
+            scenario=None,
+            config={"requires_authority": True},
+        )
 
     with pytest.raises(ValueError, match="NO_TASKS_FOUND_IN_PACK"):
         anyio.run(run)
