@@ -1,0 +1,106 @@
+name: EnvHarness exact-head court
+
+on:
+  pull_request:
+    paths:
+      - "src/gymact/envharness.py"
+      - "src/gymact/envrigger.py"
+      - "src/gymact/envharness_semantic.py"
+      - "tests/test_envharness.py"
+      - "tests/test_envrigger.py"
+      - "tests/test_envharness_semantic.py"
+      - ".github/workflows/envharness.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: envharness-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_LINK_MODE: copy
+  GYMACT_UV_VERSION: "0.11.32"
+
+jobs:
+  paper-court:
+    name: Python ${{ matrix.python }} Stage Contract Chain EnvRigger
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - name: Checkout exact subject
+        uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Admit exact head
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          printf 'subject_sha=%s\n' "$EXPECTED_SHA"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Set up admitted uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.GYMACT_UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+
+      - name: Resolve bounded validation surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uv --version | awk '{print $2}')" = "$GYMACT_UV_VERSION"
+          uv sync --group dev
+
+      - name: Execute EnvHarness Chicago court
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/envharness
+          uv run pytest -v \
+            tests/test_envharness.py \
+            tests/test_envrigger.py \
+            tests/test_envharness_semantic.py \
+            --junitxml="artifacts/envharness/junit-${{ matrix.python }}.xml"
+
+      - name: Static contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run ruff check \
+            src/gymact/envharness.py \
+            src/gymact/envrigger.py \
+            src/gymact/envharness_semantic.py \
+            tests/test_envharness.py \
+            tests/test_envrigger.py \
+            tests/test_envharness_semantic.py
+          uv run ruff format --check \
+            src/gymact/envharness.py \
+            src/gymact/envrigger.py \
+            src/gymact/envharness_semantic.py \
+            tests/test_envharness.py \
+            tests/test_envrigger.py \
+            tests/test_envharness_semantic.py
+
+      - name: Upload exact-head evidence
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: envharness-${{ matrix.python }}
+          path: artifacts/envharness/junit-${{ matrix.python }}.xml
+          if-no-files-found: error
+          retention-days: 14
