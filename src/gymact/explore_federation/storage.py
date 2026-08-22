@@ -13,6 +13,4 @@ class MemoryStore:
 
 
 def encode_jsonl(rows: list[dict]) -> str:
-    return "".join(
-        json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n" for row in rows
-    )
+    return "".join(json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n" for row in rows)
