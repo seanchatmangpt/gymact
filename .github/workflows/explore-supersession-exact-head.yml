@@ -1,0 +1,41 @@
+name: EXPLORE supersession exact-head court
+
+on:
+  pull_request:
+    paths:
+      - 'src/gymact/explore_supersession/**'
+      - 'tests/test_explore_supersession_*.py'
+      - '.github/workflows/explore-supersession-exact-head.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Assert exact head
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.11.32'
+      - name: Admit dependency closure
+        run: uv sync --group dev
+      - name: Compile
+        run: uv run python -m compileall -q src/gymact/explore_supersession tests/test_explore_supersession_*.py
+      - name: Focused falsifier and e2e court
+        run: uv run pytest -q tests/test_explore_supersession_*.py
+      - name: Ruff static contract
+        run: uv run ruff check src/gymact/explore_supersession tests/test_explore_supersession_*.py
+      - name: Ruff format contract
+        run: uv run ruff format --check src/gymact/explore_supersession tests/test_explore_supersession_*.py
+      - name: Ambient authority fence
+        run: |
+          if grep -R -nE 'subprocess|os\.system|requests\.|boto3|azure\.|google\.cloud|kubectl|terraform' src/gymact/explore_supersession; then
+            echo 'ambient actuation surface detected'
+            exit 1
+          fi
