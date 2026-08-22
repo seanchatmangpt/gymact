@@ -1,10 +1,13 @@
 from __future__ import annotations
+
+import re
 from dataclasses import dataclass
 from datetime import datetime
-import re
+
 from .context import SelectionContext
 
 _NONCE = re.compile(r"^[A-Za-z0-9_.:-]{8,128}$")
+
 
 @dataclass(frozen=True, slots=True)
 class SelectionIntent:

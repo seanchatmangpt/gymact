@@ -1,11 +1,14 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from hashlib import sha256
+
 import json
 import re
+from dataclasses import dataclass
+from hashlib import sha256
+
 from .subject import Subject
 
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
+
 
 @dataclass(frozen=True, slots=True)
 class SelectionContext:
@@ -26,7 +29,12 @@ class SelectionContext:
 
     @property
     def fingerprint(self) -> str:
-        body={"subject":self.subject.identity,"cut_id":self.cut_id,"cut_digest":self.cut_digest,
-              "cut_generation":self.cut_generation,"strategy":self.strategy,
-              "policy_digest":self.policy_digest}
-        return sha256(json.dumps(body, sort_keys=True, separators=(",",":")).encode()).hexdigest()
+        body = {
+            "subject": self.subject.identity,
+            "cut_id": self.cut_id,
+            "cut_digest": self.cut_digest,
+            "cut_generation": self.cut_generation,
+            "strategy": self.strategy,
+            "policy_digest": self.policy_digest,
+        }
+        return sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
