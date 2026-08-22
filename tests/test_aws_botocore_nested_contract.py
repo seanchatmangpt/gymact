@@ -109,17 +109,21 @@ def test_nested_required_structures_are_manufactured_deterministically() -> None
         ("response", "Result"),
         ("response", "Result", "Id"),
     )
-    assert [rule.guard_paths for rule in contract.conditional_required_paths] == [
-        (("request", "Config", "Optional"),),
+    assert {
+        (rule.guard_paths, rule.path) for rule in contract.conditional_required_paths
+    } == {
         (
-            ("request", "Config", "Optional"),
-            ("request", "Config", "Optional", "Nested"),
+            (("request", "Config", "Optional"),),
+            ("request", "Config", "Optional", "Token"),
         ),
-    ]
-    assert [rule.path for rule in contract.conditional_required_paths] == [
-        ("request", "Config", "Optional", "Token"),
-        ("request", "Config", "Optional", "Nested", "Code"),
-    ]
+        (
+            (
+                ("request", "Config", "Optional"),
+                ("request", "Config", "Optional", "Nested"),
+            ),
+            ("request", "Config", "Optional", "Nested", "Code"),
+        ),
+    }
     assert [rule.path for rule in contract.success_conditional_required_paths] == [
         ("response", "Metadata", "TraceId")
     ]
@@ -257,7 +261,6 @@ def test_recursive_required_structure_stops_at_cycle_edge() -> None:
     source = json.dumps(model, separators=(",", ":")).encode()
 
     contract = _compile(source).profile.operations[0]
-
     assert contract.required_paths == (
         ("request", "Config"),
         ("request", "Config", "Child"),
