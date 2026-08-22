@@ -205,6 +205,7 @@ class HarnessResetResult:
     stage_results: tuple[ActuationResult, ...] = ()
     stage_verifications: tuple[VerificationResult, ...] = ()
     rollback_receipt: Receipt | None = None
+    cleanup_receipt: Receipt | None = None
     reason: str | None = None
 
 
@@ -379,12 +380,19 @@ class HarnessSession:
         self._feedback.clear()
         admission = self._admit_harness()
         if not admission.accepted:
+            cleanup = await self.teardown()
+            cleanup_ok = cleanup.standing in _GOOD_STANDINGS
             return HarnessResetResult(
                 accepted=False,
-                standing=admission.standing,
+                standing=admission.standing if cleanup_ok else cleanup.standing,
                 materialization=materialization,
                 admission=admission,
-                reason=admission.reason,
+                cleanup_receipt=cleanup,
+                reason=(
+                    admission.reason
+                    if cleanup_ok
+                    else f"HARNESS_ADMISSION_CLEANUP_FAILED:{admission.reason}"
+                ),
             )
 
         baseline = await self.runtime.checkpoint(self.episode_id)
