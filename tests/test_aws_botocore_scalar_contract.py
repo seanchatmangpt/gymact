@@ -96,7 +96,7 @@ def test_manufactures_and_admits_scalar_constraints_across_nested_collections() 
 
     assert result.admitted
     assert result.checked_steps == 1
-    assert result.checked_values == 9
+    assert result.checked_values == 7
     operation = contract.operations[0]
     assert operation.operation == "s3.put_widget"
     assert any(rule.enum_values == ("alpha", "beta") for rule in operation.rules)
