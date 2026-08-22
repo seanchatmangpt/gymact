@@ -1,5 +1,7 @@
 """DfCM EXPLORE control-plane primitives."""
+
 from dataclasses import dataclass
+
 
 @dataclass(frozen=True)
 class Lineage:

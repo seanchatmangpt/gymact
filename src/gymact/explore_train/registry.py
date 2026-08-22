@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
+
 from .contracts import CandidateContract
+
 
 @dataclass
 class CandidateRegistry:
@@ -12,4 +14,7 @@ class CandidateRegistry:
         self.items[candidate.name] = candidate
 
     def discover(self, capability: str) -> tuple[CandidateContract, ...]:
-        return tuple(sorted((c for c in self.items.values() if capability in c.capabilities), key=lambda c: c.name))
+        candidates = (
+            c for c in self.items.values() if capability in c.capabilities
+        )
+        return tuple(sorted(candidates, key=lambda c: c.name))

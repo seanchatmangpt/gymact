@@ -1,15 +1,30 @@
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
-class Planner: name: str
+class Planner:
+    name: str
+
+
 @dataclass(frozen=True)
-class Policy: name: str
+class Policy:
+    name: str
+
+
 @dataclass(frozen=True)
-class Role: name: str
+class Role:
+    name: str
+
+
 @dataclass(frozen=True)
-class Agent: name: str
+class Agent:
+    name: str
+
+
 @dataclass(frozen=True)
-class Authority: name: str
+class Authority:
+    name: str
+
 
 def assert_separated(*objects: object) -> bool:
-    return len({type(o) for o in objects}) == len(objects)
+    return len({type(obj) for obj in objects}) == len(objects)

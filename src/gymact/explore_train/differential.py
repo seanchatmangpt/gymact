@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class Difference:
     path: str
@@ -21,5 +22,8 @@ def compare(left: object, right: object, path: str = "$") -> tuple[Difference, .
     if isinstance(left, (list, tuple)):
         if len(left) != len(right):
             return (Difference(path + ".length", len(left), len(right)),)
-        return tuple(d for i, (a, b) in enumerate(zip(left, right)) for d in compare(a, b, f"{path}[{i}]"))
+        diffs = []
+        for index, (a, b) in enumerate(zip(left, right, strict=True)):
+            diffs.extend(compare(a, b, f"{path}[{index}]"))
+        return tuple(diffs)
     return () if left == right else (Difference(path, left, right),)

@@ -1,6 +1,7 @@
+import json
 from dataclasses import dataclass
 from hashlib import sha256
-import json
+
 
 @dataclass(frozen=True)
 class Receipt:
@@ -15,4 +16,5 @@ class Receipt:
 
 
 def digest_value(value: object) -> str:
-    return sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
+    raw = json.dumps(value, sort_keys=True, separators=(",", ":"), default=str)
+    return sha256(raw.encode()).hexdigest()

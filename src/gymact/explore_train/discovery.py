@@ -1,5 +1,7 @@
 from dataclasses import dataclass
+
 from .registry import CandidateRegistry
+
 
 @dataclass(frozen=True)
 class CapabilityDiscovery:
@@ -7,5 +9,8 @@ class CapabilityDiscovery:
     candidate_names: tuple[str, ...]
 
 
-def discover_capability(registry: CandidateRegistry, capability: str) -> CapabilityDiscovery:
-    return CapabilityDiscovery(capability, tuple(c.name for c in registry.discover(capability)))
+def discover_capability(
+    registry: CandidateRegistry, capability: str
+) -> CapabilityDiscovery:
+    names = tuple(c.name for c in registry.discover(capability))
+    return CapabilityDiscovery(capability, names)

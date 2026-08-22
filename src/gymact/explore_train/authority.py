@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class AuthorityFence:
     allowed_operations: frozenset[str] = frozenset({"SELECT", "CONSTRUCT", "VERIFY"})

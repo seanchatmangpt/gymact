@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class SelectionEvidence:
     name: str
@@ -9,5 +10,12 @@ class SelectionEvidence:
 
 
 def choose(items: tuple[SelectionEvidence, ...]) -> SelectionEvidence:
-    if not items: raise ValueError("REFUSED_EMPTY_SELECTION")
-    return max(items, key=lambda i: (i.correctness * 3 + i.reversibility * 2 - i.cost, i.name))
+    if not items:
+        raise ValueError("REFUSED_EMPTY_SELECTION")
+    return max(
+        items,
+        key=lambda item: (
+            item.correctness * 3 + item.reversibility * 2 - item.cost,
+            item.name,
+        ),
+    )
