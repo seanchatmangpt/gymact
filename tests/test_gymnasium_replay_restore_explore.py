@@ -12,10 +12,17 @@ from copy import deepcopy
 import pytest
 
 from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent
-from gymact.gyms.gymnasium_env import GYMNASIUM_CAPABILITIES, GymnasiumEnvironment, GymnasiumProvider
+from gymact.gyms.gymnasium_env import (
+    GYMNASIUM_CAPABILITIES,
+    GymnasiumEnvironment,
+    GymnasiumProvider,
+)
 from gymact.models import ActuationIntent, Standing
 
 STEP = next(capability for capability in GYMNASIUM_CAPABILITIES if capability.binding == "step")
+SAMPLE = next(
+    capability for capability in GYMNASIUM_CAPABILITIES if capability.binding == "sample_action"
+)
 STEP_REF = STEP.iri
 AUTHORITY = "urn:test:gymnasium-replay-authority"
 
@@ -54,15 +61,27 @@ async def test_same_seed_and_actions_replay_identically_across_fresh_environment
             first_state = await _step(first, action)
             second_state = await _step(second, action)
             assert second_state == first_state
-        assert await first.checkpoint() != await second.checkpoint()
-        # Environment identity differs, but replay-relevant evidence does not.
-        first_checkpoint = await first.checkpoint()
-        second_checkpoint = await second.checkpoint()
-        for key in ("version", "seed", "actions", "state"):
-            assert second_checkpoint[key] == first_checkpoint[key]
+        assert await second.checkpoint() == await first.checkpoint()
     finally:
         await first.teardown()
         await second.teardown()
+
+
+async def test_restore_replays_action_space_read_stream() -> None:
+    """Replay preserves deterministic READ sampling as well as simulator physics."""
+    environment = GymnasiumEnvironment(env_id="CartPole-v1", seed=29)
+    try:
+        await environment.actuate(SAMPLE, {})
+        await environment.actuate(SAMPLE, {})
+        checkpoint = await environment.checkpoint()
+        expected_next_sample = (await environment.actuate(SAMPLE, {}))["action"]
+
+        await environment.restore(checkpoint)
+        replayed_next_sample = (await environment.actuate(SAMPLE, {}))["action"]
+
+        assert replayed_next_sample == expected_next_sample
+    finally:
+        await environment.teardown()
 
 
 async def test_tampered_expected_state_is_explicitly_falsified() -> None:
