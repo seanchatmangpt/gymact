@@ -1,3 +1,4 @@
-from .subject import Subject
 from .engine import construct
-__all__=["Subject","construct"]
+from .subject import Subject
+
+__all__ = ["Subject", "construct"]

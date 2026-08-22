@@ -1,3 +1,11 @@
-def rank(matrix:dict[str,dict[str,float]], weights:dict[str,float])->tuple[tuple[str,float],...]:
-    scored=[(cid,sum(vals.get(k,0.0)*w for k,w in weights.items())) for cid,vals in matrix.items()]
-    return tuple(sorted(scored,key=lambda x:(-x[1],x[0])))
+def rank(
+    matrix: dict[str, dict[str, float]], weights: dict[str, float]
+) -> tuple[tuple[str, float], ...]:
+    scored = [
+        (
+            candidate_id,
+            sum(values.get(key, 0.0) * weight for key, weight in weights.items()),
+        )
+        for candidate_id, values in matrix.items()
+    ]
+    return tuple(sorted(scored, key=lambda row: (-row[1], row[0])))
