@@ -14,6 +14,7 @@ permissions:
 env:
   UV_LINK_MODE: copy
   GYMACT_UV_VERSION: "0.11.32"
+  CHATMAN_ECOSYSTEM_SHA: "a4c56269fe62ab79b56ec2f7feab47da6fce20ff"
 
 jobs:
   current-contract:
@@ -35,6 +36,27 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
           printf 'subject_sha=%s\n' "$EXPECTED_SHA"
+
+      - name: Checkout exact canonical semantic dependency
+        uses: actions/checkout@v6.0.2
+        with:
+          repository: seanchatmangpt/chatman-ecosystem
+          ref: ${{ env.CHATMAN_ECOSYSTEM_SHA }}
+          path: _deps/chatman-ecosystem
+          persist-credentials: false
+
+      - name: Admit canonical semantic dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git -C _deps/chatman-ecosystem rev-parse HEAD)"
+          test "$actual" = "$CHATMAN_ECOSYSTEM_SHA"
+          test -f _deps/chatman-ecosystem/ontology/platform-console-gym-pack/ontology.ttl
+          target="$GITHUB_WORKSPACE/../chatman-ecosystem"
+          test ! -e "$target"
+          ln -s "$GITHUB_WORKSPACE/_deps/chatman-ecosystem" "$target"
+          test -f "$target/ontology/platform-console-gym-pack/ontology.ttl"
+          printf 'canonical_dependency_sha=%s\n' "$actual"
 
       - name: Set up Python
         uses: actions/setup-python@v5
