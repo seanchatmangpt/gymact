@@ -1,9 +1,7 @@
 from collections import deque
 
 
-def reachable(
-    graph: dict[str, tuple[str, ...]], start: str, goal: str
-) -> tuple[str, ...] | None:
+def reachable(graph: dict[str, tuple[str, ...]], start: str, goal: str) -> tuple[str, ...] | None:
     queue = deque([(start, (start,))])
     seen = {start}
     while queue:

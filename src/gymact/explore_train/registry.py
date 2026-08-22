@@ -14,7 +14,5 @@ class CandidateRegistry:
         self.items[candidate.name] = candidate
 
     def discover(self, capability: str) -> tuple[CandidateContract, ...]:
-        candidates = (
-            c for c in self.items.values() if capability in c.capabilities
-        )
+        candidates = (c for c in self.items.values() if capability in c.capabilities)
         return tuple(sorted(candidates, key=lambda c: c.name))
