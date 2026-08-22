@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from .subject import Refusal
 
@@ -18,5 +18,5 @@ class Epoch:
             raise Refusal("REFUSED_NEGATIVE_EPOCH_SEQUENCE")
 
     def canonical(self) -> tuple[str, int]:
-        instant = self.observed_at.astimezone(timezone.utc).isoformat()
+        instant = self.observed_at.astimezone(UTC).isoformat()
         return instant, self.sequence

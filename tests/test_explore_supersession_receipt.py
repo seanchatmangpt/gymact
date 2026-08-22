@@ -1,5 +1,5 @@
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -12,7 +12,14 @@ from gymact.explore_supersession.subject import Refusal, Subject
 
 def test_receipt_replays_and_refuses_tamper():
     subject = Subject("seanchatmangpt/gymact", "a" * 40)
-    row = Evidence(subject, Epoch(datetime.now(timezone.utc)), "ci", "focused", Outcome.PASS, "run-1")
+    row = Evidence(
+        subject,
+        Epoch(datetime.now(UTC)),
+        "ci",
+        "focused",
+        Outcome.PASS,
+        "run-1",
+    )
     frontier = Frontier((row,), ())
     receipt = make_receipt(subject, frontier)
     assert replay(receipt, subject, frontier)

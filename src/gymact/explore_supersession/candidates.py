@@ -21,7 +21,25 @@ class Candidate:
 
 def default_candidates() -> tuple[Candidate, ...]:
     return (
-        Candidate("memory-local", "exact-frontier", "memory", "local", frozenset({"replay", "failure"})),
-        Candidate("jsonl-local", "exact-frontier", "jsonl", "local", frozenset({"replay", "durable"})),
-        Candidate("graph-local", "supersession-graph", "memory", "local", frozenset({"replay", "topology"})),
+        Candidate(
+            "memory-local",
+            "exact-frontier",
+            "memory",
+            "local",
+            frozenset({"replay", "failure"}),
+        ),
+        Candidate(
+            "jsonl-local",
+            "exact-frontier",
+            "jsonl",
+            "local",
+            frozenset({"replay", "durable"}),
+        ),
+        Candidate(
+            "graph-local",
+            "supersession-graph",
+            "memory",
+            "local",
+            frozenset({"replay", "topology"}),
+        ),
     )

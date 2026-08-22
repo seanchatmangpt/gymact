@@ -4,7 +4,9 @@ from .candidates import Candidate
 from .subject import Refusal
 
 
-def pareto(candidates: tuple[Candidate, ...], scores: dict[str, tuple[int, ...]]) -> tuple[Candidate, ...]:
+def pareto(
+    candidates: tuple[Candidate, ...], scores: dict[str, tuple[int, ...]]
+) -> tuple[Candidate, ...]:
     survivors: list[Candidate] = []
     for candidate in candidates:
         own = scores[candidate.name]
@@ -19,12 +21,22 @@ def pareto(candidates: tuple[Candidate, ...], scores: dict[str, tuple[int, ...]]
     return tuple(sorted(survivors, key=lambda item: item.name))
 
 
-def weighted_select(candidates: tuple[Candidate, ...], scores: dict[str, tuple[int, ...]], weights: tuple[int, ...]) -> Candidate:
+def weighted_select(
+    candidates: tuple[Candidate, ...],
+    scores: dict[str, tuple[int, ...]],
+    weights: tuple[int, ...],
+) -> Candidate:
     if not candidates:
         raise Refusal("REFUSED_NO_VIABLE_CANDIDATE")
     ranked = sorted(
         candidates,
-        key=lambda c: (sum(v * w for v, w in zip(scores[c.name], weights, strict=True)), c.name),
+        key=lambda candidate: (
+            sum(
+                value * weight
+                for value, weight in zip(scores[candidate.name], weights, strict=True)
+            ),
+            candidate.name,
+        ),
         reverse=True,
     )
     return ranked[0]

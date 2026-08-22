@@ -17,7 +17,11 @@ def compare_frontiers(left: Frontier, right: Frontier) -> Compatibility:
     shared = sorted(set(left_scopes) & set(right_scopes))
     if not shared:
         return Compatibility("UNKNOWN", ("NO_SHARED_CURRENT_AXES",))
-    diverged = tuple(f"{source}:{scope}" for source, scope in shared if left_scopes[(source, scope)] != right_scopes[(source, scope)])
+    diverged = tuple(
+        f"{source}:{scope}"
+        for source, scope in shared
+        if left_scopes[(source, scope)] != right_scopes[(source, scope)]
+    )
     if diverged:
         return Compatibility("DIVERGED", diverged)
     return Compatibility("COMPATIBLE", ())

@@ -38,7 +38,13 @@ def qualify(
     admitted = admit(subject, evidence)
     frontier = resolve_frontier(admitted, edges)
     viable = discover(default_candidates(), required)
-    scores = {candidate.name: (len(candidate.capabilities), int(candidate.storage != "memory")) for candidate in viable}
+    scores = {
+        candidate.name: (
+            len(candidate.capabilities),
+            int(candidate.storage != "memory"),
+        )
+        for candidate in viable
+    }
     candidate = weighted_select(viable, scores, (3, 1))
     require_authority("CONSTRUCT")
     receipt = make_receipt(subject, frontier)

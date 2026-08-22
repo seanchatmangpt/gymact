@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 from .evidence import Evidence
 from .subject import Refusal
 
 
-class SupersessionReason(str, Enum):
+class SupersessionReason(StrEnum):
     NEW_HEAD = "NEW_HEAD"
     NEW_RUN = "NEW_RUN"
     NEW_ARTIFACT = "NEW_ARTIFACT"

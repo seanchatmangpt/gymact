@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 from .epoch import Epoch
 from .subject import Subject
 
 
-class Outcome(str, Enum):
+class Outcome(StrEnum):
     PASS = "PASS"
     FAIL = "FAIL"
     PENDING = "PENDING"

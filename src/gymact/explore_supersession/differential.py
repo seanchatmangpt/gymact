@@ -13,10 +13,15 @@ def differential(left: object, right: object, path: str = "$") -> tuple[str, ...
             else:
                 differences.extend(differential(left[key], right[key], f"{path}.{key}"))
         return tuple(differences)
-    if isinstance(left, Sequence) and isinstance(right, Sequence) and not isinstance(left, (str, bytes)):
+    sequences = (
+        isinstance(left, Sequence)
+        and isinstance(right, Sequence)
+        and not isinstance(left, (str, bytes))
+    )
+    if sequences:
         if len(left) != len(right):
             differences.append(f"{path}.length")
-        for index, (a, b) in enumerate(zip(left, right)):
+        for index, (a, b) in enumerate(zip(left, right, strict=False)):
             differences.extend(differential(a, b, f"{path}[{index}]"))
         return tuple(differences)
     if left != right:
