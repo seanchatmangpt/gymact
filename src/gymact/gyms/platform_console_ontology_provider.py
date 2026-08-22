@@ -72,9 +72,7 @@ def build_platform_console_ontology_provider(
     (notably hermetic verification capsules); supplying it grants no runtime
     authority and does not alter the provider's authority tiers.
     """
-    admitted_pack_dir = (
-        PLATFORM_CONSOLE_GYM_PACK_DIR if pack_dir is None else pack_dir
-    )
+    admitted_pack_dir = PLATFORM_CONSOLE_GYM_PACK_DIR if pack_dir is None else pack_dir
     return PlatformConsoleOntologyDrivenProvider(
         name="platform-console-ontology",
         pack_dir=admitted_pack_dir,
