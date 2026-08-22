@@ -89,6 +89,7 @@ wasm4pm-compat-pydantic = { git = "https://github.com/seanchatmangpt/wasm4pm-com
 
 [project.scripts]
 gymact = "gymact.cli:app"
+gymact-commerce-dfcm = "gymact.commerce_dfcm_cli:main"
 
 [project.urls]
 Homepage = "https://github.com/seanchatmangpt/gymact"

@@ -24,39 +24,37 @@ def _candidate(episode_id: str) -> dict[str, object]:
     }
 
 
-def test_default_rest_constructs_candidate_but_refuses_raw_do(request) -> None:
-    client = TestClient(create_app())
-    # See the matching comment in
-    # `tests/test_core.py::test_fastapi_surface_executes_real_episode_and_contract_routes`
-    # -- an unclosed `TestClient` leaks anyio memory streams, surfaced by
-    # pytest's unraisable-exception plugin against a later, unrelated test.
-    request.addfinalizer(client.close)
-    created = client.post(
-        "/episodes",
-        json={
-            "provider": "memory",
-            "config": {"initial": {"x": 1}},
-            "idempotency_key": "rest-prod-materialize",
-        },
-    ).json()
-    episode_id = created["episode"]["episode_id"]
-    candidate = client.post("/candidates", json=_candidate(episode_id))
-    assert candidate.status_code == 200
-    assert candidate.json()["prepared"]["episode_id"] == episode_id
+def test_default_rest_constructs_candidate_but_refuses_raw_do() -> None:
+    # TestClient owns an AnyIO blocking portal and lifespan streams. Entering
+    # its context is the ownership boundary: __exit__ closes those resources
+    # before the next pytest item can collect them as delayed unraisables.
+    with TestClient(create_app()) as client:
+        created = client.post(
+            "/episodes",
+            json={
+                "provider": "memory",
+                "config": {"initial": {"x": 1}},
+                "idempotency_key": "rest-prod-materialize",
+            },
+        ).json()
+        episode_id = created["episode"]["episode_id"]
+        candidate = client.post("/candidates", json=_candidate(episode_id))
+        assert candidate.status_code == 200
+        assert candidate.json()["prepared"]["episode_id"] == episode_id
 
-    raw = client.post(
-        f"/episodes/{episode_id}/actions",
-        json={
-            "episode_id": episode_id,
-            "capability": CAPABILITY,
-            "payload": {"key": "x", "value": 2},
-            "idempotency_key": "rest-raw",
-        },
-    ).json()
-    assert raw["standing"] == "REFUSED"
-    assert raw["receipt"]["reason"] == "BRCE_EXECUTION_GRANT_REQUIRED"
-    observed = client.get(f"/episodes/{episode_id}/observations/latest").json()
-    assert observed["state"] == {"x": 1}
+        raw = client.post(
+            f"/episodes/{episode_id}/actions",
+            json={
+                "episode_id": episode_id,
+                "capability": CAPABILITY,
+                "payload": {"key": "x", "value": 2},
+                "idempotency_key": "rest-raw",
+            },
+        ).json()
+        assert raw["standing"] == "REFUSED"
+        assert raw["receipt"]["reason"] == "BRCE_EXECUTION_GRANT_REQUIRED"
+        observed = client.get(f"/episodes/{episode_id}/observations/latest").json()
+        assert observed["state"] == {"x": 1}
 
 
 @pytest.mark.asyncio

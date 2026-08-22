@@ -542,11 +542,6 @@ async def test_real_episode_produces_a_valid_ocel_log_and_writes_the_conformance
     await runtime.teardown(episode.episode_id)
 
     receipts = runtime.episode_receipts(episode.episode_id)
-    # materialize, act (delete), act (increment), verify, teardown all go
-    # through _emit -- verify() now independently records a real Receipt too
-    # (gymact.verification.PostconditionVerifier), closing what used to be a
-    # real gap: no receipted "verify" event in the runtime. So the real,
-    # in-order operation sequence is exactly this:
     assert [r.operation.value for r in receipts] == [
         "materialize",
         "act",
@@ -556,14 +551,14 @@ async def test_real_episode_produces_a_valid_ocel_log_and_writes_the_conformance
     ]
 
     log = runtime.episode_ocel_log(episode.episode_id)
-    validate_ocel_log(log)  # raises on any real schema violation
+    validate_ocel_log(log)
     assert len(log["events"]) == len(receipts)
     assert {e["type"] for e in log["events"]} == {"materialize", "act", "verify", "teardown"}
 
     fixture_path = Path(__file__).parent / "fixtures" / "real_episode.ocel.json"
     written_log, digest = write_ocel_log(fixture_path, receipts)
     assert written_log == log
-    assert len(digest) == 64  # real sha256 hex digest, not a placeholder
+    assert len(digest) == 64
     assert fixture_path.is_file()
 
 
@@ -600,14 +595,6 @@ def test_fastapi_surface_executes_real_episode_and_contract_routes(request) -> N
     runtime = GymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
     runtime.register_provider(MemoryProvider())
     client = TestClient(create_app(runtime))
-    # `TestClient` wraps a real `httpx` transport holding anyio memory
-    # streams that are never released without an explicit `close()` (this
-    # test doesn't use `with TestClient(...) as client:` because the body
-    # asserts throughout, not just at exit) -- left unclosed, GC finalizes
-    # them later, inside an unrelated test, as a
-    # `PytestUnraisableExceptionWarning` (`ResourceWarning: Unclosed
-    # <MemoryObjectReceiveStream ...>`). `request.addfinalizer` guarantees
-    # this runs even if an assertion below fails.
     request.addfinalizer(client.close)
     assert client.get("/health").json()["status"] == "ALIVE"
     assert client.get("/profile").json()["conforms"] is True
@@ -688,6 +675,9 @@ async def test_fastmcp_surface_executes_in_process() -> None:
             "restore",
             "teardown",
             "probe_repo",
+            "ggen_agent_catalog",
+            "ggen_agent_frontier",
+            "ggen_agent_invoke",
         }
         created = await client.call_tool(
             "create_episode",
