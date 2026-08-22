@@ -33,8 +33,7 @@ goes through). It deliberately does NOT reimplement
 driving a solved PDDL plan against real platform-console state composes
 BOTH providers under one `GymAct` instance (this one for the
 plan-state/authority-tier side, `PlatformConsoleProvider` unmodified for
-the real HTTP side), exactly as
-`tests/test_platform_console_ontology_driven_chicago.py` does.
+the real HTTP side).
 """
 
 from __future__ import annotations
@@ -56,24 +55,26 @@ ELEVATED_TASK_FAMILIES = frozenset({"family-approval"})
 
 
 class PlatformConsoleOntologyDrivenProvider(OntologyDrivenProvider):
-    """`OntologyDrivenProvider` configured for the bare-`sosa:Procedure`
-    shape this pack uses (`load_procedures`) rather than the default
-    `pplan:Plan` shape (`load_tasks`) -- the one real override this pack's
-    shape requires, mirroring `ontology_gym.py`'s own documented distinction
-    between the two extractors. No other method is touched; `materialize()`,
-    `elevated_capability_iris()` and the whole `OntologyDrivenEnvironment`
-    mechanism are inherited unmodified."""
+    """Provider for the pack's bare-`sosa:Procedure` semantic shape."""
 
     def tasks(self) -> tuple[OntologyTask, ...]:
         return load_procedures(self._pack_dir)
 
 
-def build_platform_console_ontology_provider() -> PlatformConsoleOntologyDrivenProvider:
-    """The entire platform-console-specific surface: pack location + one
-    elevated family, over the generic compiler -- not a hand-coded
-    environment."""
+def build_platform_console_ontology_provider(
+    *, pack_dir: Path | None = None
+) -> PlatformConsoleOntologyDrivenProvider:
+    """Compile the platform-console semantic pack into an executable provider.
+
+    The canonical sibling-repository pack remains the default semantic
+    authority. ``pack_dir`` is an explicit observation/admission boundary for
+    callers that have already materialized the same pack shape elsewhere
+    (notably hermetic verification capsules); supplying it grants no runtime
+    authority and does not alter the provider's authority tiers.
+    """
+    admitted_pack_dir = PLATFORM_CONSOLE_GYM_PACK_DIR if pack_dir is None else pack_dir
     return PlatformConsoleOntologyDrivenProvider(
         name="platform-console-ontology",
-        pack_dir=PLATFORM_CONSOLE_GYM_PACK_DIR,
+        pack_dir=admitted_pack_dir,
         elevated_task_families=ELEVATED_TASK_FAMILIES,
     )
