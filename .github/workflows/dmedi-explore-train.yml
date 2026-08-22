@@ -10,11 +10,16 @@ on:
 permissions:
   contents: read
 
+env:
+  UV_LINK_MODE: copy
+  GYMACT_UV_VERSION: '0.11.32'
+
 jobs:
   explore-train:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
@@ -23,15 +28,22 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install exact repository dependencies
+      - name: Set up admitted uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.GYMACT_UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+      - name: Resolve bounded validation surface
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e '.[dev]'
+          set -euo pipefail
+          test "$(uv --version | awk '{print $2}')" = "$GYMACT_UV_VERSION"
+          uv sync --group dev
       - name: Compile authored control plane
-        run: python -m compileall -q src/gymact/explore_train tests/test_dmedi_explore_train.py
+        run: uv run python -m compileall -q src/gymact/explore_train tests/test_dmedi_explore_train.py
       - name: Execute differential and refusal court
-        run: python -m unittest discover -s tests -p 'test_dmedi_explore_train.py' -v
+        run: uv run python -m unittest discover -s tests -p 'test_dmedi_explore_train.py' -v
       - name: Static and format court
         run: |
-          ruff check src/gymact/explore_train tests/test_dmedi_explore_train.py
-          ruff format --check src/gymact/explore_train tests/test_dmedi_explore_train.py
+          uv run ruff check src/gymact/explore_train tests/test_dmedi_explore_train.py
+          uv run ruff format --check src/gymact/explore_train tests/test_dmedi_explore_train.py
