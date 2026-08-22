@@ -1,0 +1,52 @@
+name: EXPLORE intent freshness frontier
+
+on:
+  pull_request:
+    paths:
+      - "src/gymact/explore_intent_frontier/**"
+      - "tests/explore_intent_frontier/**"
+      - ".github/workflows/explore-intent-frontier.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  exact-head:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact subject
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Admit exact head
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install focused verifier toolchain
+        run: python -m pip install "ruff>=0.15,<1"
+      - name: Compile authored surface
+        run: python -m compileall -q src/gymact/explore_intent_frontier tests/explore_intent_frontier
+      - name: Execute differential refusal replay court
+        env:
+          PYTHONPATH: src
+        run: python -m unittest discover -s tests/explore_intent_frontier -p 'test_*.py' -v
+      - name: Ruff static contract
+        run: ruff check src/gymact/explore_intent_frontier tests/explore_intent_frontier
+      - name: Ruff format contract
+        run: ruff format --check src/gymact/explore_intent_frontier tests/explore_intent_frontier
+      - name: Refuse ambient DO authority
+        env:
+          PYTHONPATH: src
+        run: |
+          python - <<'PY'
+          from gymact.explore_intent_frontier.engine import ActionClass, require
+          try:
+              require(ActionClass.DO)
+          except PermissionError as exc:
+              assert str(exc) == "REFUSED_UNRECEIPTED_ACTUATION"
+          else:
+              raise SystemExit("DO authority unexpectedly admitted")
+          PY
