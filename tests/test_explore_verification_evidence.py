@@ -1,4 +1,5 @@
 import pytest
+
 from gymact.explore_verification.evidence import Evidence
 from gymact.explore_verification.subject import Subject
 
