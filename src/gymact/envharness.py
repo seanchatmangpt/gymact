@@ -353,9 +353,7 @@ class HarnessSession:
                 payload.update(deepcopy(dict(rule.payload_overrides)))
                 current = HarnessAction(
                     capability=(
-                        rule.rewrite_capability
-                        if rule.effect == "rewrite"
-                        else current.capability
+                        rule.rewrite_capability if rule.effect == "rewrite" else current.capability
                     )
                     or current.capability,
                     payload=payload,

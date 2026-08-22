@@ -89,8 +89,9 @@ async def test_envrigger_runs_observe_diagnose_write_validate_on_fresh_real_epis
 
 
 @pytest.mark.asyncio
-async def test_default_writer_synthesizes_loop_guard_without_crowning_unsolvable_candidate(
-) -> None:
+async def test_default_writer_synthesizes_loop_guard_without_crowning_unsolvable_candidate() -> (
+    None
+):
     gym = build_runtime()
 
     def session_factory(task: TaskSpec) -> HarnessSession:

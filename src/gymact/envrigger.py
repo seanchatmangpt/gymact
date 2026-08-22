@@ -162,10 +162,7 @@ def diagnose_rollouts(rollouts: Sequence[Rollout]) -> Diagnosis:
     success_rate = sum(1 for rollout in rollouts if rollout.solved) / len(rollouts)
     repeated_capability, repeat_count = _max_consecutive_capability(rollouts)
     reasons = Counter(
-        step.reason
-        for rollout in rollouts
-        for step in rollout.steps
-        if step.reason is not None
+        step.reason for rollout in rollouts for step in rollout.steps if step.reason is not None
     )
     if success_rate == 0.0:
         signal = "UNSOLVABLE_OBSERVED"

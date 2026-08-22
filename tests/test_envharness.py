@@ -109,9 +109,7 @@ async def test_stage_cannot_bypass_fail_closed_authority() -> None:
         harness=HarnessSpec(
             stages=(
                 Stage(
-                    actions=(
-                        HarnessAction(capability=SET, payload={"key": "safe", "value": True}),
-                    )
+                    actions=(HarnessAction(capability=SET, payload={"key": "safe", "value": True}),)
                 ),
             ),
         ),
