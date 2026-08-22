@@ -94,9 +94,13 @@ def _shape(shapes: dict[str, Any], name: str) -> dict[str, Any]:
 def _pascal_to_snake(value: str) -> str:
     output: list[str] = []
     for index, char in enumerate(value):
-        if index and char.isupper() and (
-            not value[index - 1].isupper()
-            or (index + 1 < len(value) and value[index + 1].islower())
+        if (
+            index
+            and char.isupper()
+            and (
+                not value[index - 1].isupper()
+                or (index + 1 < len(value) and value[index + 1].islower())
+            )
         ):
             output.append("_")
         output.append(char.lower())
@@ -107,9 +111,7 @@ def _non_negative_int(value: Any, field: str) -> int | None:
     if value is None:
         return None
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-        raise AwsBotocoreScalarContractCompilationError(
-            f"{field} must be a non-negative integer"
-        )
+        raise AwsBotocoreScalarContractCompilationError(f"{field} must be a non-negative integer")
     return value
 
 
@@ -133,9 +135,7 @@ def _scalar_constraints(
                 f"shapes.{shape_name}.min must be <= max"
             )
         raw_enum = shape.get("enum", [])
-        if not isinstance(raw_enum, list) or any(
-            not isinstance(item, str) for item in raw_enum
-        ):
+        if not isinstance(raw_enum, list) or any(not isinstance(item, str) for item in raw_enum):
             raise AwsBotocoreScalarContractCompilationError(
                 f"shapes.{shape_name}.enum must be an array of strings"
             )
@@ -264,13 +264,9 @@ def _rules_for_root(
             if current in structure_ancestry:
                 return
             current_shape = _shape(shapes, current)
-            members = _mapping(
-                current_shape.get("members", {}), f"shapes.{current}.members"
-            )
+            members = _mapping(current_shape.get("members", {}), f"shapes.{current}.members")
             for member in sorted(members):
-                member_ref = _mapping(
-                    members[member], f"shapes.{current}.members.{member}"
-                )
+                member_ref = _mapping(members[member], f"shapes.{current}.members.{member}")
                 member_shape_name = member_ref.get("shape")
                 if not isinstance(member_shape_name, str) or not member_shape_name:
                     raise AwsBotocoreScalarContractCompilationError(
@@ -308,19 +304,13 @@ def _rules_for_root(
 
         walk_structure(child, (), ())
 
-    def walk_structure(
-        current: str, prefix: tuple[str, ...], ancestry: tuple[str, ...]
-    ) -> None:
+    def walk_structure(current: str, prefix: tuple[str, ...], ancestry: tuple[str, ...]) -> None:
         if current in ancestry:
             return
         current_shape = _shape(shapes, current)
-        members = _mapping(
-            current_shape.get("members", {}), f"shapes.{current}.members"
-        )
+        members = _mapping(current_shape.get("members", {}), f"shapes.{current}.members")
         for member in sorted(members):
-            member_ref = _mapping(
-                members[member], f"shapes.{current}.members.{member}"
-            )
+            member_ref = _mapping(members[member], f"shapes.{current}.members.{member}")
             child = member_ref.get("shape")
             if not isinstance(child, str) or not child:
                 raise AwsBotocoreScalarContractCompilationError(
@@ -328,9 +318,7 @@ def _rules_for_root(
                 )
             child_shape = _shape(shapes, child)
             path = (root, *prefix, member)
-            scalar_rule = _make_rule(
-                value_path=path, shape=child_shape, shape_name=child
-            )
+            scalar_rule = _make_rule(value_path=path, shape=child_shape, shape_name=child)
             if scalar_rule is not None:
                 rules.add(scalar_rule)
             elif child_shape["type"] in {"list", "map"}:
@@ -366,13 +354,9 @@ def compile_aws_botocore_scalar_contract(
     service = metadata.get("endpointPrefix")
     api_version = metadata.get("apiVersion")
     if not isinstance(service, str) or not service:
-        raise AwsBotocoreScalarContractCompilationError(
-            "metadata.endpointPrefix must be non-empty"
-        )
+        raise AwsBotocoreScalarContractCompilationError("metadata.endpointPrefix must be non-empty")
     if not isinstance(api_version, str) or not api_version:
-        raise AwsBotocoreScalarContractCompilationError(
-            "metadata.apiVersion must be non-empty"
-        )
+        raise AwsBotocoreScalarContractCompilationError("metadata.apiVersion must be non-empty")
     operations = _mapping(model.get("operations"), "operations")
     shapes = _mapping(model.get("shapes"), "shapes")
     if not operations:
@@ -380,9 +364,7 @@ def compile_aws_botocore_scalar_contract(
 
     compiled: list[AwsOperationScalarContract] = []
     for operation_name in sorted(operations):
-        operation = _mapping(
-            operations[operation_name], f"operations.{operation_name}"
-        )
+        operation = _mapping(operations[operation_name], f"operations.{operation_name}")
         compiled.append(
             AwsOperationScalarContract(
                 surface="boto3",
@@ -442,9 +424,7 @@ def _contract_payload(contract: AwsBotocoreScalarContract) -> dict[str, Any]:
                 "surface": operation.surface,
                 "operation": operation.operation,
                 "rules": [_rule_payload(rule) for rule in operation.rules],
-                "success_rules": [
-                    _rule_payload(rule) for rule in operation.success_rules
-                ],
+                "success_rules": [_rule_payload(rule) for rule in operation.success_rules],
             }
             for operation in sorted(
                 contract.operations, key=lambda item: (item.surface, item.operation)
@@ -462,8 +442,7 @@ def receipt_aws_botocore_scalar_contract(
         source_digest=contract.source_digest,
         operation_count=len(contract.operations),
         rule_count=sum(
-            len(operation.rules) + len(operation.success_rules)
-            for operation in contract.operations
+            len(operation.rules) + len(operation.success_rules) for operation in contract.operations
         ),
     )
 
@@ -689,9 +668,7 @@ def validate_aws_botocore_scalar_trace(
             )
             continue
         for rule in operation.rules:
-            checked_values += _validate_rule(
-                step, rule, step_index=index, differences=differences
-            )
+            checked_values += _validate_rule(step, rule, step_index=index, differences=differences)
         if step.error_code is None:
             for rule in operation.success_rules:
                 checked_values += _validate_rule(
@@ -709,7 +686,6 @@ def without_scalar_rules(contract: AwsBotocoreScalarContract) -> AwsBotocoreScal
     return replace(
         contract,
         operations=tuple(
-            replace(operation, rules=(), success_rules=())
-            for operation in contract.operations
+            replace(operation, rules=(), success_rules=()) for operation in contract.operations
         ),
     )
