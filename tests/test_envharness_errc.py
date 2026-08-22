@@ -174,9 +174,7 @@ async def test_envrigger_does_not_synthesize_around_failed_reset_authority() -> 
         harness=HarnessSpec(
             stages=(
                 Stage(
-                    actions=(
-                        HarnessAction(capability=SET, payload={"key": "count", "value": 1}),
-                    )
+                    actions=(HarnessAction(capability=SET, payload={"key": "count", "value": 1}),)
                 ),
             )
         ),

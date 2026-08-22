@@ -151,8 +151,7 @@ class HarnessSpec:
         return digest(
             {
                 "stages": [
-                    [_action_semantics(action) for action in stage.actions]
-                    for stage in self.stages
+                    [_action_semantics(action) for action in stage.actions] for stage in self.stages
                 ],
                 "contracts": [
                     {
