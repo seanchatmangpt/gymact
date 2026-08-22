@@ -24,13 +24,23 @@ class CloudValuePrefixRule:
 
 
 @dataclass(frozen=True, slots=True)
+class CloudErrorStatusRule:
+    """Bind one provider-visible error code to the statuses admitted for that error."""
+
+    error_code: str
+    status_codes: tuple[int, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class CloudOperationContract:
     """Declarative admission contract for one public cloud operation.
 
     ``required_paths`` apply to every observed outcome. ``success_required_paths``
     apply only when the provider-visible ``error_code`` is ``None``. Keeping the
     conditions distinct prevents success response schemas from falsely refusing
-    legitimate provider-error traces.
+    legitimate provider-error traces. ``error_status_rules`` preserve provider-
+    published error/status coupling instead of admitting the two dimensions as
+    independent sets.
     """
 
     surface: str
@@ -40,6 +50,7 @@ class CloudOperationContract:
     string_prefix_rules: tuple[CloudValuePrefixRule, ...] = ()
     allowed_status_codes: tuple[int | None, ...] = ()
     allowed_error_codes: tuple[str | None, ...] = ()
+    error_status_rules: tuple[CloudErrorStatusRule, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,6 +125,16 @@ def _profile_payload(profile: CloudContractProfile) -> dict[str, Any]:
                 ],
                 "allowed_status_codes": sorted(contract.allowed_status_codes, key=repr),
                 "allowed_error_codes": sorted(contract.allowed_error_codes, key=repr),
+                "error_status_rules": [
+                    {
+                        "error_code": rule.error_code,
+                        "status_codes": sorted(set(rule.status_codes)),
+                    }
+                    for rule in sorted(
+                        contract.error_status_rules,
+                        key=lambda rule: (rule.error_code, tuple(sorted(set(rule.status_codes)))),
+                    )
+                ],
             }
         )
     return {"name": profile.name, "operations": operations}
@@ -288,6 +309,38 @@ def _validate_required_paths(
             )
 
 
+def _validate_error_status_pair(
+    *,
+    index: int,
+    step: CloudTraceStep,
+    contract: CloudOperationContract,
+    side: str,
+    differences: list[FidelityDifference],
+) -> None:
+    if step.error_code is None:
+        return
+    admitted_statuses = tuple(
+        sorted(
+            {
+                status
+                for rule in contract.error_status_rules
+                if rule.error_code == step.error_code
+                for status in rule.status_codes
+            }
+        )
+    )
+    if admitted_statuses and step.status_code not in admitted_statuses:
+        differences.append(
+            FidelityDifference(
+                index,
+                ("error_code", "status_code"),
+                f"{side}_contract_error_status_mismatch",
+                {"error_code": step.error_code, "status_codes": admitted_statuses},
+                {"error_code": step.error_code, "status_code": step.status_code},
+            )
+        )
+
+
 def validate_cloud_trace_contract(
     trace: Iterable[CloudTraceStep],
     profile: CloudContractProfile,
@@ -366,6 +419,14 @@ def validate_cloud_trace_contract(
                     step.error_code,
                 )
             )
+
+        _validate_error_status_pair(
+            index=index,
+            step=step,
+            contract=contract,
+            side=side,
+            differences=differences,
+        )
 
     return CloudContractResult(
         admitted=not differences,

@@ -8,6 +8,7 @@ from gymact.gyms.cloud_contract import (
     CloudContractEvidence,
     CloudContractProfile,
     CloudContractSource,
+    CloudErrorStatusRule,
     CloudOperationContract,
     digest_cloud_contract_source,
 )
@@ -57,15 +58,16 @@ def _required_shape_paths(
 
 def _error_contract(
     shapes: dict[str, Any], errors: Any, operation: str
-) -> tuple[tuple[str | None, ...], tuple[int, ...]]:
+) -> tuple[tuple[str | None, ...], tuple[int, ...], tuple[CloudErrorStatusRule, ...]]:
     if errors is None:
-        return (None,), ()
+        return (None,), (), ()
     if not isinstance(errors, list):
         raise AwsBotocoreContractCompilationError(
             f"operations.{operation}.errors must be an array"
         )
     codes: set[str | None] = {None}
     statuses: set[int] = set()
+    statuses_by_code: dict[str, set[int]] = {}
     for index, error_ref in enumerate(errors):
         ref = _mapping(error_ref, f"operations.{operation}.errors[{index}]")
         shape_name = ref.get("shape")
@@ -89,8 +91,14 @@ def _error_contract(
                     f"shapes.{shape_name}.error.httpStatusCode must be an integer"
                 )
             statuses.add(status)
+        if code is not None and status is not None:
+            statuses_by_code.setdefault(code, set()).add(status)
     ordered_codes = tuple(sorted(codes, key=lambda value: "" if value is None else value))
-    return ordered_codes, tuple(sorted(statuses))
+    rules = tuple(
+        CloudErrorStatusRule(error_code=code, status_codes=tuple(sorted(code_statuses)))
+        for code, code_statuses in sorted(statuses_by_code.items())
+    )
+    return ordered_codes, tuple(sorted(statuses)), rules
 
 
 def compile_aws_botocore_contract(
@@ -101,6 +109,9 @@ def compile_aws_botocore_contract(
     Input-shape requirements are universal request constraints. Output-shape
     requirements are admitted only for successful provider-visible outcomes,
     so legitimate AWS error traces are not forced to carry success payloads.
+    Provider-published error codes and HTTP statuses retain their per-error
+    coupling so a valid status from one modeled error cannot be cross-paired
+    with a different modeled error code.
     """
     if not isinstance(source_document, bytes):
         raise TypeError("source_document must be bytes")
@@ -146,7 +157,7 @@ def compile_aws_botocore_contract(
             raise AwsBotocoreContractCompilationError(
                 f"operations.{operation_name}.http.responseCode must be an integer"
             )
-        error_codes, error_statuses = _error_contract(
+        error_codes, error_statuses, error_status_rules = _error_contract(
             shapes, operation.get("errors"), operation_name
         )
         contracts.append(
@@ -157,6 +168,7 @@ def compile_aws_botocore_contract(
                 success_required_paths=success_required_paths,
                 allowed_status_codes=tuple(sorted({success_status, *error_statuses})),
                 allowed_error_codes=error_codes,
+                error_status_rules=error_status_rules,
             )
         )
 
