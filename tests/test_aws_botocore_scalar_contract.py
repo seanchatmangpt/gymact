@@ -4,6 +4,7 @@ import json
 from dataclasses import replace
 
 import pytest
+
 from gymact.gyms.aws_botocore_scalar_contract import (
     AwsBotocoreScalarContractCompilationError,
     compile_aws_botocore_scalar_contract,
@@ -13,7 +14,6 @@ from gymact.gyms.aws_botocore_scalar_contract import (
     without_scalar_rules,
 )
 from gymact.gyms.cloud_fidelity import CloudTraceStep
-
 
 SOURCE_URI = "botocore://s3/2006-03-01/service-2.json"
 
