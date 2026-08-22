@@ -14,6 +14,9 @@ on:
 permissions:
   contents: read
 
+env:
+  BOLTY_VERSION: "0.3.0"
+
 jobs:
   semantic-paas:
     runs-on: ubuntu-latest
@@ -22,7 +25,16 @@ jobs:
       run:
         working-directory: paas
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout exact subject
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Admit exact subject
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+        working-directory: .
       - uses: erlef/setup-beam@v1
         with:
           otp-version: "27.3"
