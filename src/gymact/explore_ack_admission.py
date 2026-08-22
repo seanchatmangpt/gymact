@@ -7,7 +7,6 @@ from .explore_ack_identity import Subject
 from .explore_ack_invalidation import Invalidation
 from .explore_ack_witness import Witness, WitnessKind
 
-
 _ORDER = {
     WitnessKind.DELIVERED: 1,
     WitnessKind.ACKNOWLEDGED: 2,

@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-
 _SHA = re.compile(r"^[0-9a-f]{40}$")
 
 
