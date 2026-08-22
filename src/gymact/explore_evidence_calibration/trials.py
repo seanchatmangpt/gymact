@@ -21,7 +21,9 @@ class CalibrationTrial:
             raise Refusal("REFUSED_NAIVE_CALIBRATION_TIME")
 
 
-def admit_trials(trials: list[CalibrationTrial], *, now: datetime) -> tuple[CalibrationTrial, ...]:
+def admit_trials(
+    trials: list[CalibrationTrial], *, now: datetime
+) -> tuple[CalibrationTrial, ...]:
     if now.tzinfo is None or now.utcoffset() is None:
         raise Refusal("REFUSED_NAIVE_NOW")
     ids: set[tuple[str, str]] = set()
@@ -34,4 +36,4 @@ def admit_trials(trials: list[CalibrationTrial], *, now: datetime) -> tuple[Cali
             raise Refusal("REFUSED_FUTURE_CALIBRATION_TRIAL")
         ids.add(key)
         admitted.append(trial)
-    return tuple(sorted(admitted, key=lambda t: (t.source_id, t.trial_id)))
+    return tuple(sorted(admitted, key=lambda trial: (trial.source_id, trial.trial_id)))
