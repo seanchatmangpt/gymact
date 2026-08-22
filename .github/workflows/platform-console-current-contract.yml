@@ -4,7 +4,9 @@ on:
   pull_request:
     paths:
       - "src/gymact/gyms/platform_console_ontology_provider.py"
+      - "src/gymact/gyms/semantic_pack_locator.py"
       - "tests/test_platform_console_ontology_provider_chicago.py"
+      - "tests/test_semantic_pack_locator.py"
       - ".github/workflows/platform-console-current-contract.yml"
   workflow_dispatch:
 
@@ -81,7 +83,12 @@ jobs:
         run: >-
           uv run python -m py_compile
           src/gymact/gyms/platform_console_ontology_provider.py
+          src/gymact/gyms/semantic_pack_locator.py
           tests/test_platform_console_ontology_provider_chicago.py
+          tests/test_semantic_pack_locator.py
+
+      - name: Execute locator falsifier first
+        run: uv run pytest -q tests/test_semantic_pack_locator.py
 
       - name: Execute current-contract Chicago court
         run: uv run pytest -q tests/test_platform_console_ontology_provider_chicago.py
@@ -92,7 +99,11 @@ jobs:
           set -euo pipefail
           uv run ruff check \
             src/gymact/gyms/platform_console_ontology_provider.py \
-            tests/test_platform_console_ontology_provider_chicago.py
+            src/gymact/gyms/semantic_pack_locator.py \
+            tests/test_platform_console_ontology_provider_chicago.py \
+            tests/test_semantic_pack_locator.py
           uv run ruff format --check \
             src/gymact/gyms/platform_console_ontology_provider.py \
-            tests/test_platform_console_ontology_provider_chicago.py
+            src/gymact/gyms/semantic_pack_locator.py \
+            tests/test_platform_console_ontology_provider_chicago.py \
+            tests/test_semantic_pack_locator.py
