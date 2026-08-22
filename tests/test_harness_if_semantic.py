@@ -52,7 +52,10 @@ def test_prior_projection_is_a_sosa_observation():
     graph = sem.prior_graph(prior)
     observation = sem.HIF["prior-observation-r1"]
     assert (observation, RDF.type, sem.SOSA.Observation) in graph
-    assert any(subject == observation and predicate == sem.SOSA.hasResult for subject, predicate, _ in graph)
+    assert any(
+        subject == observation and predicate == sem.SOSA.hasResult
+        for subject, predicate, _ in graph
+    )
 
 
 def test_verdict_projection_is_an_earl_assertion():
@@ -89,4 +92,6 @@ def test_metrics_and_snapshot_projection_use_dqv_and_prov_bundle():
     graph = sem.snapshot_graph(snapshot, run_iri="urn:test:harness-if:run")
     bundle = sem.HIF[f"snapshot-{snapshot.snapshot_fingerprint}"]
     assert (bundle, RDF.type, sem.PROV.Bundle) in graph
-    assert any(object_ref == sem.DQV.QualityMeasurement for _, _, object_ref in graph)
+    assert any(
+        object_ref == sem.DQV.QualityMeasurement for _, _, object_ref in graph
+    )
