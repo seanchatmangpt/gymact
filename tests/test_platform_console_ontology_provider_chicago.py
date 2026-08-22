@@ -26,10 +26,7 @@ from gymact.models import ActuationIntent, MaterializationIntent, Standing
 STANDARD_REF = "urn:gymact:authority-decision:pc-current-standard"
 ELEVATED_REF = "urn:gymact:authority-decision:pc-current-elevated"
 PROVIDER_NAME = "platform-console-ontology"
-PCC = (
-    "https://seanchatmangpt.github.io/chatman-ecosystem/ontology/"
-    "platform-console-capabilities#"
-)
+PCC = "https://seanchatmangpt.github.io/chatman-ecosystem/ontology/platform-console-capabilities#"
 
 EXPECTED = {
     "castle.verb.inventory-components": (
@@ -88,9 +85,7 @@ def test_explicit_pack_admission_compiles_current_three_procedures(tmp_path: Pat
 def test_default_pack_preserves_canonical_public_semantic_identities() -> None:
     ontology = PLATFORM_CONSOLE_GYM_PACK_DIR / "ontology.ttl"
     if not ontology.is_file():
-        pytest.skip(
-            f"canonical platform-console ontology pack not materialized at {ontology}"
-        )
+        pytest.skip(f"canonical platform-console ontology pack not materialized at {ontology}")
 
     provider = build_platform_console_ontology_provider()
     tasks = _task_map(provider)
