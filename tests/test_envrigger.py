@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 
 from gymact.authority import AllowListAuthorityResolver
-from gymact.envharness import HarnessAction, HarnessSession, HarnessSpec, TaskSpec
+from gymact.envharness import Contract, HarnessAction, HarnessSession, HarnessSpec, TaskSpec
 from gymact.envrigger import EnvRigger, EnvRiggerConfig, LoopGuardSynthesizer
 from gymact.kernel import GymAct
 from gymact.models import Standing
@@ -23,14 +23,18 @@ class IncrementUntilSolvedPolicy:
         return HarnessAction(capability=INCREMENT, payload={"key": "count"})
 
 
-class IdentitySynthesizer:
+class BenignProjectionSynthesizer:
     """Concrete data-only writer used to prove fresh Validate execution."""
 
     def propose(  # type: ignore[no-untyped-def]
         self, *, task, diagnosis, rollouts, revision, previous
     ):
         del task, diagnosis, rollouts
-        return replace(previous, identifier=f"urn:test:candidate:{revision}")
+        return replace(
+            previous,
+            contracts=(*previous.contracts, Contract(hide_observation_keys=frozenset({"unused"}))),
+            identifier=f"urn:test:candidate:{revision}",
+        )
 
 
 class AlwaysIncrementPolicy:
@@ -64,7 +68,7 @@ async def test_envrigger_runs_observe_diagnose_write_validate_on_fresh_real_epis
     rigger = EnvRigger(
         session_factory=session_factory,
         policy=IncrementUntilSolvedPolicy(),
-        synthesizer=IdentitySynthesizer(),
+        synthesizer=BenignProjectionSynthesizer(),
         config=EnvRiggerConfig(
             baseline_rollouts=2,
             validation_rollouts=3,
@@ -83,7 +87,10 @@ async def test_envrigger_runs_observe_diagnose_write_validate_on_fresh_real_epis
     assert len(result.baseline) == 2
     assert len(result.evaluations) == 1
     assert result.evaluations[0].validation.fresh_rollouts is True
+    assert result.evaluations[0].validation.lifecycle_failures == 0
     assert result.evaluations[0].validation.success_rate == 1.0
+    assert all(rollout.episode_id is not None for rollout in result.baseline)
+    assert len({rollout.episode_id for rollout in result.baseline}) == 2
     # 2 Observe rollouts + 3 fresh Validate rollouts. No validation episode is reused.
     assert sessions_created == 5
 

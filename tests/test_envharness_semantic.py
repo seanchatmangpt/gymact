@@ -5,6 +5,7 @@ from rdflib.namespace import DCTERMS, PROV, SKOS
 
 from gymact.envharness import Contract, ContractRule, HarnessAction, HarnessSpec, Stage, TaskSpec
 from gymact.envharness_semantic import (
+    DQV,
     EARL,
     ODRL,
     PAPER,
@@ -42,13 +43,14 @@ def test_harness_projection_uses_public_predicates_and_local_abox_skos_only() ->
     assert (URIRef(spec.identifier), RDF.type, PPLAN.Plan) in graph
     assert (URIRef(spec.identifier), RDF.type, PROV.Plan) in graph
     assert (URIRef(spec.identifier), DCTERMS.source, PAPER) in graph
+    assert (URIRef(spec.identifier), DCTERMS.identifier, None) in graph
     assert any(predicate == SOSA.usedProcedure for _, predicate, _ in graph)
     assert any(predicate == ODRL.prohibition for _, predicate, _ in graph)
     assert any(obj == SKOS.Concept for _, _, obj in graph)
     assert not any(str(predicate).startswith("urn:gymact:") for _, predicate, _ in graph)
 
 
-def test_envrigger_projection_records_validation_as_prov_and_earl() -> None:
+def test_envrigger_projection_records_validation_as_prov_earl_and_dqv() -> None:
     diagnosis = Diagnosis(
         rollout_count=2,
         success_rate=0.5,
@@ -87,4 +89,6 @@ def test_envrigger_projection_records_validation_as_prov_and_earl() -> None:
     assert any(obj == EARL.Assertion for _, _, obj in graph)
     assert any(predicate == EARL.outcome and obj == EARL.passed for _, predicate, obj in graph)
     assert any(obj == PROV.Activity for _, _, obj in graph)
+    assert any(predicate == DQV.hasQualityMeasurement for _, predicate, _ in graph)
+    assert any(obj == DQV.QualityMeasurement for _, _, obj in graph)
     assert not any(str(predicate).startswith("urn:gymact:") for _, predicate, _ in graph)

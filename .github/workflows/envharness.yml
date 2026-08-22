@@ -7,6 +7,7 @@ on:
       - "src/gymact/envrigger.py"
       - "src/gymact/envharness_semantic.py"
       - "tests/test_envharness.py"
+      - "tests/test_envharness_errc.py"
       - "tests/test_envrigger.py"
       - "tests/test_envharness_semantic.py"
       - ".github/workflows/envharness.yml"
@@ -74,6 +75,7 @@ jobs:
           mkdir -p artifacts/envharness
           uv run pytest -v \
             tests/test_envharness.py \
+            tests/test_envharness_errc.py \
             tests/test_envrigger.py \
             tests/test_envharness_semantic.py \
             --junitxml="artifacts/envharness/junit-${{ matrix.python }}.xml"
@@ -87,6 +89,7 @@ jobs:
             src/gymact/envrigger.py \
             src/gymact/envharness_semantic.py \
             tests/test_envharness.py \
+            tests/test_envharness_errc.py \
             tests/test_envrigger.py \
             tests/test_envharness_semantic.py
           uv run ruff format --check \
@@ -94,6 +97,7 @@ jobs:
             src/gymact/envrigger.py \
             src/gymact/envharness_semantic.py \
             tests/test_envharness.py \
+            tests/test_envharness_errc.py \
             tests/test_envrigger.py \
             tests/test_envharness_semantic.py
 

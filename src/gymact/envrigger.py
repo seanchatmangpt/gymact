@@ -4,6 +4,10 @@ The paper's Observe -> Diagnose -> Write -> Validate cycle is represented explic
 Synthesizers return declarative :class:`gymact.envharness.HarnessSpec` values; generated
 Python is never imported or executed. All rollout actions still flow through
 ``HarnessSession.step`` and therefore through GymAct's authority/Receipt boundary.
+
+ERRC hardening treats reset/teardown failures as lifecycle failures rather than
+optimization signal, proves fresh validation from observed episode identities, and
+refuses duplicate/no-op synthesis.
 """
 
 from __future__ import annotations
@@ -24,6 +28,8 @@ from gymact.envharness import (
     TaskSpec,
 )
 from gymact.models import Capability, Standing
+
+_GOOD_STANDINGS = frozenset({Standing.ALIVE, Standing.PARTIAL_ALIVE})
 
 
 class BlackBoxPolicy(Protocol):
@@ -52,6 +58,14 @@ class Rollout:
     solved: bool
     reset_standing: Standing
     verification_id: str | None = None
+    episode_id: str | None = None
+    teardown_standing: Standing | None = None
+
+    @property
+    def lifecycle_admitted(self) -> bool:
+        return self.reset_standing in _GOOD_STANDINGS and (
+            self.teardown_standing is None or self.teardown_standing in _GOOD_STANDINGS
+        )
 
 
 @dataclass(frozen=True)
@@ -63,6 +77,7 @@ class Diagnosis:
     max_consecutive_repeat: int
     failure_reasons: tuple[tuple[str, int], ...]
     signal: str
+    lifecycle_failures: int = 0
 
 
 class HarnessSynthesizer(Protocol):
@@ -86,6 +101,7 @@ class ValidationMetrics:
     success_rate: float
     mean_steps: float
     fresh_rollouts: bool
+    lifecycle_failures: int = 0
 
 
 @dataclass(frozen=True)
@@ -155,16 +171,35 @@ def _max_consecutive_capability(rollouts: Sequence[Rollout]) -> tuple[str | None
     return best_capability, best_count
 
 
+def _lifecycle_failures(rollouts: Sequence[Rollout]) -> int:
+    return sum(1 for rollout in rollouts if not rollout.lifecycle_admitted)
+
+
+def _lifecycle_failure_standing(rollouts: Sequence[Rollout]) -> Standing:
+    for rollout in rollouts:
+        if rollout.reset_standing not in _GOOD_STANDINGS:
+            return rollout.reset_standing
+        if (
+            rollout.teardown_standing is not None
+            and rollout.teardown_standing not in _GOOD_STANDINGS
+        ):
+            return rollout.teardown_standing
+    return Standing.BLOCKED
+
+
 def diagnose_rollouts(rollouts: Sequence[Rollout]) -> Diagnosis:
-    """Deterministic black-box diagnosis from trajectories only."""
+    """Deterministic black-box diagnosis from trajectories and lifecycle evidence."""
     if not rollouts:
         raise ValueError("ENVRIGGER_DIAGNOSIS_REQUIRES_ROLLOUTS")
     success_rate = sum(1 for rollout in rollouts if rollout.solved) / len(rollouts)
     repeated_capability, repeat_count = _max_consecutive_capability(rollouts)
+    lifecycle_failures = _lifecycle_failures(rollouts)
     reasons = Counter(
         step.reason for rollout in rollouts for step in rollout.steps if step.reason is not None
     )
-    if success_rate == 0.0:
+    if lifecycle_failures:
+        signal = "LIFECYCLE_FAILURE_OBSERVED"
+    elif success_rate == 0.0:
         signal = "UNSOLVABLE_OBSERVED"
     elif success_rate == 1.0:
         signal = "TOO_EASY_OBSERVED"
@@ -180,6 +215,7 @@ def diagnose_rollouts(rollouts: Sequence[Rollout]) -> Diagnosis:
         max_consecutive_repeat=repeat_count,
         failure_reasons=tuple(sorted(reasons.items())),
         signal=signal,
+        lifecycle_failures=lifecycle_failures,
     )
 
 
@@ -205,6 +241,16 @@ class LoopGuardSynthesizer:
         del task, rollouts
         capability = diagnosis.repeated_capability
         if capability is None or diagnosis.max_consecutive_repeat < 3:
+            return None
+        duplicate = any(
+            rule.capability == capability
+            and rule.effect == "deny"
+            and rule.max_consecutive == 2
+            and rule.reason == "ENVRIGGER_ACTION_LOOP_GUARD"
+            for contract in previous.contracts
+            for rule in contract.rules
+        )
+        if duplicate:
             return None
         rule = ContractRule(
             capability=capability,
@@ -252,10 +298,23 @@ class EnvRigger:
         session = self.session_factory(task)
         reset = await session.reset()
         if not reset.accepted or session.episode_id is None:
-            return Rollout(steps=(), solved=False, reset_standing=reset.standing)
+            episode_id = session.episode_id
+            teardown_standing: Standing | None = None
+            if episode_id is not None:
+                teardown = await session.teardown()
+                teardown_standing = teardown.standing
+            return Rollout(
+                steps=(),
+                solved=False,
+                reset_standing=reset.standing,
+                episode_id=episode_id,
+                teardown_standing=teardown_standing,
+            )
 
+        episode_id = session.episode_id
         steps: list[TrajectoryStep] = []
         verification_id: str | None = None
+        teardown_standing: Standing | None = None
         solved = False
         try:
             for index in range(self.config.max_steps):
@@ -286,30 +345,43 @@ class EnvRigger:
                 verification_id = verification.verification_id
                 solved = verification.passed
         finally:
-            await session.teardown()
+            teardown = await session.teardown()
+            teardown_standing = teardown.standing
 
         return Rollout(
             steps=tuple(steps),
             solved=solved,
             reset_standing=reset.standing,
             verification_id=verification_id,
+            episode_id=episode_id,
+            teardown_standing=teardown_standing,
         )
 
     async def _rollouts(self, task: TaskSpec, count: int) -> tuple[Rollout, ...]:
-        return tuple([await self._rollout(task) for _ in range(count)])
+        rollouts = [await self._rollout(task) for _ in range(count)]
+        return tuple(rollouts)
 
     @staticmethod
     def _metrics(rollouts: tuple[Rollout, ...]) -> ValidationMetrics:
         solved = sum(1 for rollout in rollouts if rollout.solved)
+        episode_ids = [rollout.episode_id for rollout in rollouts]
+        fresh = all(episode_id is not None for episode_id in episode_ids) and len(
+            set(episode_ids)
+        ) == len(episode_ids)
         return ValidationMetrics(
             rollouts=len(rollouts),
             solved=solved,
             success_rate=solved / len(rollouts),
             mean_steps=fmean(len(rollout.steps) for rollout in rollouts),
-            fresh_rollouts=True,
+            fresh_rollouts=fresh,
+            lifecycle_failures=_lifecycle_failures(rollouts),
         )
 
     def _classify(self, metrics: ValidationMetrics) -> tuple[str, str]:
+        if metrics.lifecycle_failures:
+            return "REFINE", "CANDIDATE_LIFECYCLE_NOT_ADMITTED"
+        if not metrics.fresh_rollouts:
+            return "REFINE", "CANDIDATE_VALIDATION_NOT_FRESH"
         if metrics.success_rate < self.config.min_solvable_success_rate:
             return "REFINE", "CANDIDATE_NOT_SOLVABLE_ENOUGH"
         if metrics.success_rate > self.config.max_easy_success_rate:
@@ -320,6 +392,16 @@ class EnvRigger:
         """Execute the complete bounded EnvRigger loop against black-box rollouts."""
         observed_baseline = await self._rollouts(task, self.config.baseline_rollouts)
         baseline_diagnosis = diagnose_rollouts(observed_baseline)
+        if baseline_diagnosis.lifecycle_failures:
+            return EnvRiggerResult(
+                standing=_lifecycle_failure_standing(observed_baseline),
+                baseline=observed_baseline,
+                baseline_diagnosis=baseline_diagnosis,
+                evaluations=(),
+                accepted_harness=None,
+                reason="BASELINE_LIFECYCLE_NOT_ADMITTED",
+            )
+
         working_rollouts = observed_baseline
         diagnosis = baseline_diagnosis
         previous = task.harness
@@ -341,6 +423,15 @@ class EnvRigger:
                     evaluations=tuple(evaluations),
                     accepted_harness=None,
                     reason="SYNTHESIZER_HAS_NO_LAWFUL_CANDIDATE",
+                )
+            if candidate.semantic_digest == previous.semantic_digest:
+                return EnvRiggerResult(
+                    standing=Standing.UNSUPPORTED,
+                    baseline=observed_baseline,
+                    baseline_diagnosis=baseline_diagnosis,
+                    evaluations=tuple(evaluations),
+                    accepted_harness=None,
+                    reason="SYNTHESIZER_PRODUCED_NO_SEMANTIC_CHANGE",
                 )
 
             candidate_task = replace(task, harness=candidate)

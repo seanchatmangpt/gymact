@@ -1,8 +1,8 @@
 """Public-ontology projection of EnvHarness/EnvRigger runtime values.
 
 No GymAct-owned TBox is introduced. Stage, Contract, Chain, candidate and validation
-identities are ABox resources classified with public PROV-O/P-PLAN/SOSA/ODRL/EARL terms
-and local SKOS concepts, exactly matching GymAct's ontology rule.
+identities are ABox resources classified with public PROV-O/P-PLAN/SOSA/ODRL/EARL/DQV
+terms and local SKOS concepts, exactly matching GymAct's ontology rule.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ PPLAN: Final = Namespace("http://purl.org/net/p-plan#")
 SOSA: Final = Namespace("http://www.w3.org/ns/sosa/")
 ODRL: Final = Namespace("http://www.w3.org/ns/odrl/2/")
 EARL: Final = Namespace("http://www.w3.org/ns/earl#")
+DQV: Final = Namespace("http://www.w3.org/ns/dqv#")
 GYM: Final = Namespace("urn:gymact:envharness:")
 PAPER = URIRef("https://arxiv.org/abs/2608.19880")
 
@@ -27,6 +28,10 @@ _CONTRACT = GYM["component-contract"]
 _CHAIN = GYM["component-chain"]
 _CANDIDATE = GYM["envrigger-candidate"]
 _VALIDATION = GYM["envrigger-validation"]
+_SUCCESS_RATE = GYM["metric-success-rate"]
+_MEAN_STEPS = GYM["metric-mean-steps"]
+_LIFECYCLE_FAILURES = GYM["metric-lifecycle-failures"]
+_FRESH_ROLLOUTS = GYM["metric-fresh-rollouts"]
 
 
 def _add_concepts(graph: Graph) -> None:
@@ -36,6 +41,10 @@ def _add_concepts(graph: Graph) -> None:
         (_CHAIN, "EnvHarness Chain"),
         (_CANDIDATE, "EnvRigger candidate"),
         (_VALIDATION, "EnvRigger validation"),
+        (_SUCCESS_RATE, "EnvRigger validation success rate"),
+        (_MEAN_STEPS, "EnvRigger validation mean steps"),
+        (_LIFECYCLE_FAILURES, "EnvRigger validation lifecycle failures"),
+        (_FRESH_ROLLOUTS, "EnvRigger fresh rollout evidence"),
     ):
         graph.add((iri, RDF.type, SKOS.Concept))
         graph.add((iri, SKOS.prefLabel, Literal(label)))
@@ -50,6 +59,7 @@ def harness_graph(spec: HarnessSpec, *, tasks: tuple[TaskSpec, ...] = ()) -> Gra
     graph.add((harness, RDF.type, PPLAN.Plan))
     graph.add((harness, RDF.type, PROV.Plan))
     graph.add((harness, DCTERMS.source, PAPER))
+    graph.add((harness, DCTERMS.identifier, Literal(spec.semantic_digest)))
 
     prior: URIRef | BNode | None = None
     for stage_index, stage in enumerate(spec.stages):
@@ -109,6 +119,19 @@ def _stage_graph(graph: Graph, node: URIRef, stage: Stage) -> None:
         graph.add((action_node, DCTERMS.isPartOf, node))
 
 
+def _quality_measurement(
+    graph: Graph,
+    validation: URIRef,
+    metric: URIRef,
+    value: object,
+) -> None:
+    measurement = BNode()
+    graph.add((validation, DQV.hasQualityMeasurement, measurement))
+    graph.add((measurement, RDF.type, DQV.QualityMeasurement))
+    graph.add((measurement, DQV.isMeasurementOf, metric))
+    graph.add((measurement, DQV.value, Literal(value)))
+
+
 def envrigger_graph(result: EnvRiggerResult, *, run_iri: str) -> Graph:
     """Project Observe/Diagnose/Write/Validate provenance and acceptance assertions."""
     graph = Graph()
@@ -126,19 +149,44 @@ def envrigger_graph(result: EnvRiggerResult, *, run_iri: str) -> Graph:
         candidate = URIRef(f"{run_iri}:candidate:{evaluation.revision}")
         validation = URIRef(f"{candidate}:validation")
         assertion = URIRef(f"{candidate}:assertion")
+        result_node = URIRef(f"{assertion}:result")
         graph.add((candidate, RDF.type, PROV.Entity))
         graph.add((candidate, DCTERMS.type, _CANDIDATE))
         graph.add((candidate, PROV.wasGeneratedBy, run))
         graph.add((candidate, DCTERMS.identifier, Literal(evaluation.harness.identifier)))
+        graph.add((candidate, PROV.value, Literal(evaluation.harness.semantic_digest)))
         graph.add((validation, RDF.type, PROV.Activity))
         graph.add((validation, DCTERMS.type, _VALIDATION))
         graph.add((validation, PROV.used, candidate))
         graph.add((validation, PROV.wasInformedBy, run))
+        _quality_measurement(
+            graph,
+            validation,
+            _SUCCESS_RATE,
+            evaluation.validation.success_rate,
+        )
+        _quality_measurement(
+            graph,
+            validation,
+            _MEAN_STEPS,
+            evaluation.validation.mean_steps,
+        )
+        _quality_measurement(
+            graph,
+            validation,
+            _LIFECYCLE_FAILURES,
+            evaluation.validation.lifecycle_failures,
+        )
+        _quality_measurement(
+            graph,
+            validation,
+            _FRESH_ROLLOUTS,
+            evaluation.validation.fresh_rollouts,
+        )
         graph.add((assertion, RDF.type, EARL.Assertion))
         graph.add((assertion, EARL.test, validation))
         graph.add((assertion, EARL.subject, candidate))
-        graph.add((assertion, EARL.result, URIRef(f"{assertion}:result")))
-        result_node = URIRef(f"{assertion}:result")
+        graph.add((assertion, EARL.result, result_node))
         graph.add((result_node, RDF.type, EARL.TestResult))
         outcome = EARL.passed if evaluation.disposition == "ACCEPT" else EARL.failed
         graph.add((result_node, EARL.outcome, outcome))
