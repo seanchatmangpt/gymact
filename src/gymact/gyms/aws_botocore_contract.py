@@ -68,8 +68,14 @@ def _required_shape_paths(
     ) -> None:
         shape = _mapping(shapes.get(current_shape_name), f"shapes.{current_shape_name}")
         shape_type = shape.get("type")
+        if not isinstance(shape_type, str) or not shape_type:
+            raise AwsBotocoreContractCompilationError(
+                f"shapes.{current_shape_name}.type must be a non-empty string"
+            )
         if shape_type != "structure":
-            return
+            raise AwsBotocoreContractCompilationError(
+                f"shapes.{current_shape_name}.type must be 'structure' for an operation input/output"
+            )
 
         required = shape.get("required", [])
         if not isinstance(required, list) or any(
