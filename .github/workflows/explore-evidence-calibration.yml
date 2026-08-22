@@ -1,0 +1,43 @@
+name: EXPLORE evidence calibration exact-head
+
+on:
+  pull_request:
+    paths:
+      - "src/gymact/explore_evidence_calibration/**"
+      - "tests/explore_evidence_calibration/**"
+      - ".github/workflows/explore-evidence-calibration.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  exact-head:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Admit exact head
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile
+        run: python -m compileall -q src/gymact/explore_evidence_calibration tests/explore_evidence_calibration
+      - name: Focused differential refusal replay court
+        env:
+          PYTHONPATH: src
+        run: python -m unittest discover -s tests/explore_evidence_calibration -p 'test_*.py' -v
+      - name: Refuse ambient DO
+        env:
+          PYTHONPATH: src
+        run: |
+          python - <<'PY'
+          from gymact.explore_evidence_calibration.engine import require_do
+          try:
+              require_do()
+          except ValueError as exc:
+              assert str(exc) == "REFUSED_UNRECEIPTED_ACTUATION"
+          else:
+              raise SystemExit("DO unexpectedly admitted")
+          PY
