@@ -32,21 +32,37 @@ class CloudErrorStatusRule:
 
 
 @dataclass(frozen=True, slots=True)
+class CloudConditionalRequiredPathRule:
+    """Require ``path`` only when every provider-visible guard path exists.
+
+    The rule represents conditional schema law without promoting an optional
+    parent into an unconditional requirement. Multiple guards preserve nested
+    optional ancestry: a descendant obligation activates only when every
+    optional ancestor on its path is present.
+    """
+
+    guard_paths: tuple[JsonPath, ...]
+    path: JsonPath
+
+
+@dataclass(frozen=True, slots=True)
 class CloudOperationContract:
     """Declarative admission contract for one public cloud operation.
 
     ``required_paths`` apply to every observed outcome. ``success_required_paths``
-    apply only when the provider-visible ``error_code`` is ``None``. Keeping the
-    conditions distinct prevents success response schemas from falsely refusing
-    legitimate provider-error traces. ``error_status_rules`` preserve provider-
-    published error/status coupling instead of admitting the two dimensions as
-    independent sets.
+    apply only when the provider-visible ``error_code`` is ``None``. Conditional
+    rules activate only when all of their optional-ancestor guards are present;
+    success-conditional rules additionally require a successful provider-visible
+    outcome. ``error_status_rules`` preserve provider-published error/status
+    coupling instead of admitting the two dimensions as independent sets.
     """
 
     surface: str
     operation: str
     required_paths: tuple[JsonPath, ...] = ()
     success_required_paths: tuple[JsonPath, ...] = ()
+    conditional_required_paths: tuple[CloudConditionalRequiredPathRule, ...] = ()
+    success_conditional_required_paths: tuple[CloudConditionalRequiredPathRule, ...] = ()
     string_prefix_rules: tuple[CloudValuePrefixRule, ...] = ()
     allowed_status_codes: tuple[int | None, ...] = ()
     allowed_error_codes: tuple[str | None, ...] = ()
@@ -103,6 +119,15 @@ def _path_payload(path: JsonPath) -> list[str | int]:
     return list(path)
 
 
+def _conditional_rule_payload(rule: CloudConditionalRequiredPathRule) -> dict[str, Any]:
+    return {
+        "guard_paths": [
+            _path_payload(path) for path in sorted(rule.guard_paths, key=repr)
+        ],
+        "path": _path_payload(rule.path),
+    }
+
+
 def _profile_payload(profile: CloudContractProfile) -> dict[str, Any]:
     operations = []
     for contract in sorted(profile.operations, key=lambda item: (item.surface, item.operation)):
@@ -116,6 +141,20 @@ def _profile_payload(profile: CloudContractProfile) -> dict[str, Any]:
                 "success_required_paths": sorted(
                     (_path_payload(path) for path in contract.success_required_paths), key=repr
                 ),
+                "conditional_required_paths": [
+                    _conditional_rule_payload(rule)
+                    for rule in sorted(
+                        contract.conditional_required_paths,
+                        key=lambda rule: (repr(rule.guard_paths), repr(rule.path)),
+                    )
+                ],
+                "success_conditional_required_paths": [
+                    _conditional_rule_payload(rule)
+                    for rule in sorted(
+                        contract.success_conditional_required_paths,
+                        key=lambda rule: (repr(rule.guard_paths), repr(rule.path)),
+                    )
+                ],
                 "string_prefix_rules": [
                     {"path": _path_payload(rule.path), "prefix": rule.prefix}
                     for rule in sorted(
@@ -309,6 +348,42 @@ def _validate_required_paths(
             )
 
 
+def _validate_conditional_required_paths(
+    *,
+    index: int,
+    step: CloudTraceStep,
+    rules: Iterable[CloudConditionalRequiredPathRule],
+    side: str,
+    reason: str,
+    differences: list[FidelityDifference],
+) -> None:
+    for rule in rules:
+        if not rule.guard_paths:
+            differences.append(
+                FidelityDifference(
+                    index,
+                    rule.path,
+                    f"{side}_contract_conditional_rule_without_guard",
+                    "one or more guard paths",
+                    (),
+                )
+            )
+            continue
+        if not all(_lookup_path(step, guard)[0] for guard in rule.guard_paths):
+            continue
+        found, _ = _lookup_path(step, rule.path)
+        if not found:
+            differences.append(
+                FidelityDifference(
+                    index,
+                    rule.path,
+                    f"{side}_{reason}",
+                    {"present_when": tuple(sorted(rule.guard_paths, key=repr))},
+                    None,
+                )
+            )
+
+
 def _validate_error_status_pair(
     *,
     index: int,
@@ -375,6 +450,14 @@ def validate_cloud_trace_contract(
             reason="contract_missing_required_path",
             differences=differences,
         )
+        _validate_conditional_required_paths(
+            index=index,
+            step=step,
+            rules=contract.conditional_required_paths,
+            side=side,
+            reason="contract_missing_conditional_required_path",
+            differences=differences,
+        )
         if step.error_code is None:
             _validate_required_paths(
                 index=index,
@@ -382,6 +465,14 @@ def validate_cloud_trace_contract(
                 paths=contract.success_required_paths,
                 side=side,
                 reason="contract_missing_success_required_path",
+                differences=differences,
+            )
+            _validate_conditional_required_paths(
+                index=index,
+                step=step,
+                rules=contract.success_conditional_required_paths,
+                side=side,
+                reason="contract_missing_success_conditional_required_path",
                 differences=differences,
             )
 
