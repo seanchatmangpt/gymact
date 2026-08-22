@@ -16,10 +16,17 @@ class AwsBotocoreCollectionContractCompilationError(ValueError):
 
 
 @dataclass(frozen=True, slots=True)
+class AwsNestedCollectionStep:
+    relative_path: tuple[str, ...]
+    container_kind: Literal["list", "map"]
+
+
+@dataclass(frozen=True, slots=True)
 class AwsCollectionElementRule:
     container_path: JsonPath
     container_kind: Literal["list", "map"]
     required_relative_paths: tuple[tuple[str, ...], ...]
+    nested_collections: tuple[AwsNestedCollectionStep, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,7 +70,10 @@ def _mapping(value: Any, field: str) -> dict[str, Any]:
 def _pascal_to_snake(value: str) -> str:
     out: list[str] = []
     for index, char in enumerate(value):
-        if index and char.isupper() and (not value[index - 1].isupper() or (index + 1 < len(value) and value[index + 1].islower())):
+        if index and char.isupper() and (
+            not value[index - 1].isupper()
+            or (index + 1 < len(value) and value[index + 1].islower())
+        ):
             out.append("_")
         out.append(char.lower())
     return "".join(out)
@@ -91,7 +101,9 @@ def _required_structure_paths(
     if shape_name in ancestry:
         return ()
     required_raw = shape.get("required", [])
-    if not isinstance(required_raw, list) or any(not isinstance(item, str) or not item for item in required_raw):
+    if not isinstance(required_raw, list) or any(
+        not isinstance(item, str) or not item for item in required_raw
+    ):
         raise AwsBotocoreCollectionContractCompilationError(
             f"shapes.{shape_name}.required must be a list of non-empty strings"
         )
@@ -116,10 +128,13 @@ def _required_structure_paths(
     return tuple(sorted(result, key=repr))
 
 
-def _collection_member_shape(
-    shapes: dict[str, Any], shape_name: str, kind: str
-) -> tuple[str, tuple[tuple[str, ...], ...]]:
+def _collection_child(shapes: dict[str, Any], shape_name: str) -> tuple[str, str]:
     shape = _shape(shapes, shape_name)
+    kind = shape["type"]
+    if kind not in {"list", "map"}:
+        raise AwsBotocoreCollectionContractCompilationError(
+            f"shapes.{shape_name}.type must be list or map for collection traversal"
+        )
     field = "member" if kind == "list" else "value"
     ref = _mapping(shape.get(field), f"shapes.{shape_name}.{field}")
     child = ref.get("shape")
@@ -127,12 +142,103 @@ def _collection_member_shape(
         raise AwsBotocoreCollectionContractCompilationError(
             f"shapes.{shape_name}.{field}.shape must be a non-empty string"
         )
-    child_shape = _shape(shapes, child)
-    if child_shape["type"] in {"list", "map"}:
+    return child, _shape(shapes, child)["type"]
+
+
+def _collection_rules(
+    shapes: dict[str, Any],
+    collection_shape: str,
+    *,
+    container_path: JsonPath,
+    outer_kind: Literal["list", "map"],
+    nested: tuple[AwsNestedCollectionStep, ...] = (),
+    ancestry: tuple[str, ...] = (),
+) -> set[AwsCollectionElementRule]:
+    if collection_shape in ancestry:
+        chain = " -> ".join((*ancestry, collection_shape))
         raise AwsBotocoreCollectionContractCompilationError(
-            f"nested collection shape {child!r} is unsupported by this bounded algebra"
+            f"recursive collection cycle is unsupported: {chain}"
         )
-    return child, _required_structure_paths(shapes, child)
+    collection = _shape(shapes, collection_shape)
+    kind = collection["type"]
+    if kind not in {"list", "map"}:
+        raise AwsBotocoreCollectionContractCompilationError(
+            f"shapes.{collection_shape}.type must be list or map"
+        )
+    child, child_kind = _collection_child(shapes, collection_shape)
+    next_ancestry = (*ancestry, collection_shape)
+    rules: set[AwsCollectionElementRule] = set()
+
+    if child_kind in {"list", "map"}:
+        rules.update(
+            _collection_rules(
+                shapes,
+                child,
+                container_path=container_path,
+                outer_kind=outer_kind,
+                nested=(*nested, AwsNestedCollectionStep((), child_kind)),
+                ancestry=next_ancestry,
+            )
+        )
+        return rules
+
+    if child_kind != "structure":
+        return rules
+
+    required_paths = _required_structure_paths(shapes, child)
+    if required_paths:
+        rules.add(
+            AwsCollectionElementRule(
+                container_path=container_path,
+                container_kind=outer_kind,
+                required_relative_paths=required_paths,
+                nested_collections=nested,
+            )
+        )
+
+    def walk_structure(
+        current: str,
+        prefix: tuple[str, ...],
+        structure_ancestry: tuple[str, ...],
+    ) -> None:
+        if current in structure_ancestry:
+            return
+        shape = _shape(shapes, current)
+        if shape["type"] != "structure":
+            return
+        members = _mapping(shape.get("members", {}), f"shapes.{current}.members")
+        for member in sorted(members):
+            member_ref = _mapping(members[member], f"shapes.{current}.members.{member}")
+            member_shape = member_ref.get("shape")
+            if not isinstance(member_shape, str) or not member_shape:
+                raise AwsBotocoreCollectionContractCompilationError(
+                    f"shapes.{current}.members.{member}.shape must be a non-empty string"
+                )
+            member_kind = _shape(shapes, member_shape)["type"]
+            member_path = (*prefix, member)
+            if member_kind in {"list", "map"}:
+                rules.update(
+                    _collection_rules(
+                        shapes,
+                        member_shape,
+                        container_path=container_path,
+                        outer_kind=outer_kind,
+                        nested=(
+                            *nested,
+                            AwsNestedCollectionStep(member_path, member_kind),
+                        ),
+                        ancestry=next_ancestry,
+                    )
+                )
+            elif member_kind == "structure":
+                walk_structure(
+                    member_shape,
+                    member_path,
+                    (*structure_ancestry, current),
+                )
+
+    walk_structure(child, (), ())
+    return rules
 
 
 def _rules_for_root(
@@ -170,20 +276,29 @@ def _rules_for_root(
             child_shape = _shape(shapes, child)
             path = (root, *prefix, member)
             if child_shape["type"] in {"list", "map"}:
-                _, required_paths = _collection_member_shape(shapes, child, child_shape["type"])
-                if required_paths:
-                    rules.add(
-                        AwsCollectionElementRule(
-                            container_path=path,
-                            container_kind=child_shape["type"],
-                            required_relative_paths=required_paths,
-                        )
+                rules.update(
+                    _collection_rules(
+                        shapes,
+                        child,
+                        container_path=path,
+                        outer_kind=child_shape["type"],
                     )
+                )
             elif child_shape["type"] == "structure":
                 walk_structure(child, (*prefix, member), (*ancestry, current))
 
     walk_structure(root_shape, (), ())
-    return tuple(sorted(rules, key=lambda rule: (repr(rule.container_path), rule.container_kind, repr(rule.required_relative_paths))))
+    return tuple(
+        sorted(
+            rules,
+            key=lambda rule: (
+                repr(rule.container_path),
+                rule.container_kind,
+                repr(rule.nested_collections),
+                repr(rule.required_relative_paths),
+            ),
+        )
+    )
 
 
 def compile_aws_botocore_collection_contract(
@@ -204,7 +319,9 @@ def compile_aws_botocore_collection_contract(
     service = metadata.get("endpointPrefix")
     api_version = metadata.get("apiVersion")
     if not isinstance(service, str) or not service:
-        raise AwsBotocoreCollectionContractCompilationError("metadata.endpointPrefix must be non-empty")
+        raise AwsBotocoreCollectionContractCompilationError(
+            "metadata.endpointPrefix must be non-empty"
+        )
     if not isinstance(api_version, str) or not api_version:
         raise AwsBotocoreCollectionContractCompilationError("metadata.apiVersion must be non-empty")
     operations = _mapping(model.get("operations"), "operations")
@@ -240,6 +357,13 @@ def _rule_payload(rule: AwsCollectionElementRule) -> dict[str, Any]:
         "container_path": list(rule.container_path),
         "container_kind": rule.container_kind,
         "required_relative_paths": [list(path) for path in rule.required_relative_paths],
+        "nested_collections": [
+            {
+                "relative_path": list(step.relative_path),
+                "container_kind": step.container_kind,
+            }
+            for step in rule.nested_collections
+        ],
     }
 
 
@@ -255,7 +379,9 @@ def _contract_payload(contract: AwsBotocoreCollectionContract) -> dict[str, Any]
                 "rules": [_rule_payload(rule) for rule in operation.rules],
                 "success_rules": [_rule_payload(rule) for rule in operation.success_rules],
             }
-            for operation in sorted(contract.operations, key=lambda item: (item.surface, item.operation))
+            for operation in sorted(
+                contract.operations, key=lambda item: (item.surface, item.operation)
+            )
         ],
     }
 
@@ -268,7 +394,10 @@ def receipt_aws_botocore_collection_contract(
         digest=blake3.blake3(canonical).hexdigest(),
         source_digest=contract.source_digest,
         operation_count=len(contract.operations),
-        rule_count=sum(len(operation.rules) + len(operation.success_rules) for operation in contract.operations),
+        rule_count=sum(
+            len(operation.rules) + len(operation.success_rules)
+            for operation in contract.operations
+        ),
     )
 
 
@@ -276,6 +405,15 @@ def replay_aws_botocore_collection_contract(
     contract: AwsBotocoreCollectionContract, receipt: AwsBotocoreCollectionReceipt
 ) -> bool:
     return receipt_aws_botocore_collection_contract(contract) == receipt
+
+
+def _lookup_value(value: Any, path: tuple[str, ...]) -> tuple[bool, Any]:
+    current = value
+    for token in path:
+        if not isinstance(current, dict) or token not in current:
+            return False, None
+        current = current[token]
+    return True, current
 
 
 def _lookup(step: CloudTraceStep, path: JsonPath) -> tuple[bool, Any]:
@@ -295,12 +433,13 @@ def _lookup(step: CloudTraceStep, path: JsonPath) -> tuple[bool, Any]:
 
 
 def _relative_present(value: Any, path: tuple[str, ...]) -> bool:
-    current = value
-    for token in path:
-        if not isinstance(current, dict) or token not in current:
-            return False
-        current = current[token]
-    return True
+    return _lookup_value(value, path)[0]
+
+
+def _members(collection: Any, kind: Literal["list", "map"]):
+    if kind == "list":
+        return enumerate(collection)
+    return ((key, collection[key]) for key in sorted(collection))
 
 
 def _validate_rule(
@@ -314,34 +453,59 @@ def _validate_rule(
     found, collection = _lookup(step, rule.container_path)
     if not found:
         return 0
-    expected_type = list if rule.container_kind == "list" else dict
-    if not isinstance(collection, expected_type):
-        differences.append(
-            FidelityDifference(
-                step_index,
-                rule.container_path,
-                f"{side}_collection_type_mismatch",
-                rule.container_kind,
-                type(collection).__name__,
-            )
-        )
-        return 0
-    members = enumerate(collection) if isinstance(collection, list) else ((key, collection[key]) for key in sorted(collection))
+
     checked = 0
-    for member_key, member_value in members:
-        checked += 1
-        for relative in rule.required_relative_paths:
-            concrete = (*rule.container_path, member_key, *relative)
-            if not _relative_present(member_value, relative):
-                differences.append(
-                    FidelityDifference(
-                        step_index,
-                        concrete,
-                        f"{side}_collection_missing_required_element_path",
-                        "present",
-                        None,
-                    )
+
+    def walk_collection(
+        current_collection: Any,
+        kind: Literal["list", "map"],
+        concrete_path: JsonPath,
+        nested_steps: tuple[AwsNestedCollectionStep, ...],
+    ) -> None:
+        nonlocal checked
+        expected_type = list if kind == "list" else dict
+        if not isinstance(current_collection, expected_type):
+            differences.append(
+                FidelityDifference(
+                    step_index,
+                    concrete_path,
+                    f"{side}_collection_type_mismatch",
+                    kind,
+                    type(current_collection).__name__,
                 )
+            )
+            return
+        for member_key, member_value in _members(current_collection, kind):
+            checked += 1
+            member_path = (*concrete_path, member_key)
+            if nested_steps:
+                nested_step = nested_steps[0]
+                nested_found, nested_collection = _lookup_value(
+                    member_value, nested_step.relative_path
+                )
+                if not nested_found:
+                    continue
+                walk_collection(
+                    nested_collection,
+                    nested_step.container_kind,
+                    (*member_path, *nested_step.relative_path),
+                    nested_steps[1:],
+                )
+                continue
+            for relative in rule.required_relative_paths:
+                concrete = (*member_path, *relative)
+                if not _relative_present(member_value, relative):
+                    differences.append(
+                        FidelityDifference(
+                            step_index,
+                            concrete,
+                            f"{side}_collection_missing_required_element_path",
+                            "present",
+                            None,
+                        )
+                    )
+
+    walk_collection(collection, rule.container_kind, rule.container_path, rule.nested_collections)
     return checked
 
 
@@ -356,7 +520,13 @@ def validate_aws_botocore_collection_contract(
     index = {(item.surface, item.operation): item for item in contract.operations}
     if len(index) != len(contract.operations):
         differences.append(
-            FidelityDifference(None, ("collection_contract",), f"{side}_duplicate_collection_operation", "unique surface+operation", None)
+            FidelityDifference(
+                None,
+                ("collection_contract",),
+                f"{side}_duplicate_collection_operation",
+                "unique surface+operation",
+                None,
+            )
         )
     checked_members = 0
     for step_index, step in enumerate(steps):
@@ -394,5 +564,7 @@ def without_collection_rules(
     """Explicit rejected-alternative helper used to falsify receipt weakening."""
     return replace(
         contract,
-        operations=tuple(replace(operation, rules=(), success_rules=()) for operation in contract.operations),
+        operations=tuple(
+            replace(operation, rules=(), success_rules=()) for operation in contract.operations
+        ),
     )
