@@ -1,0 +1,49 @@
+name: Fortune 5 public-ontology PaaS crown
+
+on:
+  pull_request:
+    paths:
+      - "paas/**"
+      - ".github/workflows/fortune5-paas.yml"
+  push:
+    branches: [main]
+    paths:
+      - "paas/**"
+      - ".github/workflows/fortune5-paas.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  semantic-paas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: paas
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27.3"
+          elixir-version: "1.18.4"
+      - name: Install Hex and Rebar
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+      - name: Resolve exact semantic compiler dependency
+        run: mix deps.get
+      - name: Compile maintained control plane
+        run: mix compile --warnings-as-errors
+      - name: Manufacture Ash/Postgres/R2RML/SHACL projections
+        run: mix gymact.paas.generate
+      - name: Compile generated Ash resources
+        run: mix compile --force --warnings-as-errors
+      - name: Run Fortune-5 semantic and authority court
+        run: mix test --trace
+      - name: Replay deterministic generation
+        run: |
+          first="$(sha256sum generated/ash/ontology_resources.ex generated/sql/semantic_schema.sql priv/r2rml/mapping.ttl | sha256sum | cut -d' ' -f1)"
+          mix gymact.paas.generate
+          second="$(sha256sum generated/ash/ontology_resources.ex generated/sql/semantic_schema.sql priv/r2rml/mapping.ttl | sha256sum | cut -d' ' -f1)"
+          test "$first" = "$second"
