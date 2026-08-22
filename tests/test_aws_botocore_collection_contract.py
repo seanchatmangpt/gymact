@@ -52,7 +52,11 @@ def _service_model() -> bytes:
                 "required": ["Region"],
                 "members": {"Region": {"shape": "String"}},
             },
-            "TagMap": {"type": "map", "key": {"shape": "String"}, "value": {"shape": "Tag"}},
+            "TagMap": {
+                "type": "map",
+                "key": {"shape": "String"},
+                "value": {"shape": "Tag"},
+            },
             "Tag": {
                 "type": "structure",
                 "required": ["Value"],
@@ -98,17 +102,21 @@ def test_manufactures_list_map_and_success_rules_deterministically() -> None:
     operation = first.operations[0]
 
     assert first == second
-    assert [(rule.container_path, rule.container_kind, rule.required_relative_paths) for rule in operation.rules] == [
-        (
-            ("request", "Envelope", "Items"),
-            "list",
-            (("Id",), ("Spec",), ("Spec", "Region")),
+    assert {
+        (rule.container_path, rule.container_kind): frozenset(rule.required_relative_paths)
+        for rule in operation.rules
+    } == {
+        (("request", "Envelope", "Items"), "list"): frozenset(
+            {("Id",), ("Spec",), ("Spec", "Region")}
         ),
-        (("request", "Tags"), "map", (("Value",),)),
-    ]
-    assert [(rule.container_path, rule.container_kind, rule.required_relative_paths) for rule in operation.success_rules] == [
-        (("response", "Results"), "list", (("Id",),))
-    ]
+        (("request", "Tags"), "map"): frozenset({("Value",)}),
+    }
+    assert {
+        (rule.container_path, rule.container_kind): frozenset(rule.required_relative_paths)
+        for rule in operation.success_rules
+    } == {
+        (("response", "Results"), "list"): frozenset({("Id",)})
+    }
 
 
 def test_absent_optional_collections_do_not_activate_rules() -> None:
@@ -193,7 +201,9 @@ def test_receipt_replay_falsifies_rejected_no_collection_alternative() -> None:
     receipt = receipt_aws_botocore_collection_contract(contract)
 
     assert replay_aws_botocore_collection_contract(contract, receipt) is True
-    assert replay_aws_botocore_collection_contract(without_collection_rules(contract), receipt) is False
+    assert replay_aws_botocore_collection_contract(
+        without_collection_rules(contract), receipt
+    ) is False
 
 
 def test_rule_change_invalidates_receipt_even_when_source_identity_is_unchanged() -> None:
@@ -214,14 +224,39 @@ def test_dangling_collection_member_shape_fails_closed() -> None:
     model = json.loads(_service_model())
     model["shapes"]["ItemList"]["member"] = {"shape": "Missing"}
 
-    with pytest.raises(AwsBotocoreCollectionContractCompilationError, match="shapes.Missing is missing"):
+    with pytest.raises(
+        AwsBotocoreCollectionContractCompilationError,
+        match="shapes.Missing is missing",
+    ):
         _compile(json.dumps(model, separators=(",", ":")).encode())
 
 
-def test_nested_collection_element_shape_is_explicitly_unsupported() -> None:
+def test_nested_collection_element_shape_is_manufactured_and_executed() -> None:
     model = json.loads(_service_model())
     model["shapes"]["ItemList"]["member"] = {"shape": "NestedList"}
     model["shapes"]["NestedList"] = {"type": "list", "member": {"shape": "Item"}}
+    contract = _compile(json.dumps(model, separators=(",", ":")).encode())
+    nested_rule = next(
+        rule
+        for rule in contract.operations[0].rules
+        if rule.container_path == ("request", "Envelope", "Items")
+    )
 
-    with pytest.raises(AwsBotocoreCollectionContractCompilationError, match="nested collection shape"):
-        _compile(json.dumps(model, separators=(",", ":")).encode())
+    assert [
+        (step.relative_path, step.container_kind) for step in nested_rule.nested_collections
+    ] == [((), "list")]
+
+    result = validate_aws_botocore_collection_contract(
+        (
+            _step(
+                request={
+                    "Envelope": {
+                        "Items": [[{"Id": "a", "Spec": {"Region": "us-east-1"}}]]
+                    }
+                }
+            ),
+        ),
+        contract,
+    )
+    assert result.admitted is True
+    assert result.checked_collection_members == 1
