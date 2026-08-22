@@ -33,7 +33,7 @@ class BlackBoxPolicy(Protocol):
         self,
         observation: dict[str, Any],
         capabilities: tuple[Capability, ...],
-    ) -> HarnessAction | None | Awaitable[HarnessAction | None]: ...
+    ) -> HarnessAction | Awaitable[HarnessAction | None] | None: ...
 
 
 @dataclass(frozen=True)

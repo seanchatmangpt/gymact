@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Final
 
-from rdflib import BNode, Graph, Literal, Namespace, RDF, URIRef
+from rdflib import RDF, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import DCTERMS, PROV, SKOS
 
 from gymact.envharness import HarnessSpec, Stage, TaskSpec
