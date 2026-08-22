@@ -4,7 +4,6 @@ import json
 from dataclasses import replace
 
 import pytest
-
 from gymact.gyms.aws_botocore_scalar_contract import (
     AwsBotocoreScalarContractCompilationError,
     compile_aws_botocore_scalar_contract,
