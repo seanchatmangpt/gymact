@@ -1,18 +1,31 @@
 from __future__ import annotations
+
 from collections import defaultdict
 from dataclasses import dataclass
+
 from .explore_ack_identity import Subject
 from .explore_ack_invalidation import Invalidation
 from .explore_ack_witness import Witness, WitnessKind
 
-_ORDER = {WitnessKind.DELIVERED: 1, WitnessKind.ACKNOWLEDGED: 2, WitnessKind.DISCHARGED: 3}
+
+_ORDER = {
+    WitnessKind.DELIVERED: 1,
+    WitnessKind.ACKNOWLEDGED: 2,
+    WitnessKind.DISCHARGED: 3,
+}
+
 
 @dataclass(frozen=True)
 class Admission:
     frontier: dict[str, WitnessKind]
     duplicates: int
 
-def admit(event: Invalidation, affected: tuple[Subject, ...], witnesses: tuple[Witness, ...]) -> Admission:
+
+def admit(
+    event: Invalidation,
+    affected: tuple[Subject, ...],
+    witnesses: tuple[Witness, ...],
+) -> Admission:
     keys = {c.key for c in affected}
     by_consumer: dict[str, list[Witness]] = defaultdict(list)
     seen: set[tuple[str, WitnessKind, int, str]] = set()

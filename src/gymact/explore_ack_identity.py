@@ -1,8 +1,11 @@
 from __future__ import annotations
-from dataclasses import dataclass
+
 import re
+from dataclasses import dataclass
+
 
 _SHA = re.compile(r"^[0-9a-f]{40}$")
+
 
 @dataclass(frozen=True, order=True)
 class Subject:

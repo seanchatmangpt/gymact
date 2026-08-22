@@ -1,8 +1,11 @@
 from __future__ import annotations
-from dataclasses import asdict, dataclass
+
 import hashlib
 import json
+from dataclasses import asdict, dataclass
+
 from .explore_ack_comparator import Result
+
 
 @dataclass(frozen=True)
 class Receipt:
@@ -19,9 +22,17 @@ class Receipt:
     def digest(self) -> str:
         return hashlib.sha256(self.canonical()).hexdigest()
 
+
 def make_receipt(subject: str, event_id: str, result: Result, evidence: bytes) -> Receipt:
-    standing = "ALIVE" if result.complete and result.safe else "REQUALIFYING" if result.safe else "BLOCKED"
-    return Receipt(subject, event_id, result.protocol, standing, hashlib.sha256(evidence).hexdigest())
+    if result.complete and result.safe:
+        standing = "ALIVE"
+    elif result.safe:
+        standing = "REQUALIFYING"
+    else:
+        standing = "BLOCKED"
+    evidence_digest = hashlib.sha256(evidence).hexdigest()
+    return Receipt(subject, event_id, result.protocol, standing, evidence_digest)
+
 
 def replay(receipt: Receipt, evidence: bytes) -> bool:
     return receipt.evidence_digest == hashlib.sha256(evidence).hexdigest()

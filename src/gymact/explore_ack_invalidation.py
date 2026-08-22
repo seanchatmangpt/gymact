@@ -1,13 +1,17 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
+
 from .explore_ack_identity import Subject
 
-class InvalidationReason(str, Enum):
+
+class InvalidationReason(StrEnum):
     BUILD_BROKEN = "BUILD_BROKEN"
     SCHEMA_DRIFT = "SCHEMA_DRIFT"
     RECEIPT_SUPERSEDED = "RECEIPT_SUPERSEDED"
     LEASE_EXPIRED = "LEASE_EXPIRED"
+
 
 @dataclass(frozen=True)
 class Invalidation:

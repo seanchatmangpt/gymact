@@ -1,7 +1,10 @@
 from __future__ import annotations
+
 from collections import defaultdict
 from dataclasses import dataclass
+
 from .explore_ack_identity import Subject
+
 
 @dataclass(frozen=True)
 class DependencyGraph:
@@ -17,8 +20,10 @@ class DependencyGraph:
             if parent not in keys or child not in keys:
                 raise ValueError("REFUSED_UNKNOWN_DEPENDENCY_NODE")
             graph[parent].append(child)
+
         visiting: set[str] = set()
         visited: set[str] = set()
+
         def visit(node: str) -> None:
             if node in visiting:
                 raise ValueError("REFUSED_DEPENDENCY_CYCLE")
@@ -29,6 +34,7 @@ class DependencyGraph:
                 visit(nxt)
             visiting.remove(node)
             visited.add(node)
+
         for key in keys:
             visit(key)
 

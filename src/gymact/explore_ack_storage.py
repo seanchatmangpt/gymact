@@ -1,11 +1,14 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from enum import Enum
 
-class StorageKind(str, Enum):
+from dataclasses import dataclass
+from enum import StrEnum
+
+
+class StorageKind(StrEnum):
     MEMORY = "MEMORY"
     JSONL = "JSONL"
     SQLITE = "SQLITE"
+
 
 @dataclass(frozen=True)
 class StorageCandidate:
@@ -14,6 +17,7 @@ class StorageCandidate:
     transactional: bool
     external_dependency: bool
 
+
 def candidates() -> tuple[StorageCandidate, ...]:
     return (
         StorageCandidate(StorageKind.MEMORY, False, False, False),
@@ -21,8 +25,14 @@ def candidates() -> tuple[StorageCandidate, ...]:
         StorageCandidate(StorageKind.SQLITE, True, True, False),
     )
 
+
 def select(require_durable: bool, require_transactional: bool) -> StorageCandidate:
-    lawful = [c for c in candidates() if (not require_durable or c.durable) and (not require_transactional or c.transactional)]
+    lawful = [
+        candidate
+        for candidate in candidates()
+        if (not require_durable or candidate.durable)
+        and (not require_transactional or candidate.transactional)
+    ]
     if not lawful:
         raise ValueError("REFUSED_NO_LAWFUL_STORAGE")
     return lawful[0]

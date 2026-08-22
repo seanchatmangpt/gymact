@@ -1,11 +1,14 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from enum import Enum
 
-class ProtocolKind(str, Enum):
+from dataclasses import dataclass
+from enum import StrEnum
+
+
+class ProtocolKind(StrEnum):
     ALL = "ALL"
     QUORUM = "QUORUM"
     CRITICAL_PATH = "CRITICAL_PATH"
+
 
 @dataclass(frozen=True)
 class Protocol:
@@ -18,6 +21,7 @@ class Protocol:
             raise ValueError("REFUSED_INVALID_QUORUM")
         if self.kind is ProtocolKind.CRITICAL_PATH and not self.critical_consumers:
             raise ValueError("REFUSED_EMPTY_CRITICAL_PATH")
+
 
 def candidates(total_consumers: int, critical: frozenset[str]) -> tuple[Protocol, ...]:
     if total_consumers < 1:

@@ -1,12 +1,16 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
+
 from .explore_ack_identity import Subject
 
-class WitnessKind(str, Enum):
+
+class WitnessKind(StrEnum):
     DELIVERED = "DELIVERED"
     ACKNOWLEDGED = "ACKNOWLEDGED"
     DISCHARGED = "DISCHARGED"
+
 
 @dataclass(frozen=True)
 class Witness:
