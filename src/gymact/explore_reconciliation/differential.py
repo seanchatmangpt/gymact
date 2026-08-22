@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 
 
-def diff(left: object, right: object, path: str = "$" ) -> tuple[str, ...]:
+def diff(left: object, right: object, path: str = "$") -> tuple[str, ...]:
     if type(left) is not type(right):
         return (f"{path}:type",)
     if isinstance(left, Mapping):
