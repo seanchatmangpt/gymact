@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 from .subject import Subject
 
 OUTCOMES = {"PASS", "FAIL", "PENDING", "UNKNOWN", "UNSUPPORTED", "BLOCKED"}
