@@ -1,0 +1,68 @@
+name: EXPLORE Rail Consensus Exact Head
+
+on:
+  pull_request:
+    paths:
+      - "src/gymact/explore_rail_consensus/**"
+      - "tests/explore_rail_consensus/**"
+      - ".github/workflows/explore-rail-consensus.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  rail-consensus:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout exact subject
+        uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Admit exact head
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Set up admitted uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.32"
+      - name: Resolve admitted dependency graph
+        run: uv sync --group dev
+      - name: Compile rail consensus
+        run: uv run python -m compileall -q src/gymact/explore_rail_consensus tests/explore_rail_consensus
+      - name: Execute differential refusal replay court
+        env:
+          PYTHONPATH: src
+        run: uv run python -m unittest discover -s tests/explore_rail_consensus -p 'test_vcons_*.py' -v
+      - name: Static contract
+        run: uv run ruff check src/gymact/explore_rail_consensus tests/explore_rail_consensus
+      - name: Format contract
+        run: uv run ruff format --check src/gymact/explore_rail_consensus tests/explore_rail_consensus
+      - name: Refuse ambient actuation imports
+        run: |
+          uv run python - <<'PY'
+          import ast
+          from pathlib import Path
+          forbidden = {"boto3", "botocore", "azure", "google.cloud", "requests", "httpx", "socket", "subprocess"}
+          violations = []
+          for path in Path("src/gymact/explore_rail_consensus").glob("*.py"):
+              tree = ast.parse(path.read_text(), filename=str(path))
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.Import):
+                      names = [alias.name for alias in node.names]
+                  elif isinstance(node, ast.ImportFrom):
+                      names = [node.module or ""]
+                  else:
+                      continue
+                  for name in names:
+                      if any(name == item or name.startswith(item + ".") for item in forbidden):
+                          violations.append(f"{path}:{name}")
+          if violations:
+              raise SystemExit("REFUSED_AMBIENT_ACTUATION_IMPORT:" + ",".join(violations))
+          print("ambient_actuation_imports=0")
+          PY
