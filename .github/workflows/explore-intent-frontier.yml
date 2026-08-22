@@ -33,19 +33,18 @@ jobs:
         run: uv run python -m compileall -q src/gymact/explore_intent_frontier tests/explore_intent_frontier
       - name: Execute differential refusal replay court
         run: uv run python -m unittest discover -s tests/explore_intent_frontier -p 'test_*.py' -v
-      - name: Canonicalize Ruff repair candidate
-        run: |
-          uv run ruff check --fix --unsafe-fixes src/gymact/explore_intent_frontier tests/explore_intent_frontier || true
-          uv run ruff format src/gymact/explore_intent_frontier tests/explore_intent_frontier
-          tar -czf /tmp/explore-intent-frontier-ruff-repair.tgz src/gymact/explore_intent_frontier tests/explore_intent_frontier
-      - name: Upload canonical repair candidate
-        uses: actions/upload-artifact@v4
-        with:
-          name: explore-intent-frontier-ruff-repair-${{ github.event.pull_request.head.sha }}
-          path: /tmp/explore-intent-frontier-ruff-repair.tgz
-          if-no-files-found: error
-          retention-days: 1
-      - name: Strict Ruff static contract after canonicalization
+      - name: Ruff static contract
         run: uv run ruff check src/gymact/explore_intent_frontier tests/explore_intent_frontier
-      - name: Require authored source to already be canonical
-        run: git diff --exit-code -- src/gymact/explore_intent_frontier tests/explore_intent_frontier
+      - name: Ruff format contract
+        run: uv run ruff format --check src/gymact/explore_intent_frontier tests/explore_intent_frontier
+      - name: Refuse ambient DO authority
+        run: |
+          uv run python - <<'PY'
+          from gymact.explore_intent_frontier.engine import ActionClass, require
+          try:
+              require(ActionClass.DO)
+          except PermissionError as exc:
+              assert str(exc) == "REFUSED_UNRECEIPTED_ACTUATION"
+          else:
+              raise SystemExit("DO authority unexpectedly admitted")
+          PY
