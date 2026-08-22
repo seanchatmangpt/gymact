@@ -36,7 +36,20 @@ def _required_shape_paths(
     *,
     field: str,
     root: str,
-) -> tuple[tuple[str, str], ...]:
+) -> tuple[tuple[str, ...], ...]:
+    """Manufacture every unconditionally required structure path.
+
+    Botocore marks requirements on structure shapes, not only on operation
+    input/output roots. A required structure member whose child structure also
+    has required members therefore carries nested contract obligations. We walk
+    only through required structure members: requirements below an optional
+    parent are conditional on that parent's presence and cannot be represented
+    honestly by the current unconditional path algebra.
+
+    Recursive structure graphs are bounded by the active shape ancestry. The
+    edge that closes a cycle is still required (and therefore emitted), but the
+    traversal stops there rather than inventing an infinite path family.
+    """
     if shape_ref is None:
         return ()
     ref = _mapping(shape_ref, f"operations.{operation}.{field}")
@@ -45,15 +58,62 @@ def _required_shape_paths(
         raise AwsBotocoreContractCompilationError(
             f"operations.{operation}.{field}.shape must be a non-empty string"
         )
-    shape = _mapping(shapes.get(shape_name), f"shapes.{shape_name}")
-    required = shape.get("required", [])
-    if not isinstance(required, list) or any(
-        not isinstance(member, str) or not member for member in required
-    ):
-        raise AwsBotocoreContractCompilationError(
-            f"shapes.{shape_name}.required must be a list of non-empty strings"
-        )
-    return tuple((root, member) for member in sorted(set(required)))
+
+    paths: set[tuple[str, ...]] = set()
+
+    def walk_structure(
+        current_shape_name: str,
+        prefix: tuple[str, ...],
+        ancestry: tuple[str, ...],
+    ) -> None:
+        shape = _mapping(shapes.get(current_shape_name), f"shapes.{current_shape_name}")
+        shape_type = shape.get("type")
+        if shape_type != "structure":
+            return
+
+        required = shape.get("required", [])
+        if not isinstance(required, list) or any(
+            not isinstance(member, str) or not member for member in required
+        ):
+            raise AwsBotocoreContractCompilationError(
+                f"shapes.{current_shape_name}.required must be a list of non-empty strings"
+            )
+        members = _mapping(shape.get("members", {}), f"shapes.{current_shape_name}.members")
+
+        for member in sorted(set(required)):
+            if member not in members:
+                raise AwsBotocoreContractCompilationError(
+                    f"shapes.{current_shape_name}.required member {member!r} is absent from members"
+                )
+            member_ref = _mapping(
+                members[member], f"shapes.{current_shape_name}.members.{member}"
+            )
+            member_shape_name = member_ref.get("shape")
+            if not isinstance(member_shape_name, str) or not member_shape_name:
+                raise AwsBotocoreContractCompilationError(
+                    f"shapes.{current_shape_name}.members.{member}.shape must be a non-empty string"
+                )
+
+            member_path = (*prefix, member)
+            paths.add((root, *member_path))
+
+            child_shape = _mapping(
+                shapes.get(member_shape_name), f"shapes.{member_shape_name}"
+            )
+            child_type = child_shape.get("type")
+            if not isinstance(child_type, str) or not child_type:
+                raise AwsBotocoreContractCompilationError(
+                    f"shapes.{member_shape_name}.type must be a non-empty string"
+                )
+            if child_type == "structure" and member_shape_name not in ancestry:
+                walk_structure(
+                    member_shape_name,
+                    member_path,
+                    (*ancestry, member_shape_name),
+                )
+
+    walk_structure(shape_name, (), (shape_name,))
+    return tuple(sorted(paths, key=repr))
 
 
 def _error_contract(
@@ -106,12 +166,15 @@ def compile_aws_botocore_contract(
 ) -> CloudContractEvidence:
     """Compile exact botocore service-model bytes into a boto3 fidelity contract.
 
-    Input-shape requirements are universal request constraints. Output-shape
-    requirements are admitted only for successful provider-visible outcomes,
-    so legitimate AWS error traces are not forced to carry success payloads.
-    Provider-published error codes and HTTP statuses retain their per-error
-    coupling so a valid status from one modeled error cannot be cross-paired
-    with a different modeled error code.
+    Input-shape requirements are universal request constraints. Required
+    members nested beneath required structure members are manufactured too;
+    requirements below optional parents remain intentionally unmanufactured
+    because the generic contract currently has no conditional-presence algebra.
+    Output-shape requirements are admitted only for successful provider-visible
+    outcomes, so legitimate AWS error traces are not forced to carry success
+    payloads. Provider-published error codes and HTTP statuses retain their
+    per-error coupling so a valid status from one modeled error cannot be
+    cross-paired with a different modeled error code.
     """
     if not isinstance(source_document, bytes):
         raise TypeError("source_document must be bytes")
