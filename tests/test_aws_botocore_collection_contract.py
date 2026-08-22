@@ -259,4 +259,6 @@ def test_nested_collection_element_shape_is_manufactured_and_executed() -> None:
         contract,
     )
     assert result.admitted is True
-    assert result.checked_collection_members == 1
+    # The validator counts every visited collection member: one outer member
+    # (the nested list) and one inner Item member whose structure is checked.
+    assert result.checked_collection_members == 2
