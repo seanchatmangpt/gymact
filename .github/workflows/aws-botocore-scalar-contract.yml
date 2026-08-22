@@ -1,0 +1,94 @@
+name: AWS botocore scalar contract court
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aws-botocore-scalar-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_LINK_MODE: copy
+  GYMACT_UV_VERSION: "0.11.32"
+
+jobs:
+  scalar-contract:
+    name: Exact-head scalar manufacture + falsifier court
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact subject
+        uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Admit exact subject identity
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          printf 'subject_sha=%s\n' "$EXPECTED_SHA"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up admitted uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.GYMACT_UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+
+      - name: Resolve admitted dependency graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uv --version | awk '{print $2}')" = "$GYMACT_UV_VERSION"
+          uv sync --group dev
+
+      - name: Compile exact scalar court
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run python -m py_compile \
+            src/gymact/gyms/aws_botocore_scalar_contract.py \
+            tests/test_aws_botocore_scalar_contract.py
+
+      - name: Execute scalar behavioral and failure court
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run pytest -q tests/test_aws_botocore_scalar_contract.py
+
+      - name: Execute affected cloud-contract integration court
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run pytest -q \
+            tests/test_aws_botocore_scalar_contract.py \
+            tests/test_aws_botocore_cardinality_contract.py \
+            tests/test_aws_botocore_collection_contract.py \
+            tests/test_aws_botocore_nested_collection_contract.py \
+            tests/test_aws_botocore_nested_contract.py
+
+      - name: Static contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run ruff check \
+            src/gymact/gyms/aws_botocore_scalar_contract.py \
+            tests/test_aws_botocore_scalar_contract.py
+          uv run ruff format --check \
+            src/gymact/gyms/aws_botocore_scalar_contract.py \
+            tests/test_aws_botocore_scalar_contract.py

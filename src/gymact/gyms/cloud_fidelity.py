@@ -3,8 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Sequence
 
+import blake3
+import rfc8785
+
 JsonValue = None | bool | int | float | str | list["JsonValue"] | dict[str, "JsonValue"]
 JsonPath = tuple[str | int, ...]
+IgnoredPathsByStep = Mapping[int, Iterable[JsonPath]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,8 +47,113 @@ class CloudFidelityResult:
     differences: tuple[FidelityDifference, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class CloudTraceReceipt:
+    """Deterministic identity for one ordered agent-visible cloud trace."""
+
+    digest: str
+    step_count: int
+
+
+def _trace_payload(trace: Iterable[CloudTraceStep]) -> tuple[tuple[CloudTraceStep, ...], list[dict[str, Any]]]:
+    steps = tuple(trace)
+    payload = [
+        {
+            "surface": step.surface,
+            "operation": step.operation,
+            "request": step.request,
+            "response": step.response,
+            "status_code": step.status_code,
+            "error_code": step.error_code,
+        }
+        for step in steps
+    ]
+    return steps, payload
+
+
+def receipt_cloud_trace(trace: Iterable[CloudTraceStep]) -> CloudTraceReceipt:
+    """Bind an ordered public trace to canonical JSON and a BLAKE3 digest."""
+
+    steps, payload = _trace_payload(trace)
+    canonical = rfc8785.dumps(payload)
+    return CloudTraceReceipt(
+        digest=blake3.blake3(canonical).hexdigest(),
+        step_count=len(steps),
+    )
+
+
+def replay_cloud_trace(trace: Iterable[CloudTraceStep], receipt: CloudTraceReceipt) -> bool:
+    """Replay trace identity without granting execution or mutation authority."""
+
+    replayed = receipt_cloud_trace(trace)
+    return replayed == receipt
+
+
 def _path_is_ignored(path: JsonPath, ignored_paths: frozenset[JsonPath]) -> bool:
     return path in ignored_paths
+
+
+def _normalize_ignore_path(path: Iterable[str | int]) -> JsonPath:
+    return tuple(path)
+
+
+def _admit_ignored_paths(
+    *,
+    compared_steps: int,
+    ignored_paths: Iterable[JsonPath],
+    ignored_paths_by_step: IgnoredPathsByStep | None,
+    differences: list[FidelityDifference],
+) -> dict[int, frozenset[JsonPath]]:
+    """Admit only bounded response volatility at a specific trace step.
+
+    Legacy ``ignored_paths`` remains valid for a one-step trace. Once a trace
+    contains multiple compared steps, a path without a step identity is too
+    broad: the same response field may carry different semantics in another
+    operation. Such requests fail closed by adding an admission difference
+    instead of silently suppressing evidence.
+    """
+
+    admitted: dict[int, set[JsonPath]] = {}
+
+    def admit(step: int, raw_path: Iterable[str | int], *, scoped: bool) -> None:
+        path = _normalize_ignore_path(raw_path)
+        if step < 0 or step >= compared_steps:
+            differences.append(
+                FidelityDifference(step, path, "invalid_ignored_step", None, compared_steps)
+            )
+            return
+        if not path or path[0] != "response":
+            differences.append(
+                FidelityDifference(step, path, "invalid_ignored_path", "response-only", path)
+            )
+            return
+        if not scoped and compared_steps != 1:
+            differences.append(
+                FidelityDifference(
+                    None,
+                    path,
+                    "unscoped_ignored_path",
+                    "step-scoped volatility required for multi-step traces",
+                    path,
+                )
+            )
+            return
+        admitted.setdefault(step, set()).add(path)
+
+    for path in ignored_paths:
+        admit(0, path, scoped=False)
+
+    if ignored_paths_by_step is not None:
+        for step, paths in ignored_paths_by_step.items():
+            if not isinstance(step, int) or isinstance(step, bool):
+                differences.append(
+                    FidelityDifference(None, (), "invalid_ignored_step", "integer", step)
+                )
+                continue
+            for path in paths:
+                admit(step, path, scoped=True)
+
+    return {step: frozenset(paths) for step, paths in admitted.items()}
 
 
 def _compare_json(
@@ -122,25 +231,34 @@ def compare_cloud_traces(
     twin: Iterable[CloudTraceStep],
     *,
     ignored_paths: Iterable[JsonPath] = (),
+    ignored_paths_by_step: IgnoredPathsByStep | None = None,
 ) -> CloudFidelityResult:
     """Compare two cloud traces at the agent-visible boundary.
 
-    Volatility is fail-closed: nothing is ignored implicitly. A caller must
-    name each JSON path that is legitimately non-deterministic. Transport,
-    operation, status code and provider error code are never suppressible by
-    ``ignored_paths`` because they are top-level contract fields rather than
-    response payload details.
+    Volatility is fail-closed: nothing is ignored implicitly. Suppression is
+    response-only and, for multi-step traces, must be bound to the exact step
+    whose provider response is legitimately non-deterministic. Legacy global
+    ``ignored_paths`` therefore remains valid only for one-step traces.
+    Transport, operation, request, status code and provider error code are not
+    suppressible.
     """
 
     reference_steps = tuple(reference)
     twin_steps = tuple(twin)
-    ignored = frozenset(tuple(path) for path in ignored_paths)
     differences: list[FidelityDifference] = []
 
     if len(reference_steps) != len(twin_steps):
         differences.append(
             FidelityDifference(None, (), "step_count_mismatch", len(reference_steps), len(twin_steps))
         )
+
+    compared_steps = min(len(reference_steps), len(twin_steps))
+    ignored_by_step = _admit_ignored_paths(
+        compared_steps=compared_steps,
+        ignored_paths=ignored_paths,
+        ignored_paths_by_step=ignored_paths_by_step,
+        differences=differences,
+    )
 
     for index, (reference_step, twin_step) in enumerate(
         zip(reference_steps, twin_steps, strict=False)
@@ -159,6 +277,7 @@ def compare_cloud_traces(
                     )
                 )
 
+        ignored = ignored_by_step.get(index, frozenset())
         _compare_json(
             reference_step.request,
             twin_step.request,
@@ -178,6 +297,6 @@ def compare_cloud_traces(
 
     return CloudFidelityResult(
         equivalent=not differences,
-        compared_steps=min(len(reference_steps), len(twin_steps)),
+        compared_steps=compared_steps,
         differences=tuple(differences),
     )
