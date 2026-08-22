@@ -1,0 +1,68 @@
+name: Gymnasium replay rollback court
+
+on:
+  pull_request:
+    paths:
+      - "src/gymact/gyms/gymnasium_env.py"
+      - "tests/test_gymnasium_replay_restore_explore.py"
+      - ".github/workflows/gymnasium-replay.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gymnasium-replay-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  replay:
+    name: deterministic real-simulator replay
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact subject
+        uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Admit exact head
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.32"
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+
+      - name: Resolve bounded replay dependencies
+        run: uv sync --extra gyms --group dev
+
+      - name: Narrow rollback falsifier
+        run: >-
+          uv run pytest -v
+          tests/test_gymnasium_replay_restore_explore.py::test_restore_replays_real_dynamics_not_only_visible_bookkeeping
+
+      - name: Replay, refusal, regeneration, and kernel court
+        run: uv run pytest -v tests/test_gymnasium_replay_restore_explore.py
+
+      - name: Existing Gymnasium and EnvHarness regressions
+        run: >-
+          uv run pytest -v
+          tests/test_gymnasium_env.py
+          tests/test_envharness.py
+          tests/test_envharness_errc.py
+
+      - name: Static contract
+        run: |
+          uv run ruff check src/gymact/gyms/gymnasium_env.py tests/test_gymnasium_replay_restore_explore.py
+          uv run ruff format --check src/gymact/gyms/gymnasium_env.py tests/test_gymnasium_replay_restore_explore.py
