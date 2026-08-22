@@ -72,6 +72,37 @@ async def test_stage_preflight_eliminates_partial_actuation_for_static_invalidit
     assert reset.admission is not None
     assert reset.admission.checked_stage_actions == 2
     assert reset.stage_results == ()
+    assert reset.cleanup_receipt is not None
+    assert reset.cleanup_receipt.operation == Operation.TEARDOWN
+    assert reset.cleanup_receipt.standing == Standing.ALIVE
+    episode_id = reset.materialization.episode.episode_id if reset.materialization.episode else ""
+    assert session.episode_id is None
+    receipts = gym.episode_receipts(episode_id)
+    assert all(receipt.operation != Operation.ACT for receipt in receipts)
+    assert [receipt.operation for receipt in receipts][-1] == Operation.TEARDOWN
+
+
+@pytest.mark.asyncio
+async def test_static_admission_cleanup_refusal_preserves_episode_for_recovery() -> None:
+    gym = runtime(authorized=False)
+    task = TaskSpec(
+        provider="memory",
+        config={"initial": {"count": 0}, "requires_authority": True},
+        harness=HarnessSpec(stages=(Stage(actions=(HarnessAction(capability=UNKNOWN),)),)),
+    )
+    session = HarnessSession(gym, task)
+
+    reset = await session.reset()
+
+    assert reset.accepted is False
+    assert reset.admission is not None
+    assert reset.admission.standing == Standing.UNSUPPORTED
+    assert reset.standing == Standing.REFUSED
+    assert reset.reason == "HARNESS_ADMISSION_CLEANUP_FAILED:STAGE_CAPABILITY_UNSUPPORTED"
+    assert reset.cleanup_receipt is not None
+    assert reset.cleanup_receipt.operation == Operation.TEARDOWN
+    assert reset.cleanup_receipt.standing == Standing.REFUSED
+    assert session.episode_id == reset.materialization.episode.episode_id
     assert (await session.raw_observe()).state == {"count": 0}
     receipts = gym.episode_receipts(session.episode_id or "")
     assert all(receipt.operation != Operation.ACT for receipt in receipts)
