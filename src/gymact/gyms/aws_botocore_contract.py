@@ -5,6 +5,7 @@ import re
 from typing import Any
 
 from gymact.gyms.cloud_contract import (
+    CloudConditionalRequiredPathRule,
     CloudContractEvidence,
     CloudContractProfile,
     CloudContractSource,
@@ -29,29 +30,11 @@ def _mapping(value: Any, field: str) -> dict[str, Any]:
     return value
 
 
-def _required_shape_paths(
-    shapes: dict[str, Any],
-    shape_ref: Any,
-    operation: str,
-    *,
-    field: str,
-    root: str,
-) -> tuple[tuple[str, ...], ...]:
-    """Manufacture every unconditionally required structure path.
-
-    Botocore marks requirements on structure shapes, not only on operation
-    input/output roots. A required structure member whose child structure also
-    has required members therefore carries nested contract obligations. We walk
-    only through required structure members: requirements below an optional
-    parent are conditional on that parent's presence and cannot be represented
-    honestly by the current unconditional path algebra.
-
-    Recursive structure graphs are bounded by the active shape ancestry. The
-    edge that closes a cycle is still required (and therefore emitted), but the
-    traversal stops there rather than inventing an infinite path family.
-    """
+def _shape_path_contract(
+    shapes: dict[str, Any], shape_ref: Any, operation: str, *, field: str, root: str
+) -> tuple[tuple[tuple[str, ...], ...], tuple[CloudConditionalRequiredPathRule, ...]]:
     if shape_ref is None:
-        return ()
+        return (), ()
     ref = _mapping(shape_ref, f"operations.{operation}.{field}")
     shape_name = ref.get("shape")
     if not isinstance(shape_name, str) or not shape_name:
@@ -59,67 +42,78 @@ def _required_shape_paths(
             f"operations.{operation}.{field}.shape must be a non-empty string"
         )
 
-    paths: set[tuple[str, ...]] = set()
+    unconditional: set[tuple[str, ...]] = set()
+    conditional: set[tuple[tuple[tuple[str, ...], ...], tuple[str, ...]]] = set()
 
-    def walk_structure(
-        current_shape_name: str,
+    def walk(
+        current: str,
         prefix: tuple[str, ...],
+        guards: tuple[tuple[str, ...], ...],
         ancestry: tuple[str, ...],
+        *,
+        operation_root: bool = False,
     ) -> None:
-        shape = _mapping(shapes.get(current_shape_name), f"shapes.{current_shape_name}")
+        shape = _mapping(shapes.get(current), f"shapes.{current}")
         shape_type = shape.get("type")
         if not isinstance(shape_type, str) or not shape_type:
             raise AwsBotocoreContractCompilationError(
-                f"shapes.{current_shape_name}.type must be a non-empty string"
+                f"shapes.{current}.type must be a non-empty string"
             )
         if shape_type != "structure":
-            raise AwsBotocoreContractCompilationError(
-                f"shapes.{current_shape_name}.type must be 'structure' for an operation input/output"
-            )
+            if operation_root:
+                raise AwsBotocoreContractCompilationError(
+                    f"shapes.{current}.type must be 'structure' for an operation input/output"
+                )
+            return
 
-        required = shape.get("required", [])
-        if not isinstance(required, list) or any(
-            not isinstance(member, str) or not member for member in required
+        required_raw = shape.get("required", [])
+        if not isinstance(required_raw, list) or any(
+            not isinstance(member, str) or not member for member in required_raw
         ):
             raise AwsBotocoreContractCompilationError(
-                f"shapes.{current_shape_name}.required must be a list of non-empty strings"
+                f"shapes.{current}.required must be a list of non-empty strings"
             )
-        members = _mapping(shape.get("members", {}), f"shapes.{current_shape_name}.members")
-
-        for member in sorted(set(required)):
+        required = set(required_raw)
+        members = _mapping(shape.get("members", {}), f"shapes.{current}.members")
+        for member in required:
             if member not in members:
                 raise AwsBotocoreContractCompilationError(
-                    f"shapes.{current_shape_name}.required member {member!r} is absent from members"
+                    f"shapes.{current}.required member {member!r} is absent from members"
                 )
-            member_ref = _mapping(
-                members[member], f"shapes.{current_shape_name}.members.{member}"
-            )
-            member_shape_name = member_ref.get("shape")
-            if not isinstance(member_shape_name, str) or not member_shape_name:
+
+        for member in sorted(members):
+            member_ref = _mapping(members[member], f"shapes.{current}.members.{member}")
+            child = member_ref.get("shape")
+            if not isinstance(child, str) or not child:
                 raise AwsBotocoreContractCompilationError(
-                    f"shapes.{current_shape_name}.members.{member}.shape must be a non-empty string"
+                    f"shapes.{current}.members.{member}.shape must be a non-empty string"
                 )
-
-            member_path = (*prefix, member)
-            paths.add((root, *member_path))
-
-            child_shape = _mapping(
-                shapes.get(member_shape_name), f"shapes.{member_shape_name}"
-            )
+            child_shape = _mapping(shapes.get(child), f"shapes.{child}")
             child_type = child_shape.get("type")
             if not isinstance(child_type, str) or not child_type:
                 raise AwsBotocoreContractCompilationError(
-                    f"shapes.{member_shape_name}.type must be a non-empty string"
-                )
-            if child_type == "structure" and member_shape_name not in ancestry:
-                walk_structure(
-                    member_shape_name,
-                    member_path,
-                    (*ancestry, member_shape_name),
+                    f"shapes.{child}.type must be a non-empty string"
                 )
 
-    walk_structure(shape_name, (), (shape_name,))
-    return tuple(sorted(paths, key=repr))
+            member_path = (root, *prefix, member)
+            next_guards = guards
+            if member in required:
+                if guards:
+                    conditional.add((guards, member_path))
+                else:
+                    unconditional.add(member_path)
+            elif child_type == "structure":
+                next_guards = (*guards, member_path)
+
+            if child_type == "structure" and child not in ancestry:
+                walk(child, (*prefix, member), next_guards, (*ancestry, child))
+
+    walk(shape_name, (), (), (shape_name,), operation_root=True)
+    rules = tuple(
+        CloudConditionalRequiredPathRule(guard_paths=guards, path=path)
+        for guards, path in sorted(conditional, key=repr)
+    )
+    return tuple(sorted(unconditional, key=repr)), rules
 
 
 def _error_contract(
@@ -170,18 +164,6 @@ def _error_contract(
 def compile_aws_botocore_contract(
     source_document: bytes, *, source_uri: str
 ) -> CloudContractEvidence:
-    """Compile exact botocore service-model bytes into a boto3 fidelity contract.
-
-    Input-shape requirements are universal request constraints. Required
-    members nested beneath required structure members are manufactured too;
-    requirements below optional parents remain intentionally unmanufactured
-    because the generic contract currently has no conditional-presence algebra.
-    Output-shape requirements are admitted only for successful provider-visible
-    outcomes, so legitimate AWS error traces are not forced to carry success
-    payloads. Provider-published error codes and HTTP statuses retain their
-    per-error coupling so a valid status from one modeled error cannot be
-    cross-paired with a different modeled error code.
-    """
     if not isinstance(source_document, bytes):
         raise TypeError("source_document must be bytes")
     if not isinstance(source_uri, str) or not source_uri.strip():
@@ -206,19 +188,11 @@ def compile_aws_botocore_contract(
     contracts: list[CloudOperationContract] = []
     for operation_name in sorted(operations):
         operation = _mapping(operations[operation_name], f"operations.{operation_name}")
-        required_paths = _required_shape_paths(
-            shapes,
-            operation.get("input"),
-            operation_name,
-            field="input",
-            root="request",
+        required_paths, conditional_required_paths = _shape_path_contract(
+            shapes, operation.get("input"), operation_name, field="input", root="request"
         )
-        success_required_paths = _required_shape_paths(
-            shapes,
-            operation.get("output"),
-            operation_name,
-            field="output",
-            root="response",
+        success_required_paths, success_conditional_required_paths = _shape_path_contract(
+            shapes, operation.get("output"), operation_name, field="output", root="response"
         )
         http = _mapping(operation.get("http", {}), f"operations.{operation_name}.http")
         success_status = http.get("responseCode", 200)
@@ -235,6 +209,8 @@ def compile_aws_botocore_contract(
                 operation=f"{service}.{_pascal_to_snake(operation_name)}",
                 required_paths=required_paths,
                 success_required_paths=success_required_paths,
+                conditional_required_paths=conditional_required_paths,
+                success_conditional_required_paths=success_conditional_required_paths,
                 allowed_status_codes=tuple(sorted({success_status, *error_statuses})),
                 allowed_error_codes=error_codes,
                 error_status_rules=error_status_rules,
@@ -243,8 +219,7 @@ def compile_aws_botocore_contract(
 
     return CloudContractEvidence(
         profile=CloudContractProfile(
-            name=f"aws-botocore:{service}:{api_version}",
-            operations=tuple(contracts),
+            name=f"aws-botocore:{service}:{api_version}", operations=tuple(contracts)
         ),
         source=CloudContractSource(
             uri=source_uri.strip(),
