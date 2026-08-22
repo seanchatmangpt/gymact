@@ -1,9 +1,10 @@
 """Real GymAct ``Environment``/``EnvironmentProvider`` backed by Gymnasium.
 
 The adapter keeps GymAct's consequence boundary around the real Gymnasium
-``Env`` object. Checkpoints are replayable simulator checkpoints: reset seeds
-and admitted step actions are recorded so ``restore`` reconstructs the real
-simulator state instead of only rewriting GymAct's observation bookkeeping.
+``Env`` object. Checkpoints are replayable simulator checkpoints: reset seeds,
+admitted step actions, and READ sampling position are recorded so ``restore``
+reconstructs the real simulator state instead of only rewriting GymAct's
+observation bookkeeping.
 """
 
 from __future__ import annotations
@@ -58,9 +59,9 @@ class GymnasiumEnvironment:
     pretending that copying the last observation rewinds physics, this adapter
     records the reset seed plus every admitted step action since that reset.
     Restore resets the *real* environment with that seed, replays those actions,
-    and compares the reconstructed state with the checkpoint. Any mismatch is
-    refused at the provider boundary instead of manufacturing false rollback
-    standing.
+    restores the action-space sampling stream, and compares the reconstructed
+    state with the checkpoint. Any mismatch is refused at the provider boundary
+    instead of manufacturing false rollback standing.
     """
 
     def __init__(
@@ -78,6 +79,7 @@ class GymnasiumEnvironment:
         self._env: gymnasium.Env = gymnasium.make(env_id)
         self._seed = seed
         self._actions: list[Any] = []
+        self._sample_count = 0
         observation, info = self._reset_real(self._seed)
         self._last_observation: Any = observation
         self._last_info: dict[str, Any] = info
@@ -151,8 +153,10 @@ class GymnasiumEnvironment:
             self._terminated = False
             self._truncated = False
             self._actions.clear()
+            self._sample_count = 0
         elif binding == "sample_action":
             sampled = self._env.action_space.sample()
+            self._sample_count += 1
             return {
                 "before": before,
                 "after": self._state(),
@@ -175,6 +179,7 @@ class GymnasiumEnvironment:
             "env_id": self._env_id,
             "seed": self._seed,
             "actions": deepcopy(self._actions),
+            "sample_count": self._sample_count,
             "state": deepcopy(self._state()),
         }
 
@@ -191,6 +196,13 @@ class GymnasiumEnvironment:
         actions = checkpoint.get("actions")
         if not isinstance(actions, list):
             raise ValueError("GYMNASIUM_CHECKPOINT_ACTIONS_INVALID")
+        sample_count = checkpoint.get("sample_count")
+        if (
+            isinstance(sample_count, bool)
+            or not isinstance(sample_count, int)
+            or sample_count < 0
+        ):
+            raise ValueError("GYMNASIUM_CHECKPOINT_SAMPLE_COUNT_INVALID")
         expected_state = checkpoint.get("state")
         if not isinstance(expected_state, dict):
             raise ValueError("GYMNASIUM_CHECKPOINT_STATE_INVALID")
@@ -206,11 +218,15 @@ class GymnasiumEnvironment:
         self._terminated = False
         self._truncated = False
         self._actions = []
+        self._sample_count = 0
 
         for action in actions:
             observation, reward, terminated, truncated, info = self._env.step(action)
             self._set_transition(observation, reward, terminated, truncated, info)
             self._actions.append(deepcopy(action))
+        for _ in range(sample_count):
+            self._env.action_space.sample()
+            self._sample_count += 1
 
         if self._state() != expected_state:
             raise RuntimeError("GYMNASIUM_REPLAY_RESTORE_DIVERGED")
