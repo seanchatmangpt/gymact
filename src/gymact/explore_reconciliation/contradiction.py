@@ -10,7 +10,5 @@ def contradictions(observations: tuple[Observation, ...]) -> dict[str, frozenset
     for observation in observations:
         values[observation.axis].add(observation.outcome)
     return {
-        axis: frozenset(outcomes)
-        for axis, outcomes in sorted(values.items())
-        if len(outcomes) > 1
+        axis: frozenset(outcomes) for axis, outcomes in sorted(values.items()) if len(outcomes) > 1
     }
