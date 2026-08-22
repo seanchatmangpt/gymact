@@ -16,8 +16,7 @@ def inject_miscalibration(
     out: list[CurrentWitness] = []
     for witness in witnesses:
         should_flip = (
-            witness.outcome in {"PASS", "FAIL"}
-            and rng.randrange(1_000_000) < probability_ppm
+            witness.outcome in {"PASS", "FAIL"} and rng.randrange(1_000_000) < probability_ppm
         )
         if should_flip:
             outcome = "FAIL" if witness.outcome == "PASS" else "PASS"

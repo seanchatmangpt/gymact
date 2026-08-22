@@ -29,12 +29,9 @@ def select(*, durable: bool, transactional: bool) -> StoreCandidate:
     viable = [
         candidate
         for candidate in candidates()
-        if (not durable or candidate.durable)
-        and (not transactional or candidate.transactional)
+        if (not durable or candidate.durable) and (not transactional or candidate.transactional)
     ]
     return min(
         viable,
-        key=lambda candidate: (
-            candidate.durable, candidate.transactional, candidate.kind.value
-        ),
+        key=lambda candidate: (candidate.durable, candidate.transactional, candidate.kind.value),
     )

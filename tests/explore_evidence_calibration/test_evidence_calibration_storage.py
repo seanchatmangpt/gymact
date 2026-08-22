@@ -9,6 +9,4 @@ class StorageTests(unittest.TestCase):
             {candidate.kind for candidate in candidates()},
             {StoreKind.MEMORY, StoreKind.JSONL, StoreKind.SQLITE},
         )
-        self.assertEqual(
-            select(durable=True, transactional=True).kind, StoreKind.SQLITE
-        )
+        self.assertEqual(select(durable=True, transactional=True).kind, StoreKind.SQLITE)

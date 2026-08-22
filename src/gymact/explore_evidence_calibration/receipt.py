@@ -26,7 +26,5 @@ def replay(receipt: QualificationReceipt) -> bool:
     authority_valid = receipt.payload.get("actuation_performed") is False
     if not schema_valid or not authority_valid:
         return False
-    canonical = json.dumps(
-        receipt.payload, sort_keys=True, separators=(",", ":")
-    ).encode()
+    canonical = json.dumps(receipt.payload, sort_keys=True, separators=(",", ":")).encode()
     return hashlib.sha256(canonical).hexdigest() == receipt.digest

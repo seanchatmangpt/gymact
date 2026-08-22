@@ -21,9 +21,7 @@ def contribution(
 ) -> InformationContribution:
     if witness.outcome in {"PENDING", "UNKNOWN", "UNSUPPORTED"}:
         calibrated = bool(estimate and estimate.calibrated)
-        return InformationContribution(
-            witness.evidence_id, witness.source_id, 0, calibrated
-        )
+        return InformationContribution(witness.evidence_id, witness.source_id, 0, calibrated)
     if estimate is None or not estimate.calibrated:
         return InformationContribution(witness.evidence_id, witness.source_id, 0, False)
     true_positive_rate = float(estimate.true_positive_rate)

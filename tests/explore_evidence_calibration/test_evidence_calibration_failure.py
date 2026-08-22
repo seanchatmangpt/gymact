@@ -11,8 +11,7 @@ class FailureTests(unittest.TestCase):
         now = datetime.now(UTC)
         subject = Subject("o/r", "a" * 40)
         witnesses = tuple(
-            CurrentWitness(str(index), subject, "c", "s", "PASS", now)
-            for index in range(5)
+            CurrentWitness(str(index), subject, "c", "s", "PASS", now) for index in range(5)
         )
         self.assertEqual(
             inject_miscalibration(witnesses, seed=7, probability_ppm=500_000),

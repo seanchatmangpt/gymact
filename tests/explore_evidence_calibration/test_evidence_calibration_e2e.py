@@ -16,8 +16,7 @@ class E2ETests(unittest.TestCase):
         cluster = EvidenceCluster("c1", ("s1",))
         witness = CurrentWitness("e1", subject, "c1", "s1", "PASS", now)
         short_trials = tuple(
-            CalibrationTrial("s1", str(index), True, True, now)
-            for index in range(2)
+            CalibrationTrial("s1", str(index), True, True, now) for index in range(2)
         )
         short_estimate = estimate("s1", short_trials)
         q1 = qualify(
