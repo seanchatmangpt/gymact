@@ -197,11 +197,7 @@ class GymnasiumEnvironment:
         if not isinstance(actions, list):
             raise ValueError("GYMNASIUM_CHECKPOINT_ACTIONS_INVALID")
         sample_count = checkpoint.get("sample_count")
-        if (
-            isinstance(sample_count, bool)
-            or not isinstance(sample_count, int)
-            or sample_count < 0
-        ):
+        if isinstance(sample_count, bool) or not isinstance(sample_count, int) or sample_count < 0:
             raise ValueError("GYMNASIUM_CHECKPOINT_SAMPLE_COUNT_INVALID")
         expected_state = checkpoint.get("state")
         if not isinstance(expected_state, dict):
