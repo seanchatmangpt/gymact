@@ -131,7 +131,10 @@ show_missing = true
 # must never be invisible. See src/gymact/standing.py for the companion
 # runtime contract (GYMACT_ALLOW_DEGRADED_STANDINGS) governing when a
 # missing real collaborator is allowed to become a skip at all.
-addopts = "-q -rs --strict-config --strict-markers"
+# --import-mode=importlib gives every collected file a path-derived module
+# identity, so independently owned EXPLORE courts may lawfully reuse concise
+# test basenames without polluting sys.modules or shadowing one another.
+addopts = "-q -rs --strict-config --strict-markers --import-mode=importlib"
 testpaths = ["tests"]
 asyncio_mode = "auto"
 filterwarnings = ["error", "ignore::DeprecationWarning"]
