@@ -1,4 +1,5 @@
 import pytest
+
 from gymact.explore_verification.receipt import make, replay
 
 
