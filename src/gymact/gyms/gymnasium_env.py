@@ -1,7 +1,7 @@
 """Real GymAct ``Environment``/``EnvironmentProvider`` backed by Gymnasium.
 
 The adapter keeps GymAct's consequence boundary around the real Gymnasium
-``Env`` object.  Checkpoints are replayable simulator checkpoints: reset seeds
+``Env`` object. Checkpoints are replayable simulator checkpoints: reset seeds
 and admitted step actions are recorded so ``restore`` reconstructs the real
 simulator state instead of only rewriting GymAct's observation bookkeeping.
 """
@@ -54,13 +54,13 @@ def _to_jsonable(value: Any) -> Any:
 class GymnasiumEnvironment:
     """A real Gymnasium environment with deterministic replay checkpoints.
 
-    Gymnasium has no generic public arbitrary-state rewind API.  Rather than
+    Gymnasium has no generic public arbitrary-state rewind API. Rather than
     pretending that copying the last observation rewinds physics, this adapter
     records the reset seed plus every admitted step action since that reset.
     Restore resets the *real* environment with that seed, replays those actions,
-    and compares the reconstructed state with the checkpoint.  Any mismatch is
-    a typed refusal-by-exception at the provider boundary, which GymAct receipts
-    as a failed restore instead of manufacturing false rollback standing.
+    and compares the reconstructed state with the checkpoint. Any mismatch is
+    refused at the provider boundary instead of manufacturing false rollback
+    standing.
     """
 
     def __init__(
@@ -139,8 +139,7 @@ class GymnasiumEnvironment:
                 raise ValueError(
                     f"action {action!r} is not legal for action_space {self._env.action_space!r}"
                 )
-            transition = self._env.step(action)
-            observation, reward, terminated, truncated, info = transition
+            observation, reward, terminated, truncated, info = self._env.step(action)
             self._set_transition(observation, reward, terminated, truncated, info)
             self._actions.append(deepcopy(_to_jsonable(action)))
         elif binding == "reset":
@@ -195,6 +194,9 @@ class GymnasiumEnvironment:
         expected_state = checkpoint.get("state")
         if not isinstance(expected_state, dict):
             raise ValueError("GYMNASIUM_CHECKPOINT_STATE_INVALID")
+        # Validate the whole candidate before changing the real simulator.
+        if any(not self._env.action_space.contains(action) for action in actions):
+            raise ValueError("GYMNASIUM_CHECKPOINT_ACTION_INVALID")
 
         self._seed = seed
         observation, info = self._reset_real(seed)
@@ -206,8 +208,6 @@ class GymnasiumEnvironment:
         self._actions = []
 
         for action in actions:
-            if not self._env.action_space.contains(action):
-                raise ValueError("GYMNASIUM_CHECKPOINT_ACTION_INVALID")
             observation, reward, terminated, truncated, info = self._env.step(action)
             self._set_transition(observation, reward, terminated, truncated, info)
             self._actions.append(deepcopy(action))
