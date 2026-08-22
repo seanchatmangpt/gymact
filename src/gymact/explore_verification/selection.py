@@ -8,13 +8,11 @@ def pareto(scores: dict[str, dict[str, float]]):
                 continue
             keys = set(scores[left]) | set(scores[right])
             not_worse = all(
-                scores[right].get(key, float("-inf"))
-                >= scores[left].get(key, float("-inf"))
+                scores[right].get(key, float("-inf")) >= scores[left].get(key, float("-inf"))
                 for key in keys
             )
             better = any(
-                scores[right].get(key, float("-inf"))
-                > scores[left].get(key, float("-inf"))
+                scores[right].get(key, float("-inf")) > scores[left].get(key, float("-inf"))
                 for key in keys
             )
             if not_worse and better:
