@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 
