@@ -194,7 +194,9 @@ async def test_envrigger_does_not_synthesize_around_failed_reset_authority() -> 
     assert result.reason == "BASELINE_LIFECYCLE_NOT_ADMITTED"
     assert result.baseline_diagnosis.lifecycle_failures == 1
     assert synthesizer.calls == 0
-    assert result.baseline[0].teardown_standing == Standing.ALIVE
+    # Cleanup is attempted through the same fail-closed authority boundary; it
+    # must not manufacture ALIVE by bypassing the authority that refused Stage.
+    assert result.baseline[0].teardown_standing == Standing.REFUSED
 
 
 @pytest.mark.asyncio
