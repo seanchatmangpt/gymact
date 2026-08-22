@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass, replace
-from typing import Any, Iterable, Literal
+from typing import Any, Literal
 
 import blake3
 import rfc8785
@@ -132,7 +133,9 @@ def _scalar_constraints(
                 f"shapes.{shape_name}.min must be <= max"
             )
         raw_enum = shape.get("enum", [])
-        if not isinstance(raw_enum, list) or any(not isinstance(item, str) for item in raw_enum):
+        if not isinstance(raw_enum, list) or any(
+            not isinstance(item, str) for item in raw_enum
+        ):
             raise AwsBotocoreScalarContractCompilationError(
                 f"shapes.{shape_name}.enum must be an array of strings"
             )
@@ -261,9 +264,13 @@ def _rules_for_root(
             if current in structure_ancestry:
                 return
             current_shape = _shape(shapes, current)
-            members = _mapping(current_shape.get("members", {}), f"shapes.{current}.members")
+            members = _mapping(
+                current_shape.get("members", {}), f"shapes.{current}.members"
+            )
             for member in sorted(members):
-                member_ref = _mapping(members[member], f"shapes.{current}.members.{member}")
+                member_ref = _mapping(
+                    members[member], f"shapes.{current}.members.{member}"
+                )
                 member_shape_name = member_ref.get("shape")
                 if not isinstance(member_shape_name, str) or not member_shape_name:
                     raise AwsBotocoreScalarContractCompilationError(
@@ -301,13 +308,19 @@ def _rules_for_root(
 
         walk_structure(child, (), ())
 
-    def walk_structure(current: str, prefix: tuple[str, ...], ancestry: tuple[str, ...]) -> None:
+    def walk_structure(
+        current: str, prefix: tuple[str, ...], ancestry: tuple[str, ...]
+    ) -> None:
         if current in ancestry:
             return
         current_shape = _shape(shapes, current)
-        members = _mapping(current_shape.get("members", {}), f"shapes.{current}.members")
+        members = _mapping(
+            current_shape.get("members", {}), f"shapes.{current}.members"
+        )
         for member in sorted(members):
-            member_ref = _mapping(members[member], f"shapes.{current}.members.{member}")
+            member_ref = _mapping(
+                members[member], f"shapes.{current}.members.{member}"
+            )
             child = member_ref.get("shape")
             if not isinstance(child, str) or not child:
                 raise AwsBotocoreScalarContractCompilationError(
@@ -315,7 +328,9 @@ def _rules_for_root(
                 )
             child_shape = _shape(shapes, child)
             path = (root, *prefix, member)
-            scalar_rule = _make_rule(value_path=path, shape=child_shape, shape_name=child)
+            scalar_rule = _make_rule(
+                value_path=path, shape=child_shape, shape_name=child
+            )
             if scalar_rule is not None:
                 rules.add(scalar_rule)
             elif child_shape["type"] in {"list", "map"}:
@@ -355,7 +370,9 @@ def compile_aws_botocore_scalar_contract(
             "metadata.endpointPrefix must be non-empty"
         )
     if not isinstance(api_version, str) or not api_version:
-        raise AwsBotocoreScalarContractCompilationError("metadata.apiVersion must be non-empty")
+        raise AwsBotocoreScalarContractCompilationError(
+            "metadata.apiVersion must be non-empty"
+        )
     operations = _mapping(model.get("operations"), "operations")
     shapes = _mapping(model.get("shapes"), "shapes")
     if not operations:
@@ -363,7 +380,9 @@ def compile_aws_botocore_scalar_contract(
 
     compiled: list[AwsOperationScalarContract] = []
     for operation_name in sorted(operations):
-        operation = _mapping(operations[operation_name], f"operations.{operation_name}")
+        operation = _mapping(
+            operations[operation_name], f"operations.{operation_name}"
+        )
         compiled.append(
             AwsOperationScalarContract(
                 surface="boto3",
@@ -403,7 +422,10 @@ def _rule_payload(rule: AwsScalarConstraintRule) -> dict[str, Any]:
         "enum_values": list(rule.enum_values),
         "outer_collection_kind": rule.outer_collection_kind,
         "nested_collections": [
-            {"relative_path": list(step.relative_path), "container_kind": step.container_kind}
+            {
+                "relative_path": list(step.relative_path),
+                "container_kind": step.container_kind,
+            }
             for step in rule.nested_collections
         ],
         "scalar_relative_path": list(rule.scalar_relative_path),
@@ -420,7 +442,9 @@ def _contract_payload(contract: AwsBotocoreScalarContract) -> dict[str, Any]:
                 "surface": operation.surface,
                 "operation": operation.operation,
                 "rules": [_rule_payload(rule) for rule in operation.rules],
-                "success_rules": [_rule_payload(rule) for rule in operation.success_rules],
+                "success_rules": [
+                    _rule_payload(rule) for rule in operation.success_rules
+                ],
             }
             for operation in sorted(
                 contract.operations, key=lambda item: (item.surface, item.operation)
@@ -486,20 +510,44 @@ def _validate_scalar(
     if rule.scalar_kind == "string":
         if not isinstance(value, str):
             differences.append(
-                FidelityDifference(step_index, path, "trace_scalar_type_mismatch", "string", type(value).__name__)
+                FidelityDifference(
+                    step_index,
+                    path,
+                    "trace_scalar_type_mismatch",
+                    "string",
+                    type(value).__name__,
+                )
             )
             return
         if rule.min_length is not None and len(value) < rule.min_length:
             differences.append(
-                FidelityDifference(step_index, path, "trace_scalar_below_min_length", rule.min_length, len(value))
+                FidelityDifference(
+                    step_index,
+                    path,
+                    "trace_scalar_below_min_length",
+                    rule.min_length,
+                    len(value),
+                )
             )
         if rule.max_length is not None and len(value) > rule.max_length:
             differences.append(
-                FidelityDifference(step_index, path, "trace_scalar_above_max_length", rule.max_length, len(value))
+                FidelityDifference(
+                    step_index,
+                    path,
+                    "trace_scalar_above_max_length",
+                    rule.max_length,
+                    len(value),
+                )
             )
         if rule.enum_values and value not in rule.enum_values:
             differences.append(
-                FidelityDifference(step_index, path, "trace_scalar_enum_mismatch", rule.enum_values, value)
+                FidelityDifference(
+                    step_index,
+                    path,
+                    "trace_scalar_enum_mismatch",
+                    rule.enum_values,
+                    value,
+                )
             )
         return
 
@@ -508,16 +556,34 @@ def _validate_scalar(
         numeric = isinstance(value, int) and not isinstance(value, bool)
     if not numeric:
         differences.append(
-            FidelityDifference(step_index, path, "trace_scalar_type_mismatch", rule.scalar_kind, type(value).__name__)
+            FidelityDifference(
+                step_index,
+                path,
+                "trace_scalar_type_mismatch",
+                rule.scalar_kind,
+                type(value).__name__,
+            )
         )
         return
     if rule.min_value is not None and value < rule.min_value:
         differences.append(
-            FidelityDifference(step_index, path, "trace_scalar_below_min", rule.min_value, value)
+            FidelityDifference(
+                step_index,
+                path,
+                "trace_scalar_below_min",
+                rule.min_value,
+                value,
+            )
         )
     if rule.max_value is not None and value > rule.max_value:
         differences.append(
-            FidelityDifference(step_index, path, "trace_scalar_above_max", rule.max_value, value)
+            FidelityDifference(
+                step_index,
+                path,
+                "trace_scalar_above_max",
+                rule.max_value,
+                value,
+            )
         )
 
 
@@ -533,7 +599,13 @@ def _validate_rule(
     if not exists:
         return 0
     if rule.outer_collection_kind is None:
-        _validate_scalar(value, rule, step_index=step_index, path=rule.value_path, differences=differences)
+        _validate_scalar(
+            value,
+            rule,
+            step_index=step_index,
+            path=rule.value_path,
+            differences=differences,
+        )
         return 1
 
     expected_type = list if rule.outer_collection_kind == "list" else dict
@@ -550,7 +622,7 @@ def _validate_rule(
         return 0
 
     frontier: tuple[tuple[JsonPath, Any], ...] = tuple(
-        (rule.value_path + (token,), member)
+        ((*rule.value_path, token), member)
         for token, member in _members(value, rule.outer_collection_kind)
     )
     for traversal in rule.nested_collections:
@@ -559,7 +631,7 @@ def _validate_rule(
             found, nested = _lookup(member, traversal.relative_path)
             if not found:
                 continue
-            nested_path = member_path + traversal.relative_path
+            nested_path = (*member_path, *traversal.relative_path)
             expected_nested = list if traversal.container_kind == "list" else dict
             if not isinstance(nested, expected_nested):
                 differences.append(
@@ -573,7 +645,7 @@ def _validate_rule(
                 )
                 continue
             next_frontier.extend(
-                (nested_path + (token,), child)
+                ((*nested_path, token), child)
                 for token, child in _members(nested, traversal.container_kind)
             )
         frontier = tuple(next_frontier)
@@ -583,7 +655,7 @@ def _validate_rule(
         found, scalar = _lookup(member, rule.scalar_relative_path)
         if not found:
             continue
-        scalar_path = member_path + rule.scalar_relative_path
+        scalar_path = (*member_path, *rule.scalar_relative_path)
         _validate_scalar(
             scalar,
             rule,
@@ -637,6 +709,7 @@ def without_scalar_rules(contract: AwsBotocoreScalarContract) -> AwsBotocoreScal
     return replace(
         contract,
         operations=tuple(
-            replace(operation, rules=(), success_rules=()) for operation in contract.operations
+            replace(operation, rules=(), success_rules=())
+            for operation in contract.operations
         ),
     )
