@@ -1,0 +1,40 @@
+name: EXPLORE acknowledgement strategy court
+on:
+  pull_request:
+    paths:
+      - 'src/gymact/explore_ack_*.py'
+      - 'tests/test_explore_ack_*.py'
+      - '.github/workflows/explore-ack-discharge.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout exact subject
+        uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Admit exact head
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Set up admitted uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.11.32'
+      - name: Resolve validation capsule
+        run: uv sync --group dev
+      - name: Compile focused surface
+        run: uv run python -m compileall -q src/gymact/explore_ack_*.py tests/test_explore_ack_*.py
+      - name: Execute differential refusal replay court
+        run: uv run pytest -q tests/test_explore_ack_*.py
+      - name: Enforce static contract
+        run: uv run ruff check src/gymact/explore_ack_*.py tests/test_explore_ack_*.py
+      - name: Enforce format contract
+        run: uv run ruff format --check src/gymact/explore_ack_*.py tests/test_explore_ack_*.py
