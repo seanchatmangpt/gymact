@@ -1,358 +1,196 @@
-"""Real, Chicago-style tests for
-`gymact.gyms.platform_console_ontology_provider`.
+"""Chicago court for the current platform-console ontology provider contract.
 
-No `unittest.mock`/`Mock`/`MagicMock`/`patch`/`monkeypatch` anywhere in this
-file. Two groups:
-
-(a) Reversible capabilities correctly gated/actuatable through the real
-    `gymact.kernel.GymAct` -> real `AuthorityResolver`/`CapabilityScope`
-    chain (real `materialize`/`act`/`verify` calls against the real
-    `OntologyDrivenEnvironment` this provider compiles -- an in-process,
-    fact-based world, not a live k8s/Stripe/platform-console deployment, so
-    no live-tenant skip is needed for these; they are real end-to-end
-    kernel round trips, matching `test_ontology_gym.py`'s own precedent for
-    testing `OntologyDrivenEnvironment` through the real kernel rather than
-    a live external system).
-
-(b) IRREVERSIBLE capabilities (`org.delete`, `dr.failover`, `dsar.erasure`,
-    `sla.credit.apply`, `patch-sla.credit.apply`, `k8s.createRestoreJob`,
-    `k8s.deleteProject`, `orgs.deleteOrg`) correctly REFUSED by the real
-    fail-closed `TieredAuthorityResolver` this provider builds, without the
-    IRREVERSIBLE `actuate()` branch ever running -- proven by asserting the
-    real `GymAct.act()` result is refused (`accepted is False`) and that no
-    fact was established in the environment's real observed state, not by
-    mocking any k8s/Stripe call (there is none to mock: this environment
-    never makes an external call at all, and the refusal happens at the
-    authority gate, before `actuate()` is reached, exactly like
-    `test_ontology_gym.py`'s own `PRECONDITION_REFUSED`-style tests).
+The Phase 4 provider consumes three bare ``sosa:Procedure`` facts. These tests
+exercise that exact shape through the real RDF loader, provider, authority
+resolver, GymAct kernel, and in-process ontology-driven environment. No mocks,
+external credentials, HTTP transports, or live platform-console/cloud systems
+are involved.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import anyio
 import pytest
 
-from gymact.agent import AllowListCapabilityScope
-from gymact.gyms.ontology_gym import capability_iri
+from gymact.gyms.ontology_gym import TieredAuthorityResolver, capability_iri
 from gymact.gyms.platform_console_ontology_provider import (
-    DEFAULT_PACK_DIR,
-    PROVIDER_NAME,
-    build_fail_closed_authority_resolver,
+    PLATFORM_CONSOLE_GYM_PACK_DIR,
     build_platform_console_ontology_provider,
-    load_platform_console_capabilities,
 )
 from gymact.kernel import GymAct
-from gymact.models import ActuationIntent, MaterializationIntent
+from gymact.models import ActuationIntent, MaterializationIntent, Standing
 
-_PACK_AVAILABLE = (DEFAULT_PACK_DIR / "ontology.ttl").is_file()
+STANDARD_REF = "urn:gymact:authority-decision:pc-current-standard"
+ELEVATED_REF = "urn:gymact:authority-decision:pc-current-elevated"
+PROVIDER_NAME = "platform-console-ontology"
+PCC = "https://seanchatmangpt.github.io/chatman-ecosystem/ontology/platform-console-capabilities#"
 
-pytestmark = pytest.mark.skipif(
-    not _PACK_AVAILABLE,
-    reason=(
-        f"platform-console-capability-pack ontology.ttl not found at "
-        f"{DEFAULT_PACK_DIR} -- skipped, not mocked."
-    ),
-)
+EXPECTED = {
+    "castle.verb.inventory-components": (f"{PCC}CastleVerbInventoryComponents", "family-read"),
+    "castle.verb.inventory-goals": (f"{PCC}CastleVerbInventoryGoals", "family-read"),
+    "approval.freeze-override": (f"{PCC}ApprovalFreezeOverride", "family-approval"),
+}
 
+_FIXTURE_TTL = f"""
+@prefix pcc: <{PCC}> .
+@prefix sosa: <http://www.w3.org/ns/sosa/> .
+@prefix dct: <http://purl.org/dc/terms/> .
 
-def _reversible_capability_title(exclude: frozenset[str]) -> str:
-    facts = load_platform_console_capabilities()
-    for fact in facts:
-        if fact.reversible and fact.title not in exclude:
-            return fact.title
-    raise AssertionError("no reversible capability found in the real pack")
+pcc:CastleVerbInventoryComponents a sosa:Procedure ;
+    dct:identifier "castle.verb.inventory-components" ;
+    dct:type pcc:family-read .
 
+pcc:CastleVerbInventoryGoals a sosa:Procedure ;
+    dct:identifier "castle.verb.inventory-goals" ;
+    dct:type pcc:family-read .
 
-def _capability_iri_for(title: str) -> str:
-    return capability_iri(provider_name=PROVIDER_NAME, task=_TitleTask(title))
-
-
-class _TitleTask:
-    """Minimal stand-in exposing the `.identifier` attribute
-    `capability_iri()` reads -- real slug derivation, no fakery of the
-    provider/environment under test."""
-
-    def __init__(self, title: str) -> None:
-        self.identifier = title
+pcc:ApprovalFreezeOverride a sosa:Procedure ;
+    dct:identifier "approval.freeze-override" ;
+    dct:type pcc:family-approval .
+"""
 
 
-# ---------------------------------------------------------------------------
-# (a) Reversible capabilities: real actuation through the real kernel chain.
-# ---------------------------------------------------------------------------
+def _write_pack(tmp_path: Path) -> Path:
+    pack_dir = tmp_path / "platform-console-gym-pack"
+    pack_dir.mkdir()
+    (pack_dir / "ontology.ttl").write_text(_FIXTURE_TTL, encoding="utf-8")
+    return pack_dir
 
 
-def test_real_kernel_actuates_a_reversible_capability_end_to_end() -> None:
+def _task_map(provider: object) -> dict[str, object]:
+    return {task.identifier: task for task in provider.tasks()}  # type: ignore[attr-defined]
+
+
+def test_explicit_pack_admission_compiles_current_three_procedures(tmp_path: Path) -> None:
+    provider = build_platform_console_ontology_provider(pack_dir=_write_pack(tmp_path))
+
+    tasks = _task_map(provider)
+
+    assert set(tasks) == set(EXPECTED)
+    for identifier, (task_iri, family) in EXPECTED.items():
+        task = tasks[identifier]
+        assert task.task_iri == task_iri
+        assert task.family == family
+        assert task.subjects == (task_iri,)
+
+
+def test_default_pack_preserves_canonical_public_semantic_identities() -> None:
+    ontology = PLATFORM_CONSOLE_GYM_PACK_DIR / "ontology.ttl"
+    if not ontology.is_file():
+        pytest.skip(f"canonical platform-console ontology pack not materialized at {ontology}")
+
     provider = build_platform_console_ontology_provider()
-    reversible_title = _reversible_capability_title(exclude=frozenset())
-    reversible_iri = _capability_iri_for(reversible_title)
+    tasks = _task_map(provider)
 
-    standard_ref = "urn:gymact:authority-decision:pc-ontology-chicago-standard"
-    resolver = build_fail_closed_authority_resolver(
-        provider=provider, standard_ref=standard_ref, elevated_ref=None
+    assert set(tasks) == set(EXPECTED)
+    assert {
+        identifier: (task.task_iri, task.family) for identifier, task in tasks.items()
+    } == EXPECTED
+
+
+def test_standard_authority_admits_reads_and_refuses_approval_without_effect(
+    tmp_path: Path,
+) -> None:
+    provider = build_platform_console_ontology_provider(pack_dir=_write_pack(tmp_path))
+    resolver = TieredAuthorityResolver(
+        elevated_capabilities=provider.elevated_capability_iris(),
+        standard_ref=STANDARD_REF,
+        elevated_ref=ELEVATED_REF,
     )
-    principal = "urn:prov:agent:gymact-pc-ontology-chicago"
+    tasks = _task_map(provider)
 
     async def run() -> None:
-        gym = GymAct(
-            authority_resolver=resolver,
-            capability_scope=AllowListCapabilityScope(
-                {
-                    principal: frozenset(
-                        capability_iri(provider_name=PROVIDER_NAME, task=t)
-                        for t in provider.tasks()
-                    )
-                    | frozenset(
-                        [f"urn:gymact:{PROVIDER_NAME}:capability:inspect-state"]
-                    )
-                }
-            ),
-        )
+        gym = GymAct(authority_resolver=resolver)
         gym.register_provider(provider)
+        materialized = await gym.materialize(
+            MaterializationIntent(provider=PROVIDER_NAME, config={"requires_authority": True})
+        )
+        assert materialized.accepted is True, materialized.receipt.reason
+        assert materialized.episode is not None
+        episode_id = materialized.episode.episode_id
 
-        materialization = await gym.materialize(
-            MaterializationIntent(
-                provider=PROVIDER_NAME,
-                config={"requires_authority": True},
-                principal=principal,
-                authority_ref=standard_ref,
+        for identifier in ("castle.verb.inventory-components", "castle.verb.inventory-goals"):
+            task = tasks[identifier]
+            result = await gym.act(
+                ActuationIntent(
+                    episode_id=episode_id,
+                    capability=capability_iri(provider_name=PROVIDER_NAME, task=task),
+                    authority_ref=STANDARD_REF,
+                )
+            )
+            assert result.accepted is True, result.receipt.reason
+
+        elevated_task = tasks["approval.freeze-override"]
+        refused = await gym.act(
+            ActuationIntent(
+                episode_id=episode_id,
+                capability=capability_iri(
+                    provider_name=PROVIDER_NAME, task=elevated_task
+                ),
+                authority_ref=STANDARD_REF,
             )
         )
-        assert materialization.accepted, materialization.receipt.reason
-        episode_id = materialization.episode.episode_id
+        assert refused.accepted is False
+        assert refused.standing is Standing.REFUSED
+        assert refused.effect is None
+
+        observed = await gym.observe(episode_id)
+        assert elevated_task.task_iri not in observed.state["facts"]
+        assert {tasks[name].task_iri for name in EXPECTED if name != "approval.freeze-override"} <= set(
+            observed.state["facts"]
+        )
+        await gym.teardown(episode_id, authority_ref=ELEVATED_REF)
+
+    anyio.run(run)
+
+
+def test_elevated_authority_admits_approval_through_real_kernel(tmp_path: Path) -> None:
+    provider = build_platform_console_ontology_provider(pack_dir=_write_pack(tmp_path))
+    resolver = TieredAuthorityResolver(
+        elevated_capabilities=provider.elevated_capability_iris(),
+        standard_ref=STANDARD_REF,
+        elevated_ref=ELEVATED_REF,
+    )
+    approval = _task_map(provider)["approval.freeze-override"]
+
+    async def run() -> None:
+        gym = GymAct(authority_resolver=resolver)
+        gym.register_provider(provider)
+        materialized = await gym.materialize(
+            MaterializationIntent(provider=PROVIDER_NAME, config={"requires_authority": True})
+        )
+        assert materialized.accepted is True, materialized.receipt.reason
+        assert materialized.episode is not None
+        episode_id = materialized.episode.episode_id
 
         result = await gym.act(
             ActuationIntent(
                 episode_id=episode_id,
-                capability=reversible_iri,
-                authority_ref=standard_ref,
-                principal=principal,
+                capability=capability_iri(provider_name=PROVIDER_NAME, task=approval),
+                authority_ref=ELEVATED_REF,
             )
         )
-        assert result.accepted, result.receipt.reason
+        assert result.accepted is True, result.receipt.reason
         assert result.effect is not None
-        assert result.effect["established"] == reversible_title
+        assert result.effect["established"] == approval.task_iri
 
         observed = await gym.observe(episode_id)
-        assert reversible_title in observed.state["facts"]
-
-        await gym.teardown(episode_id, authority_ref=standard_ref)
+        assert approval.task_iri in observed.state["facts"]
+        await gym.teardown(episode_id, authority_ref=ELEVATED_REF)
 
     anyio.run(run)
 
 
-def test_real_kernel_actuates_a_second_distinct_reversible_capability() -> None:
-    provider = build_platform_console_ontology_provider()
-    first_title = _reversible_capability_title(exclude=frozenset())
-    second_title = _reversible_capability_title(exclude=frozenset({first_title}))
-    assert first_title != second_title
-    second_iri = _capability_iri_for(second_title)
-
-    standard_ref = "urn:gymact:authority-decision:pc-ontology-chicago-standard-2"
-    resolver = build_fail_closed_authority_resolver(
-        provider=provider, standard_ref=standard_ref, elevated_ref=None
-    )
-    principal = "urn:prov:agent:gymact-pc-ontology-chicago-2"
+def test_missing_admitted_pack_refuses_materialization_instead_of_inventing_tasks(
+    tmp_path: Path,
+) -> None:
+    missing = tmp_path / "not-materialized"
+    provider = build_platform_console_ontology_provider(pack_dir=missing)
 
     async def run() -> None:
-        gym = GymAct(
-            authority_resolver=resolver,
-            capability_scope=AllowListCapabilityScope(
-                {
-                    principal: frozenset(
-                        capability_iri(provider_name=PROVIDER_NAME, task=t)
-                        for t in provider.tasks()
-                    )
-                    | frozenset(
-                        [f"urn:gymact:{PROVIDER_NAME}:capability:inspect-state"]
-                    )
-                }
-            ),
-        )
-        gym.register_provider(provider)
+        await provider.materialize(scenario=None, config={"requires_authority": True})
 
-        materialization = await gym.materialize(
-            MaterializationIntent(
-                provider=PROVIDER_NAME,
-                config={"requires_authority": True},
-                principal=principal,
-                authority_ref=standard_ref,
-            )
-        )
-        assert materialization.accepted, materialization.receipt.reason
-        episode_id = materialization.episode.episode_id
-
-        result = await gym.act(
-            ActuationIntent(
-                episode_id=episode_id,
-                capability=second_iri,
-                authority_ref=standard_ref,
-                principal=principal,
-            )
-        )
-        assert result.accepted, result.receipt.reason
-        assert result.effect["established"] == second_title
-
-        await gym.teardown(episode_id, authority_ref=standard_ref)
-
-    anyio.run(run)
-
-
-# ---------------------------------------------------------------------------
-# (b) IRREVERSIBLE capabilities: real fail-closed authority refusal, no
-# actuate() ever attempted against any external system.
-# ---------------------------------------------------------------------------
-
-
-def test_irreversible_org_delete_refused_with_no_elevated_allowlist_configured() -> None:
-    """Fail-closed default: `elevated_ref=None` -> the resolver's real
-    `elevated_ref` is the unmatchable sentinel
-    `build_fail_closed_authority_resolver` documents -- no caller-supplied
-    `authority_ref` can ever equal it, so `org.delete` (`ce:reversible
-    false` in the real pack) is refused unconditionally."""
-    provider = build_platform_console_ontology_provider()
-    org_delete_iri = _capability_iri_for("org.delete")
-    assert org_delete_iri in provider.elevated_capability_iris()
-
-    standard_ref = "urn:gymact:authority-decision:pc-ontology-chicago-irrev-1"
-    resolver = build_fail_closed_authority_resolver(
-        provider=provider, standard_ref=standard_ref, elevated_ref=None
-    )
-    principal = "urn:prov:agent:gymact-pc-ontology-chicago-irrev-1"
-
-    async def run() -> None:
-        gym = GymAct(
-            authority_resolver=resolver,
-            capability_scope=AllowListCapabilityScope(
-                {
-                    principal: frozenset(
-                        capability_iri(provider_name=PROVIDER_NAME, task=t)
-                        for t in provider.tasks()
-                    )
-                }
-            ),
-        )
-        gym.register_provider(provider)
-
-        materialization = await gym.materialize(
-            MaterializationIntent(
-                provider=PROVIDER_NAME,
-                config={"requires_authority": True},
-                principal=principal,
-                authority_ref=standard_ref,
-            )
-        )
-        assert materialization.accepted, materialization.receipt.reason
-        episode_id = materialization.episode.episode_id
-
-        # Even a caller presenting the standard (non-elevated) ref must be
-        # refused for this IRREVERSIBLE capability -- the real assertion
-        # this test exists to make.
-        result = await gym.act(
-            ActuationIntent(
-                episode_id=episode_id,
-                capability=org_delete_iri,
-                authority_ref=standard_ref,
-                principal=principal,
-            )
-        )
-        assert result.accepted is False
-        assert result.effect is None
-
-        observed = await gym.observe(episode_id)
-        assert "org.delete" not in observed.state["facts"]
-
-        await gym.teardown(episode_id, authority_ref=standard_ref)
-
-    anyio.run(run)
-
-
-def test_irreversible_dr_failover_refused_even_with_a_real_but_wrong_ref() -> None:
-    """A configured elevated allow-list exists in this test (`elevated_ref`
-    is real and non-None), but the caller presents a DIFFERENT, real
-    `authority_ref` (the standard one) -- proving the refusal is a genuine
-    per-request tier check (`ref == elevated_ref`), not merely "no
-    allow-list was configured at all" from the previous test. `dr.failover`
-    (`ce:reversible false`) must still be refused, and its real DO
-    `actuate()` branch (which in a live provider would overwrite live DB pod
-    data) must never run."""
-    provider = build_platform_console_ontology_provider()
-    dr_failover_iri = _capability_iri_for("dr.failover")
-    assert dr_failover_iri in provider.elevated_capability_iris()
-
-    standard_ref = "urn:gymact:authority-decision:pc-ontology-chicago-irrev-2-standard"
-    elevated_ref = "urn:gymact:authority-decision:pc-ontology-chicago-irrev-2-elevated"
-    resolver = build_fail_closed_authority_resolver(
-        provider=provider, standard_ref=standard_ref, elevated_ref=elevated_ref
-    )
-    principal = "urn:prov:agent:gymact-pc-ontology-chicago-irrev-2"
-
-    async def run() -> None:
-        gym = GymAct(
-            authority_resolver=resolver,
-            capability_scope=AllowListCapabilityScope(
-                {
-                    principal: frozenset(
-                        capability_iri(provider_name=PROVIDER_NAME, task=t)
-                        for t in provider.tasks()
-                    )
-                }
-            ),
-        )
-        gym.register_provider(provider)
-
-        materialization = await gym.materialize(
-            MaterializationIntent(
-                provider=PROVIDER_NAME,
-                config={"requires_authority": True},
-                principal=principal,
-                authority_ref=standard_ref,
-            )
-        )
-        assert materialization.accepted, materialization.receipt.reason
-        episode_id = materialization.episode.episode_id
-
-        result = await gym.act(
-            ActuationIntent(
-                episode_id=episode_id,
-                capability=dr_failover_iri,
-                authority_ref=standard_ref,  # wrong tier for an elevated capability
-                principal=principal,
-            )
-        )
-        assert result.accepted is False
-        assert result.effect is None
-
-        observed = await gym.observe(episode_id)
-        assert "dr.failover" not in observed.state["facts"]
-
-        # Sanity: the SAME capability IS admitted with the real elevated ref
-        # -- proving the refusal above was tier-based, not a broken
-        # resolver that refuses everything.
-        admitted_result = await gym.act(
-            ActuationIntent(
-                episode_id=episode_id,
-                capability=dr_failover_iri,
-                authority_ref=elevated_ref,
-                principal=principal,
-            )
-        )
-        assert admitted_result.accepted, admitted_result.receipt.reason
-        assert admitted_result.effect["established"] == "dr.failover"
-
-        await gym.teardown(episode_id, authority_ref=elevated_ref)
-
-    anyio.run(run)
-
-
-def test_fail_closed_binding_rejects_same_ref_for_standard_and_elevated() -> None:
-    """`build_fail_closed_authority_resolver` refuses to construct a
-    resolver where `elevated_ref == standard_ref` -- that configuration
-    would silently admit every standard-tier caller to IRREVERSIBLE
-    capabilities, defeating the entire fail-closed contract. Real
-    `ValueError`, not a mocked assertion."""
-    provider = build_platform_console_ontology_provider()
-    same_ref = "urn:gymact:authority-decision:pc-ontology-chicago-same-ref"
-    with pytest.raises(ValueError, match="REFUSED_SAME_REF_FOR_STANDARD_AND_ELEVATED"):
-        build_fail_closed_authority_resolver(
-            provider=provider, standard_ref=same_ref, elevated_ref=same_ref
-        )
+    with pytest.raises(ValueError, match="NO_TASKS_FOUND_IN_PACK"):
+        anyio.run(run)
