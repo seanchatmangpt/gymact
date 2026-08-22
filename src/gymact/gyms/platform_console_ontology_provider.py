@@ -66,7 +66,9 @@ def build_platform_console_ontology_provider(
     authority or changes the provider's authority tiers.
     """
 
-    admitted_pack_dir = resolve_default_platform_console_pack_dir() if pack_dir is None else pack_dir
+    admitted_pack_dir = (
+        resolve_default_platform_console_pack_dir() if pack_dir is None else pack_dir
+    )
     return PlatformConsoleOntologyDrivenProvider(
         name="platform-console-ontology",
         pack_dir=admitted_pack_dir,

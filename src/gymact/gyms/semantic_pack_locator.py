@@ -6,10 +6,10 @@ already-materialized pack candidates and refuses divergent ambiguity.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
-from typing import Iterable
 
 
 @dataclass(frozen=True)
@@ -39,7 +39,11 @@ def resolve_semantic_pack(
 
     materialized = tuple(
         sorted(
-            {Path(candidate).resolve() for candidate in candidates if (Path(candidate) / required_file).is_file()},
+            {
+                Path(candidate).resolve()
+                for candidate in candidates
+                if (Path(candidate) / required_file).is_file()
+            },
             key=str,
         )
     )
