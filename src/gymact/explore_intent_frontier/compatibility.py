@@ -36,17 +36,13 @@ def admit_witness(
         raise ValueError("REFUSED_FOREIGN_CONTEXT_SUBJECT")
     if witness.kind is CompatibilityKind.EXACT and before != after:
         raise ValueError("REFUSED_FALSE_EXACT_COMPATIBILITY")
-    if (
-        witness.kind is CompatibilityKind.SEMANTIC_EQUIVALENT
-        and (
-            before.cut_digest != after.cut_digest
-            or before.strategy != after.strategy
-            or before.policy_digest != after.policy_digest
-        )
+    if witness.kind is CompatibilityKind.SEMANTIC_EQUIVALENT and (
+        before.cut_digest != after.cut_digest
+        or before.strategy != after.strategy
+        or before.policy_digest != after.policy_digest
     ):
         raise ValueError("REFUSED_UNPROVEN_SEMANTIC_EQUIVALENCE")
-    if (
-        witness.kind is CompatibilityKind.BACKWARD_COMPATIBLE
-        and (before.cut_digest != after.cut_digest or before.strategy != after.strategy)
+    if witness.kind is CompatibilityKind.BACKWARD_COMPATIBLE and (
+        before.cut_digest != after.cut_digest or before.strategy != after.strategy
     ):
         raise ValueError("REFUSED_UNPROVEN_BACKWARD_COMPATIBILITY")
