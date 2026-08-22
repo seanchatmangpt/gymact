@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from itertools import product
 from collections.abc import Mapping, Sequence
+from itertools import product
 
 
 def full_factorial(factors: Mapping[str, Sequence[object]]) -> tuple[dict[str, object], ...]:
