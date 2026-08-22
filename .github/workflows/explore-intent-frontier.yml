@@ -25,23 +25,21 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install focused verifier toolchain
-        run: python -m pip install "ruff>=0.15,<1"
+      - name: Set up admitted uv
+        run: python -m pip install "uv==0.11.32"
+      - name: Resolve admitted dependency graph
+        run: uv sync --locked --group dev
       - name: Compile authored surface
-        run: python -m compileall -q src/gymact/explore_intent_frontier tests/explore_intent_frontier
+        run: uv run python -m compileall -q src/gymact/explore_intent_frontier tests/explore_intent_frontier
       - name: Execute differential refusal replay court
-        env:
-          PYTHONPATH: src
-        run: python -m unittest discover -s tests/explore_intent_frontier -p 'test_*.py' -v
+        run: uv run python -m unittest discover -s tests/explore_intent_frontier -p 'test_*.py' -v
       - name: Ruff static contract
-        run: ruff check src/gymact/explore_intent_frontier tests/explore_intent_frontier
+        run: uv run ruff check src/gymact/explore_intent_frontier tests/explore_intent_frontier
       - name: Ruff format contract
-        run: ruff format --check src/gymact/explore_intent_frontier tests/explore_intent_frontier
+        run: uv run ruff format --check src/gymact/explore_intent_frontier tests/explore_intent_frontier
       - name: Refuse ambient DO authority
-        env:
-          PYTHONPATH: src
         run: |
-          python - <<'PY'
+          uv run python - <<'PY'
           from gymact.explore_intent_frontier.engine import ActionClass, require
           try:
               require(ActionClass.DO)
