@@ -5,13 +5,15 @@
  * Fixed, small, auditable blast radius:
  *   - exactly one docker_image resource (pinned nginx:alpine)
  *   - exactly one docker_container resource built from that image
- *   - the docker provider host is colima's real LOCAL Docker socket, never
- *     a cloud endpoint or cloud credentials
+ *   - the docker provider resolves only a caller-supplied/local Docker host,
+ *     never a cloud endpoint or cloud credentials
  *
- * The provider host is parameterized via `var.docker_host` (default: the
- * standard colima socket path) so it can be overridden per-machine with
+ * The provider host is parameterized via `var.docker_host`. A null value
+ * delegates to the kreuzwerker/docker provider's normal local-Docker
+ * resolution (including DOCKER_HOST); callers may override it with
  * `-var docker_host=...` or `TF_VAR_docker_host=...` without editing this
- * checked-in file.
+ * checked-in file. No user- or workstation-specific socket is embedded in
+ * the artifact.
  */
 
 terraform {
@@ -24,9 +26,10 @@ terraform {
 }
 
 variable "docker_host" {
-  description = "Real local Docker daemon socket URI (colima by default). Never a cloud endpoint."
+  description = "Optional real local Docker daemon socket URI. Null uses the provider's local-Docker resolution."
   type        = string
-  default     = "unix:///Users/sac/.colima/default/docker.sock"
+  default     = null
+  nullable    = true
 }
 
 variable "container_name" {

@@ -202,6 +202,7 @@ class PreparedAction(FrozenModel):
     subject: SubjectRef
     payload: dict[str, Any] = Field(default_factory=dict)
     admission_digest: str = Field(min_length=1)
+    planning_provenance_digest: str | None = None
     idempotency_key: str = Field(min_length=1)
 
 
@@ -270,6 +271,7 @@ def construct_prepared_action(
     payload: dict[str, Any],
     admission_digest: str,
     idempotency_key: str,
+    planning_provenance_digest: str | None = None,
 ) -> PreparedAction:
     """CONSTRUCT only: validate input shape and manufacture a powerless intent."""
     try:
@@ -286,6 +288,7 @@ def construct_prepared_action(
         subject=subject,
         payload=payload,
         admission_digest=admission_digest,
+        planning_provenance_digest=planning_provenance_digest,
         idempotency_key=idempotency_key,
     )
 

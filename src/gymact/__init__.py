@@ -189,6 +189,14 @@ from gymact.physical import (
     SafetyEnvelope,
     admit_physical_command,
 )
+from gymact.planning import (
+    PlanProvenance,
+    PlannedBrokerRequest,
+    PlannedTransition,
+    PlanReceiptBinding,
+    bind_plan,
+    execute_planned,
+)
 from gymact.plugins import (
     ProviderPluginInfo,
     ProviderPluginLoad,
@@ -324,6 +332,10 @@ __all__ = [
     "PhysicalCommand",
     "PhysicalDomain",
     "PhysicalProviderProfile",
+    "PlanProvenance",
+    "PlanReceiptBinding",
+    "PlannedBrokerRequest",
+    "PlannedTransition",
     "PossibilityGraph",
     "PossibilityMorphism",
     "PossibilityObject",
@@ -391,6 +403,7 @@ __all__ = [
     "admit_physical_command",
     "admit_retry",
     "anti_agent_benchmark",
+    "bind_plan",
     "build_contract",
     "builtin_capabilities",
     "builtin_provider_names",
@@ -409,6 +422,7 @@ __all__ = [
     "evaluate_morphism",
     "evidence_graph",
     "execute_admitted",
+    "execute_planned",
     "execute_verified",
     "explore_maximal_reversible",
     "export_manufacturing_bundle",

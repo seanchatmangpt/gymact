@@ -34,8 +34,10 @@ def create_mcp(
 ) -> FastMCP:
     """Create GymAct MCP tools; DCM selected-cut execution is the production DO mode.
 
-    ``ggen_agents`` is an optional LLM-free logical-agent runtime.  Its tools
-    expose deterministic manufacture only; MCP is transport, never a reasoner.
+    ``ggen_agents`` is an optional LLM-free logical-agent runtime. Its three
+    tools are registered only when that runtime is supplied, so the default
+    production surface remains exactly the ontology-admitted ten-tool bridge.
+    MCP is transport, never a reasoner.
     """
     service = _runtime(runtime)
     compatibility_broker = BRCEBroker(service)
@@ -77,55 +79,54 @@ def create_mcp(
         """Observe current environment state without claiming verification."""
         return (await service.observe(episode_id)).model_dump(mode="json")
 
-    @mcp.tool()
-    async def ggen_agent_catalog() -> dict[str, Any]:
-        """List configured LLM-free logical ggen agents and current active WIP."""
-        if ggen_agents is None:
-            return {"standing": "REQUIRES_CONFIGURATION", "agents": [], "wip": {}}
-        return {
-            "standing": "ALIVE",
-            "agents": [spec.model_dump(mode="json") for spec in ggen_agents.specs()],
-            "wip": ggen_agents.wip(),
-            "llm_calls": 0,
-        }
+    if ggen_agents is not None:
 
-    @mcp.tool()
-    async def ggen_agent_frontier(
-        roles: list[str],
-        planners: list[str],
-        objectives: list[str],
-        observation_projections: list[str],
-        action_projections: list[str],
-        packs: list[str],
-        max_combinations: int = 10000,
-    ) -> dict[str, Any]:
-        """Construct a powerless DfCM logical-agent possibility space without selecting."""
-        space = manufacture_ggen_agent_space(
-            roles=tuple(roles),
-            planners=tuple(planners),
-            objectives=tuple(objectives),
-            observation_projections=tuple(observation_projections),
-            action_projections=tuple(action_projections),
-            packs=tuple(packs),
-            max_combinations=max_combinations,
-        )
-        return {"mode": "CONSTRUCT", "llm_calls": 0, **space.model_dump(mode="json")}
+        async def ggen_agent_catalog() -> dict[str, Any]:
+            """List configured LLM-free logical ggen agents and current active WIP."""
+            return {
+                "standing": "ALIVE",
+                "agents": [spec.model_dump(mode="json") for spec in ggen_agents.specs()],
+                "wip": ggen_agents.wip(),
+                "llm_calls": 0,
+            }
 
-    @mcp.tool()
-    async def ggen_agent_invoke(
-        agent_id: str,
-        observation: dict[str, Any],
-        inputs: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        """Invoke one deterministic logical ggen agent; no LM is instantiated."""
-        if ggen_agents is None:
-            raise ValueError("GGEN_AGENT_RUNTIME_NOT_CONFIGURED")
-        result = await ggen_agents.invoke(
-            agent_id,
-            observation=observation,
-            inputs=inputs or {},
-        )
-        return result.model_dump(mode="json")
+        async def ggen_agent_frontier(
+            roles: list[str],
+            planners: list[str],
+            objectives: list[str],
+            observation_projections: list[str],
+            action_projections: list[str],
+            packs: list[str],
+            max_combinations: int = 10000,
+        ) -> dict[str, Any]:
+            """Construct a powerless DfCM logical-agent possibility space without selecting."""
+            space = manufacture_ggen_agent_space(
+                roles=tuple(roles),
+                planners=tuple(planners),
+                objectives=tuple(objectives),
+                observation_projections=tuple(observation_projections),
+                action_projections=tuple(action_projections),
+                packs=tuple(packs),
+                max_combinations=max_combinations,
+            )
+            return {"mode": "CONSTRUCT", "llm_calls": 0, **space.model_dump(mode="json")}
+
+        async def ggen_agent_invoke(
+            agent_id: str,
+            observation: dict[str, Any],
+            inputs: dict[str, Any] | None = None,
+        ) -> dict[str, Any]:
+            """Invoke one deterministic logical ggen agent; no LM is instantiated."""
+            result = await ggen_agents.invoke(
+                agent_id,
+                observation=observation,
+                inputs=inputs or {},
+            )
+            return result.model_dump(mode="json")
+
+        mcp.tool()(ggen_agent_catalog)
+        mcp.tool()(ggen_agent_frontier)
+        mcp.tool()(ggen_agent_invoke)
 
     @mcp.tool()
     async def act(

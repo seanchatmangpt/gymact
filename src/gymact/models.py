@@ -168,6 +168,9 @@ class ActuationIntent(CanonicalInputModel):
     #: Caller-supplied identity reference (typically a `prov:Agent` IRI), never
     #: resolved or authenticated by gymact itself -- see `gymact.agent`.
     principal: str | None = None
+    #: Content identity of the SELECT/CONSTRUCT plan that selected this DO.
+    #: It participates in semantic idempotency but never grants authority.
+    planning_provenance_digest: str | None = None
     idempotency_key: str = Field(default_factory=lambda: uuid4().hex)
     operation: Literal[Operation.ACT] = Operation.ACT
 
@@ -208,6 +211,7 @@ class Receipt(FrozenModel):
     policy_revision: str | None = None
     intended_effects: tuple[dict[str, Any], ...] = ()
     idempotency_key: str | None = None
+    planning_provenance_digest: str | None = None
     pre_state_digest: str | None = None
     post_state_digest: str | None = None
     acknowledgement_status: str | None = None
