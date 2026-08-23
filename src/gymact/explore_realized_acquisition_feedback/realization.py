@@ -3,6 +3,7 @@ from fractions import Fraction
 
 from .subject import Refusal
 
+
 @dataclass(frozen=True)
 class AcquisitionRealization:
     sensor: str
@@ -12,7 +13,8 @@ class AcquisitionRealization:
     latency_ms: int
 
     def __post_init__(self) -> None:
-        if not self.sensor or min(self.predicted_gain, self.realized_gain, self.cost) < 0 or self.latency_ms < 0:
+        invalid_value = min(self.predicted_gain, self.realized_gain, self.cost) < 0
+        if not self.sensor or invalid_value or self.latency_ms < 0:
             raise Refusal("REFUSED_INVALID_REALIZATION")
 
     @property

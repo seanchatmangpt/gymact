@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from fractions import Fraction
 
+
 @dataclass
 class CusumDrift:
     threshold: Fraction

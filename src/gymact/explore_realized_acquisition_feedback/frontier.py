@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from fractions import Fraction
 
+
 @dataclass(frozen=True)
 class PolicyVector:
     name: str
@@ -8,17 +9,23 @@ class PolicyVector:
     regret: Fraction
     exploration_cost: Fraction
 
+
 def pareto_frontier(vectors: list[PolicyVector]) -> list[PolicyVector]:
     out: list[PolicyVector] = []
-    for v in vectors:
+    for vector in vectors:
         dominated = any(
-            u is not v
-            and u.calibration_error <= v.calibration_error
-            and u.regret <= v.regret
-            and u.exploration_cost <= v.exploration_cost
-            and (u.calibration_error, u.regret, u.exploration_cost) != (v.calibration_error, v.regret, v.exploration_cost)
-            for u in vectors
+            candidate is not vector
+            and candidate.calibration_error <= vector.calibration_error
+            and candidate.regret <= vector.regret
+            and candidate.exploration_cost <= vector.exploration_cost
+            and (
+                candidate.calibration_error,
+                candidate.regret,
+                candidate.exploration_cost,
+            )
+            != (vector.calibration_error, vector.regret, vector.exploration_cost)
+            for candidate in vectors
         )
         if not dominated:
-            out.append(v)
-    return sorted(out, key=lambda x: x.name)
+            out.append(vector)
+    return sorted(out, key=lambda item: item.name)
