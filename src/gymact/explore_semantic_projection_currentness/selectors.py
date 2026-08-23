@@ -26,11 +26,7 @@ class Score:
 
 
 def score(candidate: RepresentationCandidate, witness: RoundTripWitness | None) -> Score:
-    loss = (
-        Fraction(0)
-        if witness is None
-        else (witness.forward.loss + witness.backward.loss).total
-    )
+    loss = Fraction(0) if witness is None else (witness.forward.loss + witness.backward.loss).total
     return Score(
         candidate,
         loss,

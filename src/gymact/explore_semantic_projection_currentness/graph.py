@@ -43,9 +43,7 @@ class ConversionGraph:
         adjacency: dict[str, list[Converter]] = {}
         for edge in self.converters:
             adjacency.setdefault(edge.source.fingerprint, []).append(edge)
-        queue: list[tuple[int, int, str, tuple[Converter, ...]]] = [
-            (0, 0, source.fingerprint, ())
-        ]
+        queue: list[tuple[int, int, str, tuple[Converter, ...]]] = [(0, 0, source.fingerprint, ())]
         best: dict[str, int] = {}
         serial = 0
         while queue:

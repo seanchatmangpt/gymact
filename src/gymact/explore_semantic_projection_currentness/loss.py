@@ -29,6 +29,4 @@ class LossVector:
         return self.total == 0
 
     def __add__(self, other: LossVector) -> LossVector:
-        return LossVector(
-            *(a + b for a, b in zip(self.components, other.components, strict=True))
-        )
+        return LossVector(*(a + b for a, b in zip(self.components, other.components, strict=True)))

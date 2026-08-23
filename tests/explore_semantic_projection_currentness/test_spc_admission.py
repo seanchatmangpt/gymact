@@ -8,9 +8,7 @@ from gymact.explore_semantic_projection_currentness.admission import admit_candi
 
 class Court(unittest.TestCase):
     def test_lossless_requirement_preserves_refusal_topology(self):
-        semantic_type, rdf, ash, wasm, _, ash_witness, wasm_witness = fixtures(
-            Fraction(1, 10)
-        )
+        semantic_type, rdf, ash, wasm, _, ash_witness, wasm_witness = fixtures(Fraction(1, 10))
         result = admit_candidates(
             semantic_type,
             (rdf, ash, wasm),
