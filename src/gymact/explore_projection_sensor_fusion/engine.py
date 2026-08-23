@@ -22,12 +22,27 @@ class Qualification:
     receipt: Receipt
 
 
-def qualify(subject: Subject, calibrations: tuple[Calibration, ...], proofs: tuple[IndependenceProof, ...], candidates: tuple[AcquisitionCandidate, ...], selector: Selector, budget: Budget, action: ActionClass = ActionClass.CONSTRUCT) -> Qualification:
+def qualify(
+    subject: Subject,
+    calibrations: tuple[Calibration, ...],
+    proofs: tuple[IndependenceProof, ...],
+    candidates: tuple[AcquisitionCandidate, ...],
+    selector: Selector,
+    budget: Budget,
+    action: ActionClass = ActionClass.CONSTRUCT,
+) -> Qualification:
     require_authority(action)
     current = current_frontier(calibrations)
     topology = classify(current, proofs)
-    lawful = tuple(c for c in frontier(candidates) if budget.admits(c))
+    lawful = tuple(candidate for candidate in frontier(candidates) if budget.admits(candidate))
     selected = select(lawful, selector) if topology is FusionTopology.HEALTHY else None
     standing = "PARTIAL_ALIVE" if selected is not None else "UNKNOWN"
-    receipt = Receipt(subject, selector.value, selected.sensor_id if selected else None, audit_root(tuple(c.sensor.calibration_digest for c in current)), standing, action)
+    receipt = Receipt(
+        subject,
+        selector.value,
+        selected.sensor_id if selected else None,
+        audit_root(tuple(row.sensor.calibration_digest for row in current)),
+        standing,
+        action,
+    )
     return Qualification(topology, lawful, selected, receipt)
