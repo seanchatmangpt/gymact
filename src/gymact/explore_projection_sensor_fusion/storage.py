@@ -24,8 +24,6 @@ CANDIDATES = (
 
 def select_storage(*, durable: bool, transactional: bool) -> StorageCapability | None:
     def admits(candidate: StorageCapability) -> bool:
-        return (not durable or candidate.durable) and (
-            not transactional or candidate.transactional
-        )
+        return (not durable or candidate.durable) and (not transactional or candidate.transactional)
 
     return next((candidate for candidate in CANDIDATES if admits(candidate)), None)
