@@ -14,9 +14,7 @@ class Telemetry:
     standing: str
 
 
-def project(
-    selector: str, calibration: Calibration, qualification: Qualification
-) -> Telemetry:
+def project(selector: str, calibration: Calibration, qualification: Qualification) -> Telemetry:
     return Telemetry(
         selector,
         calibration.mode.value,

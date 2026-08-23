@@ -26,9 +26,7 @@ class Calibration:
     mean_width: Fraction
 
     @classmethod
-    def from_cases(
-        cls, mode: CompositionMode, cases: tuple[CompositionCase, ...]
-    ) -> "Calibration":
+    def from_cases(cls, mode: CompositionMode, cases: tuple[CompositionCase, ...]) -> "Calibration":
         chosen = tuple(case for case in cases if case.mode is mode)
         if len({case.case_id for case in chosen}) != len(chosen):
             raise Refused("DUPLICATE_CALIBRATION_CASE")

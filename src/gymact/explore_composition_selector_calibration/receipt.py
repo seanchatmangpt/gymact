@@ -22,7 +22,5 @@ class Receipt:
         }
 
     def digest(self) -> str:
-        encoded = json.dumps(
-            self.body(), sort_keys=True, separators=(",", ":")
-        ).encode()
+        encoded = json.dumps(self.body(), sort_keys=True, separators=(",", ":")).encode()
         return hashlib.sha256(encoded).hexdigest()

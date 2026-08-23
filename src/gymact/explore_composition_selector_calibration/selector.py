@@ -36,9 +36,7 @@ def choose(calibrations: tuple[Calibration, ...], selector: Selector) -> Selecti
             key=lambda candidate: (1 - candidate.coverage, candidate.mean_width),
         )
         return Selection(selector, calibration.mode.value, -(1 - calibration.coverage))
-    calibration = max(
-        calibrations, key=lambda candidate: candidate.mean_width * candidate.coverage
-    )
+    calibration = max(calibrations, key=lambda candidate: candidate.mean_width * candidate.coverage)
     return Selection(
         selector,
         calibration.mode.value,
