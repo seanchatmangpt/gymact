@@ -25,6 +25,4 @@ def require_complete(observed: frozenset[str]) -> None:
     if extra:
         raise Refused("UNKNOWN_METHODOLOGY", ",".join(sorted(extra)))
     if missing:
-        raise Refused(
-            "INCOMPLETE_METHODOLOGY_TRACE_COVERAGE", ",".join(sorted(missing))
-        )
+        raise Refused("INCOMPLETE_METHODOLOGY_TRACE_COVERAGE", ",".join(sorted(missing)))
