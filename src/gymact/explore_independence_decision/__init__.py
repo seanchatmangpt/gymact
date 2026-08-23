@@ -19,6 +19,7 @@ from .subject import Subject
 from .value_of_information import InformationOption, best_option
 
 __all__ = [
+    "REQUIRED",
     "ActionClass",
     "BetaEvidence",
     "Candidate",
@@ -31,7 +32,6 @@ __all__ = [
     "InformationOption",
     "LossMatrix",
     "Qualification",
-    "REQUIRED",
     "Receipt",
     "Refused",
     "Standing",
