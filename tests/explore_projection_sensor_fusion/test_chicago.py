@@ -1,5 +1,5 @@
-from fractions import Fraction
 import unittest
+from fractions import Fraction
 
 from gymact.explore_projection_sensor_fusion.acquisition import AcquisitionCandidate
 from gymact.explore_projection_sensor_fusion.authority import ActionClass
@@ -8,8 +8,8 @@ from gymact.explore_projection_sensor_fusion.calibration import Calibration
 from gymact.explore_projection_sensor_fusion.engine import qualify
 from gymact.explore_projection_sensor_fusion.independence import IndependenceProof
 from gymact.explore_projection_sensor_fusion.replay import replay
-from gymact.explore_projection_sensor_fusion.sensor import SensorIdentity
 from gymact.explore_projection_sensor_fusion.selectors import Selector
+from gymact.explore_projection_sensor_fusion.sensor import SensorIdentity
 from gymact.explore_projection_sensor_fusion.subject import Subject
 from gymact.explore_projection_sensor_fusion.topology import FusionTopology
 
@@ -24,10 +24,22 @@ class ChicagoCourt(unittest.TestCase):
         )
         proofs = (IndependenceProof(a, b, "3" * 64),)
         candidates = (
-            AcquisitionCandidate("a", Fraction(3, 5), Fraction(1, 5), Fraction(1, 10), 15),
-            AcquisitionCandidate("b", Fraction(4, 5), Fraction(4, 5), Fraction(1, 2), 30),
+            AcquisitionCandidate(
+                "a", Fraction(3, 5), Fraction(1, 5), Fraction(1, 10), 15
+            ),
+            AcquisitionCandidate(
+                "b", Fraction(4, 5), Fraction(4, 5), Fraction(1, 2), 30
+            ),
         )
-        result = qualify(Subject("seanchatmangpt/gymact@" + "a" * 40), calibrations, proofs, candidates, Selector.MAX_INDEPENDENCE_GAIN, Budget(Fraction(1, 1), 100), ActionClass.CONSTRUCT)
+        result = qualify(
+            Subject("seanchatmangpt/gymact@" + "a" * 40),
+            calibrations,
+            proofs,
+            candidates,
+            Selector.MAX_INDEPENDENCE_GAIN,
+            Budget(Fraction(1, 1), 100),
+            ActionClass.CONSTRUCT,
+        )
         self.assertEqual(result.topology, FusionTopology.HEALTHY)
         self.assertEqual(result.selected.sensor_id, "b")
         self.assertEqual(result.receipt.standing, "PARTIAL_ALIVE")
