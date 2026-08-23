@@ -11,7 +11,5 @@ def frontier(candidates: list[Candidate]) -> list[Candidate]:
     return [
         candidate
         for candidate in candidates
-        if not any(
-            dominates(other, candidate) for other in candidates if other != candidate
-        )
+        if not any(dominates(other, candidate) for other in candidates if other != candidate)
     ]
