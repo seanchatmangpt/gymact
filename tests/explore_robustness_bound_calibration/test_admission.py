@@ -11,9 +11,7 @@ from gymact.explore_robustness_bound_calibration import (
 
 class AdmissionCourt(unittest.TestCase):
     def test_width_and_coverage_gate(self) -> None:
-        bound = RobustnessBound(
-            Fraction(1, 4), Fraction(3, 4), Fraction(1), "IPS", "a" * 64
-        )
+        bound = RobustnessBound(Fraction(1, 4), Fraction(3, 4), Fraction(1), "IPS", "a" * 64)
         good = Calibration(5, Fraction(4, 5), Fraction(1, 5), Fraction(1, 2))
         admit_bound(
             bound,
