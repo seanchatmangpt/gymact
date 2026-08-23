@@ -1,5 +1,5 @@
-from fractions import Fraction
 import unittest
+from fractions import Fraction
 
 from gymact.explore_projection_sensor_fusion.calibration import Calibration
 from gymact.explore_projection_sensor_fusion.distribution import ErrorDistribution
@@ -16,9 +16,27 @@ def sensor(name: str, digit: str) -> SensorIdentity:
 class FusionDifferentialCourt(unittest.TestCase):
     def test_robust_fusion_and_information_geometry(self) -> None:
         rows = (
-            Calibration(sensor("a", "1"), 20, Fraction(1, 10), Fraction(1, 10), Fraction(1, 10)),
-            Calibration(sensor("b", "2"), 20, Fraction(1, 10), Fraction(1, 5), Fraction(1, 10)),
-            Calibration(sensor("c", "3"), 20, Fraction(4, 5), Fraction(1, 10), Fraction(1, 10)),
+            Calibration(
+                sensor("a", "1"),
+                20,
+                Fraction(1, 10),
+                Fraction(1, 10),
+                Fraction(1, 10),
+            ),
+            Calibration(
+                sensor("b", "2"),
+                20,
+                Fraction(1, 10),
+                Fraction(1, 5),
+                Fraction(1, 10),
+            ),
+            Calibration(
+                sensor("c", "3"),
+                20,
+                Fraction(4, 5),
+                Fraction(1, 10),
+                Fraction(1, 10),
+            ),
         )
         fused = robust_median(rows)
         self.assertEqual(fused.false_current, Fraction(1, 10))
