@@ -1,0 +1,25 @@
+name: EXPLORE Evidence Composition Exact Head
+
+on:
+  pull_request:
+    paths:
+      - 'src/gymact/explore_evidence_composition/**'
+      - 'tests/explore_evidence_composition/**'
+      - '.github/workflows/explore-evidence-composition-exact-head.yml'
+
+jobs:
+  exact-head:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: astral-sh/setup-uv@v6
+      - run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - run: uv sync --group dev
+      - run: uv run python -m compileall -q src/gymact/explore_evidence_composition tests/explore_evidence_composition
+      - run: uv run pytest -q tests/explore_evidence_composition
+      - run: uv run ruff check src/gymact/explore_evidence_composition tests/explore_evidence_composition
+      - run: uv run ruff format --check src/gymact/explore_evidence_composition tests/explore_evidence_composition
+      - name: Reject ambient consequential actuation
+        run: '! grep -REn "requests\\.(post|put|patch|delete)|subprocess\\.|os\\.system|boto3|azure\\.|google\\.cloud" src/gymact/explore_evidence_composition'
