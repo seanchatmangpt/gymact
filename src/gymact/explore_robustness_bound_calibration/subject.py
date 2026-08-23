@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
-from .refusal import Refused, REFUSED_INEXACT_SUBJECT
+from .refusal import REFUSED_INEXACT_SUBJECT, Refused
 
 _SUBJECT = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+@[0-9a-f]{40}$")
 
