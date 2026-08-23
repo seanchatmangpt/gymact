@@ -10,7 +10,10 @@ class Selector(StrEnum):
     MINIMAX_LATENCY = "MINIMAX_LATENCY"
 
 
-def select(candidates: tuple[AcquisitionCandidate, ...], strategy: Selector) -> AcquisitionCandidate | None:
+def select(
+    candidates: tuple[AcquisitionCandidate, ...],
+    strategy: Selector,
+) -> AcquisitionCandidate | None:
     if not candidates:
         return None
     key = {
