@@ -1,6 +1,6 @@
+import random
 from dataclasses import dataclass
 from enum import StrEnum
-import random
 
 
 class Fault(StrEnum):
