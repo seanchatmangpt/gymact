@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from fractions import Fraction
-import re
 
-from .refusal import Refused, REFUSED_INVALID_BOUND, REFUSED_INVALID_GAMMA
+from .refusal import REFUSED_INVALID_BOUND, REFUSED_INVALID_GAMMA, Refused
 
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 
