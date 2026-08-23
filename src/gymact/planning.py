@@ -17,7 +17,13 @@ from typing import TYPE_CHECKING
 from pydantic import Field
 
 from gymact.evidence import digest
-from gymact.models import ActuationIntent, ActuationResult, CanonicalInputModel, FrozenModel, Receipt
+from gymact.models import (
+    ActuationIntent,
+    ActuationResult,
+    CanonicalInputModel,
+    FrozenModel,
+    Receipt,
+)
 
 if TYPE_CHECKING:
     from gymact.kernel import GymAct
