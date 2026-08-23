@@ -13,9 +13,7 @@ from gymact.explore_robustness_bound_calibration import (
 class CalibrationCourt(unittest.TestCase):
     def test_exact_coverage_and_width(self) -> None:
         subject = Subject("seanchatmangpt/gymact@" + "a" * 40)
-        bound = RobustnessBound(
-            Fraction(0), Fraction(1), Fraction(1), "IPS", "b" * 64
-        )
+        bound = RobustnessBound(Fraction(0), Fraction(1), Fraction(1), "IPS", "b" * 64)
         truths = (Fraction(0), Fraction(1, 2), Fraction(2))
         cases = tuple(
             BoundCase(
