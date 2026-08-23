@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 from .calibration import Calibration
-from .refusal import Refused, REFUSED_DIVERGENT_FRONTIER, REFUSED_STALE_CALIBRATION
+from .refusal import REFUSED_DIVERGENT_FRONTIER, REFUSED_STALE_CALIBRATION, Refused
 
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 
@@ -31,6 +31,9 @@ def current(snapshots: tuple[CalibrationSnapshot, ...]) -> CalibrationSnapshot:
     return latest[0]
 
 
-def require_current(candidate: CalibrationSnapshot, snapshots: tuple[CalibrationSnapshot, ...]) -> None:
+def require_current(
+    candidate: CalibrationSnapshot,
+    snapshots: tuple[CalibrationSnapshot, ...],
+) -> None:
     if candidate != current(snapshots):
         raise Refused(REFUSED_STALE_CALIBRATION, candidate.digest)
