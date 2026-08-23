@@ -5,8 +5,8 @@ from .calibration import Calibration
 from .engine import Qualification, qualify
 from .independence import IndependenceProof
 from .replay import replay
-from .sensor import SensorIdentity
 from .selectors import Selector
+from .sensor import SensorIdentity
 from .subject import Subject
 
 __all__ = [
@@ -16,8 +16,8 @@ __all__ = [
     "Calibration",
     "IndependenceProof",
     "Qualification",
-    "SensorIdentity",
     "Selector",
+    "SensorIdentity",
     "Subject",
     "qualify",
     "replay",
