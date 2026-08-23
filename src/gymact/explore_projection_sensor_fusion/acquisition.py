@@ -13,5 +13,10 @@ class AcquisitionCandidate:
     latency_ms: int
 
     def __post_init__(self) -> None:
-        if not self.sensor_id or min(self.expected_discrimination, self.independence_gain, self.cost) < 0 or self.latency_ms < 0:
+        invalid_score = min(
+            self.expected_discrimination,
+            self.independence_gain,
+            self.cost,
+        ) < 0
+        if not self.sensor_id or invalid_score or self.latency_ms < 0:
             raise FusionRefused("REFUSED_INVALID_ACQUISITION_CANDIDATE")
