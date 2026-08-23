@@ -1,10 +1,10 @@
 from fractions import Fraction
 
 from gymact.explore_independence_decision import (
+    Candidate,
     InformationOption,
     LossMatrix,
     Strategy,
-    Candidate,
     best_option,
     decide,
     select,
@@ -12,7 +12,11 @@ from gymact.explore_independence_decision import (
 
 
 def test_asymmetric_loss_can_prefer_defer() -> None:
-    loss = LossMatrix(false_independent=Fraction(10), false_dependent=Fraction(1), defer=Fraction(1, 2))
+    loss = LossMatrix(
+        false_independent=Fraction(10),
+        false_dependent=Fraction(1),
+        defer=Fraction(1, 2),
+    )
     result = decide(Fraction(4, 5), loss)
     assert result.decision.value == "DEFER"
 
