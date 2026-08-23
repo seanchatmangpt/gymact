@@ -24,12 +24,8 @@ class ChicagoCourt(unittest.TestCase):
         )
         proofs = (IndependenceProof(a, b, "3" * 64),)
         candidates = (
-            AcquisitionCandidate(
-                "a", Fraction(3, 5), Fraction(1, 5), Fraction(1, 10), 15
-            ),
-            AcquisitionCandidate(
-                "b", Fraction(4, 5), Fraction(4, 5), Fraction(1, 2), 30
-            ),
+            AcquisitionCandidate("a", Fraction(3, 5), Fraction(1, 5), Fraction(1, 10), 15),
+            AcquisitionCandidate("b", Fraction(4, 5), Fraction(4, 5), Fraction(1, 2), 30),
         )
         result = qualify(
             Subject("seanchatmangpt/gymact@" + "a" * 40),
