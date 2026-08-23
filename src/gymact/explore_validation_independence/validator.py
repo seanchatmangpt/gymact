@@ -1,6 +1,8 @@
 from dataclasses import dataclass
+
 from .provenance import Provenance
 from .refusal import Refused
+
 
 @dataclass(frozen=True)
 class ValidatorWitness:

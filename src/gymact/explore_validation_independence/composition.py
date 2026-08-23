@@ -1,14 +1,22 @@
 from enum import StrEnum
-from .evidence import Evidence
+
 from .effective_independence import IndependenceScore
+from .evidence import Evidence
 from .interval import Interval
 from .refusal import Refused
+
 
 class CompositionMode(StrEnum):
     CONSERVATIVE = "CONSERVATIVE"
     INDEPENDENCE_QUALIFIED = "INDEPENDENCE_QUALIFIED"
 
-def compose(left: Evidence, right: Evidence, mode: CompositionMode, score: IndependenceScore | None = None) -> Interval:
+
+def compose(
+    left: Evidence,
+    right: Evidence,
+    mode: CompositionMode,
+    score: IndependenceScore | None = None,
+) -> Interval:
     if left.subject != right.subject:
         raise Refused("FOREIGN_SUBJECT_EVIDENCE")
     if mode is CompositionMode.CONSERVATIVE:

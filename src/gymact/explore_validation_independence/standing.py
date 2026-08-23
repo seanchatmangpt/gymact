@@ -1,10 +1,12 @@
 from enum import IntEnum
 
+
 class Standing(IntEnum):
     UNKNOWN = 0
     PARTIAL_ALIVE = 1
     ALIVE = 2
     BUILD_BROKEN = 3
+
 
 def combine(values: tuple[Standing, ...]) -> Standing:
     if not values:

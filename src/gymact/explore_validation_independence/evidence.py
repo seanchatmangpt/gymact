@@ -1,8 +1,10 @@
 from dataclasses import dataclass
+
 from .interval import Interval
 from .provenance import Provenance
-from .subject import Subject
 from .refusal import Refused
+from .subject import Subject
+
 
 @dataclass(frozen=True)
 class Evidence:

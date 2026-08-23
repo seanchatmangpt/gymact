@@ -1,13 +1,16 @@
 from dataclasses import dataclass
 from enum import StrEnum
 from fractions import Fraction
+
 from .composition import CompositionMode
+
 
 class Strategy(StrEnum):
     MAX_COVERAGE = "MAX_COVERAGE"
     MIN_WIDTH = "MIN_WIDTH"
     MIN_OVERLAP = "MIN_OVERLAP"
     MINIMAX_MISS = "MINIMAX_MISS"
+
 
 @dataclass(frozen=True)
 class Candidate:
@@ -17,6 +20,7 @@ class Candidate:
     overlap: Fraction
     miss: Fraction
     cost: int
+
 
 def select(candidates: tuple[Candidate, ...], strategy: Strategy) -> Candidate:
     if not candidates:

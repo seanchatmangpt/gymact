@@ -1,6 +1,7 @@
 from .calibration import Calibration
 from .refusal import Refused
 
+
 def current_calibration(calibrations: tuple[Calibration, ...]) -> Calibration:
     if not calibrations:
         raise Refused("NO_CALIBRATION")

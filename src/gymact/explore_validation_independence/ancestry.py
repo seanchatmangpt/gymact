@@ -1,6 +1,8 @@
 from dataclasses import dataclass
+
 from .evidence import Evidence
 from .refusal import Refused
+
 
 @dataclass(frozen=True)
 class EvidenceGraph:
@@ -16,6 +18,7 @@ class EvidenceGraph:
                 raise Refused("MISSING_EVIDENCE_PARENT", ",".join(sorted(missing)))
         visiting: set[str] = set()
         visited: set[str] = set()
+
         def walk(node_id: str) -> None:
             if node_id in visiting:
                 raise Refused("CYCLIC_EVIDENCE_GRAPH", node_id)
@@ -26,6 +29,7 @@ class EvidenceGraph:
                 walk(parent)
             visiting.remove(node_id)
             visited.add(node_id)
+
         for node_id in by_id:
             walk(node_id)
 
