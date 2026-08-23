@@ -1,0 +1,95 @@
+name: Fortune-5 planning crown
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/gymact/planning.py"
+      - "src/gymact/action_contract.py"
+      - "src/gymact/brce.py"
+      - "src/gymact/kernel.py"
+      - "src/gymact/models.py"
+      - "tests/test_plan_provenance.py"
+      - "tests/test_plan_provenance_enterprise.py"
+      - "scripts/benchmark_plan_provenance.py"
+      - ".github/workflows/fortune5-planning-crown.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gymact-f5-planning-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualify:
+    name: Python ${{ matrix.python }} concurrency / replay / evidence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    env:
+      UV_LINK_MODE: copy
+      GYMACT_UV_VERSION: 0.11.32
+      PYTHONWARNINGS: error::ResourceWarning
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Admit exact subject
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="${{ github.event.pull_request.head.sha || github.sha }}"
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$expected"
+          printf 'gymact_subject_sha=%s\n' "$actual"
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: ${{ matrix.python }}
+
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
+        with:
+          version: ${{ env.GYMACT_UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+
+      - name: Resolve exact dependency graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uv --version | awk '{print $2}')" = "$GYMACT_UV_VERSION"
+          uv sync --group dev
+
+      - name: Execute planning concurrency and replay court
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run python -m compileall -q src/gymact
+          uv run python -m pytest -vv \
+            tests/test_plan_provenance.py \
+            tests/test_plan_provenance_enterprise.py
+
+      - name: Execute machine-readable benchmark
+        if: matrix.python == '3.12'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/fortune5
+          uv run python scripts/benchmark_plan_provenance.py | tee artifacts/fortune5/plan-provenance-benchmark.json
+          uv run python -m json.tool artifacts/fortune5/plan-provenance-benchmark.json >/dev/null
+
+      - name: Retain qualification evidence
+        if: always() && matrix.python == '3.12'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: gymact-fortune5-planning-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/fortune5/
+          if-no-files-found: error
+          retention-days: 30
