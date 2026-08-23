@@ -16,6 +16,7 @@ from gymact.action_contract import (
 )
 from gymact.authority import AllowListAuthorityResolver
 from gymact.brce import BRCEBroker, BrokerRequest
+from gymact.evidence import digest
 from gymact.models import MaterializationIntent, Standing
 from gymact.planning import (
     PlanProvenance,
@@ -113,6 +114,15 @@ def _request(episode_id: str, key: str) -> BrokerRequest:
     )
 
 
+def _assert_binding_matches_transition(result: object, plan_digest: str) -> None:
+    planned = result  # type: ignore[assignment]
+    assert planned.binding.plan_digest == plan_digest
+    assert planned.binding.receipt_id == planned.transition.receipt.receipt_id
+    assert planned.binding.receipt_digest == digest(
+        planned.transition.receipt.model_dump(mode="json")
+    )
+
+
 @pytest.mark.asyncio
 async def test_128_concurrent_exact_replays_produce_one_consequence() -> None:
     runtime, episode_id = await _runtime()
@@ -124,6 +134,8 @@ async def test_128_concurrent_exact_replays_produce_one_consequence() -> None:
     )
 
     assert all(result.transition.standing is Standing.ALIVE for result in results)
+    # Exact semantic idempotency collapses all concurrent attempts onto one
+    # underlying consequence/actuation receipt.
     assert len(
         {
             result.transition.actuation.receipt.receipt_id
@@ -131,7 +143,13 @@ async def test_128_concurrent_exact_replays_produce_one_consequence() -> None:
             if result.transition.actuation is not None
         }
     ) == 1
-    assert len({result.binding.binding_digest for result in results}) == 1
+    # Each replay is nevertheless a newly verified transition with its own
+    # receipt and therefore its own plan->receipt binding. This is desirable:
+    # replay evidence is not erased merely because the consequence was reused.
+    assert len({result.transition.receipt.receipt_id for result in results}) == len(results)
+    assert len({result.binding.binding_digest for result in results}) == len(results)
+    for result in results:
+        _assert_binding_matches_transition(result, planned.plan_provenance.digest)
     assert (await runtime.observe(episode_id)).state == {"count": 1}
     assert runtime.verify_evidence_chain()
 
@@ -161,6 +179,13 @@ async def test_concurrent_plan_drift_can_never_double_actuate_same_key() -> None
         result.transition.receipt.reason == "IDEMPOTENCY_KEY_CONFLICT"
         for result in refused
     )
+    assert len(
+        {
+            result.transition.actuation.receipt.receipt_id
+            for result in alive
+            if result.transition.actuation is not None
+        }
+    ) == 1
     assert (await runtime.observe(episode_id)).state == {"count": 1}
     assert runtime.verify_evidence_chain()
 
@@ -176,8 +201,18 @@ async def test_one_thousand_replays_are_stable_and_bounded() -> None:
     elapsed = perf_counter() - started
 
     assert all(result.transition.standing is Standing.ALIVE for result in results)
-    assert len({result.binding.binding_digest for result in results}) == 1
+    assert len(
+        {
+            result.transition.actuation.receipt.receipt_id
+            for result in results
+            if result.transition.actuation is not None
+        }
+    ) == 1
+    assert len({result.transition.receipt.receipt_id for result in results}) == len(results)
+    for result in results:
+        _assert_binding_matches_transition(result, planned.plan_provenance.digest)
     assert (await runtime.observe(episode_id)).state == {"count": 1}
+    assert runtime.verify_evidence_chain()
     # Anti-collapse budget only; detailed latency is emitted by the workflow benchmark.
     assert elapsed < 30.0
 
@@ -197,6 +232,7 @@ async def test_128_concurrent_requests_without_authority_are_all_refused_without
         result.transition.receipt.reason == "AUTHORITY_NOT_ADMITTED"
         for result in results
     )
+    assert all(result.transition.actuation is None for result in results)
     assert (await runtime.observe(episode_id)).state == {"count": 0}
 
 
@@ -215,12 +251,14 @@ def test_plan_binding_twenty_thousand_operations_has_no_catastrophic_regression(
     assert 20_000 / max(elapsed, 1e-9) > 1_000
 
 
-def test_receipt_binding_refuses_tampered_plan_digest() -> None:
-    provenance = _plan("1")
-    request = _request("offline-receipt-episode", "receipt-tamper")
-    planned = bind_plan(request, provenance)
-    # The type-level validator already proves the powerless prepared action is
-    # bound correctly. This test targets the second boundary: a receipt cannot
-    # be retroactively attributed to another plan digest.
-    assert planned.request.prepared.planning_provenance_digest == provenance.digest
-    assert PlanReceiptBinding.model_config.get("frozen") is True
+@pytest.mark.asyncio
+async def test_receipt_binding_refuses_tampered_plan_digest() -> None:
+    runtime, episode_id = await _runtime()
+    planned = bind_plan(_request(episode_id, "receipt-tamper"), _plan("1"))
+    result = await execute_planned(BRCEBroker(runtime), planned)
+    tampered = result.transition.receipt.model_copy(
+        update={"planning_provenance_digest": _plan("tampered").digest}
+    )
+
+    with pytest.raises(ValueError, match="RECEIPT_PLAN_PROVENANCE_MISMATCH"):
+        PlanReceiptBinding.manufacture(planned.plan_provenance, tampered)
