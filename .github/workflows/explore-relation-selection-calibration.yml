@@ -1,0 +1,34 @@
+name: EXPLORE Relation Selection Calibration Exact Head
+
+on:
+  pull_request:
+    paths:
+      - 'src/gymact/explore_relation_selection_calibration/**'
+      - 'tests/explore_relation_selection_calibration/**'
+      - '.github/workflows/explore-relation-selection-calibration.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Assert exact head
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - uses: astral-sh/setup-uv@v6
+      - name: Dependency closure
+        run: uv sync --group dev
+      - name: Compile
+        run: uv run python -m compileall -q src/gymact/explore_relation_selection_calibration tests/explore_relation_selection_calibration
+      - name: Behavioral differential refusal Chicago courts
+        run: uv run pytest -q tests/explore_relation_selection_calibration
+      - name: Static
+        run: uv run ruff check src/gymact/explore_relation_selection_calibration tests/explore_relation_selection_calibration
+      - name: Format
+        run: uv run ruff format --check src/gymact/explore_relation_selection_calibration tests/explore_relation_selection_calibration
+      - name: No ambient consequential actuation
+        run: "! grep -REn 'requests\\.(post|put|patch|delete)|subprocess\\.|os\\.system|boto3|azure\\.|google\\.cloud' src/gymact/explore_relation_selection_calibration"
