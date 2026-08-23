@@ -1,5 +1,6 @@
-from enum import StrEnum
 from collections.abc import Iterable
+from enum import StrEnum
+
 
 class Standing(StrEnum):
     UNKNOWN = "UNKNOWN"
@@ -10,7 +11,12 @@ class Standing(StrEnum):
     UNSUPPORTED = "UNSUPPORTED"
 
 
-def combine(states: Iterable[Standing], *, realization_admitted: bool, drifted: bool) -> Standing:
+def combine(
+    states: Iterable[Standing],
+    *,
+    realization_admitted: bool,
+    drifted: bool,
+) -> Standing:
     rows = tuple(states)
     if Standing.BUILD_BROKEN in rows:
         return Standing.BUILD_BROKEN
@@ -18,7 +24,8 @@ def combine(states: Iterable[Standing], *, realization_admitted: bool, drifted: 
         return Standing.BLOCKED
     if drifted:
         return Standing.PARTIAL_ALIVE
-    if realization_admitted and rows and all(row in {Standing.ALIVE, Standing.PARTIAL_ALIVE} for row in rows):
+    positive = {Standing.ALIVE, Standing.PARTIAL_ALIVE}
+    if realization_admitted and rows and all(row in positive for row in rows):
         return Standing.PARTIAL_ALIVE
     if Standing.UNSUPPORTED in rows:
         return Standing.UNSUPPORTED

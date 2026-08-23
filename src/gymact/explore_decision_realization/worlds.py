@@ -3,6 +3,7 @@ from enum import StrEnum
 
 from .standing import Standing
 
+
 class FailureWorld(StrEnum):
     SELECTIVE_LABEL_DROPOUT = "SELECTIVE_LABEL_DROPOUT"
     POLICY_DRIFT = "POLICY_DRIFT"
@@ -11,6 +12,7 @@ class FailureWorld(StrEnum):
     DEPENDENCY_FAILURE = "DEPENDENCY_FAILURE"
     AMBIGUOUS_DO = "AMBIGUOUS_DO"
     REPLAY_TAMPER = "REPLAY_TAMPER"
+
 
 @dataclass(frozen=True, slots=True)
 class World:

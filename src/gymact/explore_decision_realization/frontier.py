@@ -4,7 +4,9 @@ from .calibration import DecisionRealizationCalibration
 from .errors import Refused
 
 
-def current_calibration(items: Iterable[DecisionRealizationCalibration]) -> DecisionRealizationCalibration:
+def current_calibration(
+    items: Iterable[DecisionRealizationCalibration],
+) -> DecisionRealizationCalibration:
     rows = tuple(items)
     if not rows:
         raise Refused("NO_REALIZATION_CALIBRATION")

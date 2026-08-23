@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from .errors import Refused
 
+
 @dataclass(frozen=True, slots=True)
 class DeferRealization:
     prior_risk: float
@@ -10,7 +11,12 @@ class DeferRealization:
     acquisition_cost: float
 
     def __post_init__(self) -> None:
-        if min(self.prior_risk, self.posterior_risk, self.information_gain, self.acquisition_cost) < 0:
+        if min(
+            self.prior_risk,
+            self.posterior_risk,
+            self.information_gain,
+            self.acquisition_cost,
+        ) < 0:
             raise Refused("INVALID_DEFER_REALIZATION")
 
     @property

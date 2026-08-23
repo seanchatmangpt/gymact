@@ -2,10 +2,21 @@ from collections.abc import Iterable
 
 from .errors import Refused
 
-REQUIRED = frozenset({
-    "DISCOVERY", "CONFORMANCE", "SIMULATION", "PREDICTION", "OPTIMIZATION",
-    "INTERVENTION", "MONITORING", "EVENT_CENTRIC", "OBJECT_CENTRIC", "DECLARATIVE", "PROCEDURAL",
-})
+REQUIRED = frozenset(
+    {
+        "DISCOVERY",
+        "CONFORMANCE",
+        "SIMULATION",
+        "PREDICTION",
+        "OPTIMIZATION",
+        "INTERVENTION",
+        "MONITORING",
+        "EVENT_CENTRIC",
+        "OBJECT_CENTRIC",
+        "DECLARATIVE",
+        "PROCEDURAL",
+    }
+)
 
 
 def require_methodologies(methodologies: Iterable[str]) -> frozenset[str]:

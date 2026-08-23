@@ -4,6 +4,7 @@ from .decision import Decision
 from .errors import Refused
 from .outcome import RealizedOutcome
 
+
 @dataclass(frozen=True, slots=True)
 class RealizationLoss:
     false_independent: float = 1.0
@@ -20,5 +21,8 @@ class RealizationLoss:
         elif decision is Decision.DEPENDENT:
             classification = self.false_dependent if outcome.actually_independent else 0.0
         else:
-            classification = max(0.0, self.defer_base + outcome.acquisition_cost - outcome.information_gain)
+            classification = max(
+                0.0,
+                self.defer_base + outcome.acquisition_cost - outcome.information_gain,
+            )
         return classification + outcome.consequence_cost

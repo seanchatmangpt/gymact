@@ -4,6 +4,7 @@ from .decision import DecisionIdentity
 from .errors import Refused
 from .subject import Subject
 
+
 @dataclass(frozen=True, slots=True)
 class RealizedOutcome:
     subject: Subject

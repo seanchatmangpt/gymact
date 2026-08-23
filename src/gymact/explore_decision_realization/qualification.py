@@ -6,6 +6,7 @@ from .methodology import require_methodologies
 from .receipt import Receipt, manufacture
 from .standing import Standing, combine
 
+
 @dataclass(frozen=True, slots=True)
 class Qualification:
     standing: Standing
@@ -22,7 +23,12 @@ def qualify(
     drifted: bool = False,
 ) -> Qualification:
     require_methodologies(methodologies)
-    standing = combine(dependencies, realization_admitted=calibration.admitted, drifted=drifted)
+    standing = combine(
+        dependencies,
+        realization_admitted=calibration.admitted,
+        drifted=drifted,
+    )
     if standing in {Standing.BUILD_BROKEN, Standing.BLOCKED}:
         return Qualification(standing, None)
-    return Qualification(standing, manufacture(decision, strategy, standing, calibration.generation))
+    receipt = manufacture(decision, strategy, standing, calibration.generation)
+    return Qualification(standing, receipt)

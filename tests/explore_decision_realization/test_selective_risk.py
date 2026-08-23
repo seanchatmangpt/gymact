@@ -1,6 +1,13 @@
 import pytest
 
-from gymact.explore_decision_realization import ObservationPropensity, Refused, SelectiveLoss, brier_score, horvitz_thompson_risk, self_normalized_risk
+from gymact.explore_decision_realization import (
+    ObservationPropensity,
+    Refused,
+    SelectiveLoss,
+    brier_score,
+    horvitz_thompson_risk,
+    self_normalized_risk,
+)
 
 
 def test_selective_observation_correction_and_proper_score() -> None:

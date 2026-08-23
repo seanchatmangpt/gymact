@@ -2,13 +2,20 @@ from dataclasses import dataclass
 
 from .errors import Refused
 
+
 @dataclass(frozen=True, slots=True)
 class CUSUMState:
     positive: float = 0.0
     negative: float = 0.0
 
 
-def update(state: CUSUMState, observed_loss: float, target_loss: float, slack: float, threshold: float) -> tuple[CUSUMState, bool]:
+def update(
+    state: CUSUMState,
+    observed_loss: float,
+    target_loss: float,
+    slack: float,
+    threshold: float,
+) -> tuple[CUSUMState, bool]:
     if min(observed_loss, target_loss, slack, threshold) < 0 or threshold == 0:
         raise Refused("INVALID_DRIFT_PARAMETER")
     residual = observed_loss - target_loss

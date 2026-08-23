@@ -5,7 +5,10 @@ from .errors import Refused
 from .outcome import RealizedOutcome
 
 
-def admit_outcomes(decision: DecisionIdentity, outcomes: Iterable[RealizedOutcome]) -> tuple[RealizedOutcome, ...]:
+def admit_outcomes(
+    decision: DecisionIdentity,
+    outcomes: Iterable[RealizedOutcome],
+) -> tuple[RealizedOutcome, ...]:
     admitted: list[RealizedOutcome] = []
     seen: dict[str, RealizedOutcome] = {}
     for outcome in outcomes:

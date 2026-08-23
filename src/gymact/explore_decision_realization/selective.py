@@ -1,7 +1,8 @@
-from dataclasses import dataclass
 from collections.abc import Iterable
+from dataclasses import dataclass
 
 from .errors import Refused
+
 
 @dataclass(frozen=True, slots=True)
 class SelectiveLoss:
@@ -26,4 +27,7 @@ def self_normalized_risk(rows: Iterable[SelectiveLoss]) -> float:
         raise Refused("INSUFFICIENT_REALIZATION_SUPPORT")
     weights = tuple(1.0 / row.propensity for row in samples)
     denominator = sum(weights)
-    return sum(weight * row.loss for weight, row in zip(weights, samples, strict=True)) / denominator
+    weighted_loss = sum(
+        weight * row.loss for weight, row in zip(weights, samples, strict=True)
+    )
+    return weighted_loss / denominator

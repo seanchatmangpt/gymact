@@ -1,10 +1,11 @@
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 from .errors import Refused
 
 _SHA40 = re.compile(r"^[0-9a-f]{40}$")
 _DIGEST64 = re.compile(r"^[0-9a-f]{64}$")
+
 
 @dataclass(frozen=True, slots=True)
 class Subject:

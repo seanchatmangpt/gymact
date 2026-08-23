@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from .errors import Refused
 
+
 @dataclass(frozen=True, slots=True)
 class ObservedAlternative:
     candidate: str
@@ -9,7 +10,10 @@ class ObservedAlternative:
     observed: bool = True
 
 
-def observed_regret(chosen: ObservedAlternative, alternatives: tuple[ObservedAlternative, ...]) -> float:
+def observed_regret(
+    chosen: ObservedAlternative,
+    alternatives: tuple[ObservedAlternative, ...],
+) -> float:
     if not chosen.observed:
         raise Refused("UNOBSERVED_CHOSEN_OUTCOME")
     observed = tuple(item for item in alternatives if item.observed)

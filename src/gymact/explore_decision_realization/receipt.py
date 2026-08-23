@@ -1,9 +1,10 @@
-from dataclasses import dataclass
 import hashlib
 import json
+from dataclasses import dataclass
 
 from .decision import DecisionIdentity
 from .standing import Standing
+
 
 @dataclass(frozen=True, slots=True)
 class Receipt:
@@ -33,5 +34,17 @@ class Receipt:
         return hashlib.sha256(payload).hexdigest()
 
 
-def manufacture(decision: DecisionIdentity, strategy: str, standing: Standing, realization_generation: int) -> Receipt:
-    return Receipt(decision.subject.key, decision.decision_id, decision.generation, strategy, standing, realization_generation)
+def manufacture(
+    decision: DecisionIdentity,
+    strategy: str,
+    standing: Standing,
+    realization_generation: int,
+) -> Receipt:
+    return Receipt(
+        decision.subject.key,
+        decision.decision_id,
+        decision.generation,
+        strategy,
+        standing,
+        realization_generation,
+    )

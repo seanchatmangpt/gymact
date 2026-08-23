@@ -2,6 +2,7 @@ from enum import StrEnum
 
 from .errors import Refused
 
+
 class ActionClass(StrEnum):
     OBSERVE = "OBSERVE"
     SELECT = "SELECT"
