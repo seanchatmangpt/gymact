@@ -32,10 +32,6 @@ def pareto(candidates: tuple[Candidate, ...]) -> tuple[Candidate, ...]:
     survivors = (
         candidate
         for candidate in candidates
-        if not any(
-            dominates(other, candidate)
-            for other in candidates
-            if other != candidate
-        )
+        if not any(dominates(other, candidate) for other in candidates if other != candidate)
     )
     return tuple(sorted(survivors, key=lambda candidate: candidate.identity))

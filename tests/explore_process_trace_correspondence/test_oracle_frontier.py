@@ -13,12 +13,8 @@ class OracleFrontierCourt(unittest.TestCase):
         subject = Subject("owner/repo@" + "e" * 40)
         trace = Trace(subject, "BEAM", (Event("A", "o"),))
         with self.assertRaises(Refused):
-            require_independent(
-                (OracleWitness("impl-a", trace), OracleWitness("impl-a", trace))
-            )
-        require_independent(
-            (OracleWitness("impl-a", trace), OracleWitness("impl-b", trace))
-        )
+            require_independent((OracleWitness("impl-a", trace), OracleWitness("impl-a", trace)))
+        require_independent((OracleWitness("impl-a", trace), OracleWitness("impl-b", trace)))
         strong = Candidate("strong", 1, 1, 1.0, 2)
         weak = Candidate("weak", 0, 1, 0.5, 3)
         self.assertEqual(pareto((weak, strong)), (strong,))
