@@ -1,0 +1,35 @@
+name: EXPLORE Composition Selector Calibration Exact Head
+
+on:
+  pull_request:
+    paths:
+      - "src/gymact/explore_composition_selector_calibration/**"
+      - "tests/explore_composition_selector_calibration/**"
+      - ".github/workflows/explore-composition-selector-calibration.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Assert exact head
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - uses: astral-sh/setup-uv@v6
+      - name: Resolve locked dev closure
+        run: uv sync --group dev
+      - name: Compile
+        run: uv run python -m compileall -q src/gymact/explore_composition_selector_calibration tests/explore_composition_selector_calibration
+      - name: Behavioral and Chicago courts
+        run: uv run pytest -q tests/explore_composition_selector_calibration
+      - name: Static
+        run: uv run ruff check src/gymact/explore_composition_selector_calibration tests/explore_composition_selector_calibration
+      - name: Format
+        run: uv run ruff format --check src/gymact/explore_composition_selector_calibration tests/explore_composition_selector_calibration
+      - name: Refuse ambient consequential actuation
+        run: |
+          ! grep -REn 'requests\.(post|put|patch|delete)|subprocess\.|os\.system|boto3|azure\.|google\.cloud' src/gymact/explore_composition_selector_calibration
