@@ -16,7 +16,7 @@ class Subject:
     semantic_digest: str
 
     @classmethod
-    def parse(cls, repo: str, sha: str, semantic_digest: str) -> "Subject":
+    def parse(cls, repo: str, sha: str, semantic_digest: str) -> Subject:
         require("/" in repo and not repo.startswith("/"), "INVALID_REPO")
         require(bool(_SHA.fullmatch(sha)), "INVALID_SHA")
         require(bool(_DIGEST.fullmatch(semantic_digest)), "INVALID_SEMANTIC_DIGEST")
