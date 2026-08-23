@@ -1,10 +1,10 @@
 import unittest
 from fractions import Fraction
 
+from _fixtures import fixtures
+
 from gymact.explore_semantic_projection_currentness.roundtrip import witness
 from gymact.explore_semantic_projection_currentness.subject import Refusal
-
-from _fixtures import fixtures
 
 
 class Court(unittest.TestCase):

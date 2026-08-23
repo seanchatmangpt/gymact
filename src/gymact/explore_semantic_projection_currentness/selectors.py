@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from fractions import Fraction
 
 from .representation import RepresentationCandidate
@@ -9,7 +9,7 @@ from .roundtrip import RoundTripWitness
 from .subject import Refusal
 
 
-class SelectorKind(str, Enum):
+class SelectorKind(StrEnum):
     MAX_FIDELITY = "MAX_FIDELITY"
     MIN_MIGRATION_COST = "MIN_MIGRATION_COST"
     MAX_REVERSIBILITY = "MAX_REVERSIBILITY"
@@ -26,8 +26,18 @@ class Score:
 
 
 def score(candidate: RepresentationCandidate, witness: RoundTripWitness | None) -> Score:
-    loss = Fraction(0) if witness is None else (witness.forward.loss + witness.backward.loss).total
-    return Score(candidate, loss, candidate.migration_cost, candidate.runtime_cost, int(candidate.reversible))
+    loss = (
+        Fraction(0)
+        if witness is None
+        else (witness.forward.loss + witness.backward.loss).total
+    )
+    return Score(
+        candidate,
+        loss,
+        candidate.migration_cost,
+        candidate.runtime_cost,
+        int(candidate.reversible),
+    )
 
 
 def select(kind: SelectorKind, scores: tuple[Score, ...]) -> Score:

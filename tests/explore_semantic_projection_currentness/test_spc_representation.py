@@ -1,11 +1,11 @@
 import unittest
 
+from _fixtures import fixtures
+
 from gymact.explore_semantic_projection_currentness.representation import (
     RepresentationCandidate,
     RepresentationKind,
 )
-
-from _fixtures import fixtures
 
 
 class Court(unittest.TestCase):

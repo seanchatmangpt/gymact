@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 from .subject import Refusal
 
 
-class StorageKind(str, Enum):
+class StorageKind(StrEnum):
     MEMORY = "MEMORY"
     JSONL = "JSONL"
     SQLITE = "SQLITE"
@@ -29,7 +29,8 @@ CANDIDATES = (
 
 def select_storage(*, durable: bool, transactional: bool) -> StorageCapability:
     admitted = [
-        c for c in CANDIDATES
+        c
+        for c in CANDIDATES
         if (not durable or c.durable) and (not transactional or c.transactional)
     ]
     if not admitted:

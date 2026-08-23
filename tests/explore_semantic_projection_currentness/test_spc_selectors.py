@@ -1,13 +1,13 @@
 import unittest
 
+from _fixtures import fixtures
+
 from gymact.explore_semantic_projection_currentness.representation import RepresentationKind
 from gymact.explore_semantic_projection_currentness.selectors import (
     SelectorKind,
     score,
     select,
 )
-
-from _fixtures import fixtures
 
 
 class Court(unittest.TestCase):

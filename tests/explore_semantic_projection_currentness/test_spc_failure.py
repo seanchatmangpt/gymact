@@ -1,10 +1,10 @@
 import unittest
 
+from _fixtures import DIGEST, SHA, fixtures
+
 from gymact.explore_semantic_projection_currentness.currentness import ProjectionEpoch
 from gymact.explore_semantic_projection_currentness.failure import seeded_projection_drift
 from gymact.explore_semantic_projection_currentness.subject import Subject
-
-from _fixtures import DIGEST, SHA, fixtures
 
 
 class Court(unittest.TestCase):

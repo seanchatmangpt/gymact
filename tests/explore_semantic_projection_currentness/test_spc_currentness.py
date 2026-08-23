@@ -1,9 +1,9 @@
 import unittest
 
+from _fixtures import DIGEST, SHA
+
 from gymact.explore_semantic_projection_currentness.currentness import ProjectionEpoch, Transition
 from gymact.explore_semantic_projection_currentness.subject import Refusal, Subject
-
-from _fixtures import DIGEST, SHA
 
 
 class Court(unittest.TestCase):

@@ -1,14 +1,17 @@
 import unittest
 from dataclasses import replace
 
+from _fixtures import SHA
+
 from gymact.explore_semantic_projection_currentness.receipt import (
     ProjectionReceipt,
     require_do,
 )
-from gymact.explore_semantic_projection_currentness.storage import StorageKind, select_storage
+from gymact.explore_semantic_projection_currentness.storage import (
+    StorageKind,
+    select_storage,
+)
 from gymact.explore_semantic_projection_currentness.subject import Refusal, Subject
-
-from _fixtures import SHA
 
 
 class Court(unittest.TestCase):
@@ -25,7 +28,8 @@ class Court(unittest.TestCase):
             "PARTIAL_ALIVE",
         )
         self.assertTrue(receipt.replay(receipt.digest))
-        self.assertFalse(replace(receipt, standing="REQUALIFYING").replay(receipt.digest))
+        changed = replace(receipt, standing="REQUALIFYING")
+        self.assertFalse(changed.replay(receipt.digest))
         with self.assertRaisesRegex(Refusal, "REFUSED_UNRECEIPTED_ACTUATION"):
             require_do()
 

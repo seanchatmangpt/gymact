@@ -1,12 +1,12 @@
 import unittest
 
+from _fixtures import DIGEST, SHA, fixtures
+
 from gymact.explore_semantic_projection_currentness.currentness import ProjectionEpoch
 from gymact.explore_semantic_projection_currentness.engine import construct_plan
 from gymact.explore_semantic_projection_currentness.selectors import SelectorKind
 from gymact.explore_semantic_projection_currentness.storage import StorageKind
 from gymact.explore_semantic_projection_currentness.subject import Refusal, Subject
-
-from _fixtures import DIGEST, SHA, fixtures
 
 
 class Court(unittest.TestCase):

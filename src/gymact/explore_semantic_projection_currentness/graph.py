@@ -19,6 +19,7 @@ class ConversionPath:
     @property
     def loss(self):
         from .loss import LossVector
+
         total = LossVector()
         for edge in self.converters:
             total = total + edge.loss
@@ -32,13 +33,19 @@ class ConversionGraph:
             raise Refusal("REFUSED_DUPLICATE_CONVERTER")
         self.converters = converters
 
-    def shortest(self, source: RepresentationCandidate, target: RepresentationCandidate) -> ConversionPath:
+    def shortest(
+        self,
+        source: RepresentationCandidate,
+        target: RepresentationCandidate,
+    ) -> ConversionPath:
         if source.fingerprint == target.fingerprint:
             return ConversionPath(())
         adjacency: dict[str, list[Converter]] = {}
         for edge in self.converters:
             adjacency.setdefault(edge.source.fingerprint, []).append(edge)
-        queue: list[tuple[int, int, str, tuple[Converter, ...]]] = [(0, 0, source.fingerprint, ())]
+        queue: list[tuple[int, int, str, tuple[Converter, ...]]] = [
+            (0, 0, source.fingerprint, ())
+        ]
         best: dict[str, int] = {}
         serial = 0
         while queue:
@@ -50,5 +57,11 @@ class ConversionGraph:
                 return ConversionPath(path)
             for edge in sorted(adjacency.get(node, ()), key=lambda e: e.fingerprint):
                 serial += 1
-                heappush(queue, (cost + edge.compute_cost, serial, edge.target.fingerprint, path + (edge,)))
+                item = (
+                    cost + edge.compute_cost,
+                    serial,
+                    edge.target.fingerprint,
+                    (*path, edge),
+                )
+                heappush(queue, item)
         raise Refusal("REFUSED_NO_CONVERSION_PATH")

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import replace
 import hashlib
 import random
+from dataclasses import replace
 
 from .currentness import ProjectionEpoch
 from .semantic_type import SemanticType
@@ -23,4 +23,9 @@ def seeded_projection_drift(
         unit = f"urn:qudt:unit:drift:{seed}"
         return replace(semantic_type, unit_iri=unit), epoch, mode
     new_projection = hashlib.sha256(f"{epoch.projection_digest}:{seed}".encode()).hexdigest()
-    return semantic_type, replace(epoch, generation=epoch.generation + 1, projection_digest=new_projection), mode
+    next_epoch = replace(
+        epoch,
+        generation=epoch.generation + 1,
+        projection_digest=new_projection,
+    )
+    return semantic_type, next_epoch, mode

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
 import json
+from dataclasses import dataclass
 
 from .subject import Refusal, Subject
 
@@ -23,7 +23,12 @@ class ProjectionEpoch:
 
     @property
     def token(self) -> str:
-        payload = (self.subject.identity, self.generation, self.semantic_digest, self.projection_digest)
+        payload = (
+            self.subject.identity,
+            self.generation,
+            self.semantic_digest,
+            self.projection_digest,
+        )
         return hashlib.sha256(json.dumps(payload, separators=(",", ":")).encode()).hexdigest()
 
 

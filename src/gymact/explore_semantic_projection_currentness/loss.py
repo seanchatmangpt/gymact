@@ -28,5 +28,7 @@ class LossVector:
     def lossless(self) -> bool:
         return self.total == 0
 
-    def __add__(self, other: "LossVector") -> "LossVector":
-        return LossVector(*(a + b for a, b in zip(self.components, other.components, strict=True)))
+    def __add__(self, other: LossVector) -> LossVector:
+        return LossVector(
+            *(a + b for a, b in zip(self.components, other.components, strict=True))
+        )

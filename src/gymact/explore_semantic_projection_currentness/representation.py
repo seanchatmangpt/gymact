@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from enum import Enum
 import hashlib
 import json
+from dataclasses import dataclass
+from enum import StrEnum
 
 from .semantic_type import SemanticType
 from .subject import Refusal
 
 
-class RepresentationKind(str, Enum):
+class RepresentationKind(StrEnum):
     RDF_TERM = "RDF_TERM"
     ASH_PROJECTION = "ASH_PROJECTION"
     WASM_CARRIER = "WASM_CARRIER"
