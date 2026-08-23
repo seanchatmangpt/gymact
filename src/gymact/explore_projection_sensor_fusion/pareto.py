@@ -17,5 +17,15 @@ def dominates(left: AcquisitionCandidate, right: AcquisitionCandidate) -> bool:
     return no_worse and strict
 
 
-def frontier(candidates: tuple[AcquisitionCandidate, ...]) -> tuple[AcquisitionCandidate, ...]:
-    return tuple(c for c in candidates if not any(dominates(other, c) for other in candidates if other is not c))
+def frontier(
+    candidates: tuple[AcquisitionCandidate, ...],
+) -> tuple[AcquisitionCandidate, ...]:
+    return tuple(
+        candidate
+        for candidate in candidates
+        if not any(
+            dominates(other, candidate)
+            for other in candidates
+            if other is not candidate
+        )
+    )
