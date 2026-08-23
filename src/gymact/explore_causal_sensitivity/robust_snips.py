@@ -17,17 +17,11 @@ def robust_snips(rows: Iterable[LoggedOutcome], gamma: Gamma) -> Interval:
     if low_den <= 0 or high_den <= 0:
         raise ValueError("zero target mass")
     low_num = sum(
-        (
-            min(w.lower * r.reward, w.upper * r.reward)
-            for r, w in zip(data, intervals, strict=True)
-        ),
+        (min(w.lower * r.reward, w.upper * r.reward) for r, w in zip(data, intervals, strict=True)),
         Fraction(),
     )
     high_num = sum(
-        (
-            max(w.lower * r.reward, w.upper * r.reward)
-            for r, w in zip(data, intervals, strict=True)
-        ),
+        (max(w.lower * r.reward, w.upper * r.reward) for r, w in zip(data, intervals, strict=True)),
         Fraction(),
     )
     return Interval(low_num / high_den, high_num / low_den)
