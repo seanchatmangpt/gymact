@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from fractions import Fraction
+
 from .belief import BeliefState
 
 

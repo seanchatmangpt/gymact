@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 from .sensor import SensorCapability
 
 
@@ -14,7 +15,11 @@ class IndependenceProof:
         return bool(self.rationale.strip()) and expected == actual
 
 
-def independent(left: SensorCapability, right: SensorCapability, proof: IndependenceProof | None = None) -> bool:
+def independent(
+    left: SensorCapability,
+    right: SensorCapability,
+    proof: IndependenceProof | None = None,
+) -> bool:
     if left.digest == right.digest:
         return False
     if proof and proof.admits(left, right):

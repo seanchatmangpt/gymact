@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 from .authority import ActionClass, require
 from .belief import BeliefState
 from .budget import Budget
@@ -16,7 +17,16 @@ class Plan:
     receipt: AcquisitionReceipt
 
 
-def construct_plan(*, subject: str, belief: BeliefState, policy: Policy, candidates: tuple[SensorCapability, ...], scores: dict[str, CandidateScore], budget: Budget, step: int) -> Plan:
+def construct_plan(
+    *,
+    subject: str,
+    belief: BeliefState,
+    policy: Policy,
+    candidates: tuple[SensorCapability, ...],
+    scores: dict[str, CandidateScore],
+    budget: Budget,
+    step: int,
+) -> Plan:
     require(ActionClass.CONSTRUCT)
     choice = select(candidates, scores, budget, policy.strategy)
     remaining = budget.consume(cost=choice.sensor.cost, latency_ms=choice.sensor.latency_ms)

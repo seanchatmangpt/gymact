@@ -1,7 +1,11 @@
 import unittest
 from fractions import Fraction
+
 from gymact.explore_sequential_acquisition.failure import FailureWorld
-from gymact.explore_sequential_acquisition.independence import IndependenceProof, independent
+from gymact.explore_sequential_acquisition.independence import (
+    IndependenceProof,
+    independent,
+)
 from gymact.explore_sequential_acquisition.sensor import SensorCapability
 
 

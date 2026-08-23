@@ -1,6 +1,6 @@
-from dataclasses import asdict, dataclass
 import hashlib
 import json
+from dataclasses import asdict, dataclass
 
 
 @dataclass(frozen=True)
