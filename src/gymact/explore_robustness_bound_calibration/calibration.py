@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from fractions import Fraction
 
 from .case import BoundCase
-from .refusal import Refused, REFUSED_INSUFFICIENT_SUPPORT
+from .refusal import REFUSED_INSUFFICIENT_SUPPORT, Refused
 
 
 @dataclass(frozen=True, slots=True)
@@ -15,7 +15,9 @@ class Calibration:
     mean_width: Fraction
 
     @classmethod
-    def from_cases(cls, cases: tuple[BoundCase, ...], minimum_support: int = 3) -> "Calibration":
+    def from_cases(
+        cls, cases: tuple[BoundCase, ...], minimum_support: int = 3
+    ) -> Calibration:
         if len(cases) < minimum_support:
             raise Refused(REFUSED_INSUFFICIENT_SUPPORT, f"{len(cases)}<{minimum_support}")
         ids = [case.case_id for case in cases]
