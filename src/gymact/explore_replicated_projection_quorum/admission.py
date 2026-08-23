@@ -9,6 +9,7 @@ from .subject import Subject
 from .universe import ReplicaUniverse
 from .window import ObservationWindow
 
+
 def admit_observations(
     observations: Iterable[ReplicaProjection],
     *,

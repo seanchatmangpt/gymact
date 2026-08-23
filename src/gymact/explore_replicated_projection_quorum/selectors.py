@@ -9,11 +9,13 @@ from .refusal import Refused
 from .replica import ReplicaProjection
 from .universe import ReplicaUniverse
 
+
 class SelectorKind(StrEnum):
     STRICT_MAJORITY_CURRENTNESS = "STRICT_MAJORITY_CURRENTNESS"
     MAX_COVERAGE_FRESHNESS = "MAX_COVERAGE_FRESHNESS"
     CAUSAL_MAXIMA_CONSERVATIVE = "CAUSAL_MAXIMA_CONSERVATIVE"
     MINIMAX_AMBIGUITY = "MINIMAX_AMBIGUITY"
+
 
 @dataclass(frozen=True, slots=True)
 class Selection:
@@ -23,11 +25,15 @@ class Selection:
     replica_ids: tuple[str, ...]
     coverage: Fraction
 
-def _clusters(observations: tuple[ReplicaProjection, ...]) -> dict[tuple[int, str], tuple[ReplicaProjection, ...]]:
+
+def _clusters(
+    observations: tuple[ReplicaProjection, ...],
+) -> dict[tuple[int, str], tuple[ReplicaProjection, ...]]:
     groups: dict[tuple[int, str], list[ReplicaProjection]] = {}
     for item in observations:
         groups.setdefault((item.generation, item.projection_digest), []).append(item)
     return {key: tuple(value) for key, value in groups.items()}
+
 
 def select(
     selector: SelectorKind,
@@ -39,12 +45,23 @@ def select(
     groups = _clusters(observations)
     if selector is SelectorKind.STRICT_MAJORITY_CURRENTNESS:
         highest = max(item.generation for item in observations)
-        candidates = [(key, members) for key, members in groups.items() if key[0] == highest and len(members) >= universe.quorum_size]
+        candidates = [
+            (key, members)
+            for key, members in groups.items()
+            if key[0] == highest and len(members) >= universe.quorum_size
+        ]
     elif selector is SelectorKind.MAX_COVERAGE_FRESHNESS:
-        candidates = sorted(groups.items(), key=lambda item: (len(item[1]), item[0][0], item[0][1]), reverse=True)[:1]
+        candidates = sorted(
+            groups.items(),
+            key=lambda item: (len(item[1]), item[0][0], item[0][1]),
+            reverse=True,
+        )[:1]
     elif selector is SelectorKind.CAUSAL_MAXIMA_CONSERVATIVE:
         maxima = set(causal_profile(observations).maximal_replica_ids)
-        candidates = [(key, tuple(m for m in members if m.replica_id in maxima)) for key, members in groups.items()]
+        candidates = [
+            (key, tuple(member for member in members if member.replica_id in maxima))
+            for key, members in groups.items()
+        ]
         candidates = [(key, members) for key, members in candidates if members]
         if len({key[1] for key, _ in candidates}) != 1:
             raise Refused("REFUSED_CAUSAL_MAXIMA_AMBIGUOUS")

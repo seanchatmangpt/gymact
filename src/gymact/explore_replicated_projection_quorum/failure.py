@@ -8,12 +8,14 @@ from enum import StrEnum
 from .clock import VectorClock
 from .replica import ReplicaProjection
 
+
 class FailureKind(StrEnum):
     PARTITION = "PARTITION"
     STALE_REPLICA = "STALE_REPLICA"
     SPLIT_BRAIN = "SPLIT_BRAIN"
     OMISSION = "OMISSION"
     CLOCK_SKEW = "CLOCK_SKEW"
+
 
 def inject_failure(
     observations: tuple[ReplicaProjection, ...], kind: FailureKind, seed: int

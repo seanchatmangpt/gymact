@@ -3,6 +3,7 @@ import unittest
 from gymact.explore_replicated_projection_quorum.engine import qualify
 from gymact.explore_replicated_projection_quorum.failure import FailureKind, inject_failure
 from gymact.explore_replicated_projection_quorum.receipt import ActionClass, replay
+from gymact.explore_replicated_projection_quorum.refusal import Refused
 from gymact.explore_replicated_projection_quorum.selectors import SelectorKind
 from tests.explore_replicated_projection_quorum.world import (
     NOW,
@@ -40,7 +41,7 @@ class ChicagoCourt(unittest.TestCase):
         )
         self.assertEqual(degraded.assessment.standing, "UNKNOWN")
         self.assertFalse(healthy.receipt.body["actuation_performed"])
-        with self.assertRaises(Exception):
+        with self.assertRaisesRegex(Refused, "REFUSED_UNRECEIPTED_ACTUATION"):
             qualify(
                 observations,
                 subject=SUBJECT,
