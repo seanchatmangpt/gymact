@@ -3,6 +3,7 @@ from fractions import Fraction
 
 from .calibration import GainCalibration
 
+
 class FeedbackPolicy(StrEnum):
     HOLD = "HOLD"
     BIAS_CORRECT = "BIAS_CORRECT"
@@ -10,7 +11,13 @@ class FeedbackPolicy(StrEnum):
     EXPLORE_DRIFT = "EXPLORE_DRIFT"
     MINIMAX_REGRET = "MINIMAX_REGRET"
 
-def policy_score(policy: FeedbackPolicy, calibration: GainCalibration, drift: bool, regret: Fraction) -> Fraction:
+
+def policy_score(
+    policy: FeedbackPolicy,
+    calibration: GainCalibration,
+    drift: bool,
+    regret: Fraction,
+) -> Fraction:
     if policy is FeedbackPolicy.HOLD:
         return Fraction(0)
     if policy is FeedbackPolicy.BIAS_CORRECT:
