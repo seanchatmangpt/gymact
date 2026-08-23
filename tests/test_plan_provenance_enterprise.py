@@ -232,8 +232,22 @@ async def test_128_concurrent_requests_without_authority_are_all_refused_without
         result.transition.receipt.reason == "AUTHORITY_NOT_ADMITTED"
         for result in results
     )
-    assert all(result.transition.actuation is None for result in results)
+    # ``VerifiedTransition.actuation`` is the disposition object from the
+    # kernel, not proof that the provider DO port ran. A denied request must
+    # retain explicit refusal evidence while carrying no effect or world
+    # change.
+    assert all(result.transition.actuation.accepted is False for result in results)
+    assert all(result.transition.actuation.effect is None for result in results)
+    assert all(
+        result.transition.actuation.receipt.reason == "AUTHORITY_NOT_ADMITTED"
+        for result in results
+    )
+    assert all(
+        result.transition.actuation.receipt.world_changed in (None, False)
+        for result in results
+    )
     assert (await runtime.observe(episode_id)).state == {"count": 0}
+    assert runtime.verify_evidence_chain()
 
 
 def test_plan_binding_twenty_thousand_operations_has_no_catastrophic_regression() -> None:
