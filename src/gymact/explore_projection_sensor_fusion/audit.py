@@ -9,5 +9,8 @@ def audit_root(digests: tuple[str, ...]) -> str:
     while len(nodes) > 1:
         if len(nodes) % 2:
             nodes.append(nodes[-1])
-        nodes = [hashlib.sha256(b"node:" + nodes[i] + nodes[i + 1]).digest() for i in range(0, len(nodes), 2)]
+        nodes = [
+            hashlib.sha256(b"node:" + nodes[index] + nodes[index + 1]).digest()
+            for index in range(0, len(nodes), 2)
+        ]
     return nodes[0].hex()
