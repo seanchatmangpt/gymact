@@ -1,13 +1,16 @@
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from fractions import Fraction
+
 from .calibration import Calibration
 
-class Selector(str, Enum):
+
+class Selector(StrEnum):
     MAX_COVERAGE = "MAX_COVERAGE"
     MIN_WIDTH = "MIN_WIDTH"
     MINIMAX_MISS = "MINIMAX_MISS"
     INFORMATION_GAIN = "INFORMATION_GAIN"
+
 
 @dataclass(frozen=True)
 class Selection:
@@ -18,13 +21,26 @@ class Selection:
 
 def choose(calibrations: tuple[Calibration, ...], selector: Selector) -> Selection:
     if selector is Selector.MAX_COVERAGE:
-        c = max(calibrations, key=lambda x: (x.coverage, -x.mean_width))
-        return Selection(selector, c.mode.value, c.coverage)
+        calibration = max(
+            calibrations, key=lambda candidate: (candidate.coverage, -candidate.mean_width)
+        )
+        return Selection(selector, calibration.mode.value, calibration.coverage)
     if selector is Selector.MIN_WIDTH:
-        c = min(calibrations, key=lambda x: (x.mean_width, -x.coverage))
-        return Selection(selector, c.mode.value, -c.mean_width)
+        calibration = min(
+            calibrations, key=lambda candidate: (candidate.mean_width, -candidate.coverage)
+        )
+        return Selection(selector, calibration.mode.value, -calibration.mean_width)
     if selector is Selector.MINIMAX_MISS:
-        c = min(calibrations, key=lambda x: (1 - x.coverage, x.mean_width))
-        return Selection(selector, c.mode.value, -(1 - c.coverage))
-    c = max(calibrations, key=lambda x: x.mean_width * x.coverage)
-    return Selection(selector, c.mode.value, c.mean_width * c.coverage)
+        calibration = min(
+            calibrations,
+            key=lambda candidate: (1 - candidate.coverage, candidate.mean_width),
+        )
+        return Selection(selector, calibration.mode.value, -(1 - calibration.coverage))
+    calibration = max(
+        calibrations, key=lambda candidate: candidate.mean_width * candidate.coverage
+    )
+    return Selection(
+        selector,
+        calibration.mode.value,
+        calibration.mean_width * calibration.coverage,
+    )

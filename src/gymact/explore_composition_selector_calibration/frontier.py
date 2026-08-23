@@ -1,6 +1,8 @@
 from dataclasses import dataclass
+
 from .calibration import Calibration
 from .refusals import Refused
+
 
 @dataclass(frozen=True)
 class CalibrationVersion:
@@ -9,15 +11,17 @@ class CalibrationVersion:
     calibration: Calibration
 
 
-def current_frontier(versions: tuple[CalibrationVersion, ...]) -> tuple[CalibrationVersion, ...]:
+def current_frontier(
+    versions: tuple[CalibrationVersion, ...],
+) -> tuple[CalibrationVersion, ...]:
     if not versions:
         raise Refused("NO_CALIBRATION_FRONTIER")
-    generation = max(v.generation for v in versions)
-    current = tuple(v for v in versions if v.generation == generation)
-    digests = {v.digest for v in current}
+    generation = max(version.generation for version in versions)
+    current = tuple(version for version in versions if version.generation == generation)
+    digests = {version.digest for version in current}
     if len(digests) != len(current):
         raise Refused("DUPLICATE_CURRENT_CALIBRATION")
-    modes = [v.calibration.mode for v in current]
+    modes = [version.calibration.mode for version in current]
     if len(set(modes)) != len(modes):
         raise Refused("DIVERGENT_CURRENT_CALIBRATION")
-    return tuple(sorted(current, key=lambda v: v.calibration.mode.value))
+    return tuple(sorted(current, key=lambda version: version.calibration.mode.value))

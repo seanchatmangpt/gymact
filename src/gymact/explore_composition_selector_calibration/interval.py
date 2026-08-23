@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from fractions import Fraction
+
 from .refusals import Refused
+
 
 @dataclass(frozen=True, order=True)
 class Interval:
@@ -16,7 +18,10 @@ class Interval:
         return self.upper - self.lower
 
     def frechet_and(self, other: "Interval") -> "Interval":
-        return Interval(max(Fraction(0), self.lower + other.lower - 1), min(self.upper, other.upper))
+        return Interval(
+            max(Fraction(0), self.lower + other.lower - 1),
+            min(self.upper, other.upper),
+        )
 
     def independent_and(self, other: "Interval") -> "Interval":
         return Interval(self.lower * other.lower, self.upper * other.upper)

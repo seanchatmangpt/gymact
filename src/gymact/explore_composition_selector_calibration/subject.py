@@ -1,8 +1,12 @@
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
+
 from .refusals import Refused
 
-_SUBJECT = re.compile(r"^(?P<repo>[^/\s]+/[^@\s]+)@(?P<sha>[0-9a-f]{40})#(?P<semantic>[0-9a-f]{64})$")
+_SUBJECT = re.compile(
+    r"^(?P<repo>[^/\s]+/[^@\s]+)@(?P<sha>[0-9a-f]{40})#(?P<semantic>[0-9a-f]{64})$"
+)
+
 
 @dataclass(frozen=True)
 class Subject:

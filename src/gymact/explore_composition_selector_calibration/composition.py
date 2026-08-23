@@ -1,12 +1,15 @@
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
+
 from .interval import Interval
 from .provenance import Provenance, require_independent
 from .refusals import Refused
 
-class CompositionMode(str, Enum):
+
+class CompositionMode(StrEnum):
     CONSERVATIVE = "CONSERVATIVE"
     INDEPENDENT = "INDEPENDENT"
+
 
 @dataclass(frozen=True)
 class Evidence:
