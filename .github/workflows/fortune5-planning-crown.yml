@@ -86,7 +86,7 @@ jobs:
           uv run python -m json.tool artifacts/fortune5/plan-provenance-benchmark.json >/dev/null
 
       - name: Retain qualification evidence
-        if: always() && matrix.python == '3.12'
+        if: success() && matrix.python == '3.12'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: gymact-fortune5-planning-${{ github.event.pull_request.head.sha || github.sha }}
