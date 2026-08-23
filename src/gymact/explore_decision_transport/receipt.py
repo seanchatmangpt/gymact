@@ -1,6 +1,6 @@
-from dataclasses import dataclass
 import hashlib
 import json
+from dataclasses import dataclass
 
 from .standing import Standing
 from .subject import Subject
