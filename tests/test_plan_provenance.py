@@ -79,7 +79,9 @@ async def test_plan_identity_participates_in_semantic_idempotency() -> None:
         idempotency_key="same-key-different-plan",
     )
 
-    first = await execute_planned(runtime, PlannedActuationIntent(**common, plan_provenance=_plan("1")))
+    first = await execute_planned(
+        runtime, PlannedActuationIntent(**common, plan_provenance=_plan("1"))
+    )
     conflict = await execute_planned(
         runtime, PlannedActuationIntent(**common, plan_provenance=_plan("2"))
     )
