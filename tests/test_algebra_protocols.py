@@ -30,11 +30,11 @@ import subprocess
 import pytest
 
 from gymact.algebra import Actuator, Observer, Verifier
+from gymact.gyms.gymnasium_env import GymnasiumEnvironment, GymnasiumProvider
 from gymact.gyms.kubernetes_reconciliation import (
     KubernetesReconciliationEnvironment,
     KubernetesReconciliationProvider,
 )
-from gymact.gyms.gymnasium_env import GymnasiumEnvironment, GymnasiumProvider
 from gymact.models import Capability, Consequence
 from gymact.providers import Environment, MemoryEnvironment, MemoryProvider
 from gymact.standing import require_standing
@@ -48,6 +48,21 @@ def _kubernetes_cluster_reachable() -> bool:
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
     return result.returncode == 0
+
+
+def _declared_protocol_methods(protocol: type[object]) -> set[str]:
+    """Return public callable members declared directly on a Protocol.
+
+    ``typing.Protocol.__protocol_attrs__`` is a private CPython implementation
+    detail and is not portable across the supported Python matrix.  Inspecting
+    the Protocol class namespace proves the same source-level contract without
+    depending on a private runtime attribute.
+    """
+    return {
+        name
+        for name, value in vars(protocol).items()
+        if not name.startswith("_") and callable(value)
+    }
 
 
 @pytest.mark.asyncio
@@ -66,8 +81,6 @@ async def test_memory_environment_satisfies_observer_actuator_verifier() -> None
         assert isinstance(environment, Actuator)
         assert isinstance(environment, Verifier)
 
-        # Real use through the narrower Protocol-typed references, proving
-        # these aren't just isinstance-true but genuinely callable/usable.
         observer: Observer = environment
         actuator: Actuator = environment
         verifier: Verifier = environment
@@ -128,8 +141,6 @@ async def test_gymnasium_environment_satisfies_observer_actuator_verifier() -> N
         stepped = await actuator.actuate(step_capability, {"action": action})
         assert "after" in stepped
 
-        # verify() independently re-observes state rather than trusting
-        # actuate()'s own returned "after" -- exercised for real here.
         passed, observed = await verifier.verify({"env_id": "CartPole-v1"})
         assert passed is True
         assert observed["env_id"] == "CartPole-v1"
@@ -141,10 +152,6 @@ async def test_gymnasium_environment_satisfies_observer_actuator_verifier() -> N
 async def test_kubernetes_reconciliation_environment_satisfies_observer_actuator_verifier() -> (
     None
 ):
-    """Third mechanically-different real provider (real kubectl/cluster-backed
-    world), gated by `require_standing` per this repo's explore/exploit and
-    Chicago-style rules: a real cluster is used when reachable, a named
-    visible skip otherwise -- never a mock."""
     reachable = _kubernetes_cluster_reachable()
     require_standing(
         "PARTIAL_ALIVE",
@@ -171,17 +178,13 @@ async def test_kubernetes_reconciliation_environment_satisfies_observer_actuator
 
 
 def test_algebra_protocols_declare_only_the_matching_environment_methods() -> None:
-    """`algebra.py` structural definitions are exactly the matching subset of
-    `Environment`'s own methods -- no gym-specific logic, no duplicated
-    implementation, purely additive naming."""
-    assert set(Observer.__protocol_attrs__) == {"capabilities", "observe"}
-    assert set(Actuator.__protocol_attrs__) == {"actuate"}
-    assert set(Verifier.__protocol_attrs__) == {"verify"}
+    """Protocol views are exactly the matching Environment method subsets."""
+    assert _declared_protocol_methods(Observer) == {"capabilities", "observe"}
+    assert _declared_protocol_methods(Actuator) == {"actuate"}
+    assert _declared_protocol_methods(Verifier) == {"verify"}
 
 
 def test_capability_import_unused_placeholder() -> None:
-    # Sanity: Capability/Consequence are real gymact.models types used above
-    # to build real payloads, not fabricated stand-ins.
     capability = Capability(
         iri="urn:gymact:test:capability:noop",
         title="noop",
