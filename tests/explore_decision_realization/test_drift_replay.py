@@ -2,8 +2,8 @@ import pytest
 
 from gymact.explore_decision_realization import (
     ActionClass,
-    CUSUMState,
     CalibrationPoint,
+    CUSUMState,
     Decision,
     DecisionIdentity,
     Refused,
