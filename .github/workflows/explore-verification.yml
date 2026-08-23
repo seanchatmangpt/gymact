@@ -1,0 +1,31 @@
+name: EXPLORE verification exact head
+on:
+  pull_request:
+    paths:
+      - 'src/gymact/explore_verification/**'
+      - 'tests/test_explore_verification_*.py'
+      - '.github/workflows/explore-verification.yml'
+permissions:
+  contents: read
+jobs:
+  verification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Admit exact PR head
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.11.32'
+      - name: Resolve admitted dependency closure
+        run: uv sync --group dev
+      - name: Compile verification surface
+        run: uv run python -m compileall -q src/gymact/explore_verification tests/test_explore_verification_*.py
+      - name: Execute verification refusal e2e court
+        run: uv run pytest -q tests/test_explore_verification_*.py
+      - name: Static contract
+        run: uv run ruff check src/gymact/explore_verification tests/test_explore_verification_*.py
+      - name: Format contract
+        run: uv run ruff format --check src/gymact/explore_verification tests/test_explore_verification_*.py

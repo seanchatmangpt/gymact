@@ -1,0 +1,38 @@
+name: EXPLORE reconciliation exact head
+
+on:
+  pull_request:
+    paths:
+      - "src/gymact/explore_reconciliation/**"
+      - "tests/test_explore_reconciliation.py"
+      - ".github/workflows/explore-reconciliation-exact-head.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Admit exact pull-request head
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.32"
+      - name: Resolve admitted dependency closure
+        run: uv sync --group dev
+      - name: Compile reconciliation surface
+        run: uv run python -m compileall -q src/gymact/explore_reconciliation tests/test_explore_reconciliation.py
+      - name: Differential refusal and replay court
+        run: uv run pytest -q tests/test_explore_reconciliation.py
+      - name: Static contract
+        run: uv run ruff check src/gymact/explore_reconciliation tests/test_explore_reconciliation.py
+      - name: Format contract
+        run: uv run ruff format --check src/gymact/explore_reconciliation tests/test_explore_reconciliation.py
+      - name: Ambient authority fence
+        run: |
+          ! grep -RInE 'boto3|azure\.|google\.cloud|subprocess|requests\.(post|put|patch|delete)' src/gymact/explore_reconciliation

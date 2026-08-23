@@ -1,0 +1,57 @@
+name: EXPLORE Semantic Projection Currentness Exact Head
+
+on:
+  pull_request:
+    paths:
+      - "src/gymact/explore_semantic_projection_currentness/**"
+      - "tests/explore_semantic_projection_currentness/**"
+      - ".github/workflows/explore-semantic-projection-currentness.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  exact-head:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Admit exact head
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.32"
+      - name: Admit repository dev dependency closure
+        run: uv sync --group dev
+      - name: Compile
+        run: >-
+          uv run python -m compileall -q
+          src/gymact/explore_semantic_projection_currentness
+          tests/explore_semantic_projection_currentness
+      - name: Focused differential refusal replay court
+        env:
+          PYTHONPATH: src:tests/explore_semantic_projection_currentness
+        run: >-
+          uv run python -m unittest discover
+          -s tests/explore_semantic_projection_currentness
+          -p 'test_spc_*.py' -v
+      - name: Ruff static
+        run: >-
+          uv run ruff check
+          src/gymact/explore_semantic_projection_currentness
+          tests/explore_semantic_projection_currentness
+      - name: Ruff format
+        run: >-
+          uv run ruff format --check
+          src/gymact/explore_semantic_projection_currentness
+          tests/explore_semantic_projection_currentness
+      - name: Ambient consequential actuation fence
+        run: |
+          if grep -R -nE 'subprocess|requests|httpx|boto3|kubectl|terraform|socket|urlopen' \
+            src/gymact/explore_semantic_projection_currentness \
+            tests/explore_semantic_projection_currentness; then
+            exit 1
+          fi
