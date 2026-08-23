@@ -35,10 +35,7 @@ def calibrate(
         raise Refused("INVALID_CALIBRATION_IDENTITY")
     if not rows:
         raise Refused("INSUFFICIENT_REALIZATION_SUPPORT")
-    if any(
-        not 0.0 <= point.predicted_loss <= 1.0 or point.realized_loss < 0
-        for point in rows
-    ):
+    if any(not 0.0 <= point.predicted_loss <= 1.0 or point.realized_loss < 0 for point in rows):
         raise Refused("INVALID_CALIBRATION_POINT")
     mae = sum(abs(point.predicted_loss - point.realized_loss) for point in rows) / len(rows)
     mean_loss = sum(point.realized_loss for point in rows) / len(rows)

@@ -27,10 +27,7 @@ def test_chicago_realized_decision_caps_positive_standing_and_preserves_failure(
     calibration = calibrate(
         3,
         "3" * 64,
-        [
-            CalibrationPoint(Decision.DEFER, 0.2, value)
-            for value in (0.15, 0.2, 0.25, 0.3)
-        ],
+        [CalibrationPoint(Decision.DEFER, 0.2, value) for value in (0.15, 0.2, 0.25, 0.3)],
     )
     good = qualify(
         decision,

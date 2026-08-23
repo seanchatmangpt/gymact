@@ -22,10 +22,7 @@ def test_currentness_drift_authority_and_replay() -> None:
     calibration = calibrate(
         2,
         "a" * 64,
-        [
-            CalibrationPoint(Decision.INDEPENDENT, 0.2, value)
-            for value in (0.1, 0.2, 0.25, 0.3)
-        ],
+        [CalibrationPoint(Decision.INDEPENDENT, 0.2, value) for value in (0.1, 0.2, 0.25, 0.3)],
     )
     assert calibration.admitted
     divergent = calibrate(

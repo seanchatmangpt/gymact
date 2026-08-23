@@ -22,7 +22,5 @@ def dominates(left: Candidate, right: Candidate) -> bool:
 def frontier(candidates: Iterable[Candidate]) -> tuple[Candidate, ...]:
     rows = tuple(candidates)
     return tuple(
-        row
-        for row in rows
-        if not any(other != row and dominates(other, row) for other in rows)
+        row for row in rows if not any(other != row and dominates(other, row) for other in rows)
     )
