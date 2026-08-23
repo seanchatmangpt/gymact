@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class Standing(str, Enum):
+class Standing(StrEnum):
     UNKNOWN = "UNKNOWN"
     PARTIAL_ALIVE = "PARTIAL_ALIVE"
     BUILD_BROKEN = "BUILD_BROKEN"

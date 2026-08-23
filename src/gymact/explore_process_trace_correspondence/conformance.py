@@ -22,8 +22,9 @@ class Conformance:
 
 def compare(expected: Trace, observed: Trace) -> Conformance:
     remaining = list(observed.keys())
+    expected_keys = expected.keys()
     matched = 0
-    for key in expected.keys():
+    for key in expected_keys:
         if key in remaining:
             matched += 1
             remaining.remove(key)

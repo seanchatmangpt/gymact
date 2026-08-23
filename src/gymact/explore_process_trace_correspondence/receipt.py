@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
 import hashlib
 import json
+from dataclasses import dataclass
 
 from .refusal import Refused
 from .standing import Standing
@@ -19,10 +19,17 @@ class Receipt:
     def body(self) -> dict[str, object]:
         if self.actuation_performed:
             raise Refused("RECEIPT_REPORTS_ACTUATION")
-        return {"subject": self.subject.identity, "relation": self.relation, "standing": self.standing.value, "actuation_performed": False}
+        return {
+            "subject": self.subject.identity,
+            "relation": self.relation,
+            "standing": self.standing.value,
+            "actuation_performed": False,
+        }
 
     def digest(self) -> str:
-        encoded = json.dumps(self.body(), sort_keys=True, separators=(",", ":")).encode()
+        encoded = json.dumps(
+            self.body(), sort_keys=True, separators=(",", ":")
+        ).encode()
         return hashlib.sha256(encoded).hexdigest()
 
 

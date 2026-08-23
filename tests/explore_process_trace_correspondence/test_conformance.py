@@ -8,12 +8,17 @@ from gymact.explore_process_trace_correspondence.trace import Trace
 
 class ConformanceCourt(unittest.TestCase):
     def test_precision_and_recall_remain_distinct(self):
-        s = Subject("owner/repo@" + "d" * 40)
-        expected = Trace(s, "MODEL", (Event("A", "o"), Event("B", "o"), Event("C", "o")))
-        observed = Trace(s, "BEAM", (Event("A", "o"), Event("B", "o")))
+        subject = Subject("owner/repo@" + "d" * 40)
+        expected = Trace(
+            subject,
+            "MODEL",
+            (Event("A", "o"), Event("B", "o"), Event("C", "o")),
+        )
+        observed = Trace(subject, "BEAM", (Event("A", "o"), Event("B", "o")))
         score = compare(expected, observed)
         self.assertEqual(score.precision, 1.0)
         self.assertAlmostEqual(score.recall, 2 / 3)
 
 
-if __name__ == "__main__": unittest.main()
+if __name__ == "__main__":
+    unittest.main()

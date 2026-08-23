@@ -20,4 +20,5 @@ class AuthorityReceiptCourt(unittest.TestCase):
             Receipt(subject, "exact", Standing.PARTIAL_ALIVE, True).digest()
 
 
-if __name__ == "__main__": unittest.main()
+if __name__ == "__main__":
+    unittest.main()

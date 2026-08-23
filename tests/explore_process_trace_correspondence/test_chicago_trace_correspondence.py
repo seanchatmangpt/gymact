@@ -13,10 +13,17 @@ from gymact.explore_process_trace_correspondence.trace import Trace
 class ChicagoTraceCorrespondenceCourt(unittest.TestCase):
     def test_same_subject_same_trace_caps_at_partial_alive_and_hard_failure_dominates(self):
         subject = Subject("seanchatmangpt/gymact@" + "1" * 40)
-        events = (Event("discover", "case-1"), Event("conform", "case-1"), Event("construct", "case-1"))
+        events = (
+            Event("discover", "case-1"),
+            Event("conform", "case-1"),
+            Event("construct", "case-1"),
+        )
         beam = Trace(subject, "BEAM", events)
         wasm = Trace(subject, "WASM", events)
-        witnesses = (OracleWitness("oracle-beam", beam), OracleWitness("oracle-wasm", wasm))
+        witnesses = (
+            OracleWitness("oracle-beam", beam),
+            OracleWitness("oracle-wasm", wasm),
+        )
         require_complete(REQUIRED)
         good = qualify(beam, wasm, witnesses)
         self.assertEqual(good.standing, Standing.PARTIAL_ALIVE)
@@ -26,4 +33,5 @@ class ChicagoTraceCorrespondenceCourt(unittest.TestCase):
         self.assertFalse(broken.receipt.actuation_performed)
 
 
-if __name__ == "__main__": unittest.main()
+if __name__ == "__main__":
+    unittest.main()
