@@ -1,6 +1,6 @@
 import unittest
 
-from _fixtures import DIGEST, SHA, fixtures
+from tests.explore_semantic_projection_currentness._fixtures import DIGEST, SHA, fixtures
 
 from gymact.explore_semantic_projection_currentness.currentness import ProjectionEpoch
 from gymact.explore_semantic_projection_currentness.engine import construct_plan

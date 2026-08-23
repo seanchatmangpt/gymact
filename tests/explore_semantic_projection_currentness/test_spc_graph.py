@@ -1,6 +1,6 @@
 import unittest
 
-from _fixtures import fixtures
+from tests.explore_semantic_projection_currentness._fixtures import fixtures
 
 
 class Court(unittest.TestCase):
