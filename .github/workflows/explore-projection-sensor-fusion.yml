@@ -1,0 +1,35 @@
+name: EXPLORE Projection Sensor Fusion Exact Head
+
+on:
+  pull_request:
+    paths:
+      - 'src/gymact/explore_projection_sensor_fusion/**'
+      - 'tests/explore_projection_sensor_fusion/**'
+      - '.github/workflows/explore-projection-sensor-fusion.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  exact-head-fusion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Assert exact head
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - uses: astral-sh/setup-uv@v6
+      - name: Close dependency capsule
+        run: uv sync --group dev
+      - name: Compile
+        run: uv run python -m compileall -q src/gymact/explore_projection_sensor_fusion tests/explore_projection_sensor_fusion
+      - name: Behavioral differential refusal replay Chicago court
+        run: uv run python -m unittest discover -s tests/explore_projection_sensor_fusion -p 'test_*.py' -v
+      - name: Static
+        run: uv run ruff check src/gymact/explore_projection_sensor_fusion tests/explore_projection_sensor_fusion
+      - name: Format
+        run: uv run ruff format --check src/gymact/explore_projection_sensor_fusion tests/explore_projection_sensor_fusion
+      - name: Refuse ambient consequential actuation imports
+        run: |
+          ! grep -REn 'requests\.(post|put|patch|delete)|subprocess\.|os\.system|boto3|azure\.|google\.cloud' src/gymact/explore_projection_sensor_fusion
