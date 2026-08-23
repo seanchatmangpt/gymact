@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from fractions import Fraction
 
 from .bound import RobustnessBound
-from .refusal import Refused, REFUSED_INVALID_CASE
+from .refusal import REFUSED_INVALID_CASE, Refused
 from .subject import Subject
 
 
@@ -22,7 +22,7 @@ class BoundCase:
             raise Refused(REFUSED_INVALID_CASE, "empty case id")
         if self.observed_at.tzinfo is None:
             raise Refused(REFUSED_INVALID_CASE, "naive time")
-        if self.observed_at > datetime.now(timezone.utc):
+        if self.observed_at > datetime.now(UTC):
             raise Refused(REFUSED_INVALID_CASE, "future evidence")
 
     @property
