@@ -1,6 +1,6 @@
-from dataclasses import dataclass, asdict
 import hashlib
 import json
+from dataclasses import asdict, dataclass
 
 from .authority import ActionClass
 from .subject import Subject
