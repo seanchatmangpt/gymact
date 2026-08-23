@@ -29,14 +29,14 @@ from fastmcp import Client, FastMCP
 from gymact.models import Capability, Consequence
 
 MCP_LIST_TOOLS_CAPABILITY = Capability(
-    iri="urn:gymact:mcp-client-session:capability:list_tools",
+    iri="urn:gymact:mcp:capability:list_tools",
     title="List the real tools currently exposed by the subject MCP server",
     consequence=Consequence.READ,
     binding="list_tools",
 )
 
 MCP_CALL_TOOL_CAPABILITY = Capability(
-    iri="urn:gymact:mcp-client-session:capability:call_tool",
+    iri="urn:gymact:mcp:capability:call_tool",
     title="Call a named, side-effect-safe tool on the subject MCP server",
     consequence=Consequence.DO,
     binding="call_tool",
@@ -120,10 +120,6 @@ class McpClientSessionEnvironment:
         return await self.observe()
 
     async def restore(self, checkpoint: dict[str, Any]) -> None:
-        # The subject MCP server's tool catalog is not GymAct-owned state --
-        # there is nothing for this adapter to write back. Restoring is a
-        # real no-op against real, already-authoritative server state, not a
-        # simulated round trip.
         self._ensure_open()
         del checkpoint
 
