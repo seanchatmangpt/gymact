@@ -11,9 +11,7 @@ from gymact.explore_sequential_acquisition.strategy import CandidateScore, Strat
 
 class ChicagoCourt(unittest.TestCase):
     def test_constructs_bounded_non_actuating_plan(self):
-        sensor = SensorCapability(
-            "s", "family", "domain", 1, "a" * 64, Fraction(1), 10
-        )
+        sensor = SensorCapability("s", "family", "domain", 1, "a" * 64, Fraction(1), 10)
         belief = BeliefState(
             ("healthy", "fault"),
             (Fraction(1, 2), Fraction(1, 2)),
