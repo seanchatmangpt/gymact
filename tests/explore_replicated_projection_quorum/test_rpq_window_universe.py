@@ -1,7 +1,7 @@
 import unittest
 from fractions import Fraction
 
-from .world import NOW, UNIVERSE, WINDOW
+from tests.explore_replicated_projection_quorum.world import NOW, UNIVERSE, WINDOW
 
 
 class WindowUniverseCourt(unittest.TestCase):

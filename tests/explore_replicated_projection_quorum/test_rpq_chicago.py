@@ -4,8 +4,14 @@ from gymact.explore_replicated_projection_quorum.engine import qualify
 from gymact.explore_replicated_projection_quorum.failure import FailureKind, inject_failure
 from gymact.explore_replicated_projection_quorum.receipt import ActionClass, replay
 from gymact.explore_replicated_projection_quorum.selectors import SelectorKind
-
-from .world import NOW, SEMANTIC, SUBJECT, UNIVERSE, WINDOW, projection
+from tests.explore_replicated_projection_quorum.world import (
+    NOW,
+    SEMANTIC,
+    SUBJECT,
+    UNIVERSE,
+    WINDOW,
+    projection,
+)
 
 
 class ChicagoCourt(unittest.TestCase):
