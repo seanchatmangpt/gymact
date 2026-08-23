@@ -1,5 +1,5 @@
-from fractions import Fraction
 import unittest
+from fractions import Fraction
 
 from gymact.explore_projection_sensor_fusion.calibration import Calibration
 from gymact.explore_projection_sensor_fusion.independence import IndependenceProof
@@ -15,11 +15,24 @@ class IdentityCalibrationCourt(unittest.TestCase):
             Subject("seanchatmangpt/gymact@short")
         a = SensorIdentity("a", "family-a", "domain-a", 1, "1" * 64)
         b = SensorIdentity("b", "family-b", "domain-b", 1, "2" * 64)
-        calibration = Calibration(a, 20, Fraction(1, 20), Fraction(1, 10), Fraction(1, 20))
+        calibration = Calibration(
+            a,
+            20,
+            Fraction(1, 20),
+            Fraction(1, 10),
+            Fraction(1, 20),
+        )
         self.assertEqual(calibration.error_mass, Fraction(1, 5))
-        self.assertEqual(IndependenceProof(a, b, "3" * 64).pair(), frozenset({"a", "b"}))
+        self.assertEqual(
+            IndependenceProof(a, b, "3" * 64).pair(),
+            frozenset({"a", "b"}),
+        )
         with self.assertRaises(FusionRefused):
-            IndependenceProof(a, SensorIdentity("c", "family-a", "domain-c", 1, "4" * 64), "5" * 64)
+            IndependenceProof(
+                a,
+                SensorIdentity("c", "family-a", "domain-c", 1, "4" * 64),
+                "5" * 64,
+            )
 
 
 if __name__ == "__main__":
