@@ -1,6 +1,6 @@
-from dataclasses import dataclass
 import random
-from typing import Iterable
+from collections.abc import Iterable
+from dataclasses import dataclass
 
 from .logged import LoggedDecision
 

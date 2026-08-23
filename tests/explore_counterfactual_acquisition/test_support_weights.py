@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from fractions import Fraction
 
 from gymact.explore_counterfactual_acquisition import LoggedDecision, Refused, Subject
@@ -25,7 +25,7 @@ class SupportWeightsCourt(unittest.TestCase):
                 Fraction(2),
                 Fraction(1, 2),
                 Fraction(3, 4),
-                datetime(2026, 8, 23, tzinfo=timezone.utc),
+                datetime(2026, 8, 23, tzinfo=UTC),
             ),
             LoggedDecision(
                 subject,
@@ -35,7 +35,7 @@ class SupportWeightsCourt(unittest.TestCase):
                 Fraction(1),
                 Fraction(1, 2),
                 Fraction(1, 4),
-                datetime(2026, 8, 23, tzinfo=timezone.utc),
+                datetime(2026, 8, 23, tzinfo=UTC),
             ),
         )
 

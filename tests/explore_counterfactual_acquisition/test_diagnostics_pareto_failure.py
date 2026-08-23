@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from fractions import Fraction
 
 from gymact.explore_counterfactual_acquisition import LoggedDecision, Subject, world
@@ -12,7 +12,7 @@ from gymact.explore_counterfactual_acquisition.strategies import OPEStrategy
 class DiagnosticsParetoFailureCourt(unittest.TestCase):
     def test_diagnostics_pareto_and_seeded_world(self) -> None:
         subject = Subject("seanchatmangpt/gymact", "e" * 40)
-        now = datetime(2026, 8, 23, tzinfo=timezone.utc)
+        now = datetime(2026, 8, 23, tzinfo=UTC)
         rows = (
             LoggedDecision(
                 subject, "d2", "c2", "b", Fraction(1), Fraction(1, 2), Fraction(1, 4), now

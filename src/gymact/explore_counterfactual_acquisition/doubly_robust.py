@@ -1,5 +1,5 @@
+from collections.abc import Iterable
 from fractions import Fraction
-from typing import Iterable
 
 from .direct import ModelPrediction, align
 from .logged import LoggedDecision

@@ -1,6 +1,6 @@
+from collections.abc import Iterable
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import Iterable
 
 from .authority import ActionClass, admit_action
 from .diagnostics import WeightDiagnostics, diagnose
@@ -10,7 +10,8 @@ from .logged import LoggedDecision
 from .pareto import EvaluationVector, frontier
 from .receipt import EvaluationReceipt, issue
 from .shift import total_variation
-from .storage import StorageCandidate, select as select_storage
+from .storage import StorageCandidate
+from .storage import select as select_storage
 from .strategies import OPEStrategy, evaluate
 from .subject import Subject
 from .support import SupportSummary, summarize

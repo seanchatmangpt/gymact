@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from fractions import Fraction
 
 from gymact.explore_counterfactual_acquisition import LoggedDecision, Refused, Subject
@@ -16,7 +16,7 @@ class IdentityLoggedCourt(unittest.TestCase):
             realized_gain=Fraction(1, 2),
             behavior_probability=Fraction(1, 2),
             target_probability=Fraction(3, 4),
-            observed_at=datetime(2026, 8, 23, tzinfo=timezone.utc),
+            observed_at=datetime(2026, 8, 23, tzinfo=UTC),
         )
         self.assertEqual(row.subject.exact, "seanchatmangpt/gymact@" + "a" * 40)
         with self.assertRaisesRegex(Refused, "REFUSED_INEXACT_SUBJECT"):
@@ -30,7 +30,7 @@ class IdentityLoggedCourt(unittest.TestCase):
                 realized_gain=Fraction(1, 3),
                 behavior_probability=Fraction(),
                 target_probability=Fraction(1, 2),
-                observed_at=datetime(2026, 8, 23, tzinfo=timezone.utc),
+                observed_at=datetime(2026, 8, 23, tzinfo=UTC),
             )
 
 

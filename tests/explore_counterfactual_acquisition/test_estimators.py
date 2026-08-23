@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from fractions import Fraction
 
 from gymact.explore_counterfactual_acquisition import LoggedDecision, ModelPrediction, Subject
@@ -9,7 +9,7 @@ from gymact.explore_counterfactual_acquisition.strategies import OPEStrategy, ev
 class EstimatorDifferentialCourt(unittest.TestCase):
     def test_five_estimators_remain_distinct(self) -> None:
         subject = Subject("seanchatmangpt/gymact", "c" * 40)
-        now = datetime(2026, 8, 23, tzinfo=timezone.utc)
+        now = datetime(2026, 8, 23, tzinfo=UTC)
         rows = (
             LoggedDecision(
                 subject, "d1", "c1", "a", Fraction(4), Fraction(1, 4), Fraction(3, 4), now

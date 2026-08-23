@@ -1,7 +1,7 @@
-from dataclasses import dataclass
-from fractions import Fraction
 import hashlib
 import json
+from dataclasses import dataclass
+from fractions import Fraction
 from typing import Any
 
 from .refusal import Refused

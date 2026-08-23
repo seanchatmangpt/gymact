@@ -1,6 +1,6 @@
+from collections.abc import Iterable
 from enum import StrEnum
 from fractions import Fraction
-from typing import Iterable
 
 from . import clipped, direct, doubly_robust, ips, snips
 from .direct import ModelPrediction

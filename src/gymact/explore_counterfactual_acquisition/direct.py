@@ -1,7 +1,7 @@
+import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from fractions import Fraction
-import re
-from typing import Iterable
 
 from .logged import LoggedDecision
 from .refusal import Refused
