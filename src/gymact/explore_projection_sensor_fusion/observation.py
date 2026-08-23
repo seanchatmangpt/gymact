@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from .refusals import FusionRefused
 from .sensor import SensorIdentity
@@ -19,5 +19,5 @@ class Observation:
             raise FusionRefused("REFUSED_INVALID_PROJECTION_DIGEST")
         if self.observed_at.tzinfo is None or self.observed_at.utcoffset() is None:
             raise FusionRefused("REFUSED_NAIVE_OBSERVATION_TIME")
-        if self.observed_at > datetime.now(timezone.utc):
+        if self.observed_at > datetime.now(UTC):
             raise FusionRefused("REFUSED_FUTURE_OBSERVATION")
