@@ -1,6 +1,12 @@
 import unittest
 
-from gymact.explore_robustness_bound_calibration import Receipt, Refused, Subject, replay, require_action
+from gymact.explore_robustness_bound_calibration import (
+    Receipt,
+    Refused,
+    Subject,
+    replay,
+    require_action,
+)
 
 
 class ReceiptCourt(unittest.TestCase):
