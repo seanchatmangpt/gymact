@@ -33,9 +33,7 @@ class Calibration:
         if len({case.case_id for case in cases}) != len(cases):
             raise Refused("DUPLICATE_CALIBRATION_CASE")
         covered = sum(case.covered for case in cases)
-        widths = sum(
-            (case.predicted_high - case.predicted_low for case in cases), Fraction(0)
-        )
+        widths = sum((case.predicted_high - case.predicted_low for case in cases), Fraction(0))
         return cls(
             generation,
             len(cases),

@@ -15,9 +15,7 @@ from gymact.explore_validation_independence import (
 def test_shared_ancestry_is_measured_and_calibration_is_empirical():
     subject = Subject.parse("seanchatmangpt/gymact@" + "a" * 40 + "#" + "b" * 64)
     provenance = Provenance("i", "m", "d")
-    root = Evidence(
-        "root", subject, 1, Interval(Fraction(1, 2), Fraction(1)), provenance
-    )
+    root = Evidence("root", subject, 1, Interval(Fraction(1, 2), Fraction(1)), provenance)
     left = Evidence(
         "left",
         subject,

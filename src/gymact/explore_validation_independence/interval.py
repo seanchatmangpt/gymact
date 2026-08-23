@@ -18,9 +18,7 @@ class Interval:
         return self.high - self.low
 
     def frechet_and(self, other: "Interval") -> "Interval":
-        return Interval(
-            max(Fraction(0), self.low + other.low - 1), min(self.high, other.high)
-        )
+        return Interval(max(Fraction(0), self.low + other.low - 1), min(self.high, other.high))
 
     def independent_and(self, other: "Interval") -> "Interval":
         return Interval(self.low * other.low, self.high * other.high)

@@ -37,10 +37,7 @@ def test_selector_plurality_do_refusal_and_replay():
         ),
     )
     assert select(candidates, Strategy.MAX_COVERAGE).mode is CompositionMode.CONSERVATIVE
-    assert (
-        select(candidates, Strategy.MIN_WIDTH).mode
-        is CompositionMode.INDEPENDENCE_QUALIFIED
-    )
+    assert select(candidates, Strategy.MIN_WIDTH).mode is CompositionMode.INDEPENDENCE_QUALIFIED
     with pytest.raises(Refused, match="UNRECEIPTED_ACTUATION"):
         admit(ActionClass.DO)
     subject = Subject.parse("seanchatmangpt/gymact@" + "a" * 40 + "#" + "b" * 64)

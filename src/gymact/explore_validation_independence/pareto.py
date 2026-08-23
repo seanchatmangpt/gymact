@@ -21,9 +21,5 @@ def frontier(candidates: tuple[Candidate, ...]) -> tuple[Candidate, ...]:
     return tuple(
         candidate
         for candidate in candidates
-        if not any(
-            dominates(other, candidate)
-            for other in candidates
-            if other is not candidate
-        )
+        if not any(dominates(other, candidate) for other in candidates if other is not candidate)
     )
