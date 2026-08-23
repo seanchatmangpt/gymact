@@ -26,4 +26,7 @@ def best_option(options: tuple[InformationOption, ...]) -> InformationOption | N
     viable = [option for option in options if option.net_value > 0]
     if not viable:
         return None
-    return max(viable, key=lambda option: (option.net_value, option.expected_risk_reduction, option.name))
+    return max(
+        viable,
+        key=lambda option: (option.net_value, option.expected_risk_reduction, option.name),
+    )
