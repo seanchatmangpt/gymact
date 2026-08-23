@@ -3,34 +3,55 @@ name: EXPLORE Replicated Projection Quorum Exact Head
 on:
   pull_request:
     paths:
-      - 'src/gymact/explore_replicated_projection_quorum/**'
-      - 'tests/explore_replicated_projection_quorum/**'
-      - '.github/workflows/explore-replicated-projection-quorum.yml'
+      - "src/gymact/explore_replicated_projection_quorum/**"
+      - "tests/explore_replicated_projection_quorum/**"
+      - ".github/workflows/explore-replicated-projection-quorum.yml"
 
 permissions:
   contents: read
 
 jobs:
-  qualify:
+  exact-head:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-      - name: Admit exact PR head
-        shell: bash
-        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Admit exact head
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - uses: astral-sh/setup-uv@v6
         with:
-          python-version: '3.11'
-      - name: Compile authored subject
-        run: python -m compileall -q src/gymact/explore_replicated_projection_quorum tests/explore_replicated_projection_quorum
-      - name: Execute permanent differential court
+          version: "0.11.32"
+      - name: Admit repository dev dependency closure
+        run: uv sync --group dev
+      - name: Compile
+        run: >-
+          uv run python -m compileall -q
+          src/gymact/explore_replicated_projection_quorum
+          tests/explore_replicated_projection_quorum
+      - name: Focused differential refusal replay court
         env:
           PYTHONPATH: src:tests/explore_replicated_projection_quorum
-        run: python -m unittest discover -s tests/explore_replicated_projection_quorum -p 'test_rpq_*.py' -v
-      - name: Refuse ambient consequential actuation
-        shell: bash
+        run: >-
+          uv run python -m unittest discover
+          -s tests/explore_replicated_projection_quorum
+          -p 'test_rpq_*.py' -v
+      - name: Ruff static
+        run: >-
+          uv run ruff check
+          src/gymact/explore_replicated_projection_quorum
+          tests/explore_replicated_projection_quorum
+      - name: Ruff format
+        run: >-
+          uv run ruff format --check
+          src/gymact/explore_replicated_projection_quorum
+          tests/explore_replicated_projection_quorum
+      - name: Ambient consequential actuation fence
         run: |
-          ! grep -REn 'requests\.(post|put|patch|delete)|urllib\.request\.(Request|urlopen)|subprocess\.|os\.system|boto3|azure\.|google\.cloud|socket\.' src/gymact/explore_replicated_projection_quorum
+          if grep -R -nE 'subprocess|requests|httpx|boto3|kubectl|terraform|socket|urlopen' \
+            src/gymact/explore_replicated_projection_quorum \
+            tests/explore_replicated_projection_quorum; then
+            exit 1
+          fi
