@@ -12,5 +12,7 @@ def leave_one_out_influence(calibrations: tuple[Calibration, ...]) -> dict[str, 
     result: dict[str, Fraction] = {}
     for index, calibration in enumerate(calibrations):
         reduced = robust_median(calibrations[:index] + calibrations[index + 1 :])
-        result[calibration.sensor.sensor_id] = abs(baseline.false_current - reduced.false_current) + abs(baseline.ambiguity - reduced.ambiguity)
+        false_current_delta = abs(baseline.false_current - reduced.false_current)
+        ambiguity_delta = abs(baseline.ambiguity - reduced.ambiguity)
+        result[calibration.sensor.sensor_id] = false_current_delta + ambiguity_delta
     return result
