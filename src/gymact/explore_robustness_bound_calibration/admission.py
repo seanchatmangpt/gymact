@@ -4,7 +4,7 @@ from fractions import Fraction
 
 from .bound import RobustnessBound
 from .calibration import Calibration
-from .refusal import Refused, REFUSED_UNINFORMATIVE_BOUND
+from .refusal import REFUSED_UNINFORMATIVE_BOUND, Refused
 
 
 def admit_bound(
