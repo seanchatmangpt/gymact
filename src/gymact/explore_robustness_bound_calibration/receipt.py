@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
 import hashlib
 import json
+from dataclasses import asdict, dataclass
 
-from .refusal import Refused, REFUSED_UNRECEIPTED_ACTUATION
+from .refusal import REFUSED_UNRECEIPTED_ACTUATION, Refused
 from .subject import Subject
 
 
@@ -24,7 +24,7 @@ class Receipt:
         return hashlib.sha256(self.body().encode()).hexdigest()
 
     @classmethod
-    def create(cls, subject: Subject, calibration_digest: str, standing: str) -> "Receipt":
+    def create(cls, subject: Subject, calibration_digest: str, standing: str) -> Receipt:
         return cls(subject.value, calibration_digest, standing)
 
 
