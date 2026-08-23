@@ -3,8 +3,11 @@ from pathlib import PurePosixPath
 
 from .subject import Refusal
 
+
 @dataclass(frozen=True, order=True)
 class TestModule:
+    __test__ = False
+
     path: str
 
     def __post_init__(self) -> None:

@@ -1,7 +1,7 @@
 import unittest
 from dataclasses import replace
 
-from _fixtures import SHA
+from tests.explore_semantic_projection_currentness._fixtures import SHA
 
 from gymact.explore_semantic_projection_currentness.receipt import (
     ProjectionReceipt,
