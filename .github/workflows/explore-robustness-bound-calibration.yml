@@ -1,0 +1,21 @@
+name: EXPLORE robustness bound calibration exact head
+on:
+  pull_request:
+    paths:
+      - 'src/gymact/explore_robustness_bound_calibration/**'
+      - 'tests/explore_robustness_bound_calibration/**'
+      - '.github/workflows/explore-robustness-bound-calibration.yml'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --group dev
+      - run: uv run python -m compileall -q src/gymact/explore_robustness_bound_calibration tests/explore_robustness_bound_calibration
+      - run: uv run python -m unittest discover -s tests/explore_robustness_bound_calibration -p 'test_*.py' -v
+      - run: uv run ruff check src/gymact/explore_robustness_bound_calibration tests/explore_robustness_bound_calibration
+      - run: uv run ruff format --check src/gymact/explore_robustness_bound_calibration tests/explore_robustness_bound_calibration
+      - run: "! grep -REn 'requests\\.(post|put|patch|delete)|subprocess\\.|os\\.system|boto3|azure\\.|google\\.cloud' src/gymact/explore_robustness_bound_calibration"
