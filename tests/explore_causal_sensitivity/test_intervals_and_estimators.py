@@ -1,7 +1,13 @@
 import unittest
 from fractions import Fraction
 
-from gymact.explore_causal_sensitivity import Gamma, LoggedOutcome, manski_mean, robust_ips, robust_snips
+from gymact.explore_causal_sensitivity import (
+    Gamma,
+    LoggedOutcome,
+    manski_mean,
+    robust_ips,
+    robust_snips,
+)
 
 
 class IntervalEstimatorTest(unittest.TestCase):

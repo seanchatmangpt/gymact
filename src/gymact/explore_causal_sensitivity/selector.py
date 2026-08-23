@@ -21,8 +21,10 @@ def select(items: tuple[NamedInterval, ...], strategy: Selector) -> NamedInterva
     if not items:
         raise ValueError("no candidates")
     if strategy is Selector.MAX_LOWER:
-        key = lambda x: (x.interval.lower, x.name)
-        return max(items, key=key)
+        return max(items, key=lambda x: (x.interval.lower, x.name))
     if strategy is Selector.MIN_WIDTH:
         return min(items, key=lambda x: (x.interval.width(), x.name))
-    return max(items, key=lambda x: ((x.interval.lower + x.interval.upper) / Fraction(2), x.name))
+    return max(
+        items,
+        key=lambda x: ((x.interval.lower + x.interval.upper) / Fraction(2), x.name),
+    )

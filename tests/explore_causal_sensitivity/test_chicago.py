@@ -1,7 +1,13 @@
 import unittest
 from fractions import Fraction
 
-from gymact.explore_causal_sensitivity import ActionClass, Subject, admit_action, evaluate, make_receipt
+from gymact.explore_causal_sensitivity import (
+    ActionClass,
+    Subject,
+    admit_action,
+    evaluate,
+    make_receipt,
+)
 from gymact.explore_causal_sensitivity.evidence import LoggedOutcome
 from gymact.explore_causal_sensitivity.replay import replay
 

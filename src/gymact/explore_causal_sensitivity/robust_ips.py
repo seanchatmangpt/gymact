@@ -1,5 +1,5 @@
+from collections.abc import Iterable
 from fractions import Fraction
-from typing import Iterable
 
 from .evidence import LoggedOutcome
 from .gamma import Gamma

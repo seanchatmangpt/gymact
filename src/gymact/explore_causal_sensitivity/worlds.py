@@ -11,7 +11,10 @@ class World:
 
 
 def support_dropout() -> World:
-    return World("support_dropout", (LoggedOutcome("c", "a", Fraction(1), Fraction(1, 2), Fraction(0)),))
+    return World(
+        "support_dropout",
+        (LoggedOutcome("c", "a", Fraction(1), Fraction(1, 2), Fraction(0)),),
+    )
 
 
 def hidden_confounding() -> World:

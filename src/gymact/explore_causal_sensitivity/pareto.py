@@ -18,7 +18,11 @@ def frontier(candidates: tuple[Candidate, ...]) -> tuple[Candidate, ...]:
             and other.width <= c.width
             and other.evidence_value >= c.evidence_value
             and other.gamma_breakdown >= c.gamma_breakdown
-            and (other.width < c.width or other.evidence_value > c.evidence_value or other.gamma_breakdown > c.gamma_breakdown)
+            and (
+                other.width < c.width
+                or other.evidence_value > c.evidence_value
+                or other.gamma_breakdown > c.gamma_breakdown
+            )
             for other in candidates
         )
         if not dominated:

@@ -15,7 +15,11 @@ class Evaluation:
     standing: str
 
 
-def evaluate(rows: tuple[LoggedOutcome, ...], gamma: Fraction, outcome_span: Fraction) -> Evaluation:
+def evaluate(
+    rows: tuple[LoggedOutcome, ...],
+    gamma: Fraction,
+    outcome_span: Fraction,
+) -> Evaluation:
     interval = robust_ips(rows, Gamma(gamma))
     value = evidence_value(interval, outcome_span)
     standing = "PARTIAL_ALIVE" if rows else "UNKNOWN"
