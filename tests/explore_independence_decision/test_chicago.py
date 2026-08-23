@@ -3,15 +3,15 @@ from fractions import Fraction
 import pytest
 
 from gymact.explore_independence_decision import (
+    REQUIRED,
     ActionClass,
     DecisionCalibration,
     DependenceEvidence,
     LossMatrix,
-    REQUIRED,
     Refused,
     Standing,
-    Subject,
     Strategy,
+    Subject,
     admit,
     decide,
     qualify,
