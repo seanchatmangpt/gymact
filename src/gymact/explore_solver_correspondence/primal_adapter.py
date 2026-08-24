@@ -14,9 +14,12 @@ class SolverObservation:
     result: ResultIdentity
 
 
+Observation = SolverObservation
+
+
 def run_primal(
     subject: SolverSubject, a: object, b: object, metric: object
-) -> SolverObservation:
+) -> Observation:
     plan = wasserstein1(a, b, metric)
     return SolverObservation(
         subject,
