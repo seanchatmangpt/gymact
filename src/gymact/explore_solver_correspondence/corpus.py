@@ -7,7 +7,7 @@ from ..explore_kantorovich_ambiguity.ground import GroundMetric
 
 def line_metric(points: tuple[str, ...]) -> GroundMetric:
     costs = {(x, y): Fraction(abs(i-j)) for i, x in enumerate(points) for j, y in enumerate(points)}
-    return GroundMetric.from_costs(costs)
+    return GroundMetric.from_mapping(points, costs)
 
 
 def corpus(max_support: int = 6):
