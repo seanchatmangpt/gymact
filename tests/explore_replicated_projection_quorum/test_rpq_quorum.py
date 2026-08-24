@@ -1,7 +1,7 @@
 import unittest
 
 from gymact.explore_replicated_projection_quorum.quorum import QuorumState, assess_quorum
-from world import PROJECTION, UNIVERSE, projection
+from tests.explore_replicated_projection_quorum.world import PROJECTION, UNIVERSE, projection
 
 class QuorumCourt(unittest.TestCase):
     def test_majority_and_split_brain_are_distinct(self):
