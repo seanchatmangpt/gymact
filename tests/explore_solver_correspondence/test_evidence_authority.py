@@ -1,7 +1,11 @@
 from fractions import Fraction
+
 import pytest
+
 from gymact.explore_solver_correspondence.authority import admit_authority
-from gymact.explore_solver_correspondence.effective_evidence import require_effective_quorum
+from gymact.explore_solver_correspondence.effective_evidence import (
+    require_effective_quorum,
+)
 from gymact.explore_solver_correspondence.refusal import Refused
 
 
