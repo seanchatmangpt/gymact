@@ -4,6 +4,7 @@ from .refusal import Refused
 
 NON_CONSEQUENTIAL = frozenset({"OBSERVE", "SELECT", "CONSTRUCT", "VERIFY"})
 
+
 def admit_authority(action: str, broker: str | None = None) -> None:
     if action in NON_CONSEQUENTIAL:
         return
