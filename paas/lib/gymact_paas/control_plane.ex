@@ -80,8 +80,7 @@ defmodule GymactPaaS.ControlPlane do
 
   defp fetch_provider(candidates, provider) do
     case Enum.find(candidates, &(&1.provider == provider)) do
-      nil -> {:error, refusal(:REFUSED_UNSUPPORTED_PROVIDER, %{provider: provider})
-      }
+      nil -> {:error, refusal(:REFUSED_UNSUPPORTED_PROVIDER, %{provider: provider})}
       candidate -> {:ok, candidate}
     end
   end
