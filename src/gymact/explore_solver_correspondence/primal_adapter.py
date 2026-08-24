@@ -15,11 +15,10 @@ class SolverObservation:
 
 
 Observation = SolverObservation
+Input = object
 
 
-def run_primal(
-    subject: SolverSubject, a: object, b: object, metric: object
-) -> Observation:
+def run_primal(subject: SolverSubject, a: Input, b: Input, metric: Input) -> Observation:
     plan = wasserstein1(a, b, metric)
     return SolverObservation(
         subject,
