@@ -13,9 +13,7 @@ def effective_sample_size(count: int, correlation: Fraction) -> Fraction:
     return Fraction(count, 1) / (1 + (count - 1) * correlation)
 
 
-def require_effective_quorum(
-    count: int, correlation: Fraction, minimum: Fraction
-) -> Fraction:
+def require_effective_quorum(count: int, correlation: Fraction, minimum: Fraction) -> Fraction:
     n_eff = effective_sample_size(count, correlation)
     if n_eff < minimum:
         raise Refused("PSEUDO_QUORUM", f"{n_eff}<{minimum}")
