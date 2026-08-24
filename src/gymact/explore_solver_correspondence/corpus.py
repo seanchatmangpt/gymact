@@ -7,11 +7,10 @@ from ..explore_kantorovich_ambiguity.measure import FiniteMeasure
 
 
 def line_metric(points: tuple[str, ...]) -> GroundMetric:
-    costs = {
-        (x, y): Fraction(abs(i - j))
-        for i, x in enumerate(points)
-        for j, y in enumerate(points)
-    }
+    costs: dict[tuple[str, str], Fraction] = {}
+    for i, x in enumerate(points):
+        for j, y in enumerate(points):
+            costs[(x, y)] = Fraction(abs(i - j))
     return GroundMetric.from_mapping(points, costs)
 
 
