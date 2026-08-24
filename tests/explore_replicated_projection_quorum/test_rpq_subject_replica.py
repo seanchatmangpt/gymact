@@ -2,7 +2,7 @@ import unittest
 
 from gymact.explore_replicated_projection_quorum.refusal import Refused
 from gymact.explore_replicated_projection_quorum.subject import Subject
-from world import projection
+from tests.explore_replicated_projection_quorum.world import projection
 
 class SubjectReplicaCourt(unittest.TestCase):
     def test_exact_subject_and_replica_identity(self):

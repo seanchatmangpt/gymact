@@ -1,0 +1,36 @@
+name: EXPLORE Solver Correspondence Exact Head
+
+on:
+  pull_request:
+    paths:
+      - 'src/gymact/explore_solver_correspondence/**'
+      - 'tests/explore_solver_correspondence/**'
+      - '.github/workflows/explore-solver-correspondence-exact-head.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  exact-head:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Admit exact head
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - uses: astral-sh/setup-uv@v6
+      - name: Admit repository dev dependency closure
+        run: uv sync --group dev
+      - name: Compile
+        run: uv run python -m compileall -q src/gymact/explore_solver_correspondence tests/explore_solver_correspondence
+      - name: Differential metamorphic refusal replay courts
+        run: uv run pytest -q tests/explore_solver_correspondence
+      - name: Ruff static
+        run: uv run ruff check src/gymact/explore_solver_correspondence tests/explore_solver_correspondence
+      - name: Ruff format
+        run: uv run ruff format --check src/gymact/explore_solver_correspondence tests/explore_solver_correspondence
+      - name: Ambient consequential actuation fence
+        shell: bash
+        run: |
+          ! grep -REn 'requests\.(post|put|patch|delete)|subprocess\.|os\.system|boto3|azure\.|google\.cloud' src/gymact/explore_solver_correspondence
