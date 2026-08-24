@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 from .refusal import Refused
+
 
 @dataclass(frozen=True)
 class MetamorphicEvidence:
