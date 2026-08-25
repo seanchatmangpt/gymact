@@ -1,0 +1,1 @@
+{"id":"foreign-consumer","set":{"consumer_repo":"example/other"},"expected":"REFUSED[FOREIGN_CONSUMER]"}
