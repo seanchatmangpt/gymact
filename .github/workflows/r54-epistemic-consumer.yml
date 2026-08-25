@@ -1,0 +1,23 @@
+name: R54 Epistemic Consumer Court
+on:
+  pull_request:
+    paths:
+      - 'qualification/epistemic_consumer_r54/**'
+      - '.github/workflows/r54-epistemic-consumer.yml'
+permissions:
+  contents: read
+jobs:
+  qualify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Admit exact head
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - name: Execute 20-case consumer court
+        run: python3 qualification/epistemic_consumer_r54/verify.py
+      - name: Prove zero ambient consequential actuation
+        run: test "$(python3 -c 'import json;print(str(json.load(open("qualification/epistemic_consumer_r54/subject.json"))["consequential_do"]).lower())')" = "false"
