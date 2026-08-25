@@ -1,0 +1,28 @@
+@prefix esf: <https://ggen.dev/ontology/epistemic-sensor-factory#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix odrl: <http://www.w3.org/ns/odrl/2/> .
+
+<urn:gymact:r58-consumer> a prov:Entity, esf:ConsumerAdmissionCandidate ;
+  dct:identifier "seanchatmangpt/gymact@b40df62bbb1f6d5661eb1dbeb332476c90faa470" ;
+  esf:candidateRepo <https://github.com/seanchatmangpt/gymact> ;
+  esf:candidateHead "b40df62bbb1f6d5661eb1dbeb332476c90faa470" ;
+  esf:producerHead "8bd29043a2818a5fb6a4de65cc403eff8e495b58" ;
+  esf:producerTargetToken "esf:gymactTarget" ;
+  esf:consumerFamily "simulation-gym" ;
+  esf:identityVerified true ;
+  esf:authorityBounded true ;
+  esf:courtReusable true ;
+  esf:receiptReturnCapable true ;
+  esf:publicOntologyAligned true ;
+  esf:ggenManufacturable true ;
+  esf:replayCapable true ;
+  esf:dependencyClosed true ;
+  esf:noAmbientDo true ;
+  esf:generatedProjectionCapable true ;
+  esf:adapterRequired true ;
+  esf:qualificationPath <https://github.com/seanchatmangpt/gymact/actions> ;
+  esf:admissionStanding "ADMITTED" ;
+  esf:admittedTarget esf:gymactTarget ;
+  odrl:permission [ odrl:action odrl:read ] ;
+  odrl:prohibition [ odrl:action odrl:execute ] .
