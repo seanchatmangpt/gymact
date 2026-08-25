@@ -1,0 +1,2 @@
+PREFIX esf: <https://ggen.dev/ontology/epistemic-sensor-factory#>
+ASK { <urn:gymact:r58-consumer> esf:candidateRepo <https://github.com/seanchatmangpt/gymact> ; esf:candidateHead "b40df62bbb1f6d5661eb1dbeb332476c90faa470" . }

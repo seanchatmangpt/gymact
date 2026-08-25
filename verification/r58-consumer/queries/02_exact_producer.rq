@@ -1,0 +1,2 @@
+PREFIX esf: <https://ggen.dev/ontology/epistemic-sensor-factory#>
+ASK { <urn:gymact:r58-consumer> esf:producerHead "8bd29043a2818a5fb6a4de65cc403eff8e495b58" . }

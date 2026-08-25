@@ -1,0 +1,2 @@
+PREFIX odrl: <http://www.w3.org/ns/odrl/2/>
+ASK { <urn:gymact:r58-consumer> odrl:permission [ odrl:action odrl:read ] . }
