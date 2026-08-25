@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/seanchatmangpt/gymact/verification/r58-consumer/receipt.schema.json",
+  "type": "object",
+  "required": ["schema", "standing", "consumer_repo", "consumer_base", "producer_repo", "producer_base", "courts_executed", "consequential_do"],
+  "properties": {
+    "schema": {"const": "gymact.r58-consumer-receipt/1"},
+    "standing": {"enum": ["ALIVE", "REFUSED"]},
+    "consumer_repo": {"const": "seanchatmangpt/gymact"},
+    "consumer_base": {"pattern": "^[0-9a-f]{40}$"},
+    "producer_repo": {"const": "seanchatmangpt/ggen-marketplace"},
+    "producer_base": {"pattern": "^[0-9a-f]{40}$"},
+    "courts_executed": {"type": "integer", "minimum": 20},
+    "consequential_do": {"const": false}
+  },
+  "additionalProperties": true
+}
