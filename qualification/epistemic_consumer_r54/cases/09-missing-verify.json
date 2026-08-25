@@ -1,0 +1,1 @@
+{"id":"missing-verify","set":{"authority":"OBSERVE|CONSTRUCT"},"expected":"REFUSED[AUTHORITY_FENCE]"}
