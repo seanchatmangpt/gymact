@@ -1,0 +1,1 @@
+{"id":"delete-root","delete":["evidence_root"],"expected":"REFUSED[MISSING_EVIDENCE_ROOT]"}
