@@ -1,0 +1,1 @@
+{"id":"delete-consumer-base","delete":["consumer_base"],"expected":"REFUSED[MALFORMED_CONSUMER_BASE]"}

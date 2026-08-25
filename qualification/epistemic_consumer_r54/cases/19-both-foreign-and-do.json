@@ -1,0 +1,1 @@
+{"id":"both-foreign-and-do","set":{"consumer_repo":"example/other","consequential_do":true},"expected":"REFUSED[FOREIGN_CONSUMER]"}

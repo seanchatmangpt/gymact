@@ -1,0 +1,1 @@
+{"id":"foreign-pack","set":{"producer_pack":"other-pack"},"expected":"REFUSED[FOREIGN_PACK]"}

@@ -1,0 +1,1 @@
+{"id":"malformed-base","set":{"consumer_base":"not-a-sha"},"expected":"REFUSED[MALFORMED_CONSUMER_BASE]"}

@@ -1,0 +1,13 @@
+{
+  "schema": "ggen.epistemic-consumer-subject/1",
+  "consumer_repo": "seanchatmangpt/gymact",
+  "consumer_base": "5371a28719881c2466927874958e4e1ef3f8ed59",
+  "producer_repo": "seanchatmangpt/ggen-marketplace",
+  "producer_head": "0f3349afe3fe12a26932974b8e6a47399b1e94ab",
+  "producer_pack": "epistemic-sensor-factory-pack",
+  "producer_target_token": "esf:gymactTarget",
+  "authority": "OBSERVE|VERIFY|CONSTRUCT",
+  "consequential_do": false,
+  "evidence_root": "gymact-r54-independent-root",
+  "standing": "ADMITTED"
+}

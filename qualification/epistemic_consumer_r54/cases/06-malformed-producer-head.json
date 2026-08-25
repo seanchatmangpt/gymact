@@ -1,0 +1,1 @@
+{"id":"malformed-producer-head","set":{"producer_head":"bad"},"expected":"REFUSED[MALFORMED_PRODUCER_HEAD]"}
