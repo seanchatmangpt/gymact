@@ -1,0 +1,1 @@
+{"id":"observe-only","set":{"authority":"OBSERVE"},"expected":"REFUSED[AUTHORITY_FENCE]"}
