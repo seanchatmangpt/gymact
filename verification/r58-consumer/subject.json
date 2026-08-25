@@ -1,0 +1,13 @@
+{
+  "schema": "ggen.epistemic-consumer-subject/2",
+  "consumer_repo": "seanchatmangpt/gymact",
+  "consumer_base": "b40df62bbb1f6d5661eb1dbeb332476c90faa470",
+  "producer_repo": "seanchatmangpt/ggen-marketplace",
+  "producer_base": "8bd29043a2818a5fb6a4de65cc403eff8e495b58",
+  "producer_pack": "epistemic-sensor-factory-pack/R57-consumer-adapter-capital",
+  "producer_target_token": "esf:gymactTarget",
+  "consumer_family": "simulation-gym",
+  "authority": ["OBSERVE", "VERIFY", "CONSTRUCT"],
+  "consequential_do": false,
+  "standing": "ADMITTED"
+}
