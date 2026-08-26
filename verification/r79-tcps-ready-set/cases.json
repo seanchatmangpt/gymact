@@ -1,0 +1,10 @@
+[
+  {"id":"foreign-consumer","set":{"consumer_repo":"example/other"},"expected":"REFUSED[FOREIGN_CONSUMER]"},
+  {"id":"foreign-producer","set":{"producer_repo":"example/other"},"expected":"REFUSED[FOREIGN_PRODUCER]"},
+  {"id":"foreign-pack","set":{"producer_pack":"other-pack"},"expected":"REFUSED[FOREIGN_PACK]"},
+  {"id":"foreign-capability","set":{"producer_capability":"OTHER"},"expected":"REFUSED[FOREIGN_CAPABILITY]"},
+  {"id":"malformed-base","set":{"consumer_base":"bad"},"expected":"REFUSED[MALFORMED_CONSUMER_BASE]"},
+  {"id":"unqualified-prior","set":{"prior_consumer_standing":"UNKNOWN"},"expected":"REFUSED[PRIOR_STANDING]"},
+  {"id":"priority-before-legality","set":{"allocation_law":"priority-before-legality"},"expected":"REFUSED[ALLOCATION_LAW]"},
+  {"id":"ambient-do","set":{"authority":"VERIFY|DO","consequential_do":true},"expected":"REFUSED[AUTHORITY_FENCE]"}
+]
