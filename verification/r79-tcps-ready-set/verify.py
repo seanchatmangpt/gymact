@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-import hashlib, json, pathlib, re, sys
+import copy, hashlib, json, pathlib, re, sys
 HERE = pathlib.Path(__file__).resolve().parent
 SUBJECT = json.loads((HERE / "subject.json").read_text())
+CASES = json.loads((HERE / "cases.json").read_text())
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 
 def classify(s):
@@ -20,10 +21,21 @@ def classify(s):
     return "ALIVE"
 
 def main():
+    failures=[]
     standing = classify(SUBJECT)
+    if standing != "ALIVE": failures.append("baseline=" + standing)
+    for case in CASES:
+        candidate=copy.deepcopy(SUBJECT)
+        candidate.update(case.get("set", {}))
+        actual=classify(candidate)
+        print(case["id"] + "=" + actual)
+        if actual != case["expected"]: failures.append(case["id"]+":"+actual+"!="+case["expected"])
     digest = hashlib.sha256(json.dumps(SUBJECT, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     print("R79_CONSUMER=" + standing)
     print("SUBJECT_DIGEST=" + digest)
-    return 0 if standing == "ALIVE" else 1
+    print("CASE_COUNT=" + str(len(CASES)))
+    if failures:
+        print("REFUSED[R79_COURT]=" + ",".join(failures)); return 1
+    return 0
 
 if __name__ == "__main__": sys.exit(main())
