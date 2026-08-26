@@ -33,7 +33,7 @@ jobs:
           python-version: '3.12'
       - name: Install bounded producer verifier
         run: python -m pip install --disable-pip-version-check 'pytest==8.3.5' 'rdflib==7.1.4'
-      - name: Execute canonical R78 producer court
-        run: pytest -q _r78_producer/packs/portfolio-epistemic-observability-pack/tests/test_r78_tcps_ready_set_capital.py
+      - name: Execute canonical R78 producer court in isolated pytest context
+        run: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest -q -c /dev/null _r78_producer/packs/portfolio-epistemic-observability-pack/tests/test_r78_tcps_ready_set_capital.py
       - name: Prove zero ambient consequential actuation
         run: test "$(python -c 'import json; print(str(json.load(open("verification/r79-tcps-ready-set/subject.json"))["consequential_do"]).lower())')" = "false"
