@@ -16,7 +16,7 @@ from gymact.envharness import (
 )
 from gymact.envrigger import EnvRigger, EnvRiggerConfig
 from gymact.kernel import GymAct
-from gymact.models import Operation, Standing
+from gymact.models import AuthorityDecision, Operation, Standing
 from gymact.providers import MemoryProvider
 
 AUTHORITY = "urn:test:envharness:errc:authority"
@@ -28,6 +28,25 @@ UNKNOWN = "urn:test:capability:unknown"
 def runtime(*, authorized: bool = True) -> GymAct:
     resolver = AllowListAuthorityResolver({AUTHORITY}) if authorized else None
     gym = GymAct(authority_resolver=resolver) if resolver is not None else GymAct()
+    gym.register_provider(MemoryProvider())
+    return gym
+
+
+class DenyTeardownAuthorityResolver:
+    async def authorize(self, request):  # type: ignore[no-untyped-def]
+        if request.authority_ref != AUTHORITY:
+            return AuthorityDecision(admitted=False, reason="AUTHORITY_NOT_ADMITTED")
+        if request.operation is Operation.TEARDOWN:
+            return AuthorityDecision(admitted=False, reason="TEARDOWN_NOT_ADMITTED")
+        return AuthorityDecision(
+            admitted=True,
+            reason="AUTHORITY_ADMITTED",
+            evidence_ref=f"urn:gymact:authority-decision:{AUTHORITY}",
+        )
+
+
+def runtime_with_refused_teardown() -> GymAct:
+    gym = GymAct(authority_resolver=DenyTeardownAuthorityResolver())
     gym.register_provider(MemoryProvider())
     return gym
 
@@ -72,8 +91,39 @@ async def test_stage_preflight_eliminates_partial_actuation_for_static_invalidit
     assert reset.admission is not None
     assert reset.admission.checked_stage_actions == 2
     assert reset.stage_results == ()
+    assert reset.cleanup_receipt is not None
+    assert reset.cleanup_receipt.operation == Operation.TEARDOWN
+    assert reset.cleanup_receipt.standing == Standing.ALIVE
+    assert session.episode_id is None
+    with pytest.raises(RuntimeError, match="ENVHARNESS_NOT_RESET"):
+        await session.raw_observe()
+    receipts = gym.episode_receipts(reset.materialization.episode.episode_id)
+    assert all(receipt.operation != Operation.ACT for receipt in receipts)
+
+
+@pytest.mark.asyncio
+async def test_stage_preflight_cleanup_refusal_is_fail_closed_and_recoverable() -> None:
+    gym = runtime_with_refused_teardown()
+    task = TaskSpec(
+        provider="memory",
+        config={"initial": {"count": 0}, "requires_authority": True},
+        harness=HarnessSpec(stages=(Stage(actions=(HarnessAction(capability=UNKNOWN),)),)),
+    )
+    session = HarnessSession(gym, task, authority_ref=AUTHORITY)
+
+    reset = await session.reset()
+
+    assert reset.accepted is False
+    assert reset.standing == Standing.REFUSED
+    assert reset.reason == "HARNESS_ADMISSION_CLEANUP_FAILED:STAGE_CAPABILITY_UNSUPPORTED"
+    assert reset.admission is not None
+    assert reset.admission.standing == Standing.UNSUPPORTED
+    assert reset.cleanup_receipt is not None
+    assert reset.cleanup_receipt.operation == Operation.TEARDOWN
+    assert reset.cleanup_receipt.standing == Standing.REFUSED
+    assert session.episode_id == reset.materialization.episode.episode_id
     assert (await session.raw_observe()).state == {"count": 0}
-    receipts = gym.episode_receipts(session.episode_id or "")
+    receipts = gym.episode_receipts(session.episode_id)
     assert all(receipt.operation != Operation.ACT for receipt in receipts)
 
 
