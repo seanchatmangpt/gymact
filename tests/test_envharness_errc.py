@@ -107,9 +107,7 @@ async def test_stage_preflight_cleanup_refusal_is_fail_closed_and_recoverable() 
     task = TaskSpec(
         provider="memory",
         config={"initial": {"count": 0}, "requires_authority": True},
-        harness=HarnessSpec(
-            stages=(Stage(actions=(HarnessAction(capability=UNKNOWN),)),)
-        ),
+        harness=HarnessSpec(stages=(Stage(actions=(HarnessAction(capability=UNKNOWN),)),)),
     )
     session = HarnessSession(gym, task, authority_ref=AUTHORITY)
 
