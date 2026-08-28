@@ -20,8 +20,8 @@ defmodule GymactPaaS.ControlPlaneTest do
     refute ControlPlane.replay(%{receipt | capability: :storage})
   end
 
-  test "direct DO is typed refusal and unknown capability fails closed" do
-    assert {:error, %{code: :REFUSED_UNRECEIPTED_ACTUATION}} = ControlPlane.do(%{})
+  test "direct actuation is typed refusal and unknown capability fails closed" do
+    assert {:error, %{code: :REFUSED_UNRECEIPTED_ACTUATION}} = ControlPlane.actuate(%{})
     assert {:error, %{code: :REFUSED_UNMAPPED_CAPABILITY}} = ControlPlane.select(:magic_database)
   end
 
