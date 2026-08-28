@@ -64,7 +64,11 @@ defmodule GymactPaaS.ControlPlane do
 
   def replay(_), do: false
 
-  def do(_intent),
+  # `do` is an Elixir reserved keyword and cannot be used as a normal function
+  # identifier.  Keep the architectural DO boundary explicit without smuggling
+  # authority through parser tricks: callers ask to actuate and receive the same
+  # typed fail-closed BRCE refusal.
+  def actuate(_intent),
     do: {:error, refusal(:REFUSED_UNRECEIPTED_ACTUATION, %{authority: :brce_required})}
 
   def catalog_graph do
