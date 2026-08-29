@@ -1,9 +1,6 @@
 # gymact-bridge-pack: admitted facts for the ggen <-> GymAct bridge and its real FastMCP surface.
-#
-# No custom TBox is declared here.  Callable capabilities are public SOSA Procedures;
-# DCTERMS carries identity/type/source relations and PROV-O carries the exact production
-# surface provenance.  MCP-specific protocol distinctions point to the central
-# protocol-gym ontology rather than being redefined here.
+# No custom TBox is declared here. Callable capabilities are public SOSA Procedures;
+# DCTERMS carries identity/type/source relations and PROV-O carries provenance.
 
 @prefix dct:  <http://purl.org/dc/terms/> .
 @prefix prov: <http://www.w3.org/ns/prov#> .
@@ -20,6 +17,9 @@
         <urn:gymact:bridge:capability:create_episode>,
         <urn:gymact:bridge:capability:capabilities>,
         <urn:gymact:bridge:capability:observe>,
+        <urn:gymact:bridge:capability:ggen_agent_catalog>,
+        <urn:gymact:bridge:capability:ggen_agent_frontier>,
+        <urn:gymact:bridge:capability:ggen_agent_invoke>,
         <urn:gymact:bridge:capability:act>,
         <urn:gymact:bridge:capability:verify>,
         <urn:gymact:bridge:capability:checkpoint>,
@@ -27,51 +27,50 @@
         <urn:gymact:bridge:capability:probe_repo>,
         <urn:gymact:bridge:capability:teardown> .
 
-# READ tools: information acquisition or bounded checkpoint capture only.
+# READ: observation only.
 <urn:gymact:bridge:capability:discover>
     a sosa:Procedure ; dct:identifier "discover" ; dct:title "discover" ;
     dct:type <urn:gymact:consequence:read> ; prov:wasDerivedFrom <urn:gymact:bridge:fastmcp-surface> .
-
 <urn:gymact:bridge:capability:capabilities>
     a sosa:Procedure ; dct:identifier "capabilities" ; dct:title "capabilities" ;
     dct:type <urn:gymact:consequence:read> ; prov:wasDerivedFrom <urn:gymact:bridge:fastmcp-surface> .
-
 <urn:gymact:bridge:capability:observe>
     a sosa:Procedure ; dct:identifier "observe" ; dct:title "observe" ;
     dct:type <urn:gymact:consequence:read> ; prov:wasDerivedFrom <urn:gymact:bridge:fastmcp-surface> .
-
 <urn:gymact:bridge:capability:verify>
     a sosa:Procedure ; dct:identifier "verify" ; dct:title "verify" ;
     dct:type <urn:gymact:consequence:read> ; prov:wasDerivedFrom <urn:gymact:bridge:fastmcp-surface> .
-
 <urn:gymact:bridge:capability:checkpoint>
     a sosa:Procedure ; dct:identifier "checkpoint" ; dct:title "checkpoint" ;
     dct:type <urn:gymact:consequence:read> ; prov:wasDerivedFrom <urn:gymact:bridge:fastmcp-surface> .
-
 <urn:gymact:bridge:capability:probe_repo>
     a sosa:Procedure ; dct:identifier "probe_repo" ; dct:title "probe_repo" ;
     dct:type <urn:gymact:consequence:read> ; prov:wasDerivedFrom <urn:gymact:bridge:fastmcp-surface> .
+<urn:gymact:bridge:capability:ggen_agent_catalog>
+    a sosa:Procedure ; dct:identifier "ggen_agent_catalog" ; dct:title "ggen_agent_catalog" ;
+    dct:type <urn:gymact:consequence:read> ; prov:wasDerivedFrom <urn:gymact:bridge:fastmcp-surface> .
 
-# Consequential envelopes.  MCP declaration does not grant execution authority;
-# the implementation still delegates materialize/restore/teardown to GymAct and act
-# to DCM/BRCE.  The act tool is explicitly related to the central ConditionalEffect
-# concept because candidate/court modes are powerless while selected/request modes can DO.
+# CONSTRUCT: deterministic powerless manufacture; no ambient execution authority.
+<urn:gymact:bridge:capability:ggen_agent_frontier>
+    a sosa:Procedure ; dct:identifier "ggen_agent_frontier" ; dct:title "ggen_agent_frontier" ;
+    dct:type <urn:gymact:consequence:construct> ; prov:wasDerivedFrom <urn:gymact:bridge:fastmcp-surface> .
+<urn:gymact:bridge:capability:ggen_agent_invoke>
+    a sosa:Procedure ; dct:identifier "ggen_agent_invoke" ; dct:title "ggen_agent_invoke" ;
+    dct:type <urn:gymact:consequence:construct> ; prov:wasDerivedFrom <urn:gymact:bridge:fastmcp-surface> .
+
+# DO: consequential envelopes. MCP declaration never grants authority itself.
 <urn:gymact:bridge:capability:create_episode>
     a sosa:Procedure ; dct:identifier "create_episode" ; dct:title "create_episode" ;
     dct:type <urn:gymact:consequence:do> ; dct:requires <urn:gymact:authority:materialization> ;
     prov:wasDerivedFrom <urn:gymact:bridge:fastmcp-surface> .
-
 <urn:gymact:bridge:capability:act>
     a sosa:Procedure ; dct:identifier "act" ; dct:title "act" ;
     dct:type <urn:gymact:consequence:do> ; dct:relation <urn:gymact:mcp:ConditionalEffect> ;
-    dct:requires <urn:gymact:authority:brce> ;
-    prov:wasDerivedFrom <urn:gymact:bridge:fastmcp-surface> .
-
+    dct:requires <urn:gymact:authority:brce> ; prov:wasDerivedFrom <urn:gymact:bridge:fastmcp-surface> .
 <urn:gymact:bridge:capability:restore>
     a sosa:Procedure ; dct:identifier "restore" ; dct:title "restore" ;
     dct:type <urn:gymact:consequence:do> ; dct:requires <urn:gymact:authority:restore> ;
     prov:wasDerivedFrom <urn:gymact:bridge:fastmcp-surface> .
-
 <urn:gymact:bridge:capability:teardown>
     a sosa:Procedure ; dct:identifier "teardown" ; dct:title "teardown" ;
     dct:type <urn:gymact:consequence:do> ; dct:requires <urn:gymact:authority:teardown> ;

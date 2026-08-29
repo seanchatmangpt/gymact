@@ -3,7 +3,7 @@
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 @prefix sosa: <http://www.w3.org/ns/sosa/> .
 
-# Whole-repository MCP consumer inventory.  These are source artifacts, not a
+# Whole-repository MCP consumer inventory. These are source artifacts, not a
 # second protocol TBox: protocol semantics remain in ontology.ttl.
 <urn:gymact:mcp:role:server-surface> a skos:Concept ; skos:prefLabel "server surface" .
 <urn:gymact:mcp:role:client-adapter> a skos:Concept ; skos:prefLabel "client adapter" .
@@ -12,71 +12,73 @@
 <urn:gymact:mcp:role:deterministic-compiler> a skos:Concept ; skos:prefLabel "deterministic compiler" .
 <urn:gymact:mcp:role:generated-projection> a skos:Concept ; skos:prefLabel "generated projection" .
 <urn:gymact:mcp:role:conformance-gym> a skos:Concept ; skos:prefLabel "protocol conformance gym" .
+<urn:gymact:mcp:role:process-controller> a skos:Concept ; skos:prefLabel "process controller" .
 
 <urn:gymact:mcp:consumer:fastmcp-production>
-    a prov:Entity ;
-    dct:identifier "fastmcp-production" ;
+    a prov:Entity ; dct:identifier "fastmcp-production" ;
     dct:type <urn:gymact:mcp:role:server-surface> ;
     dct:source "src/gymact/surfaces/fastmcp.py" ;
     dct:conformsTo <urn:gymact:mcp:revision-2026-07-28> ;
     dct:relation <urn:gymact:bridge:fastmcp-surface> .
 
 <urn:gymact:mcp:consumer:client-session>
-    a prov:Entity ;
-    dct:identifier "mcp-client-session" ;
+    a prov:Entity ; dct:identifier "mcp-client-session" ;
     dct:type <urn:gymact:mcp:role:client-adapter> ;
     dct:source "src/gymact/gyms/mcp_client_session.py" ;
     dct:relation <urn:gymact:mcp:method-tools-list>, <urn:gymact:mcp:method-tools-call> .
 
 <urn:gymact:mcp:consumer:sregym-physics>
-    a prov:Entity ;
-    dct:identifier "sregym-vendor-physics" ;
+    a prov:Entity ; dct:identifier "sregym-vendor-physics" ;
     dct:type <urn:gymact:mcp:role:vendor-physics> ;
     dct:source "src/gymact/gyms/sregym.py" ;
     dct:relation <urn:gymact:mcp:transport-legacy-http-sse> .
 
 <urn:gymact:mcp:consumer:sregym-semantic-adapter>
-    a prov:Entity ;
-    dct:identifier "sregym-ontology-adapter" ;
+    a prov:Entity ; dct:identifier "sregym-ontology-adapter" ;
     dct:type <urn:gymact:mcp:role:semantic-adapter> ;
     dct:source "src/gymact/gyms/sregym_ontology.py" ;
     dct:relation <urn:gymact:mcp:transport-legacy-http-sse> .
 
 <urn:gymact:mcp:consumer:gdmcp>
-    a prov:Entity ;
-    dct:identifier "gdmcp" ;
+    a prov:Entity ; dct:identifier "gdmcp" ;
     dct:type <urn:gymact:mcp:role:deterministic-compiler> ;
     dct:source "src/gymact/gdmcp.py" ;
     dct:relation <urn:gymact:mcp:method-tools-call> .
 
+<urn:gymact:mcp:consumer:gdmcp-bpmn-bridge>
+    a prov:Entity ; dct:identifier "gdmcp-bpmn-bridge" ;
+    dct:type <urn:gymact:mcp:role:deterministic-compiler> ;
+    dct:source "src/gymact/gdmcp_bpmn_bridge.py" ;
+    dct:relation <urn:gymact:mcp:method-tools-call> .
+
+<urn:gymact:mcp:consumer:process-control>
+    a prov:Entity ; dct:identifier "mcp-process-control" ;
+    dct:type <urn:gymact:mcp:role:process-controller> ;
+    dct:source "src/gymact/mcp_process_control.py" ;
+    dct:relation <urn:gymact:mcp:method-tools-call> .
+
 <urn:gymact:mcp:consumer:sregym-generated-catalog>
-    a prov:Entity ;
-    dct:identifier "sregym-mcp-catalog" ;
+    a prov:Entity ; dct:identifier "sregym-mcp-catalog" ;
     dct:type <urn:gymact:mcp:role:generated-projection> ;
     dct:source "src/gymact/generated/sregym_mcp_catalog.py" ;
     prov:wasDerivedFrom <urn:gymact:sregym:e2e:contract> .
 
 <urn:gymact:mcp:consumer:protocol-gym>
-    a prov:Entity ;
-    dct:identifier "protocol-gym" ;
+    a prov:Entity ; dct:identifier "protocol-gym" ;
     dct:type <urn:gymact:mcp:role:conformance-gym> ;
     dct:source "src/gymact/protocol_gym.py" ;
     dct:relation <urn:gymact:protocol:mcp> .
 
-# Generic MCP client-session GymAct capabilities.  list_tools is genuinely READ.
-# call_tool is a conservative DO envelope because the target tool is selected at
-# runtime; the central MCP model still classifies tools/call itself as ConditionalEffect.
+# Generic MCP client-session capabilities.
 <urn:gymact:mcp:capability:list_tools>
-    a sosa:Procedure ;
-    dct:identifier "list_tools" ;
+    a sosa:Procedure ; dct:identifier "list_tools" ;
     dct:title "List tools from MCP server" ;
     dct:type <urn:gymact:consequence:read> ;
     dct:relation <urn:gymact:mcp:method-tools-list> ;
     prov:wasDerivedFrom <urn:gymact:mcp:consumer:client-session> .
 
 <urn:gymact:mcp:capability:call_tool>
-    a sosa:Procedure ;
-    dct:identifier "call_tool" ;
+    a sosa:Procedure ; dct:identifier "call_tool" ;
     dct:title "Call a tool through MCP client" ;
     dct:type <urn:gymact:consequence:do> ;
     dct:relation <urn:gymact:mcp:method-tools-call>, <urn:gymact:mcp:ConditionalEffect> ;

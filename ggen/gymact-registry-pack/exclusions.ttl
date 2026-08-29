@@ -15,3 +15,11 @@ rg:x-ontology-driven a rg:ExcludedProvider ;
 rg:x-sregym-vendor-physics a rg:ExcludedProvider ;
     rg:excludedClass "gymact.gyms.sregym.SregymVendorProvider" ;
     rg:exclusionReason "real SREGym transport/process physics implementation wrapped by the registered SregymOntologyProvider; its historical hand-authored capability metadata is intentionally not admitted as runtime semantic truth." .
+
+rg:x-dependency-world-generic a rg:ExcludedProvider ;
+    rg:excludedClass "gymact.gyms.dependency_world.DependencyWorldProvider" ;
+    rg:exclusionReason "generic public-ontology dependency-world compiler requiring name, pack_dir, and local_prefix construction parameters; concrete worlds are configured instances rather than one zero-argument fixed-capability builtin." .
+
+rg:x-shared-dependency-world-generic a rg:ExcludedProvider ;
+    rg:excludedClass "gymact.gyms.shared_dependency_world.SharedDependencyWorldProvider" ;
+    rg:exclusionReason "generic shared-state extension of DependencyWorldProvider requiring an ontology pack and namespace; it manufactures actor views over configured worlds and is not one zero-argument fixed-capability builtin." .

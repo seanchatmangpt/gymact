@@ -1,0 +1,32 @@
+name: dfcm-dd-ui-world
+version: 26.8.18
+subject: deterministic-dynamic-ui
+reference:
+  repo: seanchatmangpt/wasm4pm
+  pr: 606
+  grammar: dd-ui/2
+invariants:
+  irreversible_ui_selections: 0
+  rendering_actuation_authority: false
+  runtime_ai_render_authority: false
+  presentation_choice_reversible: true
+separation:
+  SELECT: reversible-presentation
+  CONSTRUCT: explicit-admission
+  DO: BRCE-only
+falsifiers:
+  - irreversible-presentation-selection
+  - render-to-do-authority-escalation
+  - unprojected-action
+  - tampered-replay-binding
+  - presentation-mutates-business-authority
+  - intent-actuation-true
+receipt_bindings:
+  - grammar
+  - world
+  - input
+  - presentation_frontier
+  - screen
+standing:
+  direct_actuation: false
+  output: intent-only

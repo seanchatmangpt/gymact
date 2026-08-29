@@ -1,0 +1,29 @@
+version: dfcm-dd-ui/2
+subject: deterministic-dynamic-ui
+invariants:
+  irreversible_ui_selections: 0
+  rendering_has_actuation_authority: false
+  select_construct_do_separated: true
+  receipts_bind:
+    - grammar
+    - world
+    - input
+    - presentation_frontier
+    - screen
+falsifiers:
+  - id: F01
+    predicate: irreversible_ui_selections != 0
+  - id: F02
+    predicate: rendering_has_actuation_authority == true
+  - id: F03
+    predicate: unprojected_action_is_accepted == true
+  - id: F04
+    predicate: replay_accepts_tampered_world_digest == true
+  - id: F05
+    predicate: presentation_choice_changes_business_authority == true
+avatars: [CEO, CFO, CTO, ENGINEER, AUDITOR]
+dimensions: [semantic, avatar, context, evidence, materiality, grammar]
+authority:
+  SELECT: presentation-only
+  CONSTRUCT: explicit-admission-required
+  DO: brce-only

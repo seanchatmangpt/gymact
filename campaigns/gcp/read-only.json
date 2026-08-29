@@ -1,0 +1,27 @@
+{
+  "cases": [
+    {
+      "case_id": "cloudresourcemanager:v3:projects.get#HAPPY_PATH",
+      "method_id": "cloudresourcemanager:v3:projects.get",
+      "effect": "READ_ONE",
+      "http_method": "GET",
+      "url": "https://cloudresourcemanager.googleapis.com/v3/projects/$GOOGLE_CLOUD_PROJECT"
+    },
+    {
+      "case_id": "serviceusage:v1:services.list#HAPPY_PATH",
+      "method_id": "serviceusage:v1:services.list",
+      "effect": "READ_MANY",
+      "http_method": "GET",
+      "url": "https://serviceusage.googleapis.com/v1/projects/$GOOGLE_CLOUD_PROJECT/services",
+      "query": {"filter": "state:ENABLED", "pageSize": "1"}
+    },
+    {
+      "case_id": "cloudresourcemanager:v3:projects.testIamPermissions#HAPPY_PATH",
+      "method_id": "cloudresourcemanager:v3:projects.testIamPermissions",
+      "effect": "IAM_TEST",
+      "http_method": "POST",
+      "url": "https://cloudresourcemanager.googleapis.com/v3/projects/$GOOGLE_CLOUD_PROJECT:testIamPermissions",
+      "body": {"permissions": ["resourcemanager.projects.get"]}
+    }
+  ]
+}

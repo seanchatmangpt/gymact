@@ -1,0 +1,100 @@
+name: GCP Empirical Differential Campaign
+
+on:
+  workflow_dispatch:
+    inputs:
+      campaign_path:
+        description: "Checked-in empirical campaign JSON path"
+        required: true
+        default: "campaigns/gcp/read-only.json"
+        type: string
+      project_id:
+        description: "Exact GCP project id used to render the campaign subject"
+        required: true
+        type: string
+      allow_do:
+        description: "Admit consequential campaign cases"
+        required: true
+        default: false
+        type: boolean
+      authority_ref:
+        description: "Authority receipt/reference required when allow_do=true"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  UV_LINK_MODE: copy
+  GYMACT_UV_VERSION: "0.11.32"
+
+jobs:
+  empirical:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      GYMACT_GCP_ACCESS_TOKEN: ${{ secrets.GCP_ACCESS_TOKEN }}
+      GOOGLE_CLOUD_PROJECT: ${{ inputs.project_id }}
+    steps:
+      - name: Checkout exact subject
+        uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Assert exact subject identity
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+
+      - name: Refuse absent project subject
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GOOGLE_CLOUD_PROJECT" || { echo 'REFUSED:GCP_PROJECT_SUBJECT_REQUIRED' >&2; exit 2; }
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up admitted uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.GYMACT_UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+
+      - name: Resolve runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uv --version | awk '{print $2}')" = "$GYMACT_UV_VERSION"
+          uv sync --group dev
+
+      - name: Refuse ambiguous DO authority
+        if: ${{ inputs.allow_do && inputs.authority_ref == '' }}
+        shell: bash
+        run: |
+          echo 'REFUSED:LIVE_GCP_AUTHORITY_REF_REQUIRED' >&2
+          exit 2
+
+      - name: Execute declared campaign
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=("${{ inputs.campaign_path }}" --output artifacts/gcp/empirical-campaign.json)
+          if [[ "${{ inputs.allow_do }}" == "true" ]]; then
+            args+=(--allow-do --authority-ref "${{ inputs.authority_ref }}")
+          fi
+          uv run python scripts/gcp_empirical_campaign.py "${args[@]}"
+
+      - name: Preserve empirical campaign receipt
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: gcp-empirical-campaign-${{ github.sha }}
+          path: artifacts/gcp/empirical-campaign.json
+          if-no-files-found: warn
+          retention-days: 30

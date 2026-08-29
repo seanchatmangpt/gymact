@@ -7,9 +7,8 @@ with no checked-out content in this checkout (only the parent directory
 exists) -- see `src/gymact/gyms/inspect_evals.py`'s module docstring for the
 full explanation, including the real pinned revision in
 `~/autofde-lab/docs/papers/gym-lock.ttl`. This test file therefore exercises
-the real, installed `inspect-ai` PyPI package directly (verified installable
-via `uv pip install inspect-ai` in this session; `inspect_ai.__version__ ==
-"0.3.252"`), not a checked-out `inspect_evals` task package.
+the real, installed `inspect-ai` PyPI package directly, not a checked-out
+`inspect_evals` task package.
 
 Per `gymact.standing.require_standing`, the real thing (an importable
 `inspect_ai`) is the default; this only degrades to a named, visible skip if
@@ -21,8 +20,6 @@ opts in via `GYMACT_ALLOW_DEGRADED_STANDINGS=LOCAL_GYM:inspect-evals` (or
 from __future__ import annotations
 
 import importlib.util
-
-import pytest
 
 from gymact.standing import require_standing
 
@@ -52,28 +49,6 @@ def _authorized_gym() -> GymAct:
     gym = GymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
     gym.register_provider(InspectEvalsProvider())
     return gym
-
-# inspect_ai's own internal anyio.MemoryObjectReceiveStream (allocated deep
-# inside inspect_ai._eval.eval_async's own transcript/display plumbing, not
-# by anything this module allocates) is sometimes garbage-collected without
-# being explicitly closed, which anyio reports as an unraisable
-# ResourceWarning at GC time -- outside any exception handler this module's
-# own code could catch. Verified in this session: the real eval_async() call
-# succeeds and produces a real, correctly scored EvalLog every time; this
-# warning fires only during later, unrelated garbage collection. Silencing
-# it here (rather than repo-wide) is scoped to this one real, named upstream
-# cleanup gap in inspect_ai 0.3.252, not a blanket warnings suppression.
-pytestmark = pytest.mark.filterwarnings("ignore::pytest.PytestUnraisableExceptionWarning")
-
-# `filterwarnings` above only silences a PytestUnraisableExceptionWarning raised
-# while *this* module's own tests are running -- pytest's unraisable-exception
-# hook attributes a GC-time warning to whichever test happens to be executing
-# when Python's collector actually reclaims the leaked object, which for this
-# object is nondeterministic and was observed landing on a later, unrelated
-# module (test_ocel.py) purely from suite ordering. A bare gc.collect() at this
-# module's own teardown does not reliably force reclamation either (verified:
-# still reproduces after adding one). See test_ocel.py's matching, cross-
-# referenced suppression for the other half of this scoped workaround.
 
 
 async def _run_real_inspect_episode(*, custom_outputs: list[str]) -> list:

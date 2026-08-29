@@ -13,47 +13,45 @@ submodule, so the *target framework* is real and pinned even though this repo
 cannot see its checked-out tree.
 
 What is genuinely real and installable in this sandbox: the `inspect-ai`
-PyPI package itself (`pip install inspect-ai` succeeds; verified in this
-session, `inspect_ai.__version__ == "0.3.252"`). This module depends on that
-real package directly -- `inspect_ai.Task`, `inspect_ai.eval()`,
-`inspect_ai.dataset.Sample`, `inspect_ai.solver.generate`,
-`inspect_ai.scorer.match`, and `inspect_ai.model.ModelOutput` are all real
-Inspect internals, not GymAct-owned reimplementations. Because a full
-`inspect_evals` task package is not checked out here, the environment
-materializes its own minimal but real `inspect_ai.Task` (one `Sample`, the
-real `generate()` solver, the real `match()` scorer) rather than importing an
-`inspect_evals.*` task registry entry -- the same "generic adapter over the
-target framework's own API surface" posture `mcp_client_session.py` and
-`discovered.py` already use, not a simulation of what a real task looks like.
+PyPI package itself. This module depends on that real package directly --
+`inspect_ai.Task`, `inspect_ai.eval()`, `inspect_ai.dataset.Sample`,
+`inspect_ai.solver.generate`, `inspect_ai.scorer.match`, and
+`inspect_ai.model.ModelOutput` are all real Inspect internals, not
+GymAct-owned reimplementations. Because a full `inspect_evals` task package
+is not checked out here, the environment materializes its own minimal but
+real `inspect_ai.Task` (one `Sample`, the real `generate()` solver, the real
+`match()` scorer) rather than importing an `inspect_evals.*` task registry
+entry.
 
 Model backend: `inspect_ai.model._providers.mockllm.MockLLM` is a real,
 first-party Inspect model provider (`model="mockllm/<name>"`), not a GymAct
-stub -- it exists in Inspect's own `_providers` package specifically so
-evals can run deterministically without a paid API key. This module defaults
-to it (`config["model"]` defaults to `"mockllm/model"` with
-`config["model_args"]["custom_outputs"]` supplying real
-`inspect_ai.model.ModelOutput` completions), which is what makes real,
-fully-local, no-network-credential episodes possible. `config["model"]` may
-instead be pointed at a real paid provider (e.g. `"openai/gpt-4o"`) by a
-caller that has credentials -- this module does not special-case that path;
-it always calls the real `inspect_ai.eval()`.
+stub. This module defaults to it so real fully-local no-network-credential
+episodes are possible. A caller with credentials may instead select a real
+paid provider; this module does not special-case that path.
 
-`actuate()` really calls `inspect_ai.eval_async()` for real -- one real
-subprocess-free, in-process Inspect run over the real `Task`, producing a real
-`inspect_ai.log.EvalLog` with a real `EvalLog.results` populated by
-Inspect's own `match()` scorer. No pass/fail is fabricated: `verify()` reads
-`EvalLog.samples[0].scores["match"].value` (Inspect's own `CORRECT`/
-`INCORRECT`/`PARTIAL`/`NOANSWER` `Value` grade) exactly as Inspect produced
-it.
+`actuate()` delegates execution to Inspect's public synchronous `eval()`
+lifecycle owner on a worker thread. That wrapper owns Inspect platform init,
+display selection, async-filesystem wrapping, task-display lifetime, and the
+inner `eval_async()` call. GymAct remains async by awaiting the worker thread,
+while `display="none"` prevents UI/display resources and `ctl_server=False`
+prevents the default AF_UNIX control endpoint. For the locked Inspect release,
+GymAct tracks every sample-event receive endpoint at creation, closes it at
+drain completion, and performs a final idempotent close at eval return. The
+compatibility bracket patches both the defining hooks module and the task
+runner's imported aliases, then restores both after each evaluation. It does
+not suppress resource warnings. The returned objects are real
+`inspect_ai.log.EvalLog` values populated by Inspect's own scorer.
 """
 
 from __future__ import annotations
 
+import asyncio
+from threading import Lock
 from typing import Any
 from uuid import uuid4
 
 from inspect_ai import Task
-from inspect_ai import eval_async as inspect_eval_async
+from inspect_ai import eval as inspect_eval
 from inspect_ai.dataset import Sample
 from inspect_ai.model import ModelOutput
 from inspect_ai.scorer import CORRECT, match
@@ -70,15 +68,87 @@ INSPECT_SOLVE_SAMPLE_CAPABILITY = Capability(
 )
 
 _DEFAULT_MODEL = "mockllm/model"
+_INSPECT_EVENT_DRAIN_LOCK = Lock()
+
+
+def _run_inspect_eval(
+    *,
+    task: Task,
+    model: str,
+    model_args: dict[str, Any],
+    log_dir: str,
+) -> list[Any]:
+    """Run Inspect while deterministically closing sample-event receivers.
+
+    Inspect creates an AnyIO memory-object receive stream for every sample.
+    In the locked release its drain path closes the sender and clears both
+    active references without closing the receive endpoint. Capturing only the
+    receiver visible at drain time is insufficient when lifecycle transitions
+    replace or clear the active sample before adapter cleanup.
+
+    Inspect's task runner imports the hook lifecycle callables into its own
+    module namespace. Replacing only ``inspect_ai.hooks._hooks`` therefore
+    does not intercept an already-bound runner alias. The adapter temporarily
+    installs the same tracking wrappers at both call sites, closes each owned
+    receiver when drain completes, performs an idempotent final close after
+    public ``eval()`` returns, and restores every replaced callable in
+    ``finally``. No warning is filtered and no scoring or authority behavior is
+    replaced.
+    """
+    from inspect_ai._eval.task import run as inspect_task_run
+    from inspect_ai.hooks import _hooks as inspect_hooks
+
+    original_start = inspect_hooks.start_sample_event_emitter
+    original_drain = inspect_hooks.drain_sample_events
+    runner_start = getattr(inspect_task_run, "start_sample_event_emitter", None)
+    runner_drain = getattr(inspect_task_run, "drain_sample_events", None)
+    owned_receives: list[Any] = []
+
+    def start_sample_event_emitter_tracking_receive() -> None:
+        original_start()
+        active = inspect_hooks.sample_active()
+        receive = active.event_receive if active is not None else None
+        if receive is not None:
+            owned_receives.append(receive)
+
+    async def drain_sample_events_closing_receive() -> None:
+        active = inspect_hooks.sample_active()
+        receive = active.event_receive if active is not None else None
+        try:
+            await original_drain()
+        finally:
+            if receive is not None:
+                receive.close()
+
+    with _INSPECT_EVENT_DRAIN_LOCK:
+        inspect_hooks.start_sample_event_emitter = start_sample_event_emitter_tracking_receive
+        inspect_hooks.drain_sample_events = drain_sample_events_closing_receive
+        if runner_start is original_start:
+            inspect_task_run.start_sample_event_emitter = start_sample_event_emitter_tracking_receive
+        if runner_drain is original_drain:
+            inspect_task_run.drain_sample_events = drain_sample_events_closing_receive
+        try:
+            return inspect_eval(
+                task,
+                model=model,
+                model_args=model_args,
+                log_dir=log_dir,
+                display="none",
+                ctl_server=False,
+            )
+        finally:
+            inspect_hooks.start_sample_event_emitter = original_start
+            inspect_hooks.drain_sample_events = original_drain
+            if runner_start is original_start:
+                inspect_task_run.start_sample_event_emitter = runner_start
+            if runner_drain is original_drain:
+                inspect_task_run.drain_sample_events = runner_drain
+            for receive in owned_receives:
+                receive.close()
 
 
 class InspectEvalsEnvironment:
-    """Wraps one real `inspect_ai.Task` (one `Sample`, real `generate()`
-    solver, real `match()` scorer) and materializes real `inspect_ai.eval()`
-    runs against it. `solve_sample` is the sole `DO` capability -- each call
-    is a real, independently re-runnable Inspect evaluation, not a cached or
-    replayed result.
-    """
+    """Wrap one real Inspect task and expose its bounded solve operation."""
 
     def __init__(
         self,
@@ -124,30 +194,13 @@ class InspectEvalsEnvironment:
 
         before = dict(self._last_result)
 
-        # Real, in-process inspect_ai.eval_async() call -- no subprocess, no
-        # simulated log. The synchronous inspect_ai.eval() drives its own
-        # internal anyio event loop and raises "Already running asyncio in
-        # this thread" when called from inside a coroutine (verified in this
-        # session); eval_async() is Inspect's own real awaitable entry point
-        # for exactly this situation.
-        logs = await inspect_eval_async(
-            self._task,
+        logs = await asyncio.to_thread(
+            _run_inspect_eval,
+            task=self._task,
             model=self._model,
             model_args=self._model_args,
             log_dir=self._log_dir,
         )
-        # inspect_ai's own internal transcript/display plumbing allocates an
-        # anyio.MemoryObjectReceiveStream per eval_async() run that is
-        # sometimes released without an explicit aclose() -- an upstream
-        # inspect_ai 0.3.252 cleanup gap, not anything this module opens.
-        # Forcing garbage collection immediately after each real run makes
-        # the resulting ResourceWarning surface here, deterministically,
-        # instead of at an unrelated later point in the process (verified in
-        # this session: without this, the warning could fire during
-        # interpreter shutdown well after this environment was torn down).
-        import gc
-
-        gc.collect()
         log = logs[0]
 
         score_value: str | None = None
@@ -190,20 +243,7 @@ class InspectEvalsEnvironment:
 
 
 class InspectEvalsProvider:
-    """GymAct `EnvironmentProvider` that materializes a real, minimal
-    `inspect_ai.Task` and a real Inspect model backend to solve it with.
-
-    `config["input"]` / `config["target"]` build the real `inspect_ai.dataset
-    .Sample` (defaults to a deterministic arithmetic prompt so the default
-    path is fully reproducible). `config["model"]` defaults to
-    `"mockllm/model"` (Inspect's real, first-party local/deterministic model
-    provider -- no API key required); `config["model_args"]["custom_outputs"]`
-    may be a list of literal completion strings that this provider converts
-    into real `inspect_ai.model.ModelOutput` objects for `MockLLM` to replay
-    in order. A caller with real credentials may instead pass a real paid
-    `config["model"]` (e.g. `"openai/gpt-4o"`) -- this provider does not
-    special-case that path.
-    """
+    """Materialize a real minimal Inspect task and model backend."""
 
     name = "inspect-evals"
     materialization_requires_authority = False
@@ -233,12 +273,6 @@ class InspectEvalsProvider:
             and custom_outputs
             and isinstance(custom_outputs[0], str)
         ):
-            # Convert plain literal-completion strings into real
-            # inspect_ai.model.ModelOutput objects, exactly what MockLLM's
-            # own __init__ requires (a bare str raises ValueError inside
-            # MockLLM.generate -- verified in this session). This is a
-            # convenience for provider callers; the real MockLLM/ModelOutput
-            # types still do the real replay.
             model_args["custom_outputs"] = [
                 ModelOutput.from_content(model=model.split("/", 1)[-1] or "model", content=text)
                 for text in custom_outputs
