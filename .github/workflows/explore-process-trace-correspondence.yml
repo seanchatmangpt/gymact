@@ -1,0 +1,34 @@
+name: EXPLORE Process Trace Correspondence Exact Head
+
+on:
+  pull_request:
+    paths:
+      - 'src/gymact/explore_process_trace_correspondence/**'
+      - 'tests/explore_process_trace_correspondence/**'
+      - '.github/workflows/explore-process-trace-correspondence.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Assert exact head
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - uses: astral-sh/setup-uv@v6
+      - name: Locked dependency closure
+        run: uv sync --group dev
+      - name: Compile
+        run: uv run python -m compileall -q src/gymact/explore_process_trace_correspondence tests/explore_process_trace_correspondence
+      - name: Behavioral differential refusal and Chicago courts
+        run: uv run python -m unittest discover -s tests/explore_process_trace_correspondence -p 'test_*.py' -v
+      - name: Ruff static
+        run: uv run ruff check src/gymact/explore_process_trace_correspondence tests/explore_process_trace_correspondence
+      - name: Ruff format
+        run: uv run ruff format --check src/gymact/explore_process_trace_correspondence tests/explore_process_trace_correspondence
+      - name: No ambient consequential actuation
+        run: '! grep -REn "requests\\.(post|put|patch|delete)|subprocess\\.|os\\.system|boto3|azure\\.|google\\.cloud" src/gymact/explore_process_trace_correspondence'

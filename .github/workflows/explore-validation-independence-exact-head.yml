@@ -1,0 +1,34 @@
+name: EXPLORE Validation Independence Exact Head
+
+on:
+  pull_request:
+    paths:
+      - "src/gymact/explore_validation_independence/**"
+      - "tests/explore_validation_independence/**"
+      - ".github/workflows/explore-validation-independence-exact-head.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  exact-head:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: astral-sh/setup-uv@v6
+      - name: Assert exact head
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - name: Dependency closure
+        run: uv sync --group dev
+      - name: Compile
+        run: uv run python -m compileall -q src/gymact/explore_validation_independence tests/explore_validation_independence
+      - name: Behavioral and Chicago courts
+        run: uv run pytest -q tests/explore_validation_independence
+      - name: Ruff static
+        run: uv run ruff check src/gymact/explore_validation_independence tests/explore_validation_independence
+      - name: Ruff format
+        run: uv run ruff format --check src/gymact/explore_validation_independence tests/explore_validation_independence
+      - name: No ambient consequential actuation
+        run: "! grep -REn 'requests\\.(post|put|patch|delete)|subprocess\\.|os\\.system|boto3|azure\\.|google\\.cloud' src/gymact/explore_validation_independence"

@@ -1,0 +1,40 @@
+name: EXPLORE Decision Realization Exact Head
+
+on:
+  pull_request:
+    paths:
+      - 'src/gymact/explore_decision_realization/**'
+      - 'tests/explore_decision_realization/**'
+      - '.github/workflows/explore-decision-realization-exact-head.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Assert exact pull-request head
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Close declared dev dependencies
+        run: uv sync --group dev
+      - name: Compile
+        run: uv run python -m compileall -q src/gymact/explore_decision_realization tests/explore_decision_realization
+      - name: Behavioral and Chicago courts
+        run: uv run pytest -q tests/explore_decision_realization
+      - name: Static conformance
+        run: uv run ruff check src/gymact/explore_decision_realization tests/explore_decision_realization
+      - name: Format conformance
+        run: uv run ruff format --check src/gymact/explore_decision_realization tests/explore_decision_realization
+      - name: No ambient consequential actuation
+        shell: bash
+        run: |
+          ! grep -REn 'requests\.(post|put|patch|delete)|subprocess\.|os\.system|boto3|azure\.|google\.cloud' src/gymact/explore_decision_realization
