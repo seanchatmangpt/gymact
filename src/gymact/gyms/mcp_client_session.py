@@ -1,22 +1,7 @@
-"""Real GymAct `Environment`/`EnvironmentProvider` that treats an arbitrary
-MCP server as the subject world, mediated by a real `fastmcp.Client` session.
+"""Real GymAct Environment/EnvironmentProvider for an arbitrary MCP server.
 
-Target selection for this module: `~/autofde-lab/vendor/gyms/mcpmark` does
-not exist in this checkout (`ls` came back empty), so there is no externally
-documented MCP-server-start command to point this adapter at. The fallback
-target is GymAct's own `gymact.surfaces.fastmcp.create_mcp()` server,
-addressed generically as "a subject MCP server" from the client's point of
-view -- this module never imports GymAct-specific tool names or reaches into
-`create_mcp()`'s internals; it only calls `client.list_tools()` and
-`client.call_tool()`, exactly as it would against any other real MCP server.
-
-`materialize()` really constructs the target `FastMCP` server object
-in-process and opens a real `fastmcp.Client` against it over FastMCP's
-in-memory transport (a real MCP session handshake, not a stub) -- no server
-subprocess is required because the target here is an in-process object, not
-an external command. `list_tools`/`call_tool` capabilities are backed by real
-`client.list_tools()` / `client.call_tool()` calls; there is no simulated
-tool catalog or canned tool result anywhere in this module.
+The provider opens a real ``fastmcp.Client`` session and exposes ontology-bound
+list/call capabilities. MCP transport never manufactures authority.
 """
 
 from __future__ import annotations
@@ -29,27 +14,22 @@ from fastmcp import Client, FastMCP
 from gymact.models import Capability, Consequence
 
 MCP_LIST_TOOLS_CAPABILITY = Capability(
-    iri="urn:gymact:mcp-client-session:capability:list_tools",
-    title="List the real tools currently exposed by the subject MCP server",
+    iri="urn:gymact:mcp:capability:list_tools",
+    title="List tools from MCP server",
     consequence=Consequence.READ,
     binding="list_tools",
 )
 
 MCP_CALL_TOOL_CAPABILITY = Capability(
-    iri="urn:gymact:mcp-client-session:capability:call_tool",
-    title="Call a named, side-effect-safe tool on the subject MCP server",
+    iri="urn:gymact:mcp:capability:call_tool",
+    title="Call a tool through MCP client",
     consequence=Consequence.DO,
     binding="call_tool",
 )
 
 
 class McpClientSessionEnvironment:
-    """Wraps one real `fastmcp.Client` session against one real subject MCP
-    server. The subject is opaque to this class beyond FastMCP's own
-    `Client`/`FastMCP` types -- it does not know or care whether the target
-    is `gymact`'s own `create_mcp()` server or an external one, matching
-    `discovered.py`'s "generic adapter, not a per-subject class" posture.
-    """
+    """Wrap one real ``fastmcp.Client`` session against one subject MCP server."""
 
     def __init__(
         self,
@@ -120,10 +100,6 @@ class McpClientSessionEnvironment:
         return await self.observe()
 
     async def restore(self, checkpoint: dict[str, Any]) -> None:
-        # The subject MCP server's tool catalog is not GymAct-owned state --
-        # there is nothing for this adapter to write back. Restoring is a
-        # real no-op against real, already-authoritative server state, not a
-        # simulated round trip.
         self._ensure_open()
         del checkpoint
 
@@ -134,16 +110,7 @@ class McpClientSessionEnvironment:
 
 
 class McpClientSessionProvider:
-    """GymAct `EnvironmentProvider` that materializes a real `fastmcp.Client`
-    session against a real subject `FastMCP` server.
-
-    `config["server_factory"]` must be a zero-argument callable returning a
-    real `fastmcp.FastMCP` instance (defaults to `gymact`'s own
-    `create_mcp()` -- the documented fallback target for this module).
-    `config["safe_call_tool"]` optionally names a real, side-effect-free tool
-    on that server (`{"name": ..., "args": {...}}`) to back the `call_tool`
-    DO capability; omitted, the environment exposes `list_tools` only.
-    """
+    """Materialize a real ``fastmcp.Client`` against a configured FastMCP server."""
 
     name = "mcp-client-session"
     materialization_requires_authority = False

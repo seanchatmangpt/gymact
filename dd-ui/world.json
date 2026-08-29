@@ -1,0 +1,52 @@
+{
+  "grammarVersion": "dd-ui/2",
+  "avatar": "CEO",
+  "context": "normal",
+  "authority": [],
+  "asOf": "2026-08-18T22:06:00-07:00",
+  "events": [
+    {
+      "id": "gymact-e1",
+      "at": "2026-08-18T22:06:00-07:00",
+      "type": "claim.observed",
+      "claim": {
+        "id": "bounded-world-execution",
+        "title": "Bounded world execution profile",
+        "domain": "PROCESS",
+        "standing": "OBSERVED",
+        "systemStanding": "UNKNOWN",
+        "kind": "TechnologyStanding",
+        "materiality": 100,
+        "owner": "GymAct",
+        "businessImpact": "GymAct contributes the admitted world and episode semantics that DDUI projects; request acceptance, world change, objective verification, and benchmark scoring remain distinct consequences.",
+        "evidence": [
+          "repo:seanchatmangpt/gymact@3ebec415c1a31b8f070d66770e4e5ecce885ddae",
+          "path:README.md#consequence-law"
+        ],
+        "metrics": [],
+        "actions": [
+          {"id": "inspect-world", "label": "Inspect world evidence", "consequence": "SELECT"}
+        ]
+      }
+    },
+    {
+      "id": "gymact-e2",
+      "at": "2026-08-18T22:06:01-07:00",
+      "type": "claim.observed",
+      "claim": {
+        "id": "bounded-actuation",
+        "title": "Consequential environments fail closed",
+        "domain": "GOVERNANCE",
+        "standing": "OBSERVED",
+        "systemStanding": "UNKNOWN",
+        "kind": "Risk",
+        "materiality": 95,
+        "owner": "GymAct",
+        "businessImpact": "Supplying an authority reference is not an authority decision; consequential actuation requires an explicit positive resolver decision.",
+        "evidence": ["path:README.md#bounded-actuation"],
+        "metrics": [],
+        "actions": []
+      }
+    }
+  ]
+}

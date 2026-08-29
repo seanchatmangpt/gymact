@@ -16,6 +16,7 @@ from gymact.gyms.chatman_state_gym import ChatmanStateProvider, CHATMAN_STATE_CA
 from gymact.gyms.cloud_topology_gym import CloudTopologyProvider, CLOUD_TOPOLOGY_CAPABILITIES
 from gymact.gyms.cloudsim import CloudSimProvider, CLOUDSIM_CAPABILITIES
 from gymact.gyms.codebase import CodebaseProvider, CODEBASE_CAPABILITIES
+from gymact.gyms.commerce_dfcm_gym import CommerceDfcmProvider, COMMERCE_DFCM_CAPABILITIES
 from gymact.gyms.dev_portfolio import DevPortfolioProvider, DEV_PORTFOLIO_CAPABILITIES
 from gymact.gyms.discovered import GenericDiscoveredProvider, DISCOVERED_RUN_CAPABILITY
 from gymact.local_providers import FilesystemProvider, FILESYSTEM_CAPABILITIES
@@ -51,6 +52,7 @@ _BUILTINS = {
     "cloud-topology": (CloudTopologyProvider, CLOUD_TOPOLOGY_CAPABILITIES),
     "cloudsim": (CloudSimProvider, CLOUDSIM_CAPABILITIES),
     "codebase": (CodebaseProvider, CODEBASE_CAPABILITIES),
+    "commerce-dfcm": (CommerceDfcmProvider, COMMERCE_DFCM_CAPABILITIES),
     "dev-portfolio": (DevPortfolioProvider, DEV_PORTFOLIO_CAPABILITIES),
     "discovered": (GenericDiscoveredProvider, (DISCOVERED_RUN_CAPABILITY,)),
     "filesystem": (FilesystemProvider, FILESYSTEM_CAPABILITIES),

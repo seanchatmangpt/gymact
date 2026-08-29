@@ -40,6 +40,10 @@ rg:p-cloud-topology a rg:RegisteredProvider ;
     rg:registryKey "cloud-topology" ; rg:providerModule "gymact.gyms.cloud_topology_gym" ; rg:providerClassName "CloudTopologyProvider" ;
     rg:capabilitiesModule "gymact.gyms.cloud_topology_gym" ; rg:capabilitiesImportClause "CLOUD_TOPOLOGY_CAPABILITIES" ; rg:capabilitiesExpr "CLOUD_TOPOLOGY_CAPABILITIES" .
 
+rg:p-commerce-dfcm a rg:RegisteredProvider ;
+    rg:registryKey "commerce-dfcm" ; rg:providerModule "gymact.gyms.commerce_dfcm_gym" ; rg:providerClassName "CommerceDfcmProvider" ;
+    rg:capabilitiesModule "gymact.gyms.commerce_dfcm_gym" ; rg:capabilitiesImportClause "COMMERCE_DFCM_CAPABILITIES" ; rg:capabilitiesExpr "COMMERCE_DFCM_CAPABILITIES" .
+
 rg:p-discovered a rg:RegisteredProvider ;
     rg:registryKey "discovered" ; rg:providerModule "gymact.gyms.discovered" ; rg:providerClassName "GenericDiscoveredProvider" ;
     rg:capabilitiesModule "gymact.gyms.discovered" ; rg:capabilitiesImportClause "DISCOVERED_RUN_CAPABILITY" ; rg:capabilitiesExpr "(DISCOVERED_RUN_CAPABILITY,)" .
@@ -95,6 +99,10 @@ rg:p-memory a rg:RegisteredProvider ;
 rg:p-multicloud a rg:RegisteredProvider ;
     rg:registryKey "multicloud" ; rg:providerModule "gymact.gyms.multicloud" ; rg:providerClassName "MulticloudProvider" ;
     rg:capabilitiesModule "gymact.gyms.multicloud" ; rg:capabilitiesImportClause "CAPABILITY_REGISTRY as MULTICLOUD_CAPABILITIES" ; rg:capabilitiesExpr "MULTICLOUD_CAPABILITIES" .
+
+rg:p-platform-console a rg:RegisteredProvider ;
+    rg:registryKey "platform-console" ; rg:providerModule "gymact.gyms.platform_console_provider" ; rg:providerClassName "PlatformConsoleProvider" ;
+    rg:capabilitiesModule "gymact.gyms.platform_console_provider" ; rg:capabilitiesImportClause "PLATFORM_CONSOLE_CAPABILITIES" ; rg:capabilitiesExpr "PLATFORM_CONSOLE_CAPABILITIES" .
 
 rg:p-resource-flow a rg:RegisteredProvider ;
     rg:registryKey "resource-flow" ; rg:providerModule "gymact.gyms.resource_flow" ; rg:providerClassName "ResourceFlowProvider" ;

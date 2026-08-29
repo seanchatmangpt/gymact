@@ -1,0 +1,10 @@
+{
+  "billing_authority": "EXTERNAL_COMMERCE",
+  "pricing_model": "hybrid",
+  "entitlement_cardinality": "concurrent",
+  "identity_binding": "account",
+  "usage_projection": "hybrid",
+  "packaging_topology": "helm-first",
+  "supply_chain_policy": "strict",
+  "support_tier": "enterprise-247"
+}

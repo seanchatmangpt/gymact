@@ -11,6 +11,7 @@ SOURCE = ROOT / "src" / "gymact" / "surfaces" / "fastmcp.py"
 ONTOLOGY = ROOT / "ggen" / "gymact-bridge-pack" / "ontology.ttl"
 BRIDGE = "urn:gymact:bridge:capability:"
 READ = URIRef("urn:gymact:consequence:read")
+CONSTRUCT = URIRef("urn:gymact:consequence:construct")
 DO = URIRef("urn:gymact:consequence:do")
 MODERN_MCP = URIRef("urn:gymact:mcp:revision-2026-07-28")
 CONDITIONAL_EFFECT = URIRef("urn:gymact:mcp:ConditionalEffect")
@@ -22,7 +23,9 @@ EXPECTED_READ = {
     "verify",
     "checkpoint",
     "probe_repo",
+    "ggen_agent_catalog",
 }
+EXPECTED_CONSTRUCT = {"ggen_agent_frontier", "ggen_agent_invoke"}
 EXPECTED_DO = {"create_episode", "act", "restore", "teardown"}
 
 
@@ -62,33 +65,32 @@ def test_fastmcp_tool_surface_equals_ontology_exactly() -> None:
     graph = _graph()
     observed = _source_tools()
     admitted = set(_ontology_tools(graph))
-
-    assert observed == EXPECTED_READ | EXPECTED_DO
+    assert observed == EXPECTED_READ | EXPECTED_CONSTRUCT | EXPECTED_DO
     assert admitted == observed
-    assert len(admitted) == 10
+    assert len(admitted) == 13
 
 
 def test_fastmcp_consequence_partition_is_complete_and_disjoint() -> None:
     graph = _graph()
     tools = _ontology_tools(graph)
-    read = {
-        name for name, subject in tools.items() if graph.value(subject, DCTERMS.type) == READ
+    read = {name for name, subject in tools.items() if graph.value(subject, DCTERMS.type) == READ}
+    construct = {
+        name for name, subject in tools.items() if graph.value(subject, DCTERMS.type) == CONSTRUCT
     }
-    do = {
-        name for name, subject in tools.items() if graph.value(subject, DCTERMS.type) == DO
-    }
-
+    do = {name for name, subject in tools.items() if graph.value(subject, DCTERMS.type) == DO}
     assert read == EXPECTED_READ
+    assert construct == EXPECTED_CONSTRUCT
     assert do == EXPECTED_DO
+    assert read.isdisjoint(construct)
     assert read.isdisjoint(do)
-    assert read | do == set(tools)
+    assert construct.isdisjoint(do)
+    assert read | construct | do == set(tools)
 
 
 def test_fastmcp_surface_is_bound_to_current_mcp_revision_and_exact_source() -> None:
     graph = _graph()
     surface = URIRef("urn:gymact:bridge:fastmcp-surface")
     sources = list(graph.objects(surface, DCTERMS.source))
-
     assert len(sources) == 1
     assert str(sources[0]) == "src/gymact/surfaces/fastmcp.py"
     assert (surface, DCTERMS.conformsTo, MODERN_MCP) in graph
@@ -98,10 +100,17 @@ def test_fastmcp_surface_is_bound_to_current_mcp_revision_and_exact_source() -> 
 def test_fastmcp_act_is_conditional_effect_and_authority_bounded() -> None:
     graph = _graph()
     act = URIRef(BRIDGE + "act")
-
     assert (act, DCTERMS.relation, CONDITIONAL_EFFECT) in graph
     assert graph.value(act, DCTERMS.type) == DO
     assert graph.value(act, DCTERMS.requires) is not None
+
+
+def test_construct_tools_are_explicitly_powerless() -> None:
+    graph = _graph()
+    for name in EXPECTED_CONSTRUCT:
+        subject = URIRef(BRIDGE + name)
+        assert graph.value(subject, DCTERMS.type) == CONSTRUCT
+        assert graph.value(subject, DCTERMS.requires) is None
 
 
 def test_all_fastmcp_tools_are_provenance_bound_to_surface() -> None:
