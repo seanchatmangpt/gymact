@@ -2,7 +2,7 @@ import unittest
 
 from gymact.explore_replicated_projection_quorum.admission import admit_observations
 from gymact.explore_replicated_projection_quorum.refusal import Refused
-from world import NOW, SEMANTIC, SUBJECT, UNIVERSE, WINDOW, projection
+from tests.explore_replicated_projection_quorum.world import NOW, SEMANTIC, SUBJECT, UNIVERSE, WINDOW, projection
 
 class AdmissionCourt(unittest.TestCase):
     def test_duplicate_replica_cannot_inflate_evidence(self):

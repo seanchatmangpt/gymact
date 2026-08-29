@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fractions import Fraction
+
 from .refusal import Refused
 
 
