@@ -1,7 +1,7 @@
 import unittest
 
 from gymact.explore_replicated_projection_quorum.causality import causal_profile
-from world import projection
+from tests.explore_replicated_projection_quorum.world import projection
 
 class CausalityCourt(unittest.TestCase):
     def test_concurrency_remains_topology(self):

@@ -2,7 +2,7 @@ import unittest
 
 from gymact.explore_replicated_projection_quorum.refusal import Refused
 from gymact.explore_replicated_projection_quorum.selectors import SelectorKind, select
-from world import UNIVERSE, projection
+from tests.explore_replicated_projection_quorum.world import UNIVERSE, projection
 
 class SelectorCourt(unittest.TestCase):
     def test_strategies_preserve_distinct_currentness_rules(self):

@@ -192,7 +192,6 @@ class FailClosedPlatformConsoleAuthorityResolver:
 
 def build_platform_console_ontology_provider() -> PlatformConsoleOntologyDrivenProvider:
     """Build the provider; all task semantics are read from canonical RDF."""
-
     return PlatformConsoleOntologyDrivenProvider()
 
 
@@ -203,7 +202,6 @@ def build_fail_closed_authority_resolver(
     elevated_ref: str | None,
 ) -> FailClosedPlatformConsoleAuthorityResolver:
     """Bind current ontology-derived irreversible capabilities to elevated authority."""
-
     return FailClosedPlatformConsoleAuthorityResolver(
         elevated_capabilities=provider.elevated_capability_iris(),
         standard_ref=standard_ref,

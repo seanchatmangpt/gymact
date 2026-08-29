@@ -1,7 +1,7 @@
 import unittest
 
 from gymact.explore_replicated_projection_quorum.failure import FailureKind, inject_failure
-from world import projection
+from tests.explore_replicated_projection_quorum.world import projection
 
 class FailureCourt(unittest.TestCase):
     def test_seeded_failure_world_replays(self):

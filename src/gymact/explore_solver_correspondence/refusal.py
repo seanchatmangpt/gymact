@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 class Refused(ValueError):
     def __init__(self, code: str, detail: str = "") -> None:
         self.code = code
