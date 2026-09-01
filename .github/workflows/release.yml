@@ -105,7 +105,7 @@ jobs:
 
       - name: Upload Pages receipt
         if: ${{ always() }}
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7
         with:
           name: pages-receipt-${{ github.run_id }}
           path: delivery-receipts/pages.json
@@ -175,7 +175,7 @@ jobs:
           PY
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@v7
 
       - name: Resolve package identity
         id: package
@@ -302,7 +302,7 @@ jobs:
 
       - name: Upload release receipt
         if: ${{ always() }}
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7
         with:
           name: release-receipt-${{ github.run_id }}
           path: delivery-receipts/release.json
