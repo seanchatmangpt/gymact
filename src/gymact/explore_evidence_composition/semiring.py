@@ -11,7 +11,7 @@ class EvidenceWeight:
     cost: float
     blockers: frozenset[str] = frozenset()
 
-    def series(self, other: "EvidenceWeight", *, independent: bool = False) -> "EvidenceWeight":
+    def series(self, other: EvidenceWeight, *, independent: bool = False) -> EvidenceWeight:
         confidence = (
             self.confidence.independent_product(other.confidence)
             if independent
@@ -19,10 +19,13 @@ class EvidenceWeight:
         )
         return EvidenceWeight(confidence, self.cost + other.cost, self.blockers | other.blockers)
 
-    def parallel(self, other: "EvidenceWeight") -> "EvidenceWeight":
+    def parallel(self, other: EvidenceWeight) -> EvidenceWeight:
         """Keep the stronger lower bound and cheaper route without summing dependent proof."""
         return EvidenceWeight(
-            Interval(max(self.confidence.lower, other.confidence.lower), max(self.confidence.upper, other.confidence.upper)),
+            Interval(
+                max(self.confidence.lower, other.confidence.lower),
+                max(self.confidence.upper, other.confidence.upper),
+            ),
             min(self.cost, other.cost),
             self.blockers & other.blockers,
         )

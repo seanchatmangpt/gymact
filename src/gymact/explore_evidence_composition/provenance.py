@@ -21,7 +21,10 @@ class IndependenceWitness:
 
 def witness(left: EvidenceNode, right: EvidenceNode) -> IndependenceWitness:
     if not left.same_subject(right):
-        raise Refused(RefusalCode.INDEPENDENCE_COLLISION, "foreign-subject evidence cannot establish independence")
+        raise Refused(
+            RefusalCode.INDEPENDENCE_COLLISION,
+            "foreign-subject evidence cannot establish independence",
+        )
     result = IndependenceWitness(
         left.evidence_id,
         right.evidence_id,
@@ -30,5 +33,8 @@ def witness(left: EvidenceNode, right: EvidenceNode) -> IndependenceWitness:
         left.source_domain != right.source_domain,
     )
     if not result.admitted:
-        raise Refused(RefusalCode.INDEPENDENCE_COLLISION, "implementation/model/source-domain independence not proved")
+        raise Refused(
+            RefusalCode.INDEPENDENCE_COLLISION,
+            "implementation/model/source-domain independence not proved",
+        )
     return result

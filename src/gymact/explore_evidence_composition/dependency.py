@@ -13,7 +13,9 @@ class Obligation:
     min_generation: int = 0
 
 
-def discharge(obligation: Obligation, evidence: tuple[EvidenceNode, ...]) -> tuple[EvidenceNode, ...]:
+def discharge(
+    obligation: Obligation, evidence: tuple[EvidenceNode, ...]
+) -> tuple[EvidenceNode, ...]:
     matched = tuple(
         node
         for node in evidence

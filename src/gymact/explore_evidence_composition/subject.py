@@ -5,7 +5,9 @@ from dataclasses import dataclass
 
 from .refusal import RefusalCode, Refused
 
-_SUBJECT = re.compile(r"^(?P<repo>[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)@(?P<sha>[0-9a-f]{40})#(?P<semantic>[0-9a-f]{64})$")
+_SUBJECT = re.compile(
+    r"^(?P<repo>[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)@(?P<sha>[0-9a-f]{40})#(?P<semantic>[0-9a-f]{64})$"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -15,7 +17,7 @@ class Subject:
     semantic_digest: str
 
     @classmethod
-    def parse(cls, value: str) -> "Subject":
+    def parse(cls, value: str) -> Subject:
         match = _SUBJECT.fullmatch(value)
         if match is None:
             raise Refused(RefusalCode.INVALID_SUBJECT, "expected owner/repo@40hex#64hex")

@@ -23,6 +23,8 @@ def test_independence_requires_three_distinct_domains() -> None:
 
 def test_obligation_requires_each_declared_kind() -> None:
     trace = mk("trace", EvidenceKind.TRACE, "i1", "m1", "h1")
-    obligation = Obligation("runtime-correspondence", frozenset({EvidenceKind.TRACE, EvidenceKind.RUNTIME}), 3)
+    obligation = Obligation(
+        "runtime-correspondence", frozenset({EvidenceKind.TRACE, EvidenceKind.RUNTIME}), 3
+    )
     with pytest.raises(Refused):
         discharge(obligation, (trace,))

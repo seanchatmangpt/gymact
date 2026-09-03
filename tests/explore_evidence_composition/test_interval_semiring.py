@@ -1,3 +1,5 @@
+import pytest
+
 from gymact.explore_evidence_composition.interval import Interval
 from gymact.explore_evidence_composition.semiring import EvidenceWeight
 
@@ -8,7 +10,11 @@ def test_unknown_dependence_is_more_conservative_than_independence() -> None:
     conservative = left.series(right)
     independent = left.series(right, independent=True)
     assert conservative.confidence.lower == 0.5
-    assert independent.confidence.lower == 0.56
+    # 0.7 * 0.8 is not exactly representable in binary floating point
+    # (Python: 0.7 * 0.8 == 0.5599999999999999) -- the product computed by
+    # independent_product() is mathematically correct, so this compares
+    # with a tolerance rather than hardcoding the imprecise literal.
+    assert independent.confidence.lower == pytest.approx(0.56)
     assert conservative.cost == independent.cost == 5.0
 
 
