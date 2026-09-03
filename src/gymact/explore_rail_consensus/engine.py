@@ -10,12 +10,14 @@ from .relation import IndependenceProof
 from .storage import PersistenceNeed, Store, select
 from .subject import Subject
 
+
 @dataclass(frozen=True, slots=True)
 class Qualification:
     result: ConsensusResult
     metrics: ConsensusMetrics
     store: Store
     receipt: QualificationReceipt
+
 
 def qualify(
     subject: Subject,

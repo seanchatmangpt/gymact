@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from fractions import Fraction
 
 from gymact.explore_rail_consensus.calibration import RailCalibration
@@ -12,18 +12,24 @@ from gymact.explore_rail_consensus.relation import IndependenceProof
 from gymact.explore_rail_consensus.storage import PersistenceNeed, Store
 from gymact.explore_rail_consensus.subject import Subject
 
+
 class E2ETest(unittest.TestCase):
     def test_mixed_verification_rails_preserve_failure_topology(self):
         subject = Subject("seanchatmangpt/gymact", "2" * 40)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         ci = VerificationRail(subject, "ci", "pytest", "runtime", "py312", "cfg-ci")
-        world = VerificationRail(subject, "world", "world-crown", "simulation", "py312", "cfg-world")
+        world = VerificationRail(
+            subject, "world", "world-crown", "simulation", "py312", "cfg-world"
+        )
         proof = IndependenceProof(ci.fingerprint, world.fingerprint, "direct-separate-run-proof")
         calibration = RailCalibration(10, Fraction(0), Fraction(0), Fraction(1))
         calibrations = {ci.fingerprint: calibration, world.fingerprint: calibration}
         green = qualify(
             subject,
-            (RailObservation(ci, "1", Outcome.PASS, now), RailObservation(world, "2", Outcome.PASS, now)),
+            (
+                RailObservation(ci, "1", Outcome.PASS, now),
+                RailObservation(world, "2", Outcome.PASS, now),
+            ),
             calibrations,
             ConsensusStrategy.QUORUM_CALIBRATED,
             (proof,),
@@ -34,7 +40,10 @@ class E2ETest(unittest.TestCase):
         self.assertTrue(replay(green.receipt, green.receipt.digest))
         red = qualify(
             subject,
-            (RailObservation(ci, "3", Outcome.FAIL, now), RailObservation(world, "2", Outcome.PASS, now)),
+            (
+                RailObservation(ci, "3", Outcome.FAIL, now),
+                RailObservation(world, "2", Outcome.PASS, now),
+            ),
             calibrations,
             ConsensusStrategy.QUORUM_CALIBRATED,
             (proof,),

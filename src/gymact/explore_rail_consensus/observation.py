@@ -1,16 +1,18 @@
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 
 from .rail import VerificationRail
 from .subject import Refusal
 
-class Outcome(str, Enum):
+
+class Outcome(StrEnum):
     PASS = "PASS"
     FAIL = "FAIL"
     PENDING = "PENDING"
     UNKNOWN = "UNKNOWN"
     UNSUPPORTED = "UNSUPPORTED"
+
 
 @dataclass(frozen=True, slots=True)
 class RailObservation:
@@ -25,7 +27,7 @@ class RailObservation:
             raise Refusal("REFUSED_NAIVE_OBSERVATION_TIME")
         if not self.run_id:
             raise Refusal("REFUSED_MISSING_RUN_ID")
-        if self.observed_at > datetime.now(timezone.utc):
+        if self.observed_at > datetime.now(UTC):
             raise Refusal("REFUSED_FUTURE_OBSERVATION")
 
     @property

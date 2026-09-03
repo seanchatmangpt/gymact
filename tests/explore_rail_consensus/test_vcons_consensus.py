@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from fractions import Fraction
 
 from gymact.explore_rail_consensus.calibration import RailCalibration
@@ -10,10 +10,11 @@ from gymact.explore_rail_consensus.rail import VerificationRail
 from gymact.explore_rail_consensus.relation import IndependenceProof
 from gymact.explore_rail_consensus.subject import Subject
 
+
 class ConsensusTest(unittest.TestCase):
     def test_calibrated_independent_quorum_and_failure_dominance(self):
         subject = Subject("o/r", "e" * 40)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         left_rail = VerificationRail(subject, "a", "pytest", "runtime", "py", "a")
         right_rail = VerificationRail(subject, "b", "world", "sim", "py", "b")
         left = RailObservation(left_rail, "1", Outcome.PASS, now)
@@ -25,5 +26,9 @@ class ConsensusTest(unittest.TestCase):
         result = evaluate(clusters, calibrations, ConsensusStrategy.QUORUM_CALIBRATED)
         self.assertEqual(result.standing, "PARTIAL_ALIVE")
         failed = RailObservation(right_rail, "3", Outcome.FAIL, now)
-        result = evaluate(correlated_clusters((left, failed), (proof,)), calibrations, ConsensusStrategy.QUORUM_CALIBRATED)
+        result = evaluate(
+            correlated_clusters((left, failed), (proof,)),
+            calibrations,
+            ConsensusStrategy.QUORUM_CALIBRATED,
+        )
         self.assertEqual(result.standing, "BUILD_BROKEN")

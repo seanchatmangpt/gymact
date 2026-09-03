@@ -3,12 +3,14 @@ from fractions import Fraction
 
 from .clusters import EvidenceCluster
 
+
 @dataclass(frozen=True, slots=True)
 class ConsensusMetrics:
     cluster_count: int
     evidence_count: int
     effective_diversity: Fraction
     correlated_fraction: Fraction
+
 
 def measure(clusters: tuple[EvidenceCluster, ...]) -> ConsensusMetrics:
     sizes = [len(c.members) for c in clusters]
