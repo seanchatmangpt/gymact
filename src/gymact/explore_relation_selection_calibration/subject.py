@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 from .errors import Refused
 
@@ -17,7 +17,9 @@ class Subject:
     def __post_init__(self) -> None:
         if "/" not in self.repo or not _SHA.fullmatch(self.sha):
             raise Refused("INEXACT_SUBJECT", f"{self.repo}@{self.sha}")
-        if len(self.semantic_digest) != 64 or any(c not in "0123456789abcdef" for c in self.semantic_digest):
+        if len(self.semantic_digest) != 64 or any(
+            c not in "0123456789abcdef" for c in self.semantic_digest
+        ):
             raise Refused("INVALID_SEMANTIC_DIGEST")
 
     @property

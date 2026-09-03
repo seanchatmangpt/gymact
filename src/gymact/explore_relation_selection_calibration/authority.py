@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from .errors import Refused
 
 
-class ActionClass(str, Enum):
+class ActionClass(StrEnum):
     OBSERVE = "OBSERVE"
     SELECT = "SELECT"
     CONSTRUCT = "CONSTRUCT"

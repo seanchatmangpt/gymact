@@ -10,9 +10,7 @@ from gymact.explore_realized_acquisition_feedback.realization import (
 class TestCalibration(unittest.TestCase):
     def test_support_gate(self):
         xs = [
-            AcquisitionRealization(
-                str(index), Fraction(1, 2), Fraction(1, 2), Fraction(1, 10), 1
-            )
+            AcquisitionRealization(str(index), Fraction(1, 2), Fraction(1, 2), Fraction(1, 10), 1)
             for index in range(3)
         ]
         self.assertTrue(GainCalibration.fit(xs).calibrated)

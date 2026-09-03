@@ -5,6 +5,7 @@ from fractions import Fraction
 
 from .selectors import SelectorKind
 
+
 @dataclass(frozen=True, slots=True)
 class StrategyVector:
     selector: SelectorKind
@@ -13,8 +14,13 @@ class StrategyVector:
     freshness_lag: int
 
     def __post_init__(self) -> None:
-        if self.freshness_lag < 0 or not (Fraction(0) <= self.coverage <= Fraction(1)) or not (Fraction(0) <= self.ambiguity <= Fraction(1)):
+        if (
+            self.freshness_lag < 0
+            or not (Fraction(0) <= self.coverage <= Fraction(1))
+            or not (Fraction(0) <= self.ambiguity <= Fraction(1))
+        ):
             raise ValueError("invalid strategy vector")
+
 
 def _dominates(left: StrategyVector, right: StrategyVector) -> bool:
     weak = (
@@ -29,8 +35,10 @@ def _dominates(left: StrategyVector, right: StrategyVector) -> bool:
     )
     return weak and strict
 
+
 def pareto_frontier(vectors: tuple[StrategyVector, ...]) -> tuple[StrategyVector, ...]:
     return tuple(
-        vector for vector in vectors
+        vector
+        for vector in vectors
         if not any(_dominates(other, vector) for other in vectors if other is not vector)
     )

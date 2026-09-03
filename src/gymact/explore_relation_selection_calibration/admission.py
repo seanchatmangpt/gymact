@@ -15,7 +15,9 @@ class AdmissionPolicy:
     max_false_refusal_upper: float = 0.30
 
 
-def admit(e: CalibrationEvidence, witness: MetamorphicWitness, policy: AdmissionPolicy) -> CalibrationEvidence:
+def admit(
+    e: CalibrationEvidence, witness: MetamorphicWitness, policy: AdmissionPolicy
+) -> CalibrationEvidence:
     require_lawful(witness)
     if e.support < policy.min_support:
         raise Refused("INSUFFICIENT_CALIBRATION_SUPPORT", str(e.support))

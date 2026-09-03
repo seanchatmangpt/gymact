@@ -14,9 +14,7 @@ from gymact.explore_verification_acquisition.subject import Refusal, Subject
 class HistoryCalibrationTest(unittest.TestCase):
     def test_exact_rates_and_duplicate_refusal(self):
         subject = Subject("o/r", "b" * 40)
-        rail = RailCapability(
-            subject, "ci", "pytest", "runtime", frozenset({"unit"}), 10, 10
-        )
+        rail = RailCapability(subject, "ci", "pytest", "runtime", frozenset({"unit"}), 10, 10)
         trials = (
             CalibrationTrial(rail, "f1", TrialOutcome.DETECTED, True),
             CalibrationTrial(rail, "f2", TrialOutcome.DETECTED, True),
@@ -29,4 +27,4 @@ class HistoryCalibrationTest(unittest.TestCase):
         self.assertEqual(calibration.false_alarm_rate, Fraction(1, 2))
         self.assertEqual(calibration.state, "UNRELIABLE")
         with self.assertRaisesRegex(Refusal, "REFUSED_DUPLICATE"):
-            admit_trials(trials + (trials[0],))
+            admit_trials((*trials, trials[0]))

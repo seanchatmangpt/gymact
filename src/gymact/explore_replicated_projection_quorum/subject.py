@@ -7,6 +7,7 @@ from .refusal import Refused
 
 _SUBJECT = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+@[0-9a-f]{40}$")
 
+
 @dataclass(frozen=True, slots=True)
 class Subject:
     value: str

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import json
 from dataclasses import asdict, dataclass
 from hashlib import sha256
-import json
 
 from .errors import Refused
 from .standing import Standing

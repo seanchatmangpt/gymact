@@ -27,7 +27,9 @@ def issue(subject: Subject, strategy: str, standing: str) -> Receipt:
         "authority": Action.SELECT.value,
         "actuation_performed": False,
     }
-    digest = hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    digest = hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
     return Receipt(**payload, digest=digest)
 
 
@@ -35,6 +37,8 @@ def replay(receipt: Receipt) -> bool:
     require(not receipt.actuation_performed, "RECEIPT_DRIFT", "receipt reports actuation")
     payload = asdict(receipt)
     expected = payload.pop("digest")
-    actual = hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    actual = hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
     require(actual == expected, "RECEIPT_DRIFT", "digest mismatch")
     return True

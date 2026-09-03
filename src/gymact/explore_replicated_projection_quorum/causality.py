@@ -6,6 +6,7 @@ from fractions import Fraction
 from .clock import ClockRelation
 from .replica import ReplicaProjection
 
+
 @dataclass(frozen=True, slots=True)
 class CausalProfile:
     maximal_replica_ids: tuple[str, ...]
@@ -14,7 +15,12 @@ class CausalProfile:
 
     @property
     def concurrency_ratio(self) -> Fraction:
-        return Fraction(self.concurrent_pairs, self.total_pairs) if self.total_pairs else Fraction(0, 1)
+        return (
+            Fraction(self.concurrent_pairs, self.total_pairs)
+            if self.total_pairs
+            else Fraction(0, 1)
+        )
+
 
 def causal_profile(observations: tuple[ReplicaProjection, ...]) -> CausalProfile:
     maxima: list[str] = []

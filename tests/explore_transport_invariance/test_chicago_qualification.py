@@ -1,6 +1,13 @@
 from fractions import Fraction
 
-from gymact.explore_transport_invariance import Calibration, Candidate, Subject, issue, qualify, replay
+from gymact.explore_transport_invariance import (
+    Calibration,
+    Candidate,
+    Subject,
+    issue,
+    qualify,
+    replay,
+)
 
 
 def test_stressed_transport_stays_bounded_and_non_actuating() -> None:

@@ -38,9 +38,8 @@ def estimate_information(
             numerator = prior_fault * (1 - tpr)
         return prior_fault if denominator == 0 else numerator / denominator
 
-    expected = (
-        float(detect_probability) * binary_entropy(posterior(True))
-        + float(no_detect_probability) * binary_entropy(posterior(False))
-    )
+    expected = float(detect_probability) * binary_entropy(posterior(True)) + float(
+        no_detect_probability
+    ) * binary_entropy(posterior(False))
     gain = max(0.0, binary_entropy(prior_fault) - expected)
     return InformationEstimate(prior_fault, detect_probability, expected, gain)

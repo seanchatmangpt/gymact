@@ -25,7 +25,5 @@ def construct_feedback_plan(
     require_action(ActionClass.CONSTRUCT)
     standing = "REQUALIFYING" if drift or not calibration.calibrated else "PARTIAL_ALIVE"
     plan = FeedbackPlan(policy, policy_score(policy, calibration, drift, regret), standing)
-    receipt = FeedbackReceipt(
-        f"{subject.repo}@{subject.sha}", policy.value, standing, False
-    )
+    receipt = FeedbackReceipt(f"{subject.repo}@{subject.sha}", policy.value, standing, False)
     return plan, receipt

@@ -8,4 +8,7 @@ def test_relation_lattice_noncollapsed() -> None:
     assert discharges(Relation.PARTIAL_ORDER, Relation.ACTIVITY)
     assert not discharges(Relation.STUTTER, Relation.PARTIAL_ORDER)
     assert not discharges(Relation.PARTIAL_ORDER, Relation.STUTTER)
-    assert maximal({Relation.STUTTER, Relation.PARTIAL_ORDER, Relation.ACTIVITY}) == {Relation.STUTTER, Relation.PARTIAL_ORDER}
+    assert maximal({Relation.STUTTER, Relation.PARTIAL_ORDER, Relation.ACTIVITY}) == {
+        Relation.STUTTER,
+        Relation.PARTIAL_ORDER,
+    }

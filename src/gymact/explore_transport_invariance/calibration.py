@@ -24,5 +24,9 @@ def current(calibrations: tuple[Calibration, ...]) -> Calibration:
     require(bool(calibrations), "MISSING_CALIBRATION", "no calibration evidence")
     generation = max(c.generation for c in calibrations)
     latest = tuple(c for c in calibrations if c.generation == generation)
-    require(len({c.digest for c in latest}) == 1, "DIVERGENT_CURRENT_CALIBRATION", "latest generation split")
+    require(
+        len({c.digest for c in latest}) == 1,
+        "DIVERGENT_CURRENT_CALIBRATION",
+        "latest generation split",
+    )
     return latest[0]

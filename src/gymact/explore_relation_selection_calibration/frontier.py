@@ -7,7 +7,9 @@ from .errors import Refused
 from .relation import Relation
 
 
-def current_frontier(evidence: tuple[CalibrationEvidence, ...]) -> dict[Relation, CalibrationEvidence]:
+def current_frontier(
+    evidence: tuple[CalibrationEvidence, ...],
+) -> dict[Relation, CalibrationEvidence]:
     grouped: dict[Relation, list[CalibrationEvidence]] = defaultdict(list)
     for item in evidence:
         grouped[item.relation].append(item)

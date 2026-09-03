@@ -12,7 +12,6 @@ class TestPolicies(unittest.TestCase):
     def test_distinct_scores(self):
         calibration = GainCalibration(4, Fraction(-1, 4), Fraction(1, 3))
         scores = {
-            policy_score(policy, calibration, True, Fraction(1, 5))
-            for policy in FeedbackPolicy
+            policy_score(policy, calibration, True, Fraction(1, 5)) for policy in FeedbackPolicy
         }
         self.assertGreaterEqual(len(scores), 4)

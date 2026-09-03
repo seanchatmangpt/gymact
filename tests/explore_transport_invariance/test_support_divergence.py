@@ -2,7 +2,13 @@ from fractions import Fraction
 
 import pytest
 
-from gymact.explore_transport_invariance import Cell, Refusal, assess_support, overlap_coefficient, total_variation
+from gymact.explore_transport_invariance import (
+    Cell,
+    Refusal,
+    assess_support,
+    overlap_coefficient,
+    total_variation,
+)
 
 
 def test_support_and_tv_are_exact() -> None:
