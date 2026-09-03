@@ -4,6 +4,7 @@ import hashlib
 
 from .replica import ReplicaProjection
 
+
 def audit_root(observations: tuple[ReplicaProjection, ...]) -> str:
     leaves = sorted(item.fingerprint for item in observations)
     if not leaves:

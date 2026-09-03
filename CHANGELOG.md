@@ -1,5 +1,23 @@
 # Changelog
 
+## 26.8.23 - 2026-08-23
+
+### Added
+
+- A complete evidence-lifecycle exploration train spanning semantic projection currentness, replicated projection quorum, sensor-fusion acquisition, sequential acquisition, realized and counterfactual evaluation, causal sensitivity, robustness calibration, process-methodology and trace correspondence, calibrated evidence composition, validation independence, risk-calibrated decision selection, decision realization, and decision-realization transportability.
+- Exact-subject, currentness, provenance/independence, calibration, Pareto, receipt, replay, and failure-dominant standing contracts across the new exploration packages while preserving distinct selector/operator semantics rather than collapsing them into one policy.
+- Deterministic no-actuation Chicago/refusal courts for the new frontiers, with `SELECT != CONSTRUCT != DO` and direct unreceipted consequential DO remaining fail-closed.
+
+### Fixed
+
+- Repository collection of the replicated-projection-quorum courts under both pytest `--import-mode=importlib` and their owning `unittest discover` verifier by giving the shared test world an explicit package identity.
+- The stacked release candidate now contains current `main`'s platform-console provider API and lazy Terraform replay admission instead of regressing those repairs while preserving the full August 23 exploration history.
+- Exact Ruff static/format defects in the decision-transport and replicated-projection-quorum frontiers without suppressing gates or weakening behavioral/refusal assertions.
+
+### Release standing
+
+Per `CLAUDE.md`, `26.8.23` is a release candidate until exact-head CI proves the semantic/runtime Python matrix, zero-live-cloud simulation, static/coverage contract, clean package artifacts, documentation, dependency admission, and container consequence on the same commit. A focused or world-crown success is supporting evidence and does not independently upgrade release standing.
+
 ## 26.8.8 - 2026-08-08
 
 ### Added
