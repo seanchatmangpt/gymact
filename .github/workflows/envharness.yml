@@ -102,6 +102,7 @@ jobs:
             tests/test_envharness_semantic.py
 
       - name: Upload exact-head evidence
+        if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v7.0.1
         with:
           name: envharness-${{ matrix.python }}

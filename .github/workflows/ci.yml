@@ -156,7 +156,16 @@ jobs:
           uv run ruff check src tests
           uv run ruff format --check src tests
 
+      - name: Upload matrix standing evidence (act-local, v3 avoids act's WebCrypto bug)
+        if: ${{ env.ACT }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-evidence-${{ matrix.python }}
+          path: artifacts/test-evidence/junit-${{ matrix.python }}.xml
+          if-no-files-found: error
+
       - name: Upload matrix standing evidence
+        if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v7.0.1
         with:
           name: test-evidence-${{ matrix.python }}
@@ -275,7 +284,16 @@ jobs:
           print(path.read_text(), end="")
           PY
 
+      - name: Upload cloud-simulation receipt (act-local, v3 avoids act's WebCrypto bug)
+        if: ${{ env.ACT }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: cloudsim-evidence
+          path: artifacts/cloudsim/
+          if-no-files-found: error
+
       - name: Upload cloud-simulation receipt
+        if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v7.0.1
         with:
           name: cloudsim-evidence
@@ -303,13 +321,40 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
 
+      - name: Download cloud-simulation evidence (act-local, v3 avoids act's WebCrypto bug)
+        if: ${{ env.ACT }}
+        uses: actions/download-artifact@v3
+        with:
+          name: cloudsim-evidence
+          path: artifacts/cloudsim-evidence
+
       - name: Download cloud-simulation evidence
+        if: ${{ !env.ACT }}
         uses: actions/download-artifact@v8.0.1
         with:
           name: cloudsim-evidence
           path: artifacts/cloudsim-evidence
 
+      # v3 has no pattern/merge-multiple (v4+-only download-artifact features),
+      # so under act each test-evidence-<python> artifact is fetched into its
+      # own subdir, then flattened to match the real (!env.ACT) merge-multiple
+      # layout the receipt-generation step below expects.
+      - name: Download Python matrix evidence (act-local, v3 avoids act's WebCrypto bug)
+        if: ${{ env.ACT }}
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts/test-evidence-raw
+
+      - name: Flatten act-local matrix evidence
+        if: ${{ env.ACT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/test-evidence
+          find artifacts/test-evidence-raw -name 'junit-*.xml' -exec cp {} artifacts/test-evidence/ \;
+
       - name: Download Python matrix evidence
+        if: ${{ !env.ACT }}
         uses: actions/download-artifact@v8.0.1
         with:
           pattern: test-evidence-*
@@ -489,7 +534,19 @@ jobs:
           print(path.read_text(), end="")
           PY
 
+      - name: Upload verified delivery bundle (act-local, v3 avoids act's WebCrypto bug)
+        if: ${{ env.ACT }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: ci-bundle-${{ github.run_id }}
+          path: |
+            artifacts/ci/receipt.json
+            dist/*
+            site/
+          if-no-files-found: error
+
       - name: Upload verified delivery bundle
+        if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v7.0.1
         with:
           name: ci-bundle-${{ github.run_id }}

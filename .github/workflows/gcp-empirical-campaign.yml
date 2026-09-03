@@ -91,7 +91,7 @@ jobs:
           uv run python scripts/gcp_empirical_campaign.py "${args[@]}"
 
       - name: Preserve empirical campaign receipt
-        if: always()
+        if: ${{ always() && !env.ACT }}
         uses: actions/upload-artifact@v7.0.1
         with:
           name: gcp-empirical-campaign-${{ github.sha }}

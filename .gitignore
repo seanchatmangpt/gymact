@@ -95,3 +95,8 @@ playground.py
 /rust/*/.ggen/
 /rust/*/.ggen-v2/
 /rust/*/ggen.lock
+
+# act (local GitHub Actions parity) — see .secrets.example / .env.example
+.secrets
+.act-artifacts/
+.act-events/

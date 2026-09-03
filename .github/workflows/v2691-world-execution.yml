@@ -121,6 +121,7 @@ jobs:
         run: uv run python -m py_compile scripts/verify_v2691_world_execution.py
 
       - name: Upload exact-head world receipt
+        if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v7.0.1
         with:
           name: v2691-world-execution-${{ github.event.pull_request.head.sha || github.sha }}

@@ -196,6 +196,7 @@ jobs:
           PY
 
       - name: Publish bounded five-station evidence
+        if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v4
         with:
           name: enterprise-connection-five-station-${{ github.run_id }}
