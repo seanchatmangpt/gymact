@@ -4,7 +4,9 @@ from .population import Population
 from .refusal import Refused
 
 
-def importance_weights(source: Population, target: Population, cap: Fraction | None = None) -> dict[str, Fraction]:
+def importance_weights(
+    source: Population, target: Population, cap: Fraction | None = None
+) -> dict[str, Fraction]:
     out: dict[str, Fraction] = {}
     for key, target_mass in target.masses.items():
         source_mass = source.masses.get(key, Fraction())
