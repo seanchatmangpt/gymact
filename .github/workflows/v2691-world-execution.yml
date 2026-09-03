@@ -36,7 +36,7 @@ jobs:
       GOOGLE_CLOUD_PROJECT: ""
     steps:
       - name: Checkout exact subject
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
@@ -56,12 +56,12 @@ jobs:
           printf 'subject_sha=%s live_cloud_authority=BLOCKED:LIVE_AZURE_AUTHORITY\n' "$SUBJECT_SHA"
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.13"
 
       - name: Set up admitted uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.GYMACT_UV_VERSION }}
           enable-cache: true
@@ -121,7 +121,7 @@ jobs:
         run: uv run python -m py_compile scripts/verify_v2691_world_execution.py
 
       - name: Upload exact-head world receipt
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7
         with:
           name: v2691-world-execution-${{ github.event.pull_request.head.sha || github.sha }}
           path: artifacts/v2691-world-execution/
