@@ -293,76 +293,99 @@ act-validate:
       fi
     done
 
+# Real pull_request event fixture: many workflows here check
+# `${{ github.event.pull_request.head.sha }}` with NO `|| github.sha`
+# fallback (e.g. explore-federation.yml's "Admit exact PR head"), so act's
+# default synthetic pull_request event (empty head.sha) makes checkout fall
+# back to actions/checkout's own default ref and the exact-head comparison
+# always fails. Regenerated fresh each time so it always tracks current HEAD.
+act-pr-event:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p .act-events
+    head="$(git rev-parse HEAD)"
+    base="$(git rev-parse HEAD~1 2>/dev/null || echo "$head")"
+    cat > .act-events/pull-request.json <<JSON
+    {
+      "pull_request": {
+        "number": 0,
+        "base": {"sha": "$base"},
+        "head": {"sha": "$head"}
+      }
+    }
+    JSON
+act_pr_event := "-e .act-events/pull-request.json"
+
 # Cheap smoke tier: 3 representative explore-*.yml courts, real execution.
-act-explore-smoke:
+act-explore-smoke: act-pr-event
     #!/usr/bin/env bash
     set -euo pipefail
     for f in explore-federation.yml explore-verification.yml explore-ack-discharge.yml; do
       echo "== $f =="
-      act pull_request -W ".github/workflows/$f" {{act_flags}}
+      act pull_request -W ".github/workflows/$f" {{act_pr_event}} {{act_flags}}
     done
 
 # Every explore-*.yml for real (23 workflows) — run once the smoke tier passes.
-act-explore-all:
+act-explore-all: act-pr-event
     #!/usr/bin/env bash
     set -euo pipefail
     for f in .github/workflows/explore-*.yml; do
       echo "== $f =="
-      act pull_request -W "$f" {{act_flags}}
+      act pull_request -W "$f" {{act_pr_event}} {{act_flags}}
     done
 
-act-dmedi-train:
-    act pull_request -W .github/workflows/dmedi-explore-train.yml {{act_flags}}
+act-dmedi-train: act-pr-event
+    act pull_request -W .github/workflows/dmedi-explore-train.yml {{act_pr_event}} {{act_flags}}
 
-act-r54:
-    act pull_request -W .github/workflows/r54-epistemic-consumer.yml {{act_flags}}
+act-r54: act-pr-event
+    act pull_request -W .github/workflows/r54-epistemic-consumer.yml {{act_pr_event}} {{act_flags}}
 
-act-r58:
-    act pull_request -W .github/workflows/r58-independent-consumer.yml {{act_flags}}
+act-r58: act-pr-event
+    act pull_request -W .github/workflows/r58-independent-consumer.yml {{act_pr_event}} {{act_flags}}
 
-act-r79:
-    act pull_request -W .github/workflows/r79-tcps-ready-set-consumer.yml {{act_flags}}
+act-r79: act-pr-event
+    act pull_request -W .github/workflows/r79-tcps-ready-set-consumer.yml {{act_pr_event}} {{act_flags}}
 
-act-aws-botocore:
-    act pull_request -W .github/workflows/aws-botocore-scalar-contract.yml {{act_flags}}
+act-aws-botocore: act-pr-event
+    act pull_request -W .github/workflows/aws-botocore-scalar-contract.yml {{act_pr_event}} {{act_flags}}
 
-act-gcp-census:
-    act pull_request -W .github/workflows/gcp-public-contract-census.yml {{act_flags}}
+act-gcp-census: act-pr-event
+    act pull_request -W .github/workflows/gcp-public-contract-census.yml {{act_pr_event}} {{act_flags}}
 
-act-envharness:
-    act pull_request -W .github/workflows/envharness.yml {{act_flags}}
+act-envharness: act-pr-event
+    act pull_request -W .github/workflows/envharness.yml {{act_pr_event}} {{act_flags}}
 
-act-v2691:
-    act pull_request -W .github/workflows/v2691-world-execution.yml {{act_flags}}
+act-v2691: act-pr-event
+    act pull_request -W .github/workflows/v2691-world-execution.yml {{act_pr_event}} {{act_flags}}
 
-act-ddui:
-    act pull_request -W .github/workflows/dd-ui-profile.yml {{act_flags}}
+act-ddui: act-pr-event
+    act pull_request -W .github/workflows/dd-ui-profile.yml {{act_pr_event}} {{act_flags}}
 
-act-enterprise-connection:
-    act pull_request -W .github/workflows/enterprise-connection-crown.yml {{act_flags}}
+act-enterprise-connection: act-pr-event
+    act pull_request -W .github/workflows/enterprise-connection-crown.yml {{act_pr_event}} {{act_flags}}
 
 # Cross-repo reusable workflow call — resolved against the local checkout of
 # seanchatmangpt/chatman-ecosystem on this machine instead of the network.
-act-federated:
+act-federated: act-pr-event
     act pull_request -W .github/workflows/federated-capability-owner.yml \
       --local-repository seanchatmangpt/chatman-ecosystem@7430dfc9b3ca138e703430d25de7c6f48a8d6ade=/Users/sac/chatman-ecosystem \
-      {{act_flags}}
+      {{act_pr_event}} {{act_flags}}
 
 # ci.yml, staged: single Python version first, then the full matrix.
-act-core-single:
-    act pull_request -W .github/workflows/ci.yml -j core --matrix python:3.12 {{act_flags}}
+act-core-single: act-pr-event
+    act pull_request -W .github/workflows/ci.yml -j core --matrix python:3.12 {{act_pr_event}} {{act_flags}}
 
-act-core:
-    act pull_request -W .github/workflows/ci.yml -j core {{act_flags}}
+act-core: act-pr-event
+    act pull_request -W .github/workflows/ci.yml -j core {{act_pr_event}} {{act_flags}}
 
-act-cloudsim:
-    act pull_request -W .github/workflows/ci.yml -j cloudsim {{act_flags}}
+act-cloudsim: act-pr-event
+    act pull_request -W .github/workflows/ci.yml -j cloudsim {{act_pr_event}} {{act_flags}}
 
 # Full ci.yml event so the artifact-server can bridge core/cloudsim -> artifact
 # (needs the Tier-B v3 dual-path already applied to ci.yml's upload/download
 # sites to actually succeed end to end).
-act-ci-full:
-    act pull_request -W .github/workflows/ci.yml {{act_flags}}
+act-ci-full: act-pr-event
+    act pull_request -W .github/workflows/ci.yml {{act_pr_event}} {{act_flags}}
 
 # NEVER run for real under act: release.yml does real GH Pages deploy
 # (environment: github-pages) and real PyPI OIDC trusted publishing
