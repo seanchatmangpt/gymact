@@ -261,12 +261,36 @@ act_flags := "--container-architecture " + act_arch + " --container-daemon-socke
 act-list:
     act -l {{act_flags}}
 
+# Most workflows here are pull_request-only (23 explore-*.yml courts,
+# dmedi-explore-train.yml, r54/r58/r79, federated-capability-owner.yml,
+# envharness.yml, enterprise-connection-crown.yml) with no push trigger, so
+# a bare `act -n` (implicit push event) reports "Could not find any stages
+# to run" for most of this repo. Try each event act supports, in the order
+# most files actually use, until one produces a real stage plan.
 act-validate:
     #!/usr/bin/env bash
     set -euo pipefail
     for f in .github/workflows/*.yml; do
+      # release.yml is workflow_run-only (fires after CI completes) -- none
+      # of the events below apply; it has its own act-release-dryrun recipe.
+      if [[ "$(basename "$f")" == "release.yml" ]]; then
+        continue
+      fi
       echo "== act -n: $f =="
-      act -n -W "$f" {{act_flags}}
+      ok=0
+      for event in pull_request push workflow_dispatch workflow_call; do
+        if act "$event" -n -W "$f" {{act_flags}} 2>/tmp/act-validate-attempt.log; then
+          ok=1
+          break
+        elif ! grep -q "Could not find any stages to run" /tmp/act-validate-attempt.log; then
+          cat /tmp/act-validate-attempt.log >&2
+          break
+        fi
+      done
+      if [[ "$ok" -ne 1 ]]; then
+        echo "REFUSED: no event (pull_request/push/workflow_dispatch/workflow_call) produced a stage plan for $f" >&2
+        exit 1
+      fi
     done
 
 # Cheap smoke tier: 3 representative explore-*.yml courts, real execution.
