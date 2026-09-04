@@ -1,5 +1,12 @@
-version: s4-mk1/2
+version: s4-mk1/3
 subject: s4-mk1-mixxx-bridge
+
+# Architectural invariant (per user directive, 2026-09-04):
+#   Capabilities(System | Gym=ON) = Capabilities(System | Gym=OFF)
+# The gym may accelerate/parallelize/cheapen experimentation but must
+# never become a runtime or structural dependency of production
+# capability -- see docs/evidence/gym-is-not-a-dependency.md (s4-mk1
+# repo) and F05 below.
 
 # Jurisdiction: what this gym's model actually covers vs. what it
 # explicitly does not, per the source-grounded scope stated in
@@ -39,6 +46,9 @@ invariants:
   - id: physical_led_illumination_automatable
     court: physical_crown
     value: false
+  - id: gym_off_capability_preserved
+    court: unit
+    value: true
 
 # Each falsifier names the real, runnable check that mechanically
 # verifies it -- a claim without a `check:` here is aspirational prose,
@@ -60,6 +70,10 @@ falsifiers:
     predicate: decode_report_32_or_decode_edges_panics_on_any_input == true
     court: unit
     check: "cargo test -p s4-protocol proptests:: && cargo test -p s4-bridge edges::tests::decode_edges_never_panics"
+  - id: F05
+    predicate: production_binary_depends_on_gym_crate == true
+    court: unit
+    check: "cargo test -p s4-bridge production_binary_has_no_dependency_on_s4_gym"
 
 authority:
   SELECT: real-usb-report-decode-only
