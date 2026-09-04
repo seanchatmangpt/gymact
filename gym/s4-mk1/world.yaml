@@ -43,9 +43,11 @@ invariants:
   - id: midi_option_matches_intended_co_boolean
     court: gym
     value: true
+    jurisdiction: mixxx_compute_value_transform # cites a models: entry above -- see ontology/s4.shacl.ttl's s4:GymInvariantJurisdictionShape
   - id: button_note_mapping_single_source_of_truth
     court: gym
     value: true
+    jurisdiction: note_on_note_off_byte_encoding # cites a models: entry above -- see ontology/s4.shacl.ttl's s4:GymInvariantJurisdictionShape
   - id: decode_never_panics_on_arbitrary_input
     court: unit
     value: true
@@ -68,10 +70,12 @@ falsifiers:
     predicate: play_option_produces_raw_passthrough_not_boolean == true
     court: gym
     check: "cargo test -p s4-gym play_control_option_produces_a_real_boolean_drive_value_not_raw_passthrough"
+    jurisdiction: mixxx_compute_value_transform # cites a models: entry above -- see ontology/s4.shacl.ttl's s4:GymFalsifierJurisdictionShape
   - id: F03
     predicate: bridge_note_table_diverges_from_mixxx_mapping_midino == true
     court: gym
     check: "cargo test -p s4-gym bridge_button_table_matches_mapping_xml_midino"
+    jurisdiction: note_on_note_off_byte_encoding # cites a models: entry above -- see ontology/s4.shacl.ttl's s4:GymFalsifierJurisdictionShape
   - id: F04
     predicate: decode_report_32_or_decode_edges_panics_on_any_input == true
     court: unit
