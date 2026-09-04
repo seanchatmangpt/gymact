@@ -1,0 +1,20 @@
+version: s4-mk1/1
+subject: s4-mk1-mixxx-bridge
+invariants:
+  led_write_stall_repro: 0
+  midi_option_matches_intended_co_boolean: true
+  button_note_mapping_single_source_of_truth: true
+  decode_never_panics_on_arbitrary_input: true
+  physical_led_illumination_automatable: false
+falsifiers:
+  - id: F01
+    predicate: led_write_stall_repro != 0
+  - id: F02
+    predicate: play_option_produces_raw_passthrough_not_boolean == true
+  - id: F03
+    predicate: bridge_note_table_diverges_from_mixxx_mapping_midino == true
+  - id: F04
+    predicate: decode_report_32_or_decode_edges_panics_on_any_input == true
+authority:
+  SELECT: real-usb-report-decode-only
+  CONSTRUCT: ontology-and-ggen-only
