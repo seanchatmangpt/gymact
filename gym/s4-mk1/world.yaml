@@ -1,20 +1,66 @@
-version: s4-mk1/1
+version: s4-mk1/2
 subject: s4-mk1-mixxx-bridge
+
+# Jurisdiction: what this gym's model actually covers vs. what it
+# explicitly does not, per the source-grounded scope stated in
+# ~/s4-mk1's crates/s4-gym/src/mixxx_semantics.rs. A claim outside
+# `models:` has no standing from this gym -- REFUSED[COURT_LACKS_JURISDICTION],
+# not silently assumed.
+models:
+  - decode_report_32_and_decode_edges_semantics
+  - note_on_note_off_byte_encoding
+  - mixxx_compute_value_transform # normal/button/switch value-layer only
+does_not_model:
+  - physical_led_illumination # optical, no non-visual observable
+  - mixxx_controlpushbuttonbehavior_toggle_state_machine # real ambiguity found tracing mixxx-src/src/control/controlbehavior.cpp:351-407
+  - mixxx_midikey_dispatch_matching # exact status-byte lookup semantics
+  - usb_timing_behavior
+  - coremidi_runtime_behavior
+  - physical_device_availability
+
+# Every invariant is typed by the court that actually established it
+# (unit = pure-function property test; gym = bounded cross-component
+# model, in-jurisdiction only; physical_crown = real hardware/app run).
+# A gym-court invariant claims standing ONLY within `models:` above.
 invariants:
-  led_write_stall_repro: 0
-  midi_option_matches_intended_co_boolean: true
-  button_note_mapping_single_source_of_truth: true
-  decode_never_panics_on_arbitrary_input: true
-  physical_led_illumination_automatable: false
+  - id: led_write_stall_repro
+    court: physical_crown
+    value: 0
+    evidence: docs/evidence/experiments/2026-09-04.jsonl # s4-mk1 repo
+  - id: midi_option_matches_intended_co_boolean
+    court: gym
+    value: true
+  - id: button_note_mapping_single_source_of_truth
+    court: gym
+    value: true
+  - id: decode_never_panics_on_arbitrary_input
+    court: unit
+    value: true
+  - id: physical_led_illumination_automatable
+    court: physical_crown
+    value: false
+
+# Each falsifier names the real, runnable check that mechanically
+# verifies it -- a claim without a `check:` here is aspirational prose,
+# not an admitted fact.
 falsifiers:
   - id: F01
     predicate: led_write_stall_repro != 0
+    court: physical_crown
+    check: "manual: cargo run --release --bin experiment_runner -p s4-led-test (s4-mk1 repo)"
   - id: F02
     predicate: play_option_produces_raw_passthrough_not_boolean == true
+    court: gym
+    check: "cargo test -p s4-gym play_control_option_produces_a_real_boolean_drive_value_not_raw_passthrough"
   - id: F03
     predicate: bridge_note_table_diverges_from_mixxx_mapping_midino == true
+    court: gym
+    check: "cargo test -p s4-gym bridge_button_table_matches_mapping_xml_midino"
   - id: F04
     predicate: decode_report_32_or_decode_edges_panics_on_any_input == true
+    court: unit
+    check: "cargo test -p s4-protocol proptests:: && cargo test -p s4-bridge edges::tests::decode_edges_never_panics"
+
 authority:
   SELECT: real-usb-report-decode-only
   CONSTRUCT: ontology-and-ggen-only
