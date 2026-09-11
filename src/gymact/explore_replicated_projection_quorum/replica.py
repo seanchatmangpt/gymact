@@ -13,11 +13,13 @@ from .subject import Subject
 
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 
+
 class Representation(StrEnum):
     RDF_TERM = "RDF_TERM"
     ASH_PROJECTION = "ASH_PROJECTION"
     WASM_CARRIER = "WASM_CARRIER"
     CANONICAL_JSON = "CANONICAL_JSON"
+
 
 @dataclass(frozen=True, slots=True)
 class ReplicaProjection:
@@ -35,7 +37,9 @@ class ReplicaProjection:
             raise Refused("REFUSED_INVALID_REPLICA_ID")
         if self.generation < 0:
             raise Refused("REFUSED_INVALID_GENERATION")
-        if not _HEX64.fullmatch(self.semantic_digest) or not _HEX64.fullmatch(self.projection_digest):
+        if not _HEX64.fullmatch(self.semantic_digest) or not _HEX64.fullmatch(
+            self.projection_digest
+        ):
             raise Refused("REFUSED_INVALID_PROJECTION_DIGEST")
         if self.observed_at.tzinfo is None or self.observed_at.utcoffset() is None:
             raise Refused("REFUSED_NAIVE_OBSERVATION_TIME")
