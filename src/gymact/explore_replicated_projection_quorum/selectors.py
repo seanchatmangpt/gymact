@@ -68,13 +68,9 @@ def select(
     else:
         conflict = {key: len(observations) - len(members) for key, members in groups.items()}
         best = min(conflict.values())
-        candidates = [
-            (key, members) for key, members in groups.items() if conflict[key] == best
-        ]
+        candidates = [(key, members) for key, members in groups.items() if conflict[key] == best]
         max_generation = max(key[0] for key, _ in candidates)
-        candidates = [
-            (key, members) for key, members in candidates if key[0] == max_generation
-        ]
+        candidates = [(key, members) for key, members in candidates if key[0] == max_generation]
     if len(candidates) != 1:
         raise Refused("REFUSED_AMBIGUOUS_PROJECTION_SELECTION")
     (generation, digest), members = candidates[0]
