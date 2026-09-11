@@ -4,7 +4,9 @@ from gymact.explore_replicated_projection_quorum.engine import qualify
 from gymact.explore_replicated_projection_quorum.failure import FailureKind, inject_failure
 from gymact.explore_replicated_projection_quorum.receipt import ActionClass, replay
 from gymact.explore_replicated_projection_quorum.selectors import SelectorKind
-from world import NOW, SEMANTIC, SUBJECT, UNIVERSE, WINDOW, projection
+
+from .world import NOW, SEMANTIC, SUBJECT, UNIVERSE, WINDOW, projection
+
 
 class ChicagoCourt(unittest.TestCase):
     def test_healthy_quorum_visibility_loss_and_no_do(self):
@@ -17,6 +19,7 @@ class ChicagoCourt(unittest.TestCase):
         self.assertFalse(healthy.receipt.body["actuation_performed"])
         with self.assertRaises(Exception):
             qualify(observations, subject=SUBJECT, semantic_digest=SEMANTIC, universe=UNIVERSE, window=WINDOW, now=NOW, selector=SelectorKind.STRICT_MAJORITY_CURRENTNESS, action=ActionClass.DO)
+
 
 if __name__ == "__main__":
     unittest.main()
