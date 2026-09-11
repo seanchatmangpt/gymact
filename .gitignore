@@ -95,3 +95,4 @@ playground.py
 /rust/*/.ggen/
 /rust/*/.ggen-v2/
 /rust/*/ggen.lock
+.secrets
