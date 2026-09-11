@@ -1,0 +1,49 @@
+@prefix prof: <http://www.w3.org/ns/dx/prof/> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<urn:gymact:paas:profile:fortune5-cloud> a prof:Profile ;
+  dct:title "GymAct Fortune-5 public-cloud operational profile" ;
+  dct:description "Closed operational profile whose executable Ash resources are projections of public OGF/W3C/QUDT classes." ;
+  prof:hasResource
+    <urn:gymact:paas:descriptor:occi-core>,
+    <urn:gymact:paas:descriptor:occi-infrastructure>,
+    <urn:gymact:paas:descriptor:occi-platform>,
+    <urn:gymact:paas:descriptor:w3c-governance> .
+
+<urn:gymact:paas:descriptor:occi-core> a prof:ResourceDescriptor ;
+  dct:conformsTo <https://ogf.org/documents/GFD.221.pdf> .
+<urn:gymact:paas:descriptor:occi-infrastructure> a prof:ResourceDescriptor ;
+  dct:conformsTo <https://ogf.org/documents/GFD.224.pdf> .
+<urn:gymact:paas:descriptor:occi-platform> a prof:ResourceDescriptor ;
+  dct:conformsTo <https://ogf.org/documents/GFD.227.pdf> .
+<urn:gymact:paas:descriptor:w3c-governance> a prof:ResourceDescriptor ;
+  dct:conformsTo <https://www.w3.org/TR/vocab-dcat-3/> , <https://www.w3.org/TR/prov-o/> , <https://www.w3.org/TR/odrl-model/> , <https://www.w3.org/TR/vocab-org/> .
+
+<urn:gymact:paas:shape:occi-application> a sh:NodeShape ; sh:targetClass <http://schemas.ogf.org/occi/platform#application> .
+<urn:gymact:paas:shape:occi-component> a sh:NodeShape ; sh:targetClass <http://schemas.ogf.org/occi/platform#component> .
+<urn:gymact:paas:shape:occi-compute> a sh:NodeShape ; sh:targetClass <http://schemas.ogf.org/occi/infrastructure#compute> .
+<urn:gymact:paas:shape:occi-network> a sh:NodeShape ; sh:targetClass <http://schemas.ogf.org/occi/infrastructure#network> .
+<urn:gymact:paas:shape:occi-storage> a sh:NodeShape ; sh:targetClass <http://schemas.ogf.org/occi/infrastructure#storage> .
+<urn:gymact:paas:shape:dcat-catalog> a sh:NodeShape ; sh:targetClass <http://www.w3.org/ns/dcat#Catalog> .
+<urn:gymact:paas:shape:dcat-data-service> a sh:NodeShape ; sh:targetClass <http://www.w3.org/ns/dcat#DataService> .
+<urn:gymact:paas:shape:dcat-dataset> a sh:NodeShape ; sh:targetClass <http://www.w3.org/ns/dcat#Dataset> .
+<urn:gymact:paas:shape:dcat-distribution> a sh:NodeShape ; sh:targetClass <http://www.w3.org/ns/dcat#Distribution> .
+<urn:gymact:paas:shape:odrl-policy> a sh:NodeShape ; sh:targetClass <http://www.w3.org/ns/odrl/2/Policy> .
+<urn:gymact:paas:shape:prov-activity> a sh:NodeShape ; sh:targetClass <http://www.w3.org/ns/prov#Activity> .
+<urn:gymact:paas:shape:prov-entity> a sh:NodeShape ; sh:targetClass <http://www.w3.org/ns/prov#Entity> .
+<urn:gymact:paas:shape:sosa-platform> a sh:NodeShape ; sh:targetClass <http://www.w3.org/ns/sosa/Platform> .
+<urn:gymact:paas:shape:sosa-observation> a sh:NodeShape ; sh:targetClass <http://www.w3.org/ns/sosa/Observation> .
+<urn:gymact:paas:shape:sosa-actuation> a sh:NodeShape ; sh:targetClass <http://www.w3.org/ns/sosa/Actuation> .
+<urn:gymact:paas:shape:pplan-plan> a sh:NodeShape ; sh:targetClass <http://purl.org/net/p-plan#Plan> .
+<urn:gymact:paas:shape:pplan-step> a sh:NodeShape ; sh:targetClass <http://purl.org/net/p-plan#Step> .
+<urn:gymact:paas:shape:dqv-quality-measurement> a sh:NodeShape ; sh:targetClass <http://www.w3.org/ns/dqv#QualityMeasurement> .
+<urn:gymact:paas:shape:qudt-quantity-value> a sh:NodeShape ; sh:targetClass <http://qudt.org/schema/qudt/QuantityValue> .
+<urn:gymact:paas:shape:time-interval> a sh:NodeShape ; sh:targetClass <http://www.w3.org/2006/time#Interval> .
+<urn:gymact:paas:shape:org-organizational-unit> a sh:NodeShape ; sh:targetClass <http://www.w3.org/ns/org#OrganizationalUnit> .
+
+<urn:gymact:paas:shape:common-identity> a sh:NodeShape ;
+  sh:property [ sh:path dct:identifier ; sh:datatype xsd:string ; sh:minCount 1 ; sh:maxCount 1 ] ;
+  sh:property [ sh:path dct:title ; sh:datatype xsd:string ; sh:minCount 1 ; sh:maxCount 1 ] ;
+  sh:property [ sh:path dct:description ; sh:datatype xsd:string ; sh:maxCount 1 ] .

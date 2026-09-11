@@ -1,0 +1,35 @@
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+<urn:gymact:paas:catalog> a dcat:Catalog ; dct:title "GymAct reversible hyperscaler capability catalog" .
+
+<urn:gymact:paas:capability:application> a skos:Concept ; skos:exactMatch <http://schemas.ogf.org/occi/platform#application> .
+<urn:gymact:paas:capability:component> a skos:Concept ; skos:exactMatch <http://schemas.ogf.org/occi/platform#component> .
+<urn:gymact:paas:capability:compute> a skos:Concept ; skos:exactMatch <http://schemas.ogf.org/occi/infrastructure#compute> .
+<urn:gymact:paas:capability:network> a skos:Concept ; skos:exactMatch <http://schemas.ogf.org/occi/infrastructure#network> .
+<urn:gymact:paas:capability:storage> a skos:Concept ; skos:exactMatch <http://schemas.ogf.org/occi/infrastructure#storage> .
+<urn:gymact:paas:capability:data_service> a skos:Concept ; skos:exactMatch dcat:DataService .
+<urn:gymact:paas:capability:dataset> a skos:Concept ; skos:exactMatch dcat:Dataset .
+
+<urn:gymact:paas:catalog:aws:application> a skos:Concept ; skos:broader <urn:gymact:paas:capability:application> ; skos:notation "aws:ecs" .
+<urn:gymact:paas:catalog:azure:application> a skos:Concept ; skos:broader <urn:gymact:paas:capability:application> ; skos:notation "azure:container-apps" .
+<urn:gymact:paas:catalog:gcp:application> a skos:Concept ; skos:broader <urn:gymact:paas:capability:application> ; skos:notation "gcp:cloud-run" .
+<urn:gymact:paas:catalog:aws:component> a skos:Concept ; skos:broader <urn:gymact:paas:capability:component> ; skos:notation "aws:lambda" .
+<urn:gymact:paas:catalog:azure:component> a skos:Concept ; skos:broader <urn:gymact:paas:capability:component> ; skos:notation "azure:functions" .
+<urn:gymact:paas:catalog:gcp:component> a skos:Concept ; skos:broader <urn:gymact:paas:capability:component> ; skos:notation "gcp:cloud-functions" .
+<urn:gymact:paas:catalog:aws:compute> a skos:Concept ; skos:broader <urn:gymact:paas:capability:compute> ; skos:notation "aws:ec2" .
+<urn:gymact:paas:catalog:azure:compute> a skos:Concept ; skos:broader <urn:gymact:paas:capability:compute> ; skos:notation "azure:virtual-machines" .
+<urn:gymact:paas:catalog:gcp:compute> a skos:Concept ; skos:broader <urn:gymact:paas:capability:compute> ; skos:notation "gcp:compute-engine" .
+<urn:gymact:paas:catalog:aws:network> a skos:Concept ; skos:broader <urn:gymact:paas:capability:network> ; skos:notation "aws:vpc" .
+<urn:gymact:paas:catalog:azure:network> a skos:Concept ; skos:broader <urn:gymact:paas:capability:network> ; skos:notation "azure:vnet" .
+<urn:gymact:paas:catalog:gcp:network> a skos:Concept ; skos:broader <urn:gymact:paas:capability:network> ; skos:notation "gcp:vpc" .
+<urn:gymact:paas:catalog:aws:storage> a skos:Concept ; skos:broader <urn:gymact:paas:capability:storage> ; skos:notation "aws:s3" .
+<urn:gymact:paas:catalog:azure:storage> a skos:Concept ; skos:broader <urn:gymact:paas:capability:storage> ; skos:notation "azure:blob-storage" .
+<urn:gymact:paas:catalog:gcp:storage> a skos:Concept ; skos:broader <urn:gymact:paas:capability:storage> ; skos:notation "gcp:cloud-storage" .
+<urn:gymact:paas:catalog:aws:data_service> a skos:Concept ; skos:broader <urn:gymact:paas:capability:data_service> ; skos:notation "aws:rds-postgresql" .
+<urn:gymact:paas:catalog:azure:data_service> a skos:Concept ; skos:broader <urn:gymact:paas:capability:data_service> ; skos:notation "azure:postgresql-flexible-server" .
+<urn:gymact:paas:catalog:gcp:data_service> a skos:Concept ; skos:broader <urn:gymact:paas:capability:data_service> ; skos:notation "gcp:cloud-sql-postgresql" .
+<urn:gymact:paas:catalog:aws:dataset> a skos:Concept ; skos:broader <urn:gymact:paas:capability:dataset> ; skos:notation "aws:glue-data-catalog" .
+<urn:gymact:paas:catalog:azure:dataset> a skos:Concept ; skos:broader <urn:gymact:paas:capability:dataset> ; skos:notation "azure:purview" .
+<urn:gymact:paas:catalog:gcp:dataset> a skos:Concept ; skos:broader <urn:gymact:paas:capability:dataset> ; skos:notation "gcp:bigquery-dataset" .
