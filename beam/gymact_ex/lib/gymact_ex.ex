@@ -9,7 +9,8 @@ defmodule GymActEx do
 
   alias GymActEx.Client
 
-  defdelegate new(opts \\ []), to: Client
+  def new(opts \\ []), do: Client.new(opts)
+
   defdelegate health(client), to: Client
   defdelegate profile(client), to: Client
   defdelegate contract(client), to: Client
@@ -24,6 +25,9 @@ defmodule GymActEx do
   defdelegate act_admitted(client, episode_id, request), to: Client
   defdelegate verify(client, episode_id, expected), to: Client
   defdelegate checkpoint(client, episode_id), to: Client
-  defdelegate restore(client, episode_id, checkpoint, opts \\ []), to: Client
-  defdelegate teardown(client, episode_id, opts \\ []), to: Client
+
+  def restore(client, episode_id, checkpoint, opts \\ []),
+    do: Client.restore(client, episode_id, checkpoint, opts)
+
+  def teardown(client, episode_id, opts \\ []), do: Client.teardown(client, episode_id, opts)
 end
