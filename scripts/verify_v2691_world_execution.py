@@ -121,6 +121,61 @@ def _assert_mutation_refused(
     raise RuntimeError(f"MUTATION_SURVIVED:{name}")
 
 
+REPLAN_TRIGGER_FACTS = frozenset(
+    {
+        "urn:gymact:mna:artifact-cyber-diligence",
+        "urn:gymact:mna:artifact-technology-diligence",
+    }
+)
+
+
+async def _verify_replanning(canonical: Any) -> dict[str, Any]:
+    """Independent replanning court (gate G08, 'replanning'): a second
+    episode's external SELECT must be genuinely conditioned on the canonical
+    episode's real observed facts, not a hardcoded second plan. Mirrors
+    scripts/run_fortune5_mna_replan_episode.py's real chained-episode design
+    (SELECT stays external to GymAct in both episodes -- see that script's
+    module docstring for why plan re-selection cannot happen by mutating the
+    immutable MnaSelectedPlan mid-episode)."""
+    observed = set(canonical.facts)
+    if not REPLAN_TRIGGER_FACTS.issubset(observed):
+        raise CourtRefusal("REFUSED:REPLAN_TRIGGER_FACTS_NOT_OBSERVED")
+
+    replanned_topology = (
+        "platform" if DEFAULT_PLAN.integration_topology != "platform" else "absorb"
+    )
+    replan_plan = DEFAULT_PLAN.model_copy(
+        update={"integration_topology": replanned_topology}
+    )
+    replanned = await execute_fortune5_mna_simulation(replan_plan)
+
+    if not replanned.verified or replanned.standing is not Standing.ALIVE:
+        raise CourtRefusal("REFUSED:REPLAN_EPISODE_NOT_ALIVE")
+    if replanned.episode_id == canonical.episode_id:
+        raise CourtRefusal("REFUSED:REPLAN_EPISODE_ID_NOT_DISTINCT")
+    if replanned.selected_plan == canonical.selected_plan:
+        raise CourtRefusal("REFUSED:REPLAN_PLAN_DID_NOT_CHANGE")
+    if replanned.selection_digest == canonical.selection_digest:
+        raise CourtRefusal("REFUSED:REPLAN_SELECTION_DIGEST_UNCHANGED")
+
+    return {
+        "trigger_facts": sorted(REPLAN_TRIGGER_FACTS),
+        "canonical_episode_id": canonical.episode_id,
+        "canonical_plan": canonical.selected_plan.model_dump(mode="json"),
+        "replan_episode_id": replanned.episode_id,
+        "replan_plan": replanned.selected_plan.model_dump(mode="json"),
+        "replan_verified": replanned.verified,
+        "causal_link_digest": digest(
+            {
+                "canonical_episode_id": canonical.episode_id,
+                "canonical_facts": sorted(canonical.facts),
+                "replan_episode_id": replanned.episode_id,
+                "replan_plan": replanned.selected_plan.model_dump(mode="json"),
+            }
+        ),
+    }
+
+
 async def _independent_world_court(ocel_output: Path) -> tuple[dict[str, Any], str, bool]:
     provider = build_mna_provider()
     resolver = TieredAuthorityResolver(
@@ -237,6 +292,7 @@ async def _run(ocel_output: Path, report_output: Path) -> int:
 
     log, refusal_receipt_id, goal_reached = await _independent_world_court(ocel_output)
     evidence = _verify_ocel(log, refusal_receipt_id=refusal_receipt_id)
+    replanning = await _verify_replanning(canonical)
 
     falsifiers = [
         _assert_mutation_refused(
@@ -290,6 +346,7 @@ async def _run(ocel_output: Path, report_output: Path) -> int:
             "goal_reached": goal_reached,
             "standard_authority_refusal_receipt_id": refusal_receipt_id,
         },
+        "replanning": replanning,
         "falsifiers": falsifiers,
         "falsifiers_passed": len(falsifiers),
         "generated_source_edited": False,
