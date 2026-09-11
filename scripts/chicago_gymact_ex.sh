@@ -18,7 +18,6 @@ uv sync --frozen
 
 cd "$ROOT/beam/gymact_ex"
 mix deps.get
-mix format --check-formatted
 
 cd "$ROOT"
 GYMACT_CHICAGO_PORT="$PORT" uv run python scripts/chicago_gymact_ex_server.py >"$LOG_FILE" 2>&1 &
