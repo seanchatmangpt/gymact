@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from fractions import Fraction
-from .primal_adapter import SolverObservation
+
 from .oracle_adapter import OracleObservation
+from .primal_adapter import SolverObservation
 from .refusal import Refused
+
 
 @dataclass(frozen=True)
 class Correspondence:
@@ -23,4 +25,10 @@ def compare(primal: SolverObservation, oracle: OracleObservation) -> Corresponde
     gap = abs(primal.result.cost - oracle.result.cost)
     if gap:
         raise Refused("OPTIMAL_VALUE_DIVERGENCE", str(gap))
-    return Correspondence(primal.subject.identity, primal.engine, oracle.engine, gap, primal.result.shipments == oracle.result.shipments)
+    return Correspondence(
+        primal.subject.identity,
+        primal.engine,
+        oracle.engine,
+        gap,
+        primal.result.shipments == oracle.result.shipments,
+    )

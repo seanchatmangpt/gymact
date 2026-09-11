@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
+
 from .refusal import Refused
 
 _SHA = re.compile(r"^[0-9a-f]{40}$")
+
 
 @dataclass(frozen=True)
 class SolverSubject:
