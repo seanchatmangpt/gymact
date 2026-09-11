@@ -17,12 +17,14 @@ from .subject import Subject
 from .universe import ReplicaUniverse
 from .window import ObservationWindow
 
+
 @dataclass(frozen=True, slots=True)
 class Qualification:
     assessment: QuorumAssessment
     selection: Selection | None
     storage: StorageCapability
     receipt: QualificationReceipt
+
 
 def qualify(
     observations: tuple[ReplicaProjection, ...],
@@ -68,6 +70,7 @@ def qualify(
         "subject": subject.value,
     }
     return Qualification(assessment, selection, storage, QualificationReceipt.create(body))
+
 
 def compare_selection_geometry(
     selection: Selection, *, highest_generation: int, conflict_fraction: Fraction

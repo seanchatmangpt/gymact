@@ -5,10 +5,12 @@ from enum import StrEnum
 
 from .refusal import Refused
 
+
 class StorageKind(StrEnum):
     MEMORY = "MEMORY"
     JSONL = "JSONL"
     SQLITE = "SQLITE"
+
 
 @dataclass(frozen=True, slots=True)
 class StorageCapability:
@@ -16,15 +18,18 @@ class StorageCapability:
     durable: bool
     transactional: bool
 
+
 CAPABILITIES = (
     StorageCapability(StorageKind.MEMORY, False, False),
     StorageCapability(StorageKind.JSONL, True, False),
     StorageCapability(StorageKind.SQLITE, True, True),
 )
 
+
 def choose_storage(*, durable: bool, transactional: bool) -> StorageCapability:
     candidates = [
-        item for item in CAPABILITIES
+        item
+        for item in CAPABILITIES
         if (not durable or item.durable) and (not transactional or item.transactional)
     ]
     if not candidates:
