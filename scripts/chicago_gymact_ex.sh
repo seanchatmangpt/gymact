@@ -14,7 +14,9 @@ for tool in uv mix curl; do
 done
 
 cd "$ROOT"
-uv sync --frozen
+# This repository does not currently commit uv.lock. Resolve the declared
+# pyproject environment rather than falsely claiming a frozen lock replay.
+uv sync
 
 cd "$ROOT/beam/gymact_ex"
 mix deps.get
