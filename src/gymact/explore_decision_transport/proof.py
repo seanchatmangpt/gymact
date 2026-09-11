@@ -15,6 +15,7 @@ def admit_acyclic(edges: list[Edge]) -> tuple[Edge, ...]:
         graph.setdefault(edge.parent, set()).add(edge.child)
     visiting: set[str] = set()
     visited: set[str] = set()
+
     def visit(node: str) -> None:
         if node in visiting:
             raise Refused("CYCLIC_TRANSPORT_PROOF")
@@ -25,6 +26,7 @@ def admit_acyclic(edges: list[Edge]) -> tuple[Edge, ...]:
             visit(child)
         visiting.remove(node)
         visited.add(node)
+
     for node in sorted(graph):
         visit(node)
     return tuple(edges)

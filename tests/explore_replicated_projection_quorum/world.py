@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from gymact.explore_replicated_projection_quorum.clock import VectorClock
 from gymact.explore_replicated_projection_quorum.replica import ReplicaProjection, Representation
@@ -11,11 +11,17 @@ from gymact.explore_replicated_projection_quorum.window import ObservationWindow
 SUBJECT = Subject("seanchatmangpt/gymact@" + "1" * 40)
 SEMANTIC = "a" * 64
 PROJECTION = "b" * 64
-NOW = datetime(2026, 8, 23, 1, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 8, 23, 1, 0, tzinfo=UTC)
 WINDOW = ObservationWindow(NOW - timedelta(hours=2), NOW + timedelta(seconds=1))
 UNIVERSE = ReplicaUniverse(("r1", "r2", "r3", "r4", "r5"))
 
-def projection(replica: str, generation: int = 2, digest: str = PROJECTION, clock: dict[str, int] | None = None) -> ReplicaProjection:
+
+def projection(
+    replica: str,
+    generation: int = 2,
+    digest: str = PROJECTION,
+    clock: dict[str, int] | None = None,
+) -> ReplicaProjection:
     return ReplicaProjection(
         subject=SUBJECT,
         replica_id=replica,

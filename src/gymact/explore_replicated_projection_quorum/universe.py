@@ -5,6 +5,7 @@ from fractions import Fraction
 
 from .refusal import Refused
 
+
 @dataclass(frozen=True, slots=True)
 class ReplicaUniverse:
     replica_ids: tuple[str, ...]
