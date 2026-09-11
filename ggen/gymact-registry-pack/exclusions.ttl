@@ -1,8 +1,19 @@
 @prefix rg: <http://seanchatmangpt.github.io/packs/gymact-registry#> .
 
-# Additional provider-exclusion ABox facts discovered by the mechanical registry court.
+# Additional registry ABox facts discovered by the mechanical registry court.
 # These live beside ontology.ttl rather than in Python test data; the court loads the
-# complete registry ABox (ontology.ttl + exclusions.ttl).
+# complete registry ABox (ontology.ttl + exclusions.ttl).  Despite the historical file
+# name, this fragment may also carry a missing RegisteredProvider fact when the generated
+# runtime projection is already ahead of ontology.ttl; the graph, not the filename, is
+# authoritative.
+
+rg:p-platform-console a rg:RegisteredProvider ;
+    rg:registryKey "platform-console" ;
+    rg:providerModule "gymact.gyms.platform_console_provider" ;
+    rg:providerClassName "PlatformConsoleProvider" ;
+    rg:capabilitiesModule "gymact.gyms.platform_console_provider" ;
+    rg:capabilitiesImportClause "PLATFORM_CONSOLE_CAPABILITIES" ;
+    rg:capabilitiesExpr "PLATFORM_CONSOLE_CAPABILITIES" .
 
 rg:x-opaque-procedure a rg:ExcludedProvider ;
     rg:excludedClass "gymact.gyms.opaque_procedure.OpaqueProcedureProvider" ;
@@ -11,6 +22,18 @@ rg:x-opaque-procedure a rg:ExcludedProvider ;
 rg:x-ontology-driven a rg:ExcludedProvider ;
     rg:excludedClass "gymact.gyms.ontology_gym.OntologyDrivenProvider" ;
     rg:exclusionReason "generic ontology-driven compiler whose capabilities are derived from a configured pack ontology at materialize time; concrete domain instances are manufactured from configuration rather than registered as one fixed builtin." .
+
+rg:x-dependency-world a rg:ExcludedProvider ;
+    rg:excludedClass "gymact.gyms.dependency_world.DependencyWorldProvider" ;
+    rg:exclusionReason "generic public-semantic dependency-world compiler requires explicit name, pack_dir, and local_prefix constructor inputs; concrete worlds are configured instances rather than one zero-argument fixed-capability builtin." .
+
+rg:x-shared-dependency-world a rg:ExcludedProvider ;
+    rg:excludedClass "gymact.gyms.shared_dependency_world.SharedDependencyWorldProvider" ;
+    rg:exclusionReason "generic shared-state dependency-world compiler inherits the explicit name, pack_dir, and local_prefix configuration contract and additionally owns per-instance world state; it is not one zero-argument fixed-capability builtin." .
+
+rg:x-platform-console-ontology-driven a rg:ExcludedProvider ;
+    rg:excludedClass "gymact.gyms.platform_console_ontology_provider.PlatformConsoleOntologyDrivenProvider" ;
+    rg:exclusionReason "configured ontology-driven planning-state specialization constructed through build_platform_console_ontology_provider; it is intentionally composed with the separately registered credentialed PlatformConsoleProvider rather than exposed as a second flat builtin transport." .
 
 rg:x-sregym-vendor-physics a rg:ExcludedProvider ;
     rg:excludedClass "gymact.gyms.sregym.SregymVendorProvider" ;
