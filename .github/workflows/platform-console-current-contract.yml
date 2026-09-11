@@ -1,0 +1,109 @@
+name: Platform-console current-contract court
+
+on:
+  pull_request:
+    paths:
+      - "src/gymact/gyms/platform_console_ontology_provider.py"
+      - "src/gymact/gyms/semantic_pack_locator.py"
+      - "tests/test_platform_console_ontology_provider_chicago.py"
+      - "tests/test_semantic_pack_locator.py"
+      - ".github/workflows/platform-console-current-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  UV_LINK_MODE: copy
+  GYMACT_UV_VERSION: "0.11.32"
+  CHATMAN_ECOSYSTEM_SHA: "a4c56269fe62ab79b56ec2f7feab47da6fce20ff"
+
+jobs:
+  current-contract:
+    name: Current ontology contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact subject
+        uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Admit exact head
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          printf 'subject_sha=%s\n' "$EXPECTED_SHA"
+
+      - name: Checkout exact canonical semantic dependency
+        uses: actions/checkout@v6.0.2
+        with:
+          repository: seanchatmangpt/chatman-ecosystem
+          ref: ${{ env.CHATMAN_ECOSYSTEM_SHA }}
+          path: _deps/chatman-ecosystem
+          persist-credentials: false
+
+      - name: Admit canonical semantic dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git -C _deps/chatman-ecosystem rev-parse HEAD)"
+          test "$actual" = "$CHATMAN_ECOSYSTEM_SHA"
+          test -f _deps/chatman-ecosystem/ontology/platform-console-gym-pack/ontology.ttl
+          target="$GITHUB_WORKSPACE/../chatman-ecosystem"
+          test ! -e "$target"
+          ln -s "$GITHUB_WORKSPACE/_deps/chatman-ecosystem" "$target"
+          test -f "$target/ontology/platform-console-gym-pack/ontology.ttl"
+          printf 'canonical_dependency_sha=%s\n' "$actual"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up admitted uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.GYMACT_UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+
+      - name: Resolve verification capsule
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uv --version | awk '{print $2}')" = "$GYMACT_UV_VERSION"
+          uv sync --group dev
+
+      - name: Compile current contract
+        run: >-
+          uv run python -m py_compile
+          src/gymact/gyms/platform_console_ontology_provider.py
+          src/gymact/gyms/semantic_pack_locator.py
+          tests/test_platform_console_ontology_provider_chicago.py
+          tests/test_semantic_pack_locator.py
+
+      - name: Execute locator falsifier first
+        run: uv run pytest -q tests/test_semantic_pack_locator.py
+
+      - name: Execute current-contract Chicago court
+        run: uv run pytest -q tests/test_platform_console_ontology_provider_chicago.py
+
+      - name: Enforce static contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run ruff check \
+            src/gymact/gyms/platform_console_ontology_provider.py \
+            src/gymact/gyms/semantic_pack_locator.py \
+            tests/test_platform_console_ontology_provider_chicago.py \
+            tests/test_semantic_pack_locator.py
+          uv run ruff format --check \
+            src/gymact/gyms/platform_console_ontology_provider.py \
+            src/gymact/gyms/semantic_pack_locator.py \
+            tests/test_platform_console_ontology_provider_chicago.py \
+            tests/test_semantic_pack_locator.py
