@@ -1,5 +1,5 @@
 [build-system]
-requires = ["uv_build>=0.11.32,<0.12"]
+requires = ["uv_build>=0.12.7,<0.13"]
 build-backend = "uv_build"
 
 [project]
@@ -50,7 +50,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-gyms = ["gymnasium>=1.0,<2", "pettingzoo>=1.24,<2", "inspect-ai>=0.3.90,<1", "datasets>=3,<4", "botocore>=1.40,<2"]
+gyms = ["gymnasium>=1.3.0,<2", "pettingzoo>=1.27.0,<2", "inspect-ai>=0.3.260,<1", "datasets>=5.0.1,<6", "botocore>=1.43.83,<2"]
 # botocore: real, official AWS package -- used only for its bundled
 # endpoints.json (gymact.gyms.cloud_topology.load_aws_topology), never for
 # a live AWS API call. No credentials, no network. Declared explicitly
@@ -70,7 +70,7 @@ cube = [
 # Optional because dspy pulls a real LLM-client dependency graph unrelated to
 # the kernel; gated at import time via `pytest.importorskip("dspy")`, never
 # mocked when genuinely absent.
-dspy = ["dspy>=3.3,<4"]
+dspy = ["dspy>=3.3.1,<4"]
 bpmn = [
     "spiffworkflow>=3.2.0",
 ]
@@ -99,15 +99,15 @@ Documentation = "https://seanchatmangpt.github.io/gymact"
 
 [dependency-groups]
 dev = [
-  "build>=1.2,<2",
-  "coverage[toml]>=7.6,<8",
-  "httpx2>=2.9,<3",
-  "mkdocstrings[python]>=0.30,<1",
-  "pytest>=8.3,<9",
-  "pytest-asyncio>=0.25,<2",
-  "ruff>=0.15,<1",
-  "twine>=6,<7",
-  "zensical>=0.0.51,<1",
+  "build>=1.6.0,<2",
+  "coverage[toml]>=7.16.0,<8",
+  "httpx2>=2.12.0,<3",
+  "mkdocstrings[python]>=1.0.6,<2",
+  "pytest>=9.1.1,<10",
+  "pytest-asyncio>=1.4.0,<2",
+  "ruff>=0.16.5,<1",
+  "twine>=7.0.0,<8",
+  "zensical>=0.0.57,<1",
 ]
 
 [tool.commitizen]
