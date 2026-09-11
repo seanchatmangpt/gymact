@@ -31,7 +31,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout exact subject
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
@@ -60,12 +60,12 @@ jobs:
           test "$(readlink -f "$HOME/gymact")" = "$(readlink -f "$GITHUB_WORKSPACE")"
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
 
       - name: Set up admitted uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.GYMACT_UV_VERSION }}
           enable-cache: true
@@ -84,7 +84,7 @@ jobs:
           install_only: false
 
       - name: Provision real terraform binary
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_wrapper: false
 
@@ -157,7 +157,7 @@ jobs:
           uv run ruff format --check src tests
 
       - name: Upload matrix standing evidence
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7
         with:
           name: test-evidence-${{ matrix.python }}
           path: artifacts/test-evidence/junit-${{ matrix.python }}.xml
@@ -184,18 +184,18 @@ jobs:
       CLOUDSDK_CORE_PROJECT: ""
     steps:
       - name: Checkout exact subject
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.13"
 
       - name: Set up admitted uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.GYMACT_UV_VERSION }}
           enable-cache: true
@@ -276,7 +276,7 @@ jobs:
           PY
 
       - name: Upload cloud-simulation receipt
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7
         with:
           name: cloudsim-evidence
           path: artifacts/cloudsim/
@@ -290,7 +290,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout exact subject
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
@@ -317,12 +317,12 @@ jobs:
           merge-multiple: true
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.13"
 
       - name: Set up admitted uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.GYMACT_UV_VERSION }}
           enable-cache: true
@@ -490,7 +490,7 @@ jobs:
           PY
 
       - name: Upload verified delivery bundle
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7
         with:
           name: ci-bundle-${{ github.run_id }}
           path: |

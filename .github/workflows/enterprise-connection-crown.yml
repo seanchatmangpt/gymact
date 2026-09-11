@@ -27,13 +27,13 @@ jobs:
       GGEN_SHA: 5c6548e1dc58deecfae4fdbb81c019ca1f5cc67a
     steps:
       - name: Checkout exact GymAct subject
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Checkout exact marketplace contract station
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: seanchatmangpt/ggen-marketplace
           ref: ${{ env.MARKETPLACE_SHA }}
@@ -41,7 +41,7 @@ jobs:
           persist-credentials: false
 
       - name: Checkout exact ggen-legacy station
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: seanchatmangpt/ggen-legacy
           ref: ${{ env.LEGACY_SHA }}
@@ -49,7 +49,7 @@ jobs:
           persist-credentials: false
 
       - name: Checkout exact ggen-create station
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: seanchatmangpt/ggen-create
           ref: ${{ env.CREATE_SHA }}
@@ -57,14 +57,14 @@ jobs:
           persist-credentials: false
 
       - name: Checkout exact ggen station
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: seanchatmangpt/ggen
           ref: ${{ env.GGEN_SHA }}
           path: subjects/ggen
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -196,7 +196,7 @@ jobs:
           PY
 
       - name: Publish bounded five-station evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: enterprise-connection-five-station-${{ github.run_id }}
           path: |

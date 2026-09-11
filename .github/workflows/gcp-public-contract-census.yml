@@ -28,7 +28,7 @@ jobs:
       CLOUDSDK_CORE_PROJECT: ""
     steps:
       - name: Checkout exact subject
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
@@ -43,12 +43,12 @@ jobs:
           printf 'subject_sha=%s\n' "$EXPECTED_SHA"
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.13"
 
       - name: Set up admitted uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.GYMACT_UV_VERSION }}
           enable-cache: true
@@ -71,7 +71,7 @@ jobs:
 
       - name: Preserve public contract receipt
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7
         with:
           name: gcp-public-contract-census-${{ github.event.pull_request.head.sha || github.sha }}
           path: artifacts/gcp/public-contract-census.json

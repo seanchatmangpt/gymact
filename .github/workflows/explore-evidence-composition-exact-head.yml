@@ -11,10 +11,10 @@ jobs:
   exact-head:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
       - run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
       - run: uv sync --group dev
       - run: uv run python -m compileall -q src/gymact/explore_evidence_composition tests/explore_evidence_composition

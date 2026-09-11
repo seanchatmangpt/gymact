@@ -9,10 +9,10 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
       - run: uv sync --group dev
       - run: uv run python -m compileall -q src/gymact/explore_robustness_bound_calibration tests/explore_robustness_bound_calibration
       - run: uv run python -m unittest discover -s tests/explore_robustness_bound_calibration -p 'test_*.py' -v
