@@ -14,7 +14,8 @@ class ReceiptAuthorityCourt(unittest.TestCase):
     def test_receipt_tamper_and_direct_do_fail_closed(self):
         receipt = QualificationReceipt.create({"standing": "PARTIAL_ALIVE"})
         self.assertTrue(replay(receipt))
-        self.assertFalse(replay(replace(receipt, body={**receipt.body, "standing": "ALIVE"})))
+        tampered = replace(receipt, body={**receipt.body, "standing": "ALIVE"})
+        self.assertFalse(replay(tampered))
         with self.assertRaisesRegex(Refused, "REFUSED_UNRECEIPTED_ACTUATION"):
             require_action(ActionClass.DO)
 

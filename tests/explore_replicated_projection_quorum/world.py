@@ -3,7 +3,10 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from gymact.explore_replicated_projection_quorum.clock import VectorClock
-from gymact.explore_replicated_projection_quorum.replica import ReplicaProjection, Representation
+from gymact.explore_replicated_projection_quorum.replica import (
+    ReplicaProjection,
+    Representation,
+)
 from gymact.explore_replicated_projection_quorum.subject import Subject
 from gymact.explore_replicated_projection_quorum.universe import ReplicaUniverse
 from gymact.explore_replicated_projection_quorum.window import ObservationWindow

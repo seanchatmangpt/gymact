@@ -6,7 +6,10 @@ from tests.explore_replicated_projection_quorum.world import PROJECTION, UNIVERS
 
 class QuorumCourt(unittest.TestCase):
     def test_majority_and_split_brain_are_distinct(self):
-        healthy = assess_quorum(tuple(projection(r) for r in ("r1", "r2", "r3")), UNIVERSE)
+        healthy = assess_quorum(
+            tuple(projection(replica) for replica in ("r1", "r2", "r3")),
+            UNIVERSE,
+        )
         self.assertIs(healthy.state, QuorumState.HEALTHY)
         self.assertEqual(healthy.standing, "PARTIAL_ALIVE")
         split = assess_quorum(

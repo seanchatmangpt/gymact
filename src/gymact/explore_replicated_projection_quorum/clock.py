@@ -31,8 +31,8 @@ class VectorClock:
     def compare(self, other: VectorClock) -> ClockRelation:
         left, right = self.as_dict(), other.as_dict()
         keys = set(left) | set(right)
-        le = all(left.get(k, 0) <= right.get(k, 0) for k in keys)
-        ge = all(left.get(k, 0) >= right.get(k, 0) for k in keys)
+        le = all(left.get(key, 0) <= right.get(key, 0) for key in keys)
+        ge = all(left.get(key, 0) >= right.get(key, 0) for key in keys)
         if le and ge:
             return ClockRelation.EQUAL
         if le:

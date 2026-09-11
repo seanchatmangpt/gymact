@@ -14,11 +14,9 @@ class StrategyVector:
     freshness_lag: int
 
     def __post_init__(self) -> None:
-        if (
-            self.freshness_lag < 0
-            or not (Fraction(0) <= self.coverage <= Fraction(1))
-            or not (Fraction(0) <= self.ambiguity <= Fraction(1))
-        ):
+        valid_coverage = Fraction(0) <= self.coverage <= Fraction(1)
+        valid_ambiguity = Fraction(0) <= self.ambiguity <= Fraction(1)
+        if self.freshness_lag < 0 or not valid_coverage or not valid_ambiguity:
             raise ValueError("invalid strategy vector")
 
 

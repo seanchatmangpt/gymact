@@ -1,1 +1,1 @@
-"""Repository-collectable courts for replicated semantic projection quorum."""
+"""Replicated projection quorum test courts."""

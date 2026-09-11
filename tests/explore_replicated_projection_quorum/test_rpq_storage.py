@@ -13,10 +13,8 @@ class StorageCourt(unittest.TestCase):
             {item.kind for item in CAPABILITIES},
             {StorageKind.MEMORY, StorageKind.JSONL, StorageKind.SQLITE},
         )
-        self.assertIs(
-            choose_storage(durable=True, transactional=True).kind,
-            StorageKind.SQLITE,
-        )
+        selected = choose_storage(durable=True, transactional=True)
+        self.assertIs(selected.kind, StorageKind.SQLITE)
 
 
 if __name__ == "__main__":
