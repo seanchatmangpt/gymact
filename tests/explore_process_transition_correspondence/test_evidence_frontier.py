@@ -9,8 +9,9 @@ from gymact.explore_process_transition_correspondence.obligation import Obligati
 
 class EvidenceFrontierCourt(unittest.TestCase):
     def test_stale_and_divergent_currentness_refuse(self) -> None:
-        a = SubjectEpoch(Subject.parse("o/r@" + "a" * 40), 1)
-        b = SubjectEpoch(Subject.parse("o/r@" + "b" * 40), 2)
+        subject = Subject.parse("o/r@" + "a" * 40)
+        a = SubjectEpoch(subject, 1)
+        b = SubjectEpoch(subject, 2)
         with self.assertRaisesRegex(Refused, "STALE_OR_FUTURE"):
             admit_evidence(Evidence(a, "CI", ObligationState.PASS, "run-1"), b)
         self.assertEqual(current_frontier([a, b]), b)

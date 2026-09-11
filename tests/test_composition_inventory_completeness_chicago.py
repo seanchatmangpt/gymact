@@ -204,6 +204,22 @@ def _real_ggen_packs_with_gates() -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 _INTENTIONALLY_UNCATALOGED: dict[str, str] = {
+    "PlatformConsoleOntologyDrivenProvider": (
+        "gymact.gyms.platform_console_ontology_provider.PlatformConsoleOntologyDrivenProvider "
+        "is a configured ontology-driven planning-state specialization constructed "
+        "through build_platform_console_ontology_provider; it is intentionally "
+        "composed with the separately registered credentialed PlatformConsoleProvider "
+        "rather than exposed as a second flat builtin transport -- matching the "
+        "identical rg:x-platform-console-ontology-driven exclusion already recorded "
+        "in ggen/gymact-registry-pack/exclusions.ttl for the registry court."
+    ),
+    "FailClosedPlatformConsoleAuthorityResolver": (
+        "gymact.gyms.platform_console_ontology_provider.FailClosedPlatformConsoleAuthorityResolver "
+        "is a configured helper constructed alongside "
+        "PlatformConsoleOntologyDrivenProvider through the same "
+        "build_platform_console_ontology_provider factory -- not a standalone "
+        "composable component."
+    ),
     "SregymOntologyProvider": (
         "gymact.gyms.sregym_ontology.SregymOntologyProvider wraps the already-"
         "catalogued gymact.gyms.sregym.SregymVendorProvider (component_ref above), "

@@ -46,6 +46,7 @@ failure rather than a silent success.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -64,6 +65,43 @@ _POLL_INTERVAL_SECONDS = 1.0
 
 _FIXTURES_DIR = Path(__file__).parent / "fixtures" / "terraform_docker"
 _DEFAULT_CONTAINER_NAME = "gymact-terraform-docker-apply-test"
+
+
+def _discover_active_docker_context_host() -> str | None:
+    """Resolve the real local Docker daemon socket, real desktop-agnostic.
+
+    ``os.environ["DOCKER_HOST"]`` and the kreuzwerker/docker provider's own
+    unset-``host`` resolution both assume the classic ``/var/run/docker.sock``
+    path, which is not the live daemon on every real local machine -- notably
+    Colima, which serves from ``~/.colima/<profile>/docker.sock`` and switches
+    the active ``docker context`` rather than that fixed path. Querying the
+    real ``docker context inspect`` output (no mock, no guessed path) closes
+    that gap generically for whichever context is actually active (Colima,
+    Docker Desktop, or a plain rootless/system daemon), while leaving
+    ``docker_host=None`` (unset, provider default) whenever the ``docker`` CLI
+    itself is unavailable or context discovery fails for any reason -- this is
+    a best-effort convenience default, never a hard requirement.
+    """
+
+    if shutil.which("docker") is None:
+        return None
+    try:
+        result = subprocess.run(
+            ["docker", "context", "inspect"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    try:
+        contexts = json.loads(result.stdout)
+        host = contexts[0]["Endpoints"]["docker"]["Host"]
+    except (json.JSONDecodeError, LookupError, TypeError):
+        return None
+    return host if isinstance(host, str) and host else None
 
 
 def resolve_binary(preferred: str | None = None) -> str | None:
@@ -405,6 +443,8 @@ class TerraformDockerApplyProvider:
         docker_host = config.get("docker_host")
         if docker_host is not None and not isinstance(docker_host, str):
             raise TypeError("config.docker_host must be a string or None")
+        if docker_host is None and not os.environ.get("DOCKER_HOST"):
+            docker_host = _discover_active_docker_context_host()
 
         init_timeout_seconds = config.get("init_timeout_seconds", _DEFAULT_INIT_TIMEOUT_SECONDS)
         apply_timeout_seconds = config.get("apply_timeout_seconds", _DEFAULT_APPLY_TIMEOUT_SECONDS)

@@ -34,7 +34,7 @@ def _load_parent(path: Path):
 def export_exercise_connection(parent_path: Path,bundle_dir: Path,revision: str,out: Path)->dict[str,Any]:
     if not HEX40.fullmatch(revision): raise ConnectionRefusal(f"REFUSED:REVISION:{revision}")
     parent,parent_raw=_load_parent(parent_path); bundle_dir=bundle_dir.resolve(); exported=export_manufacturing_bundle(bundle_dir)
-    expected={"profile.ttl","profile.shacl.ttl","runtime-contract.jcs.json"}
+    expected={"profile.ttl","profile.shacl.ttl","runtime-contract.jcs.json","synthetic-ocel-result-contract.jcs.json"}
     if set(exported)!=expected: raise ConnectionRefusal("REFUSED:MANUFACTURING_BUNDLE_SURFACE:"+",".join(sorted(exported)))
     bundle_artifacts=[]; bundle_index={}
     for name,resource in sorted(exported.items()):
@@ -42,7 +42,7 @@ def export_exercise_connection(parent_path: Path,bundle_dir: Path,revision: str,
         if digest!="sha256:"+resource.sha256: raise ConnectionRefusal(f"REFUSED:BUNDLE_DIGEST_DRIFT:{name}")
         bundle_index[name]=digest; bundle_artifacts.append({"path":f"gymact-bundle/{name}","role":"gymact:manufacturing-bundle","media_type":"text/turtle" if name.endswith(".ttl") else "application/json","digest":digest})
     bundle_set_digest=sha256_bytes(canonical_bytes(bundle_index))
-    env={**parent,"stage":"EXERCISE","producer":{"repository":"seanchatmangpt/gymact","revision":revision,"component":"gymact.connection"},"subject":{**parent["subject"],"kind":"bounded-enterprise-architecture-exercise-input","revision":bundle_set_digest},"artifacts":parent["artifacts"]+bundle_artifacts,"authority":{"ceiling":"BOUNDED_GYM","do_authority":False},"standing":{"state":"PARTIAL_ALIVE","claim":"GYMACT_MANUFACTURING_BUNDLE_EXPORTED_AND_DIGEST_BOUND; WORLD_ACTUATION_NOT_EXECUTED; OBJECTIVE_VERIFICATION_NOT_ESTABLISHED"},"parent":{"digest":sha256_bytes(parent_raw),"producer":f"{parent['producer']['repository']}@{parent['producer']['revision']}"},"evidence":parent["evidence"]+[{"kind":"gymact-manufacturing-bundle","identity":"profile.ttl+profile.shacl.ttl+runtime-contract.jcs.json","digest":bundle_set_digest}],"next":[{"consumer":"seanchatmangpt/ggen-create","operation":"refine-from-exercise-evidence"}],"labels":{**parent["labels"],"gymact_bundle_digest":bundle_set_digest,"exercise_mode":"CONSTRUCT_ONLY_INPUT_BINDING"}}
+    env={**parent,"stage":"EXERCISE","producer":{"repository":"seanchatmangpt/gymact","revision":revision,"component":"gymact.connection"},"subject":{**parent["subject"],"kind":"bounded-enterprise-architecture-exercise-input","revision":bundle_set_digest},"artifacts":parent["artifacts"]+bundle_artifacts,"authority":{"ceiling":"BOUNDED_GYM","do_authority":False},"standing":{"state":"PARTIAL_ALIVE","claim":"GYMACT_MANUFACTURING_BUNDLE_EXPORTED_AND_DIGEST_BOUND; WORLD_ACTUATION_NOT_EXECUTED; OBJECTIVE_VERIFICATION_NOT_ESTABLISHED"},"parent":{"digest":sha256_bytes(parent_raw),"producer":f"{parent['producer']['repository']}@{parent['producer']['revision']}"},"evidence":parent["evidence"]+[{"kind":"gymact-manufacturing-bundle","identity":"profile.ttl+profile.shacl.ttl+runtime-contract.jcs.json+synthetic-ocel-result-contract.jcs.json","digest":bundle_set_digest}],"next":[{"consumer":"seanchatmangpt/ggen-create","operation":"refine-from-exercise-evidence"}],"labels":{**parent["labels"],"gymact_bundle_digest":bundle_set_digest,"exercise_mode":"CONSTRUCT_ONLY_INPUT_BINDING"}}
     data=canonical_bytes(env); out.parent.mkdir(parents=True,exist_ok=True); out.write_bytes(data); return env
 
 def main(argv=None)->int:

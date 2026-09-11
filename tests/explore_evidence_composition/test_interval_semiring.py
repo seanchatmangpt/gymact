@@ -1,3 +1,5 @@
+import math
+
 from gymact.explore_evidence_composition.interval import Interval
 from gymact.explore_evidence_composition.semiring import EvidenceWeight
 
@@ -8,7 +10,7 @@ def test_unknown_dependence_is_more_conservative_than_independence() -> None:
     conservative = left.series(right)
     independent = left.series(right, independent=True)
     assert conservative.confidence.lower == 0.5
-    assert independent.confidence.lower == 0.56
+    assert math.isclose(independent.confidence.lower, 0.56)
     assert conservative.cost == independent.cost == 5.0
 
 

@@ -54,6 +54,7 @@ def test_manufacturing_bundle_is_canonical_and_complete(tmp_path) -> None:
         "profile.ttl",
         "profile.shacl.ttl",
         "runtime-contract.jcs.json",
+        "synthetic-ocel-result-contract.jcs.json",
     }
     payload = (tmp_path / "runtime-contract.jcs.json").read_bytes()
     assert payload == canonical_bytes(build_contract().model_dump(mode="json"))

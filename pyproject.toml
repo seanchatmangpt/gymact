@@ -50,7 +50,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-gyms = ["gymnasium>=1.3.0,<2", "pettingzoo>=1.27.0,<2", "inspect-ai>=0.3.260,<1", "datasets>=5.0.1,<6", "botocore>=1.43.83,<2"]
+gyms = ["gymnasium>=1.3.0,<2", "pettingzoo>=1.27.0,<2", "inspect-ai>=0.3.260,<1", "datasets>=5.0.1,<6", "botocore>=1.40,<2"]
 # botocore: real, official AWS package -- used only for its bundled
 # endpoints.json (gymact.gyms.cloud_topology.load_aws_topology), never for
 # a live AWS API call. No credentials, no network. Declared explicitly
@@ -103,6 +103,11 @@ dev = [
   "coverage[toml]>=7.16.0,<8",
   "httpx2>=2.12.0,<3",
   "mkdocstrings[python]>=1.0.6,<2",
+  # required by the real ~/POWL sibling checkout's powl.objects.tagged_powl
+  # leaf submodules (.base/.graph_base/.types) that
+  # tests/powl/test_reference_model_conformance.py imports directly for its
+  # no-mock structural-conformance comparison; not used by gymact itself.
+  "networkx>=3.6,<4",
   "pytest>=9.1.1,<10",
   "pytest-asyncio>=1.4.0,<2",
   "ruff>=0.16.5,<1",

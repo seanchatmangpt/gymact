@@ -34,14 +34,36 @@ def _decorator_is_mcp_tool(node: ast.expr) -> bool:
     return isinstance(target, ast.Attribute) and target.attr == "tool"
 
 
+def _call_registered_tool_names(tree: ast.AST) -> set[str]:
+    """Names registered via ``mcp.tool()(fn)`` call-style, not decorator syntax.
+
+    A tool defined inside a runtime-conditional block (e.g. ``if ggen_agents is
+    not None:``) cannot use ``@mcp.tool()`` decorator syntax at module-body
+    indentation, so it is registered by calling ``mcp.tool()(fn)`` explicitly
+    after the ``def``. AST parsing sees both forms unconditionally regardless
+    of the runtime branch, so this still yields the full declared tool surface.
+    """
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Expr) or not isinstance(node.value, ast.Call):
+            continue
+        call = node.value
+        if not _decorator_is_mcp_tool(call.func):
+            continue
+        if len(call.args) == 1 and isinstance(call.args[0], ast.Name):
+            names.add(call.args[0].id)
+    return names
+
+
 def _source_tools() -> set[str]:
     tree = ast.parse(SOURCE.read_text(), filename=str(SOURCE))
-    return {
+    decorated = {
         node.name
         for node in ast.walk(tree)
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
         and any(_decorator_is_mcp_tool(decorator) for decorator in node.decorator_list)
     }
+    return decorated | _call_registered_tool_names(tree)
 
 
 def _graph() -> Graph:

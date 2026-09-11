@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata
 import json
 from copy import deepcopy
 from pathlib import Path
@@ -675,9 +676,6 @@ async def test_fastmcp_surface_executes_in_process() -> None:
             "restore",
             "teardown",
             "probe_repo",
-            "ggen_agent_catalog",
-            "ggen_agent_frontier",
-            "ggen_agent_invoke",
         }
         created = await client.call_tool(
             "create_episode",
@@ -733,7 +731,7 @@ def test_typer_cli_version_profile_export_and_demo(tmp_path) -> None:
     runner = CliRunner()
     version = runner.invoke(cli_app, ["version"])
     assert version.exit_code == 0
-    assert version.stdout.strip() == "26.8.7"
+    assert version.stdout.strip() == importlib.metadata.version("gymact")
     profile = runner.invoke(cli_app, ["validate-profile"])
     assert profile.exit_code == 0
     payload = json.loads(profile.stdout)
