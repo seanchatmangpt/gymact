@@ -1,0 +1,23 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+import re
+
+_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+_REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+
+
+@dataclass(frozen=True, order=True)
+class Subject:
+    repo: str
+    sha: str
+
+    def __post_init__(self) -> None:
+        if not _REPO_RE.fullmatch(self.repo):
+            raise ValueError("REFUSED_INVALID_REPOSITORY_IDENTITY")
+        if not _SHA_RE.fullmatch(self.sha):
+            raise ValueError("REFUSED_INEXACT_SUBJECT_SHA")
+
+    @property
+    def key(self) -> str:
+        return f"{self.repo}@{self.sha}"
