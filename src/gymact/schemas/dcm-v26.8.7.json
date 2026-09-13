@@ -47,7 +47,7 @@
     {
       "id": "DCM-007",
       "law": "APPLICABILITY_BEFORE_RANKING",
-      "requirement": "The empirical index cannot rank a combination absent from the current eligible set.",
+      "requirement": "The empirical index cannot rank a combination absent from the current eligible set and cannot be seeded by unwitnessed performance claims.",
       "implementation": ["src/gymact/possibility_index.py"],
       "standing": "STRUCTURAL"
     },
@@ -75,21 +75,21 @@
     {
       "id": "DCM-011",
       "law": "EXPLICIT_IRREVERSIBLE_CUT",
-      "requirement": "A content-bound graph/path/morphism cut must exist before canonical BRCE execution.",
+      "requirement": "A content-bound graph/closure/path/morphism cut must exist before canonical BRCE execution, and truncated closure cannot be selected.",
       "implementation": ["src/gymact/cut.py", "src/gymact/dcm_runtime.py"],
       "standing": "STRUCTURAL"
     },
     {
       "id": "DCM-012",
       "law": "CUT_BOUND_RECEIPT",
-      "requirement": "Consequential receipts bind graph, path, DO morphism, selection basis and parent receipt lineage.",
+      "requirement": "Consequential receipts bind graph, exact closure, path, DO morphism, selection basis and parent receipt lineage.",
       "implementation": ["src/gymact/models.py", "src/gymact/cut.py", "src/gymact/evidence.py"],
       "standing": "STRUCTURAL"
     },
     {
       "id": "DCM-013",
       "law": "DECISION_REPLAY",
-      "requirement": "Replay detects missing or changed graph/path/morphism/selection identities.",
+      "requirement": "Replay detects missing or changed graph/closure/path/morphism/selection identities.",
       "implementation": ["src/gymact/replay.py"],
       "standing": "STRUCTURAL"
     },
@@ -117,15 +117,15 @@
     {
       "id": "DCM-017",
       "law": "PROTOCOL_CAUSAL_EQUIVALENCE",
-      "requirement": "REST, MCP and event transports expose powerless exploration and cut-bound canonical DO semantics.",
-      "implementation": ["src/gymact/surfaces/fastapi.py", "src/gymact/surfaces/fastmcp.py", "src/gymact/surfaces/faststream.py"],
+      "requirement": "CLI, REST, MCP and event transports expose powerless exploration and cut-bound canonical DO semantics; request payloads cannot manufacture authority.",
+      "implementation": ["src/gymact/cli.py", "src/gymact/surfaces/fastapi.py", "src/gymact/surfaces/fastmcp.py", "src/gymact/surfaces/faststream.py"],
       "standing": "STRUCTURAL"
     },
     {
       "id": "DCM-018",
       "law": "CROWN_REQUIRES_WITNESSED_DCM",
-      "requirement": "DCM implementation cannot receive ALIVE until public graph admission, maximal closure, cut, real consequence, verification, cut-bound receipt and replay execute against an exact real subject.",
-      "implementation": ["tests/test_combinatorial_receipt.py", "tests/test_dcm_decision_court.py"],
+      "requirement": "DCM implementation cannot receive ALIVE until public graph admission, complete maximal closure, explicit cut, real consequence, independent verification, closure-bound receipt and exact replay execute against an exact real subject.",
+      "implementation": ["tests/test_combinatorial_receipt.py", "tests/test_dcm_decision_court.py", "tests/test_combinatorial_replay.py"],
       "standing": "UNKNOWN"
     }
   ]

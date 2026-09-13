@@ -1,5 +1,8 @@
 {
   "spec_version": "26.8.7",
+  "status": "COMPATIBILITY_OPTIMIZATION_LEDGER",
+  "canonical_architecture": "src/gymact/schemas/dcm-v26.8.7.json",
+  "law": "ERRC optimizations are admitted only when they preserve the canonical DCM public graph, complete reversible closure, applicability, explicit irreversible cut, BRCE authority, verification, receipt and replay semantics.",
   "items": [
     {
       "item_id": "E-001",
@@ -34,9 +37,9 @@
     {
       "item_id": "R-001",
       "move": "REDUCE",
-      "outcome": "Reduce repeated cold cognition by compiling verified equivalence classes into deterministic HOT recipes.",
+      "outcome": "Reduce repeated cold cognition through the canonical compiled graph-route path; legacy candidate recipes remain compatibility only.",
       "requirement_refs": ["G-P1-009", "G-P2-006"],
-      "evidence": ["src/gymact/compileout.py", "src/gymact/intelligence.py"],
+      "evidence": ["src/gymact/compileout_graph.py", "src/gymact/intelligence.py"],
       "impact": 5,
       "effort": 2,
       "status": "SATISFIED"
@@ -54,7 +57,7 @@
     {
       "item_id": "R-003",
       "move": "REDUCE",
-      "outcome": "Reduce protocol-specific business logic to one transport-neutral candidate-intent normalization law.",
+      "outcome": "Reduce protocol-specific business logic to one transport-neutral candidate-intent normalization law downstream of DCM.",
       "requirement_refs": ["G-P0-017"],
       "evidence": ["src/gymact/transport.py", "tests/test_transport_crown.py"],
       "impact": 4,
@@ -64,7 +67,7 @@
     {
       "item_id": "R-004",
       "move": "REDUCE",
-      "outcome": "Reduce provider discovery duplication through one built-in provider/capability registry.",
+      "outcome": "Reduce provider discovery duplication through one built-in provider/capability registry without selecting away lawful alternatives.",
       "requirement_refs": ["G-P0-002", "G-P0-013"],
       "evidence": ["src/gymact/registry.py", "src/gymact/cli.py"],
       "impact": 3,
@@ -84,9 +87,9 @@
     {
       "item_id": "H-002",
       "move": "RAISE",
-      "outcome": "Raise economic selection quality with Pareto/VCT and anti-agent crossover evidence.",
+      "outcome": "Raise economic selection quality only after DCM applicability through receipt-admitted Pareto/VCT evidence.",
       "requirement_refs": ["G-P1-007", "G-P1-009", "G-P2-006"],
-      "evidence": ["src/gymact/lab.py", "src/gymact/experiments.py"],
+      "evidence": ["src/gymact/possibility_index.py", "src/gymact/experiments.py"],
       "impact": 4,
       "effort": 2,
       "status": "SATISFIED"
@@ -126,7 +129,7 @@
       "move": "CREATE",
       "outcome": "Create evidence-over-constitution requirement overlays so implementation status can advance without rewriting architectural law.",
       "requirement_refs": ["G-P0-018"],
-      "evidence": ["src/gymact/requirements.py", "src/gymact/schemas/crown-evidence-v26.8.7.json"],
+      "evidence": ["src/gymact/requirements.py", "src/gymact/schemas/crown-evidence-v26.8.7.json", "src/gymact/schemas/dcm-evidence-v26.8.7.json"],
       "impact": 4,
       "effort": 1,
       "status": "SATISFIED"

@@ -7,6 +7,7 @@ from gymact.action_contract import (
     ExecutionGrant,
     ExpectedEffect,
     PreparedAction,
+    ReversalClass,
     SubjectRef,
     VerificationKind,
     VerificationStrategy,
@@ -20,9 +21,9 @@ from gymact.combinatorial import (
     PossibilityMorphism,
     PossibilityObject,
     PossibilityObjectKind,
-    explore_maximal_reversible,
 )
 from gymact.cut import manufacture_broker_request, select_irreversible_cut
+from gymact.maximal import explore_combinatorial_maximum
 
 
 def fixture() -> tuple[PossibilityGraph, ActionDefinition, PreparedAction, ExecutionGrant]:
@@ -39,6 +40,7 @@ def fixture() -> tuple[PossibilityGraph, ActionDefinition, PreparedAction, Execu
             observer_ref="urn:observer:memory",
             expected={"x": 2},
         ),
+        reversal=ReversalClass.IRREVERSIBLE,
     )
     subject = SubjectRef(
         semantic_id="urn:subject:memory",
@@ -99,6 +101,7 @@ def fixture() -> tuple[PossibilityGraph, ActionDefinition, PreparedAction, Execu
                 target_id="plan-a",
                 kind=MorphismKind.PLAN,
                 phase=DecisionPhase.CONSTRUCT,
+                reversal=ReversalClass.REVERSIBLE,
             ),
             PossibilityMorphism(
                 morphism_id="construct-b",
@@ -106,6 +109,7 @@ def fixture() -> tuple[PossibilityGraph, ActionDefinition, PreparedAction, Execu
                 target_id="plan-b",
                 kind=MorphismKind.PLAN,
                 phase=DecisionPhase.CONSTRUCT,
+                reversal=ReversalClass.REVERSIBLE,
             ),
             PossibilityMorphism(
                 morphism_id="do-a",
@@ -113,6 +117,7 @@ def fixture() -> tuple[PossibilityGraph, ActionDefinition, PreparedAction, Execu
                 target_id="effect-a",
                 kind=MorphismKind.ACTUATE,
                 phase=DecisionPhase.DO,
+                reversal=ReversalClass.IRREVERSIBLE,
                 requirements=MorphismRequirements(execution_grant_required=True),
             ),
             PossibilityMorphism(
@@ -121,6 +126,7 @@ def fixture() -> tuple[PossibilityGraph, ActionDefinition, PreparedAction, Execu
                 target_id="effect-b",
                 kind=MorphismKind.ACTUATE,
                 phase=DecisionPhase.DO,
+                reversal=ReversalClass.IRREVERSIBLE,
                 requirements=MorphismRequirements(execution_grant_required=True),
             ),
         ),
@@ -130,8 +136,10 @@ def fixture() -> tuple[PossibilityGraph, ActionDefinition, PreparedAction, Execu
 
 def test_cut_refuses_frontier_that_was_not_authority_admitted() -> None:
     graph, action, prepared, grant = fixture()
-    exploration = explore_maximal_reversible(graph, start_ids=("observation",))
-    frontier = next(item for item in exploration.irreversible_frontier if item.morphism_id == "do-a")
+    exploration = explore_combinatorial_maximum(graph, start_ids=("observation",))
+    frontier = next(
+        item for item in exploration.irreversible_frontier if item.morphism_id == "do-a"
+    )
     assert not frontier.admitted
     with pytest.raises(ValueError, match="IRREVERSIBLE_FRONTIER_NOT_ADMITTED"):
         select_irreversible_cut(
@@ -147,9 +155,9 @@ def test_cut_refuses_frontier_that_was_not_authority_admitted() -> None:
         )
 
 
-def test_cut_binds_exact_graph_path_grant_and_prepared_identity() -> None:
+def test_cut_binds_exact_graph_closure_path_grant_and_prepared_identity() -> None:
     graph, action, prepared, grant = fixture()
-    exploration = explore_maximal_reversible(
+    exploration = explore_combinatorial_maximum(
         graph,
         start_ids=("observation",),
         context=AdmissionContext(
@@ -157,8 +165,13 @@ def test_cut_binds_exact_graph_path_grant_and_prepared_identity() -> None:
             execution_grant_ref="urn:grant:admitted",
         ),
     )
-    assert {item.morphism_id for item in exploration.irreversible_frontier} == {"do-a", "do-b"}
-    selected = next(item for item in exploration.irreversible_frontier if item.morphism_id == "do-a")
+    assert {item.morphism_id for item in exploration.irreversible_frontier} == {
+        "do-a",
+        "do-b",
+    }
+    selected = next(
+        item for item in exploration.irreversible_frontier if item.morphism_id == "do-a"
+    )
     cut = select_irreversible_cut(
         graph,
         exploration,
@@ -172,6 +185,7 @@ def test_cut_binds_exact_graph_path_grant_and_prepared_identity() -> None:
         current_revision="rev-1",
     )
     assert cut.verify_digest()
+    assert cut.exploration_digest
     request = manufacture_broker_request(
         cut,
         action=action,
@@ -187,12 +201,14 @@ def test_cut_binds_exact_graph_path_grant_and_prepared_identity() -> None:
 
 def test_cut_detects_prepared_and_grant_drift_before_brce() -> None:
     graph, action, prepared, grant = fixture()
-    exploration = explore_maximal_reversible(
+    exploration = explore_combinatorial_maximum(
         graph,
         start_ids=("observation",),
         context=AdmissionContext(execution_grant_ref="urn:grant:admitted"),
     )
-    selected = next(item for item in exploration.irreversible_frontier if item.morphism_id == "do-a")
+    selected = next(
+        item for item in exploration.irreversible_frontier if item.morphism_id == "do-a"
+    )
     cut = select_irreversible_cut(
         graph,
         exploration,
@@ -218,4 +234,33 @@ def test_cut_detects_prepared_and_grant_drift_before_brce() -> None:
             action=action,
             prepared=prepared,
             grant=changed_grant,
+        )
+
+
+def test_cut_refuses_selection_from_truncated_closure() -> None:
+    graph, action, prepared, grant = fixture()
+    complete = explore_combinatorial_maximum(
+        graph,
+        start_ids=("observation",),
+        context=AdmissionContext(execution_grant_ref="urn:grant:admitted"),
+    )
+    frontier = next(
+        item for item in complete.irreversible_frontier if item.morphism_id == "do-a"
+    )
+    truncated = complete.model_copy(
+        update={"truncated": True, "truncation_reasons": ("MAX_PATHS",)}
+    )
+    with pytest.raises(
+        ValueError,
+        match="IRREVERSIBLE_SELECTION_FROM_TRUNCATED_CLOSURE_REFUSED",
+    ):
+        select_irreversible_cut(
+            graph,
+            truncated,
+            path_id=frontier.path_id,
+            morphism_id=frontier.morphism_id,
+            action=action,
+            prepared=prepared,
+            grant=grant,
+            selector_ref="urn:selector:test",
         )

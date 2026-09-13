@@ -4,7 +4,10 @@
     "base_sha": "d4b66abb2fe6dde774e8143d9160f175d5115a74",
     "branch": "agent/crown-prd-ard-runtime",
     "environment": "cloud container / Python 3.13.5",
-    "standing_rule": "SATISFIED means implemented with bounded executable evidence for the requirement; dependency-closed or external Crown checkpoints remain PARTIAL or BLOCKED until exact compatible subjects execute."
+    "canonical_decision_architecture": "Design for Combinatorial Maximum",
+    "dcm_law": "src/gymact/schemas/dcm-v26.8.7.json",
+    "dcm_evidence": "src/gymact/schemas/dcm-evidence-v26.8.7.json",
+    "standing_rule": "SATISFIED means implemented with bounded executable evidence for that requirement. DCM implementation remains STRUCTURAL and DCM end-to-end remains UNKNOWN until the exact public-graph -> complete-closure -> semantic-cut -> BRCE -> real-effect -> independent-verification -> closure-bound-receipt -> replay chain executes."
   },
   "requirements": {
     "G-LAW-001": {
@@ -12,6 +15,7 @@
       "evidence": [
         "src/gymact/brce.py",
         "src/gymact/runtime.py",
+        "src/gymact/cut.py",
         "tests/test_brce_crown.py",
         "tests/test_brce_seal.py"
       ]
@@ -25,7 +29,8 @@
       "evidence": [
         "src/gymact/replay.py",
         "src/gymact/experiments.py",
-        "tests/test_replay_crown.py"
+        "tests/test_replay_crown.py",
+        "tests/test_combinatorial_replay.py"
       ]
     },
     "G-LAW-007": {
@@ -37,6 +42,8 @@
       "evidence": [
         "src/gymact/brce.py",
         "src/gymact/runtime.py",
+        "src/gymact/cut.py",
+        "src/gymact/dcm_runtime.py",
         "src/gymact/surfaces/fastapi.py",
         "src/gymact/surfaces/fastmcp.py",
         "src/gymact/surfaces/faststream.py",
@@ -57,13 +64,15 @@
       "evidence": [
         "src/gymact/models.py",
         "src/gymact/evidence.py",
-        "tests/test_receipt_binding.py"
+        "tests/test_receipt_binding.py",
+        "tests/test_combinatorial_evidence.py"
       ]
     },
     "G-P0-011": {
       "status": "SATISFIED",
       "evidence": [
         "src/gymact/action_contract.py",
+        "src/gymact/action_graph.py",
         "src/gymact/local_providers.py",
         "tests/test_crown_runtime.py"
       ]
@@ -78,13 +87,14 @@
     },
     "G-P0-013": {
       "status": "PARTIAL",
-      "evidence": ["src/gymact/cli.py", "src/gymact/errc.py"]
+      "evidence": ["src/gymact/cli.py", "src/gymact/dcm.py", "src/gymact/errc.py"]
     },
     "G-P0-016": {
       "status": "PARTIAL",
       "evidence": [
         "src/gymact/surfaces/fastmcp.py",
         "src/gymact/transport.py",
+        "src/gymact/dcm_runtime.py",
         "tests/test_production_surfaces.py"
       ]
     },
@@ -92,10 +102,12 @@
       "status": "SATISFIED",
       "evidence": [
         "src/gymact/transport.py",
+        "src/gymact/dcm_runtime.py",
         "src/gymact/surfaces/fastapi.py",
         "src/gymact/surfaces/fastmcp.py",
         "src/gymact/surfaces/faststream.py",
-        "tests/test_transport_crown.py"
+        "tests/test_transport_crown.py",
+        "tests/test_crown_completion.py"
       ]
     },
     "G-P0-018": {
@@ -103,24 +115,28 @@
       "evidence": [
         "src/gymact/capsule.py",
         "src/gymact/requirements.py",
-        "src/gymact/schemas/crown-evidence-v26.8.7.json"
+        "src/gymact/dcm_requirements.py",
+        "src/gymact/schemas/crown-evidence-v26.8.7.json",
+        "src/gymact/schemas/dcm-evidence-v26.8.7.json"
       ]
     },
     "G-P1-009": {
       "status": "SATISFIED",
       "evidence": [
-        "src/gymact/lab.py",
-        "src/gymact/experiments.py",
-        "src/gymact/compileout.py",
-        "tests/test_experiments_crown.py"
+        "src/gymact/combinatorial.py",
+        "src/gymact/maximal.py",
+        "src/gymact/structural_scan.py",
+        "src/gymact/possibility_index.py",
+        "src/gymact/compileout_graph.py",
+        "src/gymact/experiments.py"
       ]
     },
     "G-P1-010": {
       "status": "SATISFIED",
       "evidence": [
         "src/gymact/decision_cache.py",
-        "src/gymact/lab.py",
-        "tests/test_errc_innovations.py"
+        "src/gymact/possibility_index.py",
+        "tests/test_possibility_index.py"
       ]
     },
     "G-P1-013": {
@@ -131,8 +147,9 @@
       "status": "SATISFIED",
       "evidence": [
         "src/gymact/lab.py",
+        "src/gymact/ecology.py",
         "src/gymact/experiments.py",
-        "tests/test_experiments_crown.py"
+        "tests/test_combinatorial_ecology.py"
       ]
     },
     "G-P1-015": {
@@ -160,8 +177,8 @@
       "status": "SATISFIED",
       "evidence": [
         "src/gymact/capsule.py",
-        "src/gymact/compileout.py",
-        "src/gymact/decision_cache.py",
+        "src/gymact/compileout_graph.py",
+        "src/gymact/possibility_index.py",
         "src/gymact/experiments.py"
       ]
     }
@@ -209,7 +226,7 @@
         "src/gymact/replay.py",
         "src/gymact/sqlite_ledger.py",
         "tests/test_replay_crown.py",
-        "tests/test_crown_completion.py"
+        "tests/test_combinatorial_replay.py"
       ]
     },
     "CP15": {
@@ -221,9 +238,16 @@
       "evidence": [
         "src/gymact/intelligence.py",
         "src/gymact/experiments.py",
-        "src/gymact/compileout.py",
+        "src/gymact/compileout_graph.py",
         "src/gymact/capsule.py",
-        "tests/test_errc_innovations.py"
+        "tests/test_compileout_graph.py"
+      ]
+    },
+    "DCM_END_TO_END": {
+      "status": "UNKNOWN",
+      "evidence": [
+        "src/gymact/schemas/dcm-v26.8.7.json",
+        "src/gymact/schemas/dcm-evidence-v26.8.7.json"
       ]
     }
   }

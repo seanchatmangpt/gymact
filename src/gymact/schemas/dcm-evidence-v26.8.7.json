@@ -1,0 +1,30 @@
+{
+  "spec_version": "26.8.7",
+  "standing_rule": "Implementation law and witnessed execution are separate. STRUCTURAL means mechanically represented; ALIVE requires exact-subject execution through the full public-graph -> complete-closure -> semantic-frontier -> cut -> BRCE -> independent-verification -> closure-bound-receipt -> replay chain.",
+  "current": {
+    "implementation": "STRUCTURAL",
+    "end_to_end": "UNKNOWN",
+    "adopted": false
+  },
+  "evidence": {
+    "cloud_dependency_capsule": "BLOCKED",
+    "reason": "Current cloud runtime lacks the dependency-closed GymAct package/toolchain required to execute the new DCM path; source publication is not execution evidence.",
+    "previous_provider_execution": "PARTIAL_ALIVE",
+    "previous_provider_execution_scope": "Filesystem, Git, SQLite and loopback HTTP provider slices executed before the DCM rewrite. Those receipts do not establish DCM end-to-end standing.",
+    "github_actions": "BLOCKED_OR_PENDING",
+    "github_actions_rule": "A queued, unstarted or billing-blocked workflow is not BUILD_BROKEN and is not execution evidence."
+  },
+  "required_witness": [
+    "public RDF possibility graph validates with SHACL and zero custom predicates",
+    "RDF -> Python projection is lossless at the exact graph digest",
+    "structural scan executes",
+    "complete non-truncated proven-reversible closure executes",
+    "DO frontier carries exact action/subject/capability/verifier/effect identity",
+    "explicit irreversible cut binds exact graph and exploration digests",
+    "authority is independently admitted and not transport-manufactured",
+    "BRCE performs one real consequential actuation",
+    "postcondition is observed through the required independent verifier path",
+    "final receipt binds graph/closure/path/morphism/selection/authority/effect/verification",
+    "replay verifies the exact DCM identity and detects drift"
+  ]
+}
