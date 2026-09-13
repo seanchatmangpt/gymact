@@ -1,0 +1,2 @@
+@prefix fta: <https://ggen.dev/ontology/forced-top25-admissibility#> .
+<urn:ws3:gymact:runtime-interop-adapter> a fta:FanoutTarget ; fta:rank 2 ; fta:repo "seanchatmangpt/gymact" ; fta:exactHead "1eafc4f1551cfc0fe72e119e9ef76185e89bcda7" ; fta:producerHead "c779aec20d9c93727c7ad4464f1dd52ac8e066e4" ; fta:compatibilityState "COMPATIBLE_READY" ; fta:qualificationState "REQUALIFYING" ; fta:consumerShape "runtime-interop-adapter" ; fta:authority "VERIFY|CONSTRUCT" ; fta:consequentialDo false .
