@@ -19,6 +19,8 @@ from threading import RLock
 from typing import Any
 from uuid import uuid4
 
+import anyio
+
 from gymact.gyms.dependency_world import (
     DependencyWorldEnvironment,
     DependencyWorldProvider,
@@ -33,7 +35,17 @@ class _SharedState:
     effective: dict[str, str]
     step: int
     history: list[dict[str, str]]
-    lock: RLock
+    # anyio.Lock, not threading.RLock: this lock is held across `await` points
+    # inside async def methods below. A threading.RLock's reentrancy is
+    # thread-scoped, not task-scoped -- on a single-threaded asyncio event
+    # loop it lets a second concurrent task "recursively" acquire a lock the
+    # first task is still holding while suspended at an await, so it does not
+    # actually exclude concurrent actuate()/observe() calls on the same
+    # world_id. That silently loses committed effects under concurrency
+    # (exactly the request-accepted-but-world-not-changed collapse this
+    # repo's consequence law forbids). anyio.Lock is task-scoped and awaited,
+    # so it genuinely serializes concurrent coroutines sharing this world.
+    lock: anyio.Lock
     views: int = 0
 
 
@@ -86,7 +98,7 @@ class SharedDependencyWorldEnvironment:
 
     async def observe(self) -> dict[str, Any]:
         self._ensure_open()
-        with self._shared.lock:
+        async with self._shared.lock:
             await self._load()
             observed = await self._inner.observe()
             observed["world_id"] = self.world_id
@@ -96,7 +108,7 @@ class SharedDependencyWorldEnvironment:
         self, capability: Capability, payload: dict[str, Any]
     ) -> dict[str, Any]:
         self._ensure_open()
-        with self._shared.lock:
+        async with self._shared.lock:
             await self._load()
             effect = await self._inner.actuate(capability, payload)
             await self._save()
@@ -133,7 +145,7 @@ class SharedDependencyWorldEnvironment:
 
     async def checkpoint(self) -> dict[str, Any]:
         self._ensure_open()
-        with self._shared.lock:
+        async with self._shared.lock:
             await self._load()
             checkpoint = await self._inner.checkpoint()
             checkpoint["world_id"] = self.world_id
@@ -147,7 +159,7 @@ class SharedDependencyWorldEnvironment:
             raise ValueError("CHECKPOINT_ACTOR_MISMATCH")
         candidate = dict(checkpoint)
         candidate.pop("world_id", None)
-        with self._shared.lock:
+        async with self._shared.lock:
             await self._load()
             await self._inner.restore(candidate)
             await self._save()
@@ -180,7 +192,7 @@ class SharedDependencyWorldProvider(DependencyWorldProvider):
                     effective=deepcopy(seed["effective"]),
                     step=int(seed["step"]),
                     history=deepcopy(seed["history"]),
-                    lock=RLock(),
+                    lock=anyio.Lock(),
                 )
                 self._shared_worlds[world_id] = shared
             shared.views += 1
