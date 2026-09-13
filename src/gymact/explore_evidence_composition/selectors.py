@@ -27,7 +27,9 @@ def select_information(candidates: tuple[Candidate, ...]) -> tuple[Candidate, ..
         return ()
     scored = {
         candidate: acquisition_value(
-            __import__("gymact.explore_evidence_composition.interval", fromlist=["Interval"]).Interval(
+            __import__(
+                "gymact.explore_evidence_composition.interval", fromlist=["Interval"]
+            ).Interval(
                 candidate.lower_confidence,
                 min(1.0, candidate.lower_confidence + candidate.uncertainty),
             ),

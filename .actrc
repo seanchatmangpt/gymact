@@ -1,0 +1,9 @@
+# act image mappings — portable, no machine-specific flags here.
+# Machine-specific flags (--container-daemon-socket, --container-architecture)
+# live in the justfile's act-* recipes, NOT here — act reads exactly one
+# literal .actrc with no merge/override mechanism, so putting a Colima- or
+# Apple-Silicon-specific flag here would break every other machine. See the
+# ACT_CONTAINER_ARCH / ACT_DAEMON_SOCKET justfile variables.
+-P ubuntu-24.04=catthehacker/ubuntu:act-24.04
+-P ubuntu-latest=catthehacker/ubuntu:act-24.04
+--artifact-server-path .act-artifacts

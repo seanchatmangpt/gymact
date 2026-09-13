@@ -10,7 +10,9 @@ from gymact.explore_evidence_composition.subject import Subject
 
 def node(name: str, generation: int, impl: str = "i1") -> EvidenceNode:
     subject = Subject.parse("seanchatmangpt/gymact@" + "a" * 40 + "#" + "b" * 64)
-    return EvidenceNode(name, subject, EvidenceKind.TRACE, generation, Interval(0.8, 0.9), impl, "m1", "host-a")
+    return EvidenceNode(
+        name, subject, EvidenceKind.TRACE, generation, Interval(0.8, 0.9), impl, "m1", "host-a"
+    )
 
 
 def test_graph_orders_dependencies_and_frontier_rejects_stale() -> None:

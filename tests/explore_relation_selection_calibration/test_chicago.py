@@ -16,7 +16,9 @@ def sample(relation: Relation, cost: int) -> CalibrationEvidence:
 
 
 def test_chicago_calibrated_selection_is_bounded_and_replayable() -> None:
-    evidence = tuple(sample(r, cost) for r, cost in zip(Relation, (400, 300, 100, 200)))
+    evidence = tuple(
+        sample(r, cost) for r, cost in zip(Relation, (400, 300, 100, 200), strict=False)
+    )
     witnesses = {r: MetamorphicWitness(r, True, True) for r in Relation}
     oracles = (OracleWitness("impl-a", "model-a"), OracleWitness("impl-b", "model-b"))
     result = qualify(evidence, witnesses, oracles, AdmissionPolicy(), hard_failure=False)

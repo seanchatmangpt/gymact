@@ -1,19 +1,22 @@
-from dataclasses import dataclass
-from enum import Enum
 import hashlib
 import json
+from dataclasses import dataclass
+from enum import StrEnum
 
 from .subject import Refusal, Subject
 
-class ActionClass(str, Enum):
+
+class ActionClass(StrEnum):
     SELECT = "SELECT"
     CONSTRUCT = "CONSTRUCT"
     VERIFY = "VERIFY"
     DO = "DO"
 
+
 def require(action: ActionClass) -> None:
     if action is ActionClass.DO:
         raise Refusal("REFUSED_UNRECEIPTED_ACTUATION")
+
 
 @dataclass(frozen=True, slots=True)
 class QualificationReceipt:
@@ -39,6 +42,7 @@ class QualificationReceipt:
     def digest(self) -> str:
         payload = json.dumps(self.body(), sort_keys=True, separators=(",", ":")).encode()
         return hashlib.sha256(payload).hexdigest()
+
 
 def replay(receipt: QualificationReceipt, expected_digest: str) -> bool:
     return receipt.actuation_performed is False and receipt.digest == expected_digest

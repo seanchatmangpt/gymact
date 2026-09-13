@@ -3,6 +3,7 @@ from fractions import Fraction
 
 from .subject import Refusal
 
+
 @dataclass(frozen=True, slots=True)
 class RailCalibration:
     support: int
@@ -19,7 +20,13 @@ class RailCalibration:
         if self.median_delay < 0:
             raise Refusal("REFUSED_INVALID_CALIBRATION_DELAY")
 
-    def state(self, *, min_support: int = 4, max_false_alarm: Fraction = Fraction(1, 4), max_miss_rate: Fraction = Fraction(1, 4)) -> str:
+    def state(
+        self,
+        *,
+        min_support: int = 4,
+        max_false_alarm: Fraction = Fraction(1, 4),
+        max_miss_rate: Fraction = Fraction(1, 4),
+    ) -> str:
         if self.support < min_support:
             return "INSUFFICIENT"
         if self.false_alarm > max_false_alarm or self.miss_rate > max_miss_rate:

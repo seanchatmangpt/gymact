@@ -11,7 +11,15 @@ def test_full_methodology_evidence_composes_without_crown_laundering() -> None:
     subject = Subject.parse("seanchatmangpt/gymact@" + "a" * 40 + "#" + "b" * 64)
     evidence = tuple(
         EvidenceNode(
-            f"e{index}", subject, kind, 7, Interval(0.8, 0.95), f"impl{index}", f"model{index}", f"host{index}", 1.0
+            f"e{index}",
+            subject,
+            kind,
+            7,
+            Interval(0.8, 0.95),
+            f"impl{index}",
+            f"model{index}",
+            f"host{index}",
+            1.0,
         )
         for index, kind in enumerate(EvidenceKind)
     )
@@ -27,7 +35,9 @@ def test_full_methodology_evidence_composes_without_crown_laundering() -> None:
     assert receipt is not None
     assert replay(receipt, receipt.digest) == "REPLAY_MATCH"
 
-    broken = Qualification(subject, evidence, REQUIRED, (Standing.ALIVE, Standing.BUILD_BROKEN), "MINIMAX")
+    broken = Qualification(
+        subject, evidence, REQUIRED, (Standing.ALIVE, Standing.BUILD_BROKEN), "MINIMAX"
+    )
     standing, receipt = broken.evaluate()
     assert standing is Standing.BUILD_BROKEN
     assert receipt is None

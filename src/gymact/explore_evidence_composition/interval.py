@@ -14,11 +14,11 @@ class Interval:
         if not (0.0 <= self.lower <= self.upper <= 1.0):
             raise Refused(RefusalCode.INVALID_INTERVAL, f"invalid [{self.lower}, {self.upper}]")
 
-    def meet(self, other: "Interval") -> "Interval":
+    def meet(self, other: Interval) -> Interval:
         """Conservative conjunction without assuming independence (Frechet lower bound)."""
         return Interval(max(0.0, self.lower + other.lower - 1.0), min(self.upper, other.upper))
 
-    def independent_product(self, other: "Interval") -> "Interval":
+    def independent_product(self, other: Interval) -> Interval:
         """Conjunction when an admitted independence witness exists."""
         return Interval(self.lower * other.lower, self.upper * other.upper)
 

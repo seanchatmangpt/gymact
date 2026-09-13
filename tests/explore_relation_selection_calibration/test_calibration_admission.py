@@ -18,9 +18,17 @@ def evidence(support: int, fp: int = 0) -> CalibrationEvidence:
 
 def test_sparse_refuses() -> None:
     with pytest.raises(Refused, match="INSUFFICIENT_CALIBRATION_SUPPORT"):
-        admit(evidence(10), MetamorphicWitness(Relation.EXACT, True, True), AdmissionPolicy(min_support=20))
+        admit(
+            evidence(10),
+            MetamorphicWitness(Relation.EXACT, True, True),
+            AdmissionPolicy(min_support=20),
+        )
 
 
 def test_false_equivalence_refuses() -> None:
     with pytest.raises(Refused, match="FALSE_EQUIVALENCE_BOUND_EXCEEDED"):
-        admit(evidence(40, fp=8), MetamorphicWitness(Relation.EXACT, True, True), AdmissionPolicy(max_false_equivalence_upper=0.25))
+        admit(
+            evidence(40, fp=8),
+            MetamorphicWitness(Relation.EXACT, True, True),
+            AdmissionPolicy(max_false_equivalence_upper=0.25),
+        )

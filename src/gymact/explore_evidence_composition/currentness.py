@@ -15,7 +15,10 @@ def current_frontier(nodes: tuple[EvidenceNode, ...]) -> tuple[EvidenceNode, ...
     for node in current:
         by_kind[node.kind].add((node.implementation_digest, node.model_digest))
     if any(len(identities) > 1 for identities in by_kind.values()):
-        raise Refused(RefusalCode.DIVERGENT_FRONTIER, "latest generation has divergent identities for one evidence kind")
+        raise Refused(
+            RefusalCode.DIVERGENT_FRONTIER,
+            "latest generation has divergent identities for one evidence kind",
+        )
     return tuple(sorted(current, key=lambda node: node.evidence_id))
 
 

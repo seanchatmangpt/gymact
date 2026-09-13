@@ -20,8 +20,6 @@ class FailureWorld:
             if rng.random() < self.family_probability
         )
         flaky_rails = tuple(
-            rail
-            for rail in sorted(set(rail_ids))
-            if rng.random() < self.flaky_probability
+            rail for rail in sorted(set(rail_ids)) if rng.random() < self.flaky_probability
         )
         return failed_families, flaky_rails

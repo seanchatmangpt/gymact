@@ -12,15 +12,11 @@ class KnapsackTest(unittest.TestCase):
     def test_exact_budget_selection(self):
         subject = Subject("o/r", "f" * 40)
         left = RailCapability(subject, "a", "fa", "da", frozenset({"unit"}), 6, 6)
-        middle = RailCapability(
-            subject, "b", "fb", "db", frozenset({"integration"}), 6, 6
-        )
+        middle = RailCapability(subject, "b", "fb", "db", frozenset({"integration"}), 6, 6)
         right = RailCapability(subject, "c", "fc", "dc", frozenset({"e2e"}), 10, 10)
         scores = {
             left.fingerprint: Score(left.fingerprint, AcquisitionStrategy.MAX_INFORMATION, 5),
-            middle.fingerprint: Score(
-                middle.fingerprint, AcquisitionStrategy.MAX_INFORMATION, 5
-            ),
+            middle.fingerprint: Score(middle.fingerprint, AcquisitionStrategy.MAX_INFORMATION, 5),
             right.fingerprint: Score(right.fingerprint, AcquisitionStrategy.MAX_INFORMATION, 7),
         }
         proofs = (

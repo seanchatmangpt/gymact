@@ -1,6 +1,13 @@
 import pytest
 
-from gymact.explore_transport_invariance import Action, Refusal, Subject, issue, replay, require_authority
+from gymact.explore_transport_invariance import (
+    Action,
+    Refusal,
+    Subject,
+    issue,
+    replay,
+    require_authority,
+)
 
 
 def test_direct_do_refuses_without_brce() -> None:

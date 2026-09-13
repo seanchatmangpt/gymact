@@ -14,7 +14,9 @@ class Support:
 
 
 def assess_support(cells: tuple[Cell, ...]) -> Support:
-    unsupported = sum((c.target_mass for c in cells if c.target_mass > 0 and c.source_mass == 0), Fraction())
+    unsupported = sum(
+        (c.target_mass for c in cells if c.target_mass > 0 and c.source_mass == 0), Fraction()
+    )
     overlap = sum((min(c.source_mass, c.target_mass) for c in cells), Fraction())
     require(unsupported == 0, "POSITIVITY_VIOLATION", f"unsupported target mass={unsupported}")
     return Support(overlap=overlap, unsupported_target_mass=unsupported)

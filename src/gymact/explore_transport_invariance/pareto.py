@@ -10,4 +10,6 @@ def dominates(a: Candidate, b: Candidate) -> bool:
 
 
 def frontier(candidates: tuple[Candidate, ...]) -> tuple[Candidate, ...]:
-    return tuple(c for c in candidates if not any(dominates(other, c) for other in candidates if other != c))
+    return tuple(
+        c for c in candidates if not any(dominates(other, c) for other in candidates if other != c)
+    )

@@ -1,7 +1,9 @@
+import hashlib
+import json
 from dataclasses import dataclass
-import hashlib, json
 
 from .subject import Refusal, Subject
+
 
 @dataclass(frozen=True, slots=True)
 class VerificationRail:
@@ -19,5 +21,14 @@ class VerificationRail:
 
     @property
     def fingerprint(self) -> str:
-        body = {"subject": self.subject.identity, "name": self.name, "family": self.family, "domain": self.domain, "toolchain": self.toolchain, "config_digest": self.config_digest}
-        return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        body = {
+            "subject": self.subject.identity,
+            "name": self.name,
+            "family": self.family,
+            "domain": self.domain,
+            "toolchain": self.toolchain,
+            "config_digest": self.config_digest,
+        }
+        return hashlib.sha256(
+            json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()

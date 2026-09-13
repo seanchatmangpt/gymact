@@ -25,4 +25,6 @@ def select_minimax(admitted: tuple[CalibrationEvidence, ...]) -> tuple[MinimaxSc
         fre = error_upper(e.false_negative, pos) if pos else 1.0
         scores.append(MinimaxScore(e.relation, max(fpe, fre)))
     best = min(s.worst_error for s in scores)
-    return tuple(sorted((s for s in scores if s.worst_error == best), key=lambda s: s.relation.value))
+    return tuple(
+        sorted((s for s in scores if s.worst_error == best), key=lambda s: s.relation.value)
+    )

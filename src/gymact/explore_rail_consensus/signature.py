@@ -1,9 +1,12 @@
+import hashlib
+import json
+import re
 from dataclasses import dataclass
-import hashlib, json, re
 
 from .subject import Refusal
 
 _VOLATILE = re.compile(r"(?:0x[0-9a-fA-F]+|\b\d{6,}\b|/home/runner/work/[^\s]+)")
+
 
 @dataclass(frozen=True, slots=True)
 class FailureSignature:

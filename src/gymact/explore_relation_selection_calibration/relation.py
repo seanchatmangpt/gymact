@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class Relation(str, Enum):
+class Relation(StrEnum):
     EXACT = "EXACT"
     STUTTER = "STUTTER"
     ACTIVITY = "ACTIVITY"
@@ -11,7 +11,9 @@ class Relation(str, Enum):
 
 
 _DISCHARGES = {
-    Relation.EXACT: frozenset({Relation.EXACT, Relation.STUTTER, Relation.ACTIVITY, Relation.PARTIAL_ORDER}),
+    Relation.EXACT: frozenset(
+        {Relation.EXACT, Relation.STUTTER, Relation.ACTIVITY, Relation.PARTIAL_ORDER}
+    ),
     Relation.STUTTER: frozenset({Relation.STUTTER, Relation.ACTIVITY}),
     Relation.PARTIAL_ORDER: frozenset({Relation.PARTIAL_ORDER, Relation.ACTIVITY}),
     Relation.ACTIVITY: frozenset({Relation.ACTIVITY}),
@@ -24,6 +26,5 @@ def discharges(stronger: Relation, weaker: Relation) -> bool:
 
 def maximal(relations: set[Relation]) -> set[Relation]:
     return {
-        r for r in relations
-        if not any(other != r and discharges(other, r) for other in relations)
+        r for r in relations if not any(other != r and discharges(other, r) for other in relations)
     }

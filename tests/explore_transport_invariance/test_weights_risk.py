@@ -1,6 +1,11 @@
 from fractions import Fraction
 
-from gymact.explore_transport_invariance import Cell, horvitz_thompson, importance_weights, self_normalized
+from gymact.explore_transport_invariance import (
+    Cell,
+    horvitz_thompson,
+    importance_weights,
+    self_normalized,
+)
 
 
 def test_weight_cap_changes_ess_and_estimators_remain_distinct() -> None:

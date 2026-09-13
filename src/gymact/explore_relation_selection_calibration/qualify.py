@@ -30,11 +30,19 @@ def qualify(
     frontier = current_frontier(evidence)
     require_independent(oracles)
     admitted = tuple(admit(e, witnesses[e.relation], policy) for e in frontier.values())
-    standing = derive(admitted_count=len(admitted), hard_failure=hard_failure, calibration_complete=len(frontier) == 4)
+    standing = derive(
+        admitted_count=len(admitted),
+        hard_failure=hard_failure,
+        calibration_complete=len(frontier) == 4,
+    )
     if standing is Standing.BUILD_BROKEN:
         return Qualification(None, standing, None)
     bundle = compare(admitted)
     selected = tuple(sorted(r.value for r in bundle.strongest))
     subject = admitted[0].subject.key if admitted else "UNKNOWN"
-    receipt = Receipt(subject, max(e.generation for e in admitted), selected, standing) if admitted else None
+    receipt = (
+        Receipt(subject, max(e.generation for e in admitted), selected, standing)
+        if admitted
+        else None
+    )
     return Qualification(bundle, standing, receipt)

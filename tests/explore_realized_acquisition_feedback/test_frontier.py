@@ -9,10 +9,6 @@ from gymact.explore_realized_acquisition_feedback.frontier import (
 
 class TestFrontier(unittest.TestCase):
     def test_dominated_removed(self):
-        first = PolicyVector(
-            "a", Fraction(1, 10), Fraction(1, 10), Fraction(1, 10)
-        )
-        second = PolicyVector(
-            "b", Fraction(1, 2), Fraction(1, 2), Fraction(1, 2)
-        )
+        first = PolicyVector("a", Fraction(1, 10), Fraction(1, 10), Fraction(1, 10))
+        second = PolicyVector("b", Fraction(1, 2), Fraction(1, 2), Fraction(1, 2))
         self.assertEqual(pareto_frontier([first, second]), [first])

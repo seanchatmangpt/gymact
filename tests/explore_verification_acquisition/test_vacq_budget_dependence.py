@@ -14,9 +14,7 @@ from gymact.explore_verification_acquisition.subject import Subject
 class BudgetDependenceTest(unittest.TestCase):
     def test_budget_and_explicit_independence(self):
         subject = Subject("o/r", "c" * 40)
-        left = RailCapability(
-            subject, "a", "pytest", "runtime", frozenset({"unit"}), 10, 10
-        )
+        left = RailCapability(subject, "a", "pytest", "runtime", frozenset({"unit"}), 10, 10)
         right = RailCapability(
             subject, "b", "pytest", "runtime", frozenset({"integration"}), 10, 10
         )

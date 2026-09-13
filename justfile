@@ -219,3 +219,182 @@ container:
     done
     docker logs "$cid"
     exit 1
+
+# --- act (local GitHub Actions parity) --------------------------------------
+# GitHub Actions minutes are finite; these recipes run the real workflows
+# locally via `act` instead. Machine-specific flags live here (not in
+# .actrc, which has no override/merge mechanism). Defaults match this
+# machine (Colima, Apple Silicon); override elsewhere, e.g.
+# `ACT_CONTAINER_ARCH=linux/amd64 ACT_DAEMON_SOCKET= just act-list`.
+act_arch := env_var_or_default("ACT_CONTAINER_ARCH", "linux/arm64")
+# act's OWN connection to the Docker daemon comes from the standard
+# DOCKER_HOST env var, which it does NOT infer from the active `docker
+# context` (verified: with DOCKER_HOST unset, act defaulted to the stale
+# /var/run/docker.sock symlink even though `docker context ls` shows
+# `colima` active and that's where images live).
+export DOCKER_HOST := env_var_or_default("ACT_DAEMON_SOCKET", "unix://" + env_var_or_default("HOME", "") + "/.colima/default/docker.sock")
+# `--container-daemon-socket` is a DIFFERENT thing: the socket bind-mounted
+# INTO job containers for docker-in-docker steps (needed by ci.yml's
+# `artifact` job, which runs real `docker build`/`docker run`). Bind-mounting
+# Colima's real socket path directly fails under this VM backend ("mkdir
+# .../docker.sock: operation not supported"); /var/run/docker.sock works
+# because that path is native to the VM's own root filesystem (matches the
+# working invocation recorded in ggen-ecosystem's docs/DEFINITION-OF-DONE.md).
+act_container_socket := env_var_or_default("ACT_CONTAINER_DAEMON_SOCKET", "unix:///var/run/docker.sock")
+# Deliberately NOT using --bind here (unlike ggen-ecosystem's act-governance
+# recipe, which needs it for one specific docker-outside-of-docker scratch-
+# mount pattern). None of gymact's jobs do that pattern: ci.yml's `artifact`
+# job's `docker build .` and `docker run -p ...` don't reference any
+# bind-mount path created by a live job step — `docker build`'s context is a
+# tar stream sent to the daemon, not a path reference, so copy-mode (act's
+# default) is correct and sufficient. --bind is NOT a free correctness
+# upgrade: `actions/checkout`'s `ref: <sha>` step does a raw SHA checkout
+# directly against the real working tree under --bind, which both discards
+# uncommitted/untracked changes (git checkout --force + git clean -fdx) and
+# detaches HEAD from whatever branch was checked out (this actually happened
+# in ggen-ecosystem — see that repo's Justfile for the full incident). Only
+# add --bind to a specific recipe here if a real DooD scratch-mount need is
+# found, scoped exactly like ggen-ecosystem's act_flags_bind, with the same
+# uncommitted-changes guard.
+act_flags := "--container-architecture " + act_arch + " --container-daemon-socket " + act_container_socket + " --secret-file .secrets --env-file .env"
+
+act-list:
+    act -l {{act_flags}}
+
+# Most workflows here are pull_request-only (23 explore-*.yml courts,
+# dmedi-explore-train.yml, r54/r58/r79, federated-capability-owner.yml,
+# envharness.yml, enterprise-connection-crown.yml) with no push trigger, so
+# a bare `act -n` (implicit push event) reports "Could not find any stages
+# to run" for most of this repo. Try each event act supports, in the order
+# most files actually use, until one produces a real stage plan.
+act-validate:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for f in .github/workflows/*.yml; do
+      # release.yml is workflow_run-only (fires after CI completes) -- none
+      # of the events below apply; it has its own act-release-dryrun recipe.
+      if [[ "$(basename "$f")" == "release.yml" ]]; then
+        continue
+      fi
+      echo "== act -n: $f =="
+      ok=0
+      for event in pull_request push workflow_dispatch workflow_call; do
+        if act "$event" -n -W "$f" {{act_flags}} 2>/tmp/act-validate-attempt.log; then
+          ok=1
+          break
+        elif ! grep -q "Could not find any stages to run" /tmp/act-validate-attempt.log; then
+          cat /tmp/act-validate-attempt.log >&2
+          break
+        fi
+      done
+      if [[ "$ok" -ne 1 ]]; then
+        echo "REFUSED: no event (pull_request/push/workflow_dispatch/workflow_call) produced a stage plan for $f" >&2
+        exit 1
+      fi
+    done
+
+# Real pull_request event fixture: many workflows here check
+# `${{ github.event.pull_request.head.sha }}` with NO `|| github.sha`
+# fallback (e.g. explore-federation.yml's "Admit exact PR head"), so act's
+# default synthetic pull_request event (empty head.sha) makes checkout fall
+# back to actions/checkout's own default ref and the exact-head comparison
+# always fails. Regenerated fresh each time so it always tracks current HEAD.
+act-pr-event:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p .act-events
+    head="$(git rev-parse HEAD)"
+    base="$(git rev-parse HEAD~1 2>/dev/null || echo "$head")"
+    cat > .act-events/pull-request.json <<JSON
+    {
+      "pull_request": {
+        "number": 0,
+        "base": {"sha": "$base"},
+        "head": {"sha": "$head"}
+      }
+    }
+    JSON
+act_pr_event := "-e .act-events/pull-request.json"
+
+# Cheap smoke tier: 3 representative explore-*.yml courts, real execution.
+act-explore-smoke: act-pr-event
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for f in explore-federation.yml explore-verification.yml explore-ack-discharge.yml; do
+      echo "== $f =="
+      act pull_request -W ".github/workflows/$f" {{act_pr_event}} {{act_flags}}
+    done
+
+# Every explore-*.yml for real (23 workflows) — run once the smoke tier passes.
+act-explore-all: act-pr-event
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for f in .github/workflows/explore-*.yml; do
+      echo "== $f =="
+      act pull_request -W "$f" {{act_pr_event}} {{act_flags}}
+    done
+
+act-dmedi-train: act-pr-event
+    act pull_request -W .github/workflows/dmedi-explore-train.yml {{act_pr_event}} {{act_flags}}
+
+act-r54: act-pr-event
+    act pull_request -W .github/workflows/r54-epistemic-consumer.yml {{act_pr_event}} {{act_flags}}
+
+act-r58: act-pr-event
+    act pull_request -W .github/workflows/r58-independent-consumer.yml {{act_pr_event}} {{act_flags}}
+
+act-r79: act-pr-event
+    act pull_request -W .github/workflows/r79-tcps-ready-set-consumer.yml {{act_pr_event}} {{act_flags}}
+
+act-aws-botocore: act-pr-event
+    act pull_request -W .github/workflows/aws-botocore-scalar-contract.yml {{act_pr_event}} {{act_flags}}
+
+act-gcp-census: act-pr-event
+    act pull_request -W .github/workflows/gcp-public-contract-census.yml {{act_pr_event}} {{act_flags}}
+
+act-envharness: act-pr-event
+    act pull_request -W .github/workflows/envharness.yml {{act_pr_event}} {{act_flags}}
+
+act-v2691: act-pr-event
+    act pull_request -W .github/workflows/v2691-world-execution.yml {{act_pr_event}} {{act_flags}}
+
+act-ddui: act-pr-event
+    act pull_request -W .github/workflows/dd-ui-profile.yml {{act_pr_event}} {{act_flags}}
+
+act-enterprise-connection: act-pr-event
+    act pull_request -W .github/workflows/enterprise-connection-crown.yml {{act_pr_event}} {{act_flags}}
+
+# Cross-repo reusable workflow call — resolved against the local checkout of
+# seanchatmangpt/chatman-ecosystem on this machine instead of the network.
+act-federated: act-pr-event
+    act pull_request -W .github/workflows/federated-capability-owner.yml \
+      --local-repository seanchatmangpt/chatman-ecosystem@7430dfc9b3ca138e703430d25de7c6f48a8d6ade=/Users/sac/chatman-ecosystem \
+      {{act_pr_event}} {{act_flags}}
+
+# ci.yml, staged: single Python version first, then the full matrix.
+act-core-single: act-pr-event
+    act pull_request -W .github/workflows/ci.yml -j core --matrix python:3.12 {{act_pr_event}} {{act_flags}}
+
+act-core: act-pr-event
+    act pull_request -W .github/workflows/ci.yml -j core {{act_pr_event}} {{act_flags}}
+
+act-cloudsim: act-pr-event
+    act pull_request -W .github/workflows/ci.yml -j cloudsim {{act_pr_event}} {{act_flags}}
+
+# Full ci.yml event so the artifact-server can bridge core/cloudsim -> artifact
+# (needs the Tier-B v3 dual-path already applied to ci.yml's upload/download
+# sites to actually succeed end to end).
+act-ci-full: act-pr-event
+    act pull_request -W .github/workflows/ci.yml {{act_pr_event}} {{act_flags}}
+
+# NEVER run for real under act: release.yml does real GH Pages deploy
+# (environment: github-pages) and real PyPI OIDC trusted publishing
+# (id-token: write) — both independently unsupported by act. Dry-run only.
+act-release-dryrun:
+    act -n -W .github/workflows/release.yml {{act_flags}}
+
+# NEVER run for real: gcp-empirical-campaign.yml can spend real GCP resources
+# when allow_do=true. Dry-run only, and no GCP_ACCESS_TOKEN is ever placed in
+# .secrets by design.
+act-gcp-campaign-dryrun:
+    act -n -W .github/workflows/gcp-empirical-campaign.yml {{act_flags}}

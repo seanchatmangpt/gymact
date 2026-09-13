@@ -30,5 +30,5 @@ class EvidenceNode:
     source_domain: str
     cost: float = 0.0
 
-    def same_subject(self, other: "EvidenceNode") -> bool:
+    def same_subject(self, other: EvidenceNode) -> bool:
         return self.subject == other.subject
