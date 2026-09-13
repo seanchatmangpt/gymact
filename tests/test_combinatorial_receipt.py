@@ -23,6 +23,7 @@ from gymact.combinatorial import (
     PossibilityObject,
     PossibilityObjectKind,
 )
+from gymact.consequence_binding import bind_action_consequence, consequence_binding_attributes
 from gymact.cut import (
     CombinatorialBRCEBroker,
     manufacture_broker_request,
@@ -128,6 +129,7 @@ async def test_real_consequence_receipt_binds_graph_path_and_irreversible_cut() 
                 phase=DecisionPhase.DO,
                 reversal=ReversalClass.IRREVERSIBLE,
                 requirements=MorphismRequirements(execution_grant_required=True),
+                attributes=consequence_binding_attributes(bind_action_consequence(action, subject)),
             ),
         ),
     )

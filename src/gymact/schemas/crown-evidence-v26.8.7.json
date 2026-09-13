@@ -242,13 +242,6 @@
         "src/gymact/capsule.py",
         "tests/test_compileout_graph.py"
       ]
-    },
-    "DCM_END_TO_END": {
-      "status": "UNKNOWN",
-      "evidence": [
-        "src/gymact/schemas/dcm-v26.8.7.json",
-        "src/gymact/schemas/dcm-evidence-v26.8.7.json"
-      ]
     }
   }
 }

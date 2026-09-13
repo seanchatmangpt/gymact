@@ -12,6 +12,7 @@ from typing import Any, Self
 from pydantic import Field, model_validator
 
 from gymact.action_contract import ReversalClass
+from gymact.consequence_binding import ConsequenceBinding, consequence_binding_attributes
 from gymact.combinatorial import (
     DecisionPhase,
     Factor,
@@ -69,6 +70,7 @@ class IrreversibleOption(FrozenModel):
         default_factory=lambda: MorphismRequirements(execution_grant_required=True)
     )
     objectives: ObjectiveVector = Field(default_factory=ObjectiveVector)
+    consequence_binding: ConsequenceBinding | None = None
 
     @model_validator(mode="after")
     def irreversible_option_requires_grant(self) -> Self:
@@ -171,6 +173,11 @@ def manufacture_ecology(
                     objectives=option.objectives,
                     standing=option.standing,
                     evidence_refs=option.evidence_refs,
+                    attributes=(
+                        consequence_binding_attributes(option.consequence_binding)
+                        if option.consequence_binding is not None
+                        else {}
+                    ),
                 )
             )
 

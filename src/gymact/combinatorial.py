@@ -18,6 +18,7 @@ from typing import Any, Iterable, Self
 from pydantic import Field, field_validator, model_validator
 
 from gymact.action_contract import ReversalClass
+from gymact.consequence_binding import read_consequence_binding
 from gymact.evidence import digest
 from gymact.models import FrozenModel, Standing
 
@@ -188,6 +189,12 @@ class PossibilityGraph(FrozenModel):
             if item.object_id == object_id:
                 return item
         raise KeyError(object_id)
+
+    def morphism(self, morphism_id: str) -> PossibilityMorphism:
+        for item in self.morphisms:
+            if item.morphism_id == morphism_id:
+                return item
+        raise KeyError(morphism_id)
 
     def outgoing(self, object_id: str) -> tuple[PossibilityMorphism, ...]:
         return tuple(item for item in self.morphisms if item.source_id == object_id)
@@ -391,6 +398,13 @@ def evaluate_morphism(
             standing=Standing.CANDIDATE,
             admitted=False,
             reason="EXECUTION_GRANT_REQUIRED",
+        )
+    if morphism.phase is DecisionPhase.DO and read_consequence_binding(morphism.attributes) is None:
+        return MorphismEvaluation(
+            morphism_id=morphism.morphism_id,
+            standing=Standing.CANDIDATE,
+            admitted=False,
+            reason="DO_SEMANTIC_BINDING_REQUIRED",
         )
     return MorphismEvaluation(
         morphism_id=morphism.morphism_id,

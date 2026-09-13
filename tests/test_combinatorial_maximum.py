@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from gymact.action_contract import ReversalClass
+from gymact.consequence_binding import ConsequenceBinding, consequence_binding_attributes
 from gymact.combinatorial import (
     AdmissionContext,
     DecisionPhase,
@@ -41,6 +42,19 @@ def edge(
     required_revision: str | None = None,
     objectives: ObjectiveVector | None = None,
 ) -> PossibilityMorphism:
+    attributes = (
+        consequence_binding_attributes(
+            ConsequenceBinding(
+                action_ref=f"urn:action:{morphism_id}",
+                subject_ref=f"urn:subject:{source_id}",
+                capability_ref=f"urn:capability:{morphism_id}",
+                verifier_ref=f"urn:verifier:{morphism_id}",
+                expected_effect_digest=f"urn:effect:{target_id}",
+            )
+        )
+        if phase is DecisionPhase.DO
+        else {}
+    )
     return PossibilityMorphism(
         morphism_id=morphism_id,
         source_id=source_id,
@@ -58,6 +72,7 @@ def edge(
             required_revision=required_revision,
             execution_grant_required=phase is DecisionPhase.DO,
         ),
+        attributes=attributes,
         objectives=objectives or ObjectiveVector(),
     )
 

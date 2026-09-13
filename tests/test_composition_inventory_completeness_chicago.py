@@ -373,6 +373,14 @@ _INTENTIONALLY_UNCATALOGED: dict[str, str] = {
         "PLATFORM_CONSOLE_BASE_URL/API_KEY are absent, so source discovery alone is "
         "insufficient to manufacture composition ALIVE standing."
     ),
+    "EnterpriseCompanyProvider": (
+        "gymact.gyms.enterprise_company.EnterpriseCompanyProvider is a real, "
+        "self-contained flat builtin (registered in registry.py alongside this "
+        "session's merge of feat/enterprise-company-gym) whose synthetic "
+        "revenue-loop/identity-fence capabilities have no independently "
+        "evidenced static ComponentCapabilities composition surface yet -- "
+        "same disposition as SharedDependencyWorldProvider above."
+    ),
     # -- capability scopes / postcondition verifiers.
     "AllowAllCapabilityScope": (
         "the permissive default (src/gymact/agent.py:58-68) -- every principal "

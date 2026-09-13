@@ -17,6 +17,7 @@ from gymact.combinatorial import (
     PossibilityObject,
     PossibilityObjectKind,
 )
+from gymact.consequence_binding import bind_action_consequence, consequence_binding_attributes
 from gymact.evidence import digest
 
 _CONFIDENCE = {
@@ -149,6 +150,7 @@ def action_possibility_fragment(
             objectives=objectives,
             standing=action.standing,
             evidence_refs=action.evidence_refs,
+            attributes=consequence_binding_attributes(bind_action_consequence(action, subject)),
         ),
     )
     return PossibilityGraph(

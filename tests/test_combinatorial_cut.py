@@ -22,6 +22,7 @@ from gymact.combinatorial import (
     PossibilityObject,
     PossibilityObjectKind,
 )
+from gymact.consequence_binding import bind_action_consequence, consequence_binding_attributes
 from gymact.cut import manufacture_broker_request, select_irreversible_cut
 from gymact.maximal import explore_combinatorial_maximum
 
@@ -119,6 +120,7 @@ def fixture() -> tuple[PossibilityGraph, ActionDefinition, PreparedAction, Execu
                 phase=DecisionPhase.DO,
                 reversal=ReversalClass.IRREVERSIBLE,
                 requirements=MorphismRequirements(execution_grant_required=True),
+                attributes=consequence_binding_attributes(bind_action_consequence(action, subject)),
             ),
             PossibilityMorphism(
                 morphism_id="do-b",
@@ -128,6 +130,7 @@ def fixture() -> tuple[PossibilityGraph, ActionDefinition, PreparedAction, Execu
                 phase=DecisionPhase.DO,
                 reversal=ReversalClass.IRREVERSIBLE,
                 requirements=MorphismRequirements(execution_grant_required=True),
+                attributes=consequence_binding_attributes(bind_action_consequence(action, subject)),
             ),
         ),
     )

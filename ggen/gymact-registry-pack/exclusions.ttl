@@ -15,6 +15,14 @@ rg:p-platform-console a rg:RegisteredProvider ;
     rg:capabilitiesImportClause "PLATFORM_CONSOLE_CAPABILITIES" ;
     rg:capabilitiesExpr "PLATFORM_CONSOLE_CAPABILITIES" .
 
+rg:p-enterprise-company a rg:RegisteredProvider ;
+    rg:registryKey "enterprise-company" ;
+    rg:providerModule "gymact.gyms.enterprise_company" ;
+    rg:providerClassName "EnterpriseCompanyProvider" ;
+    rg:capabilitiesModule "gymact.gyms.enterprise_company" ;
+    rg:capabilitiesImportClause "ENTERPRISE_COMPANY_CAPABILITIES" ;
+    rg:capabilitiesExpr "ENTERPRISE_COMPANY_CAPABILITIES" .
+
 rg:x-opaque-procedure a rg:ExcludedProvider ;
     rg:excludedClass "gymact.gyms.opaque_procedure.OpaqueProcedureProvider" ;
     rg:exclusionReason "capabilities are constructed per-instance from materialize-time hidden_steps rather than a fixed module-level capability tuple, so this generic dynamic provider is not a zero-argument flat builtin." .

@@ -40,27 +40,35 @@ def test_capsule_reuses_validator_but_never_subject_alive() -> None:
         config_digest="config",
         environment_digest="environment",
     )
-    pack = ValidationPack(identity=identity, verifier_ref="urn:verifier:1")
-    verifier = VerifierCapsuleReceipt(
-        identity=identity,
-        validation_pack_digest=pack.pack_digest,
-        receipt_refs=("urn:receipt:validator",),
+    pack = ValidationPack(
+        command="pytest",
+        exit_code=0,
+        evidence_refs=("urn:receipt:validator",),
         standing=Standing.ALIVE,
     )
-    reuse = evaluate_capsule_reuse(identity, pack, verifier)
-    assert reuse.validator_reusable
-    assert reuse.verifier_standing is Standing.ALIVE
-    assert reuse.subject_standing is Standing.UNKNOWN
+    verifier = VerifierCapsuleReceipt(
+        capsule=identity,
+        validation=pack,
+        receipt_ref="urn:receipt:validator",
+    )
+    reuse = evaluate_capsule_reuse(verifier, identity)
+    assert reuse.verifier_reusable
+    assert reuse.subject_reusable is False
+    assert reuse.standing is Standing.STRUCTURAL
 
     subject = SubjectCapsuleReceipt(
-        identity=identity,
-        subject_ref="urn:subject:1",
-        execution_receipt_ref="urn:receipt:subject",
-        verifier_receipt_ref="urn:receipt:validator",
+        capsule=identity,
+        subject_digest="urn:subject:1",
+        executed=True,
+        verified=True,
         standing=Standing.ALIVE,
+        receipt_ref="urn:receipt:subject",
     )
-    alive = evaluate_capsule_reuse(identity, pack, verifier, subject)
-    assert alive.subject_standing is Standing.ALIVE
+    alive = evaluate_capsule_reuse(
+        verifier, identity, cached_subject=subject, subject_digest="urn:subject:1"
+    )
+    assert alive.subject_reusable
+    assert alive.standing is Standing.ALIVE
 
 
 def test_compiled_recipe_is_candidate_and_never_caches_authority() -> None:
@@ -95,18 +103,15 @@ def test_decision_cache_keys_refusal_by_exact_revision_policy_and_verifier() -> 
     key = DecisionKey(
         problem_identity="problem",
         environment_identity="env",
-        subject_identity="subject",
         subject_revision="rev-1",
         authority_class="operator",
         policy_revision="policy-1",
-        verifier_ref="verifier",
-        capability_ref="capability",
     )
     cache = DecisionCache()
     cache.put_candidate(
         CandidateDecision(
             key=key,
-            candidate_ref="candidate",
+            candidate_refs=("candidate",),
             evidence_refs=("receipt-1",),
         )
     )

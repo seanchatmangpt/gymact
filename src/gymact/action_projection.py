@@ -36,7 +36,9 @@ def _action_contract_digest(action: ActionDefinition) -> str:
 class CanonicalActionContract(FrozenModel):
     """Content-addressed wrapper proving which `ActionDefinition` was projected."""
 
-    schema: Literal["urn:gymact:action-contract:v1"] = ACTION_CONTRACT_SCHEMA
+    schema_uri: Literal["urn:gymact:action-contract:v1"] = Field(
+        default=ACTION_CONTRACT_SCHEMA, alias="schema", serialization_alias="schema"
+    )
     action: ActionDefinition
     contract_digest: str = Field(min_length=1)
     do_authority: Literal[False] = False
@@ -55,7 +57,9 @@ class CanonicalActionContract(FrozenModel):
 class ActionManufactureProjection(FrozenModel):
     """Powerless manufacture handoff derived from one canonical action contract."""
 
-    schema: Literal["urn:gymact:action-manufacture-projection:v1"] = ACTION_MANUFACTURE_SCHEMA
+    schema_uri: Literal["urn:gymact:action-manufacture-projection:v1"] = Field(
+        default=ACTION_MANUFACTURE_SCHEMA, alias="schema", serialization_alias="schema"
+    )
     source_contract_digest: str = Field(min_length=1)
     action_ref: str = Field(min_length=1)
     provider_ref: str = Field(min_length=1)

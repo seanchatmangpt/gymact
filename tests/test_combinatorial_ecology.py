@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from gymact.consequence_binding import ConsequenceBinding
 from gymact.combinatorial import (
     AdmissionContext,
     DecisionPhase,
@@ -61,6 +62,13 @@ def test_layered_ecology_represents_cartesian_path_space_without_early_choice() 
                     object_id="effect",
                     kind=PossibilityObjectKind.RECEIPT,
                     semantic_ref="urn:effect:verified",
+                ),
+                consequence_binding=ConsequenceBinding(
+                    action_ref="urn:action:effect",
+                    subject_ref="urn:subject:start",
+                    capability_ref="urn:capability:effect",
+                    verifier_ref="urn:verifier:effect",
+                    expected_effect_digest="urn:effect:verified",
                 ),
             ),
         ),

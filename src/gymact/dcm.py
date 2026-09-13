@@ -49,6 +49,7 @@ from gymact.cut import (
     manufacture_broker_request,
     select_irreversible_cut,
 )
+from gymact.consequence_binding import ConsequenceBinding
 from gymact.dcm_runtime import DCMDecisionCourt, DecisionCourtRecord, DecisionCourtRequest
 from gymact.ecology import (
     EcologyAlternative,
@@ -72,6 +73,7 @@ __all__ = [
     "CombinatorialBRCEBroker",
     "CombinatorialBrokerRequest",
     "CompiledGraphRecipe",
+    "ConsequenceBinding",
     "DCMDecisionCourt",
     "DecisionCourtRecord",
     "DecisionCourtRequest",
