@@ -5,7 +5,7 @@ This pack implements the enterprise-architecture gym as a **public-ontology prof
 ```text
 public Open Group source identifiers
         -> SKOS / PROV-O / ORG / P-PLAN / OSLC RM / DCAT / ODRL
-        -> SHACL + SPARQL admission
+        -> SPARQL admission + SHACL/EARL task courts
         -> admitted ABox
         -> ggen sync run
         -> Rust task catalog + WIT contract + compiled reference + receipt
@@ -39,14 +39,15 @@ The admitted graph contains the ten public ADM labels (Preliminary, Requirements
 - `wit/gymact-togaf-gym.wit` -- language-neutral gym contract;
 - `docs/compiled-reference.md` -- provenance-bearing semantic reference.
 
-Generated outputs are not canonical and are intentionally not checked in under `rust/togaf_gym`. The graph and templates are canonical; `ggen` recreates outputs and emits its receipt.
+Generated outputs are not canonical and `consumer/togaf-gym/**` is intentionally not checked in. The graph, courts, gates, queries, templates, and `ggen.toml` are canonical; `ggen` recreates outputs and emits its receipt.
 
 ## Verification
 
 ```bash
-pytest -q tests/test_ggen_togaf_gym_pack.py
-cd rust/togaf_gym
+GGEN_BIN=/path/to/ggen pytest -q tests/test_ggen_togaf_gym_pack.py
+cd ggen/togaf-gym-pack
+ggen graph validate --files ontology.ttl --shapes courts/shapes.ttl
 ggen sync run
 ```
 
-The Python test executes graph parsing, all three SPARQL gates, ontology-purity checks, exact phase/task coverage, and SHACL when `pyshacl` is available. On the Python 3.13 CI leg it additionally downloads the pinned `ggen` v26.8.8 Linux release, verifies its SHA-256, runs `ggen sync run` against a temporary consumer, and requires the generation receipt.
+The Python test executes graph parsing, all three SPARQL gates, ontology-purity checks, and exact phase/task coverage. With `GGEN_BIN` (or on the Python 3.13 GitHub Actions leg using the pinned v26.8.8 release), it also executes `ggen graph validate --shapes`, proves a missing OSLC trace is refused, runs `ggen sync run` twice, requires byte-identical projections, and requires the generation receipt.
