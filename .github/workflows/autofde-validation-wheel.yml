@@ -1,0 +1,43 @@
+name: AutoFDE validation wheel
+
+on:
+  push:
+    branches: [validation/autofde-lab-c839-wheel]
+
+permissions:
+  contents: read
+
+jobs:
+  wheel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Build exact base wheel
+        run: |
+          set -euo pipefail
+          python -m pip install "build==1.2.2"
+          python -m build --wheel
+          python - <<'PY'
+          import zipfile
+          from pathlib import Path
+          wheel = next(Path('dist').glob('gymact-26.8.7-*.whl'))
+          with zipfile.ZipFile(wheel) as zf:
+              init = zf.read('gymact/__init__.py').decode()
+              assert '__version__ = "26.8.7"' in init
+          print(wheel)
+          PY
+          sha256sum dist/gymact-26.8.7-*.whl > dist/gymact-26.8.7.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gymact-26.8.7-c839-wheel
+          path: |
+            dist/gymact-26.8.7-*.whl
+            dist/gymact-26.8.7.sha256
+          if-no-files-found: error
+          retention-days: 1
