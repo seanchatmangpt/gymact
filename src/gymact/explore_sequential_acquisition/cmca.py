@@ -107,10 +107,7 @@ def _apportion_integer(total: int, shares: dict[str, Fraction]) -> dict[str, int
         return {}
 
     raw = {key: share * total for key, share in shares.items()}
-    result = {
-        key: value.numerator // value.denominator
-        for key, value in raw.items()
-    }
+    result = {key: value.numerator // value.denominator for key, value in raw.items()}
     remaining = total - sum(result.values())
     remainder_order = sorted(
         shares,
@@ -228,10 +225,7 @@ def allocate_cmca(
             )
             continue
 
-        if candidate.digest in reason_by_digest:
-            reason = reason_by_digest[candidate.digest]
-        else:
-            reason = "DOMINATED"
+        reason = reason_by_digest.get(candidate.digest, "DOMINATED")
         allocations.append(
             CMCAAllocation(
                 sensor_digest=candidate.digest,
