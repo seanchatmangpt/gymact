@@ -87,15 +87,9 @@ class CMCACourt(unittest.TestCase):
         self.assertEqual(dominated.allocated_samples, 0)
 
     def test_preserves_missing_and_budget_inadmissible_candidates_as_zero_edges(self) -> None:
-        admitted = _sensor(
-            "a", name="a", family="visual", domain="screen", cost=1, latency_ms=10
-        )
-        missing = _sensor(
-            "b", name="b", family="event", domain="stream", cost=1, latency_ms=10
-        )
-        expensive = _sensor(
-            "c", name="c", family="api", domain="remote", cost=20, latency_ms=10
-        )
+        admitted = _sensor("a", name="a", family="visual", domain="screen", cost=1, latency_ms=10)
+        missing = _sensor("b", name="b", family="event", domain="stream", cost=1, latency_ms=10)
+        expensive = _sensor("c", name="c", family="api", domain="remote", cost=20, latency_ms=10)
         budget = Budget(cost=Fraction(10), latency_ms=100, samples=3)
         scores = {
             admitted.digest: _score(
