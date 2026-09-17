@@ -55,6 +55,18 @@ cube = [
   "cube-standard[docker]; python_version >= '3.12'",
   "counter-cube; python_version >= '3.12'",
 ]
+# tau2-bench (Sierra's customer-service-agent simulation benchmark),
+# `vendor-tau2-bench` pin in autofde-lab's docs/papers/gym-lock.ttl. Its own
+# package name ("tau2") collides with an unrelated PyPI project (Ben
+# Atkinson's tau2, an unrelated numerics package) -- Sierra has never
+# published under that name, so this installs the real upstream repo
+# directly from git, pinned to the exact commit gym-lock.ttl admits.
+# Optional because tau2 requires Python >=3.12,<3.14 while gymact itself
+# supports >=3.11; gated at import time via `pytest.importorskip("tau2")`
+# in tests, never mocked when genuinely absent.
+tau2-bench = [
+  "tau2 @ git+https://github.com/sierra-research/tau2-bench.git@668d3bcd135c02aa3438f987ef45735b7c163ee3 ; python_version >= '3.12' and python_version < '3.14'",
+]
 
 [tool.uv]
 # browsergym-core==0.14.3 hard-pins playwright==1.44, which pins
