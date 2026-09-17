@@ -1,0 +1,16 @@
+instruction: |
+  Create a file at /app/output.txt containing exactly the text:
+  gymact-terminal-bench-ok
+  (no trailing newline).
+author_name: gymact
+author_email: unknown
+difficulty: easy
+category: software_engineering
+tags:
+  - gymact
+  - fixture
+parser_name: pytest
+max_agent_timeout_sec: 60
+max_test_timeout_sec: 60
+run_tests_in_same_shell: false
+disable_asciinema: true
