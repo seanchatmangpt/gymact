@@ -94,8 +94,7 @@ class VendorSpec:
 
 
 VENDOR_SPECS: dict[str, VendorSpec] = {
-    name: VendorSpec(name=name, revision=revision)
-    for name, revision in VENDOR_REVISIONS.items()
+    name: VendorSpec(name=name, revision=revision) for name, revision in VENDOR_REVISIONS.items()
 }
 
 
@@ -347,16 +346,18 @@ class VendorBenchmarkProvider:
         root_value = config.get("root")
         if root_value is not None and not isinstance(root_value, str):
             raise TypeError("config.root must be a string path when supplied")
-        root = Path(root_value).expanduser() if root_value else vendor_root(self.name)
+        if root_value:
+            candidate = Path(root_value).expanduser()
+            if ".." in candidate.parts:
+                raise VendorAdmissionError("REFUSED:VENDOR_ROOT_TRAVERSAL", str(candidate))
+            root = candidate.resolve()
+        else:
+            root = vendor_root(self.name)
         audit = _audit_spec(self.spec, root)
         if audit.standing != "PARTIAL_ALIVE":
             raise VendorAdmissionError(audit.reason, str(audit.root))
         timeout = config.get("timeout_seconds", 300.0)
-        if (
-            isinstance(timeout, bool)
-            or not isinstance(timeout, (int, float))
-            or timeout <= 0
-        ):
+        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
             raise TypeError("config.timeout_seconds must be a positive number")
         return VendorBenchmarkEnvironment(
             spec=self.spec,
