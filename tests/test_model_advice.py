@@ -111,8 +111,12 @@ def test_model_advice_is_bound_to_exact_possibility_graph_identity() -> None:
 def test_model_advice_cannot_self_promote_or_authorize() -> None:
     graph = _graph()
 
+    promoted = _advice(graph).model_dump(mode="python")
+    promoted["standing"] = Standing.ALIVE
     with pytest.raises(ValueError, match="MODEL_ADVICE_MUST_REMAIN_CANDIDATE"):
-        _advice(graph).model_copy(update={"standing": Standing.ALIVE})
+        ModelAdvice.model_validate(promoted)
 
+    authorized = _advice(graph).model_dump(mode="python")
+    authorized["authorizes_actuation"] = True
     with pytest.raises(ValueError, match="MODEL_ADVICE_CANNOT_AUTHORIZE_ACTUATION"):
-        _advice(graph).model_copy(update={"authorizes_actuation": True})
+        ModelAdvice.model_validate(authorized)
