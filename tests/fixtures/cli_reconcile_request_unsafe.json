@@ -1,0 +1,66 @@
+{
+  "action": {
+    "authority": {
+      "autonomous_policy_may_be_stricter": true,
+      "capability_refs": [
+        "urn:test:authority:set"
+      ],
+      "policy_refs": []
+    },
+    "capability_ref": "urn:test:cap:set",
+    "compensation_action_ref": null,
+    "cost": {
+      "compute_units": 0.0,
+      "expected_failure_probability": 0.0,
+      "expected_human_approvals": 0.0,
+      "expected_wall_time_s": 0.0,
+      "monetary": 0.0
+    },
+    "evidence_refs": [],
+    "expected_effects": [
+      {
+        "parameters": {
+          "x": 1
+        },
+        "predicate": "state_equals"
+      }
+    ],
+    "idempotency": "UNKNOWN",
+    "idempotency_fields": [],
+    "input_schema": {
+      "type": "object"
+    },
+    "locality": {
+      "estimated_effect_latency_s": null,
+      "estimated_hops": null,
+      "estimated_observation_latency_s": null,
+      "execution_site": "unspecified",
+      "observer_site": "unspecified"
+    },
+    "output_schema": {},
+    "preconditions": [],
+    "provider_ref": "urn:test:provider",
+    "reversal": "UNKNOWN",
+    "semantic_id": "urn:test:action:set",
+    "standing": "UNKNOWN",
+    "subject_type": "schema:Thing",
+    "verification": {
+      "expected": {
+        "x": 1
+      },
+      "kind": "EXACT_STATE",
+      "minimum_confidence": "INDEPENDENT_CHANNEL",
+      "observer_ref": "urn:test:observer",
+      "quorum": 1,
+      "settle_timeout_s": 0.0
+    }
+  },
+  "reconciliation": {
+    "disposition": "NO_EFFECT",
+    "observed_state_digest": "state-a",
+    "reason": "NO_EFFECT",
+    "retry_admitted": false,
+    "standing": "REFUSED",
+    "verification_ref": "verify-1"
+  }
+}
