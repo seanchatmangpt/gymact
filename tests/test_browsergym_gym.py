@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
 PINNED_BROWSERGYM_VERSION = "0.14.3"
 STANDING = "LOCAL_GYM:browsergym-openended"
@@ -38,7 +38,7 @@ def _real_browsergym_available() -> bool:
         return False
 
 
-require_standing(
+named_standing_skip(
     STANDING,
     available=_real_browsergym_available(),
     reason=(

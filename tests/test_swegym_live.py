@@ -28,7 +28,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
 
 def _docker_available() -> bool:
@@ -55,7 +55,7 @@ def _datasets_available() -> bool:
     return True
 
 
-require_standing(
+named_standing_skip(
     "LOCAL_GYM:swegym",
     available=_docker_available() and _datasets_available(),
     reason=(

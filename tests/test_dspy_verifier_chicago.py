@@ -18,9 +18,9 @@ import os
 
 import pytest
 
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
-require_standing(
+named_standing_skip(
     "LOCAL_EXTRA:dspy",
     available=importlib.util.find_spec("dspy") is not None,
     reason="the optional 'dspy' extra is not installed -- `uv sync --extra dspy`",
@@ -204,9 +204,7 @@ class TestGepaOptimizesTheRealJudge:
                 reflection_lm=lm,
                 track_stats=False,
             )
-            optimized_program = optimizer.compile(
-                base_program, trainset=train_set, valset=val_set
-            )
+            optimized_program = optimizer.compile(base_program, trainset=train_set, valset=val_set)
             optimized_accuracy = real_accuracy(optimized_program)
 
         assert optimized_accuracy >= base_accuracy, (

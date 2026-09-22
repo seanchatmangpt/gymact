@@ -19,9 +19,9 @@ import importlib.util
 import json
 from pathlib import Path
 
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
-require_standing(
+named_standing_skip(
     "LOCAL_EXTRA:dspy",
     available=importlib.util.find_spec("dspy") is not None,
     reason="the optional 'dspy' extra is not installed -- `uv sync --extra dspy`",
@@ -63,9 +63,7 @@ class TestSummarizeOneDeployment:
 
     def test_env_vars_are_sorted_name_equals_value_pairs(self):
         raw = json.loads((FIXTURES / "real_sregym_deployments_list.json").read_text())
-        frontend = next(
-            item for item in raw["items"] if item["metadata"]["name"] == "frontend"
-        )
+        frontend = next(item for item in raw["items"] if item["metadata"]["name"] == "frontend")
         summary = _summarize_one_deployment(frontend)
         assert summary.env == ["JAEGER_SAMPLE_RATIO=1"]
         assert summary.command == ["frontend"]

@@ -21,9 +21,9 @@ from __future__ import annotations
 
 import importlib.util
 
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
-require_standing(
+named_standing_skip(
     "LOCAL_GYM:inspect-evals",
     available=importlib.util.find_spec("inspect_ai") is not None,
     reason="the 'inspect_ai' package is not importable in this environment",

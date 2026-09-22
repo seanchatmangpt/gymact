@@ -30,16 +30,24 @@ physics package).
 
 from __future__ import annotations
 
+import importlib.util as _importlib_util
 from typing import Any
 
 import pytest
 
-from gymact.algebra import Actuator, Observer, Verifier
-from gymact.authority import AllowListAuthorityResolver
-from gymact.gyms.gymnasium_env import GymnasiumProvider
-from gymact.models import ActuationIntent, MaterializationIntent, Standing
-from gymact.providers import MemoryProvider
-from gymact.runtime import GymAct
+from gymact.standing import named_standing_skip
+
+named_standing_skip(
+    "LOCAL_EXTRA:gyms",
+    available=_importlib_util.find_spec("gymnasium") is not None,
+    reason="the optional 'gyms' extra is not installed -- `uv sync --extra gyms`",
+)
+from gymact.algebra import Actuator, Observer, Verifier  # noqa: E402
+from gymact.authority import AllowListAuthorityResolver  # noqa: E402
+from gymact.gyms.gymnasium_env import GymnasiumProvider  # noqa: E402
+from gymact.models import ActuationIntent, MaterializationIntent, Standing  # noqa: E402
+from gymact.providers import MemoryProvider  # noqa: E402
+from gymact.runtime import GymAct  # noqa: E402
 
 _MEMORY_AUTHORITY_REF = "urn:gymact:test:authority:memory-set"
 _GYMNASIUM_AUTHORITY_REF = "urn:gymact:test:authority:gymnasium-reset"

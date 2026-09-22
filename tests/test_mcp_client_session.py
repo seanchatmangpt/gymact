@@ -20,9 +20,9 @@ from __future__ import annotations
 
 import importlib.util
 
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
-require_standing(
+named_standing_skip(
     "LOCAL_GYM:mcp-client-session",
     available=importlib.util.find_spec("fastmcp") is not None,
     reason="the 'fastmcp' package is not importable in this environment",
@@ -73,9 +73,7 @@ async def _run_real_mcp_session_episode() -> list:
         await gym.observe(episode_id)
 
         result = await gym.act(
-            ActuationIntent(
-                episode_id=episode_id, capability=CALL_TOOL, authority_ref=AUTHORITY
-            )
+            ActuationIntent(episode_id=episode_id, capability=CALL_TOOL, authority_ref=AUTHORITY)
         )
         assert result.accepted is True
         receipts.append(result.receipt)
