@@ -6,20 +6,28 @@ code in `algebra.py` itself.
 
 from __future__ import annotations
 
+import importlib.util as _importlib_util
 import subprocess
 
 import pytest
 from typing_extensions import get_protocol_members
 
-from gymact.algebra import Actuator, Observer, Verifier
-from gymact.gyms.kubernetes_reconciliation import (
+from gymact.standing import named_standing_skip
+
+named_standing_skip(
+    "LOCAL_EXTRA:gyms",
+    available=_importlib_util.find_spec("gymnasium") is not None,
+    reason="the optional 'gyms' extra is not installed -- `uv sync --extra gyms`",
+)
+from gymact.algebra import Actuator, Observer, Verifier  # noqa: E402
+from gymact.gyms.gymnasium_env import GymnasiumEnvironment, GymnasiumProvider  # noqa: E402
+from gymact.gyms.kubernetes_reconciliation import (  # noqa: E402
     KubernetesReconciliationEnvironment,
     KubernetesReconciliationProvider,
 )
-from gymact.gyms.gymnasium_env import GymnasiumEnvironment, GymnasiumProvider
-from gymact.models import Capability, Consequence
-from gymact.providers import Environment, MemoryEnvironment, MemoryProvider
-from gymact.standing import require_standing
+from gymact.models import Capability, Consequence  # noqa: E402
+from gymact.providers import Environment, MemoryEnvironment, MemoryProvider  # noqa: E402
+from gymact.standing import named_standing_skip  # noqa: E402
 
 
 def _kubernetes_cluster_reachable() -> bool:
@@ -109,16 +117,18 @@ async def test_gymnasium_environment_satisfies_observer_actuator_verifier() -> N
 @pytest.mark.asyncio
 async def test_kubernetes_reconciliation_environment_satisfies_observer_actuator_verifier() -> None:
     reachable = _kubernetes_cluster_reachable()
-    require_standing(
-        "PARTIAL_ALIVE",
+    named_standing_skip(
+        "LOCAL_GYM:kubernetes-reconciliation",
         available=reachable,
         reason=(
             "no reachable Kubernetes cluster for kubectl cluster-info "
-            "(set GYMACT_ALLOW_DEGRADED_STANDINGS=PARTIAL_ALIVE to skip explicitly)"
+            "(start one locally: `kind create cluster`, `k3d cluster create`, or "
+            "`colima start --kubernetes`)"
         ),
+        module_level=False,
     )
     if not reachable:
-        pytest.skip("no reachable Kubernetes cluster (see require_standing reason above)")
+        pytest.skip("no reachable Kubernetes cluster (see standing reason above)")
     provider = KubernetesReconciliationProvider()
     environment: KubernetesReconciliationEnvironment = await provider.materialize(
         scenario=None, config={"requires_authority": False}

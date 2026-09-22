@@ -15,14 +15,14 @@ from pathlib import Path
 
 import pytest
 
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
 
 def _ggen_available() -> bool:
     return shutil.which("ggen") is not None
 
 
-require_standing(
+named_standing_skip(
     "LOCAL_GYM:ggen",
     available=_ggen_available(),
     reason="no `ggen` binary found on PATH (install it, e.g. via "

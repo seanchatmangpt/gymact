@@ -9,18 +9,27 @@ import check.
 
 from __future__ import annotations
 
+import importlib.util as _importlib_util
+
 import pytest
 
-from gymact.authority import AllowListAuthorityResolver, DenyAuthorityResolver
-from gymact.gdmcp import CompiledGdmcpProgram
-from gymact.gdmcp_bpmn_bridge import (
+from gymact.standing import named_standing_skip
+
+named_standing_skip(
+    "LOCAL_EXTRA:bpmn",
+    available=_importlib_util.find_spec("SpiffWorkflow") is not None,
+    reason="the optional 'bpmn' extra is not installed -- `uv sync --extra bpmn`",
+)
+from gymact.authority import AllowListAuthorityResolver, DenyAuthorityResolver  # noqa: E402
+from gymact.gdmcp import CompiledGdmcpProgram  # noqa: E402
+from gymact.gdmcp_bpmn_bridge import (  # noqa: E402
     BpmnReplayRefusal,
     compile_program_to_bpmn,
     replay_compiled_program_via_bpmn,
 )
-from gymact.kernel import GymAct
-from gymact.models import ActuationIntent, MaterializationIntent
-from gymact.providers import MemoryProvider
+from gymact.kernel import GymAct  # noqa: E402
+from gymact.models import ActuationIntent, MaterializationIntent  # noqa: E402
+from gymact.providers import MemoryProvider  # noqa: E402
 
 AUTHORITY = "urn:gymact:test:gdmcp-bpmn-bridge"
 SET_CAPABILITY = "urn:gymact:memory:capability:set"

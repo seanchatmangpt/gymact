@@ -20,7 +20,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
 
 def _binary_available() -> bool:
@@ -41,7 +41,7 @@ def _real_docker_reachable() -> bool:
         return False
 
 
-require_standing(
+named_standing_skip(
     "LOCAL_GYM:terraform-docker-apply",
     available=_binary_available() and _real_docker_reachable(),
     reason="no 'terraform'/'tofu' on PATH or no reachable local Docker daemon "

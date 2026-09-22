@@ -8,10 +8,14 @@ from pathlib import Path
 
 import pytest
 
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
 PINNED_BROWSERGYM_VERSION = "0.14.3"
 STANDING = "LOCAL_GYM:browsergym-openended"
+# GYMACT-7: unavailable environments degrade to a NAMED, VISIBLE
+# module-level standing skip (named_standing_skip below), keeping plain
+# hermetic collections green while "LOCAL_GYM:browsergym-openended" and
+# the real reason stay in the run summary.
 
 
 def _real_browsergym_available() -> bool:
@@ -35,7 +39,7 @@ def _real_browsergym_available() -> bool:
         return False
 
 
-require_standing(
+named_standing_skip(
     STANDING,
     available=_real_browsergym_available(),
     reason=(
