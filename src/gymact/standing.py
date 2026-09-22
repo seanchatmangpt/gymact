@@ -33,7 +33,9 @@ def _allowed_standings() -> frozenset[str]:
     return frozenset(item.strip() for item in raw.split(",") if item.strip())
 
 
-def require_standing(standing: str, *, available: bool, reason: str) -> None:
+def require_standing(
+    standing: str, *, available: bool, reason: str, skip_module_level: bool = True
+) -> None:
     """Real is the default. Degrading to a skip must be explicitly allowed.
 
     If `available` is True, this does nothing -- the real thing is present.
@@ -51,6 +53,13 @@ def require_standing(standing: str, *, available: bool, reason: str) -> None:
     allow-listed-but-unavailable standing there is the caller's problem to
     handle (raise, log, or otherwise surface -- require_standing only
     decides whether degrading is *permitted*, not what "degraded" means).
+
+    `skip_module_level` scopes the consented skip without changing the
+    consent rule: the default True reproduces the original whole-module
+    skip. False downgrades it to a per-test skip, for callers inside a test
+    body whose siblings stay meaningful without the real collaborator (the
+    decision of *whether* degrading is permitted -- the consented env var,
+    the failure without it -- is identical in both modes).
     """
     if available:
         return
@@ -74,7 +83,7 @@ def require_standing(standing: str, *, available: bool, reason: str) -> None:
         raise RuntimeError(message)
 
     if pytest is not None:
-        pytest.skip(reason, allow_module_level=True)
+        pytest.skip(reason, allow_module_level=skip_module_level)
         return
     raise RuntimeError(
         f"standing {standing!r} is allow-listed as degradable but there is "
