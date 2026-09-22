@@ -1,3 +1,16 @@
+# Engineering Standards Root Binding
+
+> Generated adoption header. Shared engineering semantics are rooted at `seanchatmangpt/engineering-standards@5a3bb6446aeaee2255a7523d4d8cebf6042960c3`.
+
+- Repository subject: `seanchatmangpt/gymact@e75344d45d5694e15e73652eb1b4b796de29b0a9`
+- Ecosystem role: world/experiment simulation gym and Vision 2030 scenario substrate
+- Adoption manifest: `engineering-standards.json`
+- Project profile: `semantic/engineering-standards-profile.ttl`
+
+The local constitution below remains authoritative for repository-specific mechanics. It may narrow the root but may not redefine shared WorkOrder identity, authority, receipt/replay, generated-artifact sovereignty, or evidence standing. Ticket, agent, capability, plan, proof, and generated output do not acquire ambient DO authority.
+
+---
+
 # Agent Operating Contract
 
 Scope: this repository unless a deeper `AGENTS.md` narrows a subtree. Live tree evidence outranks stale prose; nested rules may tighten but not silently weaken evidence, authority, replay, or publication law.
