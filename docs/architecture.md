@@ -103,6 +103,8 @@ genuinely real external collaborator (zero mocks anywhere in `src/` or `tests/`)
 
 | `gyms.vendor_benchmarks.VendorBenchmarkProvider` | one exact-pinned provider per vendor benchmark in AutoFDE Lab's `docs/papers/gym-lock.ttl` (52 vendors) -- a provider only materializes after the real vendor checkout's Git HEAD equals its pinned revision, and native commands run cwd-bound to that checkout with no shell |
 
+| `gyms.vendor_benchmarks.VendorBenchmarkProvider` | one provider per AutoFDE Lab `docs/papers/gym-lock.ttl`-pinned vendor checkout (52 exact-pinned benchmark repos) -- materializes only when the real checkout's Git HEAD equals the pinned revision, executes native commands as a real cwd-bound subprocess with no shell, and re-checks the pin both before and after execution |
+
 Each of these claims a `gymact.standing.require_standing` standing string (e.g.
 `"LOCAL_GYM:cube-counter"`). The real thing is the default: if the real collaborator is
 unavailable, the run fails loudly unless `GYMACT_ALLOW_DEGRADED_STANDINGS` explicitly lists

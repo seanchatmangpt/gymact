@@ -260,6 +260,11 @@ external collaborator -- no mocks anywhere in `src/` or `tests/`:
   materializes after the real vendor checkout's Git HEAD equals its pinned revision,
   and every native command runs cwd-bound to that checkout with no shell.
 
+- `vendor_benchmarks.VendorBenchmarkProvider` -- one provider per AutoFDE Lab
+  `docs/papers/gym-lock.ttl`-pinned vendor checkout (52 exact-pinned benchmark repos);
+  materializes only when the real checkout's Git HEAD equals the pinned revision, and
+  re-checks the pin both before and after running a real cwd-bound, no-shell subprocess.
+
 Each claims a `gymact.standing.require_standing` standing (e.g. `"LOCAL_GYM:cube-counter"`):
 if its real collaborator is unavailable, the run fails loudly unless
 `GYMACT_ALLOW_DEGRADED_STANDINGS` explicitly permits degrading it -- a skip must be opted
