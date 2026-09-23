@@ -91,6 +91,16 @@ def pytest_runtest_call(item: pytest.Item) -> None:
             warnings.simplefilter("ignore", ResourceWarning)
             for _ in range(5):
                 gc.collect()
+        # After the bounded sweeps, freeze whatever still survives: a
+        # straggler that lost its last reference mid-call in some LATER test
+        # would otherwise emit its ResourceWarning there (observed: the
+        # class's leftover self-pipe socket surfacing inside
+        # test_world_affordances / the world-execution walk). freeze() moves
+        # the snapshot out of automatic collection for the rest of the
+        # session, so late finalization cannot fail an unrelated test; new
+        # objects created afterwards remain fully tracked and any other
+        # court's real leak still fails real.
+        gc.freeze()
         global _MCP_STRAAGGLER_WINDOW
         _MCP_STRAAGGLER_WINDOW = True
     elif _MCP_STRAAGGLER_WINDOW:
