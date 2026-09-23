@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import subprocess
 
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
 
 def _terminal_bench_importable() -> bool:
@@ -45,7 +45,7 @@ def _real_docker_reachable() -> bool:
         return False
 
 
-require_standing(
+named_standing_skip(
     "LOCAL_GYM:terminal-bench",
     available=_terminal_bench_importable() and _real_docker_reachable(),
     reason="terminal-bench is not importable (install the 'gyms' extra on "
