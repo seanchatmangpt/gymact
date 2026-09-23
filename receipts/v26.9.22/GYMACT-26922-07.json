@@ -14,6 +14,16 @@
     ],
     "matrix_pending": "the 3.11/3.12/3.13 matrix + wheel/docs jobs were still in progress at receipt time; the run at 43f2f88 (PR branch, same content) already showed the same matrix green-state dependency on the worker-thread straggler fix (fca9e14/f70826b)",
     "release_bump": "pyproject version 26.8.23 -> 26.9.22 landed at 7b2f60e; gymact.__version__ constant synced at f70826b",
-    "main_ci_at_b4f6db4": "world crown success, census success, botocore court success, Delivery skipped, CI matrix failure = the documented fastmcp/anyio straggler race (2 tests) + one coverage-orphan hang"
+    "final_state_20260923": {
+      "green_workflows_at_main": [
+        "v26.9.1 world execution crown",
+        "GCP Public Contract Census",
+        "AWS botocore scalar contract court",
+        "Delivery (skipped by design)"
+      ],
+      "remaining_red": "CI matrix 3.13 leg: test_ggen_v26_8_11_manufactures_ephemeral_projection_on_ci_313 fails FM-WRITE-008 (pack-side duplicate generation declarations - see GYMACT-26922-04 receipt); 3.11/3.13: intermittent 1-3 test cascade from the fastmcp/anyio loop-construction race on 2-vCPU runners (loop GC'd mid-construction inside _loop_factory; evidence captured across runs 35804015942/35809271790/35813832183/35815336254/35817248617); 3.12: one coverage-orphan hang",
+      "containment_landed": "owning-boundary caught sweeps + gc.freeze() of the straggler snapshot + straggler window; failure count collapsed 9 -> 3 -> 2 across iterations; zero local reproduction on any Python",
+      "verdict": "PARTIAL_ALIVE - GYMACT-07 full green requires the pack-side FM-WRITE-008 dedup fix (ggen_igniter/marketplace lane) and an upstream fastmcp/anyio release"
+    }
   }
 }
