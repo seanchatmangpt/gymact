@@ -1,4 +1,4 @@
-"""Composable harness-science evaluation for GymAct v26.8.23.
+"""Composable harness-science evaluation for GymAct v26.9.22.
 
 Synthesizes evaluation laws from recent harness research without adding world
 physics or execution authority. All values are observational or construct-only;
