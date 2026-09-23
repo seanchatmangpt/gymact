@@ -6,6 +6,7 @@ from typing import Any
 from .measure import FiniteMeasure
 from .refusal import Refused
 
+
 def from_distribution(value: Any) -> FiniteMeasure:
     """Admit predecessor distribution objects without importing their implementation."""
     mass = getattr(value, "mass", None)

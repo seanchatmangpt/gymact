@@ -41,4 +41,6 @@ class DependencyGraph:
             if value in {ObligationState.FAIL, ObligationState.BLOCKED, ObligationState.REFUSED}
         }
         parents = {parent for parent, child in self.edges if child in bad and parent in state}
-        return frozenset(bad | {parent for parent in parents if state[parent] != ObligationState.PASS})
+        return frozenset(
+            bad | {parent for parent in parents if state[parent] != ObligationState.PASS}
+        )

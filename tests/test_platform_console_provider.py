@@ -24,7 +24,10 @@ import pytest
 
 from gymact.agent import AllowListCapabilityScope
 from gymact.authority import AllowListAuthorityResolver
-from gymact.gyms.platform_console_provider import PLATFORM_CONSOLE_CAPABILITIES, PlatformConsoleProvider
+from gymact.gyms.platform_console_provider import (
+    PLATFORM_CONSOLE_CAPABILITIES,
+    PlatformConsoleProvider,
+)
 from gymact.kernel import GymAct
 from gymact.models import ActuationIntent, MaterializationIntent
 
@@ -186,10 +189,8 @@ def test_real_gymact_provisions_project_and_polls_real_status() -> None:
             # Real teardown of the real project this test provisioned, via
             # the same DELETE /api/projects/{name} route the console itself
             # exposes -- test hygiene, not a claimed gymact capability.
-            environment = gym._episodes[episode_id].environment  # noqa: SLF001
-            await environment._async_request(  # noqa: SLF001
-                "DELETE", f"/api/projects/{project_name}"
-            )
+            environment = gym._episodes[episode_id].environment
+            await environment._async_request("DELETE", f"/api/projects/{project_name}")
             await gym.teardown(episode_id, authority_ref=authority_ref)
 
     anyio.run(run)
@@ -209,9 +210,7 @@ def test_provider_refuses_without_credential() -> None:
         try:
             provider = PlatformConsoleProvider()
             with pytest.raises(PlatformConsoleAuthError):
-                await provider.materialize(
-                    scenario=None, config={"base_url": "http://127.0.0.1:1"}
-                )
+                await provider.materialize(scenario=None, config={"base_url": "http://127.0.0.1:1"})
         finally:
             if env is not None:
                 os.environ["PLATFORM_CONSOLE_API_KEY"] = env

@@ -28,11 +28,17 @@ means adding one real scenario entry, not extending a generic engine.
 from __future__ import annotations
 
 import json
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Any
 
-from .combinatorial import CombinationSpace, ExplorationBounds, Factor, manufacture_combination_space
+from .combinatorial import (
+    CombinationSpace,
+    ExplorationBounds,
+    Factor,
+    manufacture_combination_space,
+)
 from .gyms.lock_and_key import LockAndKeyProvider
 from .gyms.switchboard import SwitchboardProvider
 from .kernel import GymAct
@@ -69,8 +75,8 @@ except ImportError:  # pragma: no cover -- real UNSUPPORTED environment gate
     _DEV_PORTFOLIO_AVAILABLE = False
 
 __all__ = [
-    "REPORTS_DIR",
     "GYM_FACTOR",
+    "REPORTS_DIR",
     "SEQUENCE_VARIANT_FACTOR",
     "build_combination_space",
     "run_combinatorial_maximum",
@@ -88,7 +94,12 @@ __all__ = [
 # for scenarios that were never solving a task, or weakening that other
 # suite's real check -- both dishonest. A sibling directory keeps both
 # real, distinct evidence types intact.
-REPORTS_DIR = Path(__file__).resolve().parent.parent.parent / "reports" / "ocel-combinatorial" / "combinatorial-maximum"
+REPORTS_DIR = (
+    Path(__file__).resolve().parent.parent.parent
+    / "reports"
+    / "ocel-combinatorial"
+    / "combinatorial-maximum"
+)
 
 
 ScenarioFn = Callable[[GymAct, str], Awaitable[None]]
@@ -113,14 +124,32 @@ class _GymScenario:
 # cherry-picked result this doctrine exists to prevent. A real, correctly-
 # enforced refusal is evidence the authority gate works, not a gap.
 async def _memory_happy_path(gym: GymAct, ep: str) -> None:
-    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:memory:capability:set", payload={"key": "counter", "value": 1}))
+    await gym.act(
+        ActuationIntent(
+            episode_id=ep,
+            capability="urn:gymact:memory:capability:set",
+            payload={"key": "counter", "value": 1},
+        )
+    )
     await gym.verify(ep, {"counter": 1})
 
 
 async def _memory_with_checkpoint_restore(gym: GymAct, ep: str) -> None:
-    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:memory:capability:set", payload={"key": "counter", "value": 1}))
+    await gym.act(
+        ActuationIntent(
+            episode_id=ep,
+            capability="urn:gymact:memory:capability:set",
+            payload={"key": "counter", "value": 1},
+        )
+    )
     checkpoint = await gym.checkpoint(ep)
-    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:memory:capability:set", payload={"key": "counter", "value": 2}))
+    await gym.act(
+        ActuationIntent(
+            episode_id=ep,
+            capability="urn:gymact:memory:capability:set",
+            payload={"key": "counter", "value": 2},
+        )
+    )
     await gym.restore(ep, checkpoint)
     await gym.verify(ep, {"counter": 1})
 
@@ -130,14 +159,30 @@ async def _memory_observe_only(gym: GymAct, ep: str) -> None:
 
 
 async def _lock_and_key_happy_path(gym: GymAct, ep: str) -> None:
-    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:lock-and-key:capability:pick_key", payload={"key": 0}))
-    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:lock-and-key:capability:open_lock", payload={}))
+    await gym.act(
+        ActuationIntent(
+            episode_id=ep,
+            capability="urn:gymact:lock-and-key:capability:pick_key",
+            payload={"key": 0},
+        )
+    )
+    await gym.act(
+        ActuationIntent(
+            episode_id=ep, capability="urn:gymact:lock-and-key:capability:open_lock", payload={}
+        )
+    )
     await gym.observe(ep)
 
 
 async def _lock_and_key_with_checkpoint_restore(gym: GymAct, ep: str) -> None:
     checkpoint = await gym.checkpoint(ep)
-    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:lock-and-key:capability:pick_key", payload={"key": 0}))
+    await gym.act(
+        ActuationIntent(
+            episode_id=ep,
+            capability="urn:gymact:lock-and-key:capability:pick_key",
+            payload={"key": 0},
+        )
+    )
     await gym.restore(ep, checkpoint)
     await gym.observe(ep)
 
@@ -147,13 +192,25 @@ async def _lock_and_key_observe_only(gym: GymAct, ep: str) -> None:
 
 
 async def _switchboard_happy_path(gym: GymAct, ep: str) -> None:
-    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:switchboard:capability:toggle_switch", payload={"index": 0}))
+    await gym.act(
+        ActuationIntent(
+            episode_id=ep,
+            capability="urn:gymact:switchboard:capability:toggle_switch",
+            payload={"index": 0},
+        )
+    )
     await gym.verify(ep, {"switch_0": True})
 
 
 async def _switchboard_with_checkpoint_restore(gym: GymAct, ep: str) -> None:
     checkpoint = await gym.checkpoint(ep)
-    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:switchboard:capability:toggle_switch", payload={"index": 0}))
+    await gym.act(
+        ActuationIntent(
+            episode_id=ep,
+            capability="urn:gymact:switchboard:capability:toggle_switch",
+            payload={"index": 0},
+        )
+    )
     await gym.restore(ep, checkpoint)
     await gym.verify(ep, {"switch_0": False})
 
@@ -163,12 +220,24 @@ async def _switchboard_observe_only(gym: GymAct, ep: str) -> None:
 
 
 async def _cloud_topology_happy_path(gym: GymAct, ep: str) -> None:
-    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:cloud-topology:capability:list_regions", payload={}))
+    await gym.act(
+        ActuationIntent(
+            episode_id=ep,
+            capability="urn:gymact:cloud-topology:capability:list_regions",
+            payload={},
+        )
+    )
 
 
 async def _cloud_topology_with_checkpoint_restore(gym: GymAct, ep: str) -> None:
     checkpoint = await gym.checkpoint(ep)
-    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:cloud-topology:capability:list_services", payload={}))
+    await gym.act(
+        ActuationIntent(
+            episode_id=ep,
+            capability="urn:gymact:cloud-topology:capability:list_services",
+            payload={},
+        )
+    )
     await gym.restore(ep, checkpoint)
 
 
@@ -177,12 +246,24 @@ async def _cloud_topology_observe_only(gym: GymAct, ep: str) -> None:
 
 
 async def _k8s_resource_happy_path(gym: GymAct, ep: str) -> None:
-    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:k8s-resource:capability:list_resource_kinds", payload={}))
+    await gym.act(
+        ActuationIntent(
+            episode_id=ep,
+            capability="urn:gymact:k8s-resource:capability:list_resource_kinds",
+            payload={},
+        )
+    )
 
 
 async def _k8s_resource_with_checkpoint_restore(gym: GymAct, ep: str) -> None:
     checkpoint = await gym.checkpoint(ep)
-    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:k8s-resource:capability:required_fields_for_kind", payload={"kind": "Deployment"}))
+    await gym.act(
+        ActuationIntent(
+            episode_id=ep,
+            capability="urn:gymact:k8s-resource:capability:required_fields_for_kind",
+            payload={"kind": "Deployment"},
+        )
+    )
     await gym.restore(ep, checkpoint)
 
 
@@ -191,12 +272,24 @@ async def _k8s_resource_observe_only(gym: GymAct, ep: str) -> None:
 
 
 async def _chatman_state_happy_path(gym: GymAct, ep: str) -> None:
-    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:chatman-state:capability:portfolio_summary", payload={}))
+    await gym.act(
+        ActuationIntent(
+            episode_id=ep,
+            capability="urn:gymact:chatman-state:capability:portfolio_summary",
+            payload={},
+        )
+    )
 
 
 async def _chatman_state_with_checkpoint_restore(gym: GymAct, ep: str) -> None:
     checkpoint = await gym.checkpoint(ep)
-    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:chatman-state:capability:list_local_repos", payload={}))
+    await gym.act(
+        ActuationIntent(
+            episode_id=ep,
+            capability="urn:gymact:chatman-state:capability:list_local_repos",
+            payload={},
+        )
+    )
     await gym.restore(ep, checkpoint)
 
 
@@ -205,12 +298,24 @@ async def _chatman_state_observe_only(gym: GymAct, ep: str) -> None:
 
 
 async def _dev_portfolio_happy_path(gym: GymAct, ep: str) -> None:
-    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:dev-portfolio:capability:snapshot_full_portfolio", payload={}))
+    await gym.act(
+        ActuationIntent(
+            episode_id=ep,
+            capability="urn:gymact:dev-portfolio:capability:snapshot_full_portfolio",
+            payload={},
+        )
+    )
 
 
 async def _dev_portfolio_with_checkpoint_restore(gym: GymAct, ep: str) -> None:
     checkpoint = await gym.checkpoint(ep)
-    await gym.act(ActuationIntent(episode_id=ep, capability="urn:gymact:dev-portfolio:capability:snapshot_local_state", payload={}))
+    await gym.act(
+        ActuationIntent(
+            episode_id=ep,
+            capability="urn:gymact:dev-portfolio:capability:snapshot_local_state",
+            payload={},
+        )
+    )
     await gym.restore(ep, checkpoint)
 
 
@@ -333,7 +438,9 @@ async def drive_combination(gym_id: str, variant: str) -> tuple[list[Receipt], s
     provider = scenario.provider_factory()
     gym.register_provider(provider)
     materialization = await gym.materialize(
-        MaterializationIntent(provider=provider.name, scenario=scenario.scenario, config=scenario.config)
+        MaterializationIntent(
+            provider=provider.name, scenario=scenario.scenario, config=scenario.config
+        )
     )
     if not materialization.accepted:
         raise RuntimeError(f"materialize refused for real: gym={gym_id} variant={variant}")
@@ -374,7 +481,9 @@ async def run_combinatorial_maximum(
     reports_dir.mkdir(parents=True, exist_ok=True)
     ocel_path = reports_dir / "episode.ocel.json"
     log, log_digest = write_ocel_log(ocel_path, all_receipts)
-    validate_ocel_log(log)  # real, independent re-validation -- never trust write_ocel_log's own success silently
+    validate_ocel_log(
+        log
+    )  # real, independent re-validation -- never trust write_ocel_log's own success silently
 
     report = {
         "total_cardinality": space.total_cardinality,

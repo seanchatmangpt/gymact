@@ -37,9 +37,7 @@ async def run_plan(plan: CommerceSelectedPlan) -> dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="gymact-commerce-dfcm",
-        description=(
-            "Execute the bounded Post-AGI DfCM commerce crown without marketplace DO."
-        ),
+        description=("Execute the bounded Post-AGI DfCM commerce crown without marketplace DO."),
     )
     parser.add_argument(
         "--plan",

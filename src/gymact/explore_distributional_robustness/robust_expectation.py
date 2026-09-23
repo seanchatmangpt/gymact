@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from fractions import Fraction
-from typing import Iterable, Mapping
 
 from .distribution import FiniteDistribution
 from .refusals import refuse

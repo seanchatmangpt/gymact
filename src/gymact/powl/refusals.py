@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:  # pragma: no cover -- type-checking only, avoids a real circular import
     from gymact.powl.guard_executor import ExecutionTrace
 
-__all__ = ["PowlRefusal", "PowlError"]
+__all__ = ["PowlError", "PowlRefusal"]
 
 
 class PowlRefusal(StrEnum):
@@ -60,7 +60,13 @@ class PowlError(ValueError):
     (:attr:`detail`).
     """
 
-    def __init__(self, refusal: PowlRefusal, detail: str = "", *, partial_trace: "ExecutionTrace | None" = None) -> None:
+    def __init__(
+        self,
+        refusal: PowlRefusal,
+        detail: str = "",
+        *,
+        partial_trace: ExecutionTrace | None = None,
+    ) -> None:
         self.refusal: PowlRefusal = refusal
         self.detail: str = detail
         #: For ATOM_INVOCATION_FAILED and CHILD_EXECUTION_FAILED only: the

@@ -1,4 +1,5 @@
 """Machine-checkable Crown requirements and GALL checkpoint inventory."""
+
 from __future__ import annotations
 
 import json
@@ -148,9 +149,7 @@ def crown_summary(data: dict[str, Any] | None = None) -> CrownSummary:
         requirement_statuses={
             status: req_counts.get(status, 0) for status in inventory["statuses"]
         },
-        checkpoint_statuses={
-            status: cp_counts.get(status, 0) for status in inventory["statuses"]
-        },
+        checkpoint_statuses={status: cp_counts.get(status, 0) for status in inventory["statuses"]},
         crown_ready=not blockers,
         blockers=blockers,
     )

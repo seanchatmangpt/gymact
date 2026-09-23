@@ -16,7 +16,13 @@ from .witness import IndependentWitness
 ENGINE_ID = "gymact.kantorovich.independent-equation-verifier/v1"
 
 
-def verify(plan: TransportPlan, potential: DualPotential, source: FiniteMeasure, target: FiniteMeasure, metric: GroundMetric) -> IndependentWitness:
+def verify(
+    plan: TransportPlan,
+    potential: DualPotential,
+    source: FiniteMeasure,
+    target: FiniteMeasure,
+    metric: GroundMetric,
+) -> IndependentWitness:
     verify_marginals(plan, source, target)
     max_slack = verify_dual_feasibility(potential, source, target, metric)
     active = verify_complementarity(plan, potential, source, target, metric)

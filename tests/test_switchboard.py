@@ -222,9 +222,7 @@ async def test_do_capability_is_refused_without_admitted_authority() -> None:
     episode_id = materialization.episode.episode_id
 
     result = await gym.act(
-        ActuationIntent(
-            episode_id=episode_id, capability=TOGGLE_SWITCH, payload={"index": 0}
-        )
+        ActuationIntent(episode_id=episode_id, capability=TOGGLE_SWITCH, payload={"index": 0})
     )
 
     assert result.accepted is False
@@ -251,7 +249,9 @@ async def test_restore_rejects_checkpoint_with_wrong_switch_count() -> None:
         raised = False
     except ValueError:
         raised = True
-    assert raised is True, "restore() must reject a checkpoint whose switch count mismatches n_switches"
+    assert raised is True, (
+        "restore() must reject a checkpoint whose switch count mismatches n_switches"
+    )
 
     # Real proof the fix actually prevents the downstream crash: state is
     # untouched by the rejected restore, and observe() still works.

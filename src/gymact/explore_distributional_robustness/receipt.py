@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
 import hashlib
 import json
+from dataclasses import asdict, dataclass
 
 from .refusals import refuse
 
@@ -17,7 +17,9 @@ class ReceiptBody:
 
     def canonical(self) -> bytes:
         if self.actuation_performed:
-            raise refuse("UNRECEIPTED_ACTUATION", "EXPLORE receipts cannot report consequential actuation")
+            raise refuse(
+                "UNRECEIPTED_ACTUATION", "EXPLORE receipts cannot report consequential actuation"
+            )
         return json.dumps(asdict(self), sort_keys=True, separators=(",", ":")).encode()
 
 
@@ -27,7 +29,7 @@ class Receipt:
     digest: str
 
     @classmethod
-    def issue(cls, body: ReceiptBody) -> "Receipt":
+    def issue(cls, body: ReceiptBody) -> Receipt:
         return cls(body=body, digest=hashlib.sha256(body.canonical()).hexdigest())
 
     def replay(self) -> bool:

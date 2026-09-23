@@ -12,33 +12,59 @@ from __future__ import annotations
 
 from typing import Any
 
-from gymact.gyms.chatman_state_gym import ChatmanStateProvider, CHATMAN_STATE_CAPABILITIES
-from gymact.gyms.cloud_topology_gym import CloudTopologyProvider, CLOUD_TOPOLOGY_CAPABILITIES
-from gymact.gyms.cloudsim import CloudSimProvider, CLOUDSIM_CAPABILITIES
-from gymact.gyms.codebase import CodebaseProvider, CODEBASE_CAPABILITIES
-from gymact.gyms.commerce_dfcm_gym import CommerceDfcmProvider, COMMERCE_DFCM_CAPABILITIES
-from gymact.gyms.dev_portfolio import DevPortfolioProvider, DEV_PORTFOLIO_CAPABILITIES
-from gymact.gyms.discovered import GenericDiscoveredProvider, DISCOVERED_RUN_CAPABILITY
-from gymact.gyms.enterprise_company import EnterpriseCompanyProvider, ENTERPRISE_COMPANY_CAPABILITIES
-from gymact.local_providers import FilesystemProvider, FILESYSTEM_CAPABILITIES
-from gymact.gyms.ggen import GgenProvider, GGEN_CAPABILITIES
-from gymact.gyms.ggen_legacy import GgenLegacyVerifierProvider, GGEN_LEGACY_CAPABILITIES
-from gymact.local_providers import GitProvider, GIT_CAPABILITIES
-from gymact.network_providers import HTTPJSONProvider, HTTP_JSON_CAPABILITIES
-from gymact.gyms.k8s_resource_gym import K8sResourceProvider, K8S_RESOURCE_CAPABILITIES
-from gymact.gyms.kubernetes_reconciliation import KubernetesReconciliationProvider, KUBERNETES_RECONCILIATION_CAPABILITIES
-from gymact.gyms.lock_and_key import LockAndKeyProvider, LOCK_AND_KEY_CAPABILITIES
-from gymact.gyms.mcp_client_session import McpClientSessionProvider, MCP_LIST_TOOLS_CAPABILITY, MCP_CALL_TOOL_CAPABILITY
-from gymact.providers import MemoryProvider, MEMORY_CAPABILITIES
-from gymact.gyms.multicloud import MulticloudProvider, CAPABILITY_REGISTRY as MULTICLOUD_CAPABILITIES
-from gymact.gyms.platform_console_provider import PlatformConsoleProvider, PLATFORM_CONSOLE_CAPABILITIES
-from gymact.gyms.resource_flow import ResourceFlowProvider, RESOURCE_FLOW_CAPABILITIES
-from gymact.local_providers import SQLiteProvider, SQLITE_CAPABILITIES
-from gymact.gyms.sregym_ontology import SregymOntologyProvider, SREGYM_CAPABILITIES
-from gymact.gyms.swegym import SWEGymProvider, SWEGYM_EVALUATE_CAPABILITY
-from gymact.gyms.switchboard import SwitchboardProvider, SWITCHBOARD_CAPABILITIES
-from gymact.gyms.terraform_docker_apply import TerraformDockerApplyProvider, TERRAFORM_DOCKER_APPLY_CAPABILITIES
-from gymact.gyms.terraform_plan import TerraformPlanProvider, TERRAFORM_PLAN_CAPABILITIES
+from gymact.gyms.chatman_state_gym import CHATMAN_STATE_CAPABILITIES, ChatmanStateProvider
+from gymact.gyms.cloud_topology_gym import CLOUD_TOPOLOGY_CAPABILITIES, CloudTopologyProvider
+from gymact.gyms.cloudsim import CLOUDSIM_CAPABILITIES, CloudSimProvider
+from gymact.gyms.codebase import CODEBASE_CAPABILITIES, CodebaseProvider
+from gymact.gyms.commerce_dfcm_gym import COMMERCE_DFCM_CAPABILITIES, CommerceDfcmProvider
+from gymact.gyms.dev_portfolio import DEV_PORTFOLIO_CAPABILITIES, DevPortfolioProvider
+from gymact.gyms.discovered import DISCOVERED_RUN_CAPABILITY, GenericDiscoveredProvider
+from gymact.gyms.enterprise_company import (
+    ENTERPRISE_COMPANY_CAPABILITIES,
+    EnterpriseCompanyProvider,
+)
+from gymact.gyms.ggen import GGEN_CAPABILITIES, GgenProvider
+from gymact.gyms.ggen_legacy import GGEN_LEGACY_CAPABILITIES, GgenLegacyVerifierProvider
+from gymact.gyms.k8s_resource_gym import K8S_RESOURCE_CAPABILITIES, K8sResourceProvider
+from gymact.gyms.kubernetes_reconciliation import (
+    KUBERNETES_RECONCILIATION_CAPABILITIES,
+    KubernetesReconciliationProvider,
+)
+from gymact.gyms.lock_and_key import LOCK_AND_KEY_CAPABILITIES, LockAndKeyProvider
+from gymact.gyms.mcp_client_session import (
+    MCP_CALL_TOOL_CAPABILITY,
+    MCP_LIST_TOOLS_CAPABILITY,
+    McpClientSessionProvider,
+)
+from gymact.gyms.multicloud import (
+    CAPABILITY_REGISTRY as MULTICLOUD_CAPABILITIES,
+)
+from gymact.gyms.multicloud import (
+    MulticloudProvider,
+)
+from gymact.gyms.platform_console_provider import (
+    PLATFORM_CONSOLE_CAPABILITIES,
+    PlatformConsoleProvider,
+)
+from gymact.gyms.resource_flow import RESOURCE_FLOW_CAPABILITIES, ResourceFlowProvider
+from gymact.gyms.sregym_ontology import SREGYM_CAPABILITIES, SregymOntologyProvider
+from gymact.gyms.swegym import SWEGYM_EVALUATE_CAPABILITY, SWEGymProvider
+from gymact.gyms.switchboard import SWITCHBOARD_CAPABILITIES, SwitchboardProvider
+from gymact.gyms.terraform_docker_apply import (
+    TERRAFORM_DOCKER_APPLY_CAPABILITIES,
+    TerraformDockerApplyProvider,
+)
+from gymact.gyms.terraform_plan import TERRAFORM_PLAN_CAPABILITIES, TerraformPlanProvider
+from gymact.local_providers import (
+    FILESYSTEM_CAPABILITIES,
+    GIT_CAPABILITIES,
+    SQLITE_CAPABILITIES,
+    FilesystemProvider,
+    GitProvider,
+    SQLiteProvider,
+)
+from gymact.network_providers import HTTP_JSON_CAPABILITIES, HTTPJSONProvider
+from gymact.providers import MEMORY_CAPABILITIES, MemoryProvider
 
 # NOT registered here (deliberately, not an oversight):
 #   - gymact.gyms.browsergym.BrowserGymProvider: top-level `import browsergym.core` / `import gymnasium`, both gated behind the optional "gyms" extra -- importing this module with only the base install raises ImportError, so registering it would break a clean `import gymact.registry`.
@@ -63,9 +89,15 @@ _BUILTINS = {
     "git": (GitProvider, GIT_CAPABILITIES),
     "http-json": (HTTPJSONProvider, HTTP_JSON_CAPABILITIES),
     "k8s-resource": (K8sResourceProvider, K8S_RESOURCE_CAPABILITIES),
-    "kubernetes-reconciliation": (KubernetesReconciliationProvider, KUBERNETES_RECONCILIATION_CAPABILITIES),
+    "kubernetes-reconciliation": (
+        KubernetesReconciliationProvider,
+        KUBERNETES_RECONCILIATION_CAPABILITIES,
+    ),
     "lock-and-key": (LockAndKeyProvider, LOCK_AND_KEY_CAPABILITIES),
-    "mcp-client-session": (McpClientSessionProvider, (MCP_LIST_TOOLS_CAPABILITY, MCP_CALL_TOOL_CAPABILITY)),
+    "mcp-client-session": (
+        McpClientSessionProvider,
+        (MCP_LIST_TOOLS_CAPABILITY, MCP_CALL_TOOL_CAPABILITY),
+    ),
     "memory": (MemoryProvider, MEMORY_CAPABILITIES),
     "multicloud": (MulticloudProvider, MULTICLOUD_CAPABILITIES),
     "platform-console": (PlatformConsoleProvider, PLATFORM_CONSOLE_CAPABILITIES),

@@ -65,9 +65,7 @@ async def test_wip_limit_refuses_instead_of_queuing() -> None:
         CallableGgenManufacturer({"architect": manufacture}),
     )
 
-    first = asyncio.create_task(
-        runtime.invoke("architect", observation={"state": "ready"})
-    )
+    first = asyncio.create_task(runtime.invoke("architect", observation={"state": "ready"}))
     await started.wait()
 
     second = await runtime.invoke("architect", observation={"state": "ready"})

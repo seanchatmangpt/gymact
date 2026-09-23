@@ -151,7 +151,9 @@ def load_aws_topology(*, partition: str = "aws") -> CloudTopology:
         CloudRegion(provider="aws", code=code, description=body.get("description"))
         for code, body in real_partition.get("regions", {}).items()
     )
-    services = tuple(CloudService(provider="aws", name=name) for name in real_partition.get("services", {}))
+    services = tuple(
+        CloudService(provider="aws", name=name) for name in real_partition.get("services", {})
+    )
     # Corrected 2026-08-12, found by a real, independent validator
     # (`cloud_topology_validation.py`) re-deriving these counts a second
     # way and diffing: a service's real `endpoints` dict in botocore's raw
@@ -170,7 +172,7 @@ def load_aws_topology(*, partition: str = "aws") -> CloudTopology:
     # (endpoint variants), not thrown away as noise.
     real_region_codes = frozenset(real_partition.get("regions", {}).keys())
     availability: dict[str, tuple[str, ...]] = {
-        name: tuple(sorted(k for k in body.get("endpoints", {}).keys() if k in real_region_codes))
+        name: tuple(sorted(k for k in body.get("endpoints", {}) if k in real_region_codes))
         for name, body in real_partition.get("services", {}).items()
     }
     return CloudTopology(
@@ -200,7 +202,9 @@ def _load_snapshot_topology(
         )
     raw = json.loads(path.read_text())
     regions = tuple(CloudRegion(provider=provider, code=code) for code in raw.get(region_key, []))
-    services = tuple(CloudService(provider=provider, name=name) for name in raw.get(service_key, []))
+    services = tuple(
+        CloudService(provider=provider, name=name) for name in raw.get(service_key, [])
+    )
     region_map: dict[str, list[str]] = raw.get(region_map_key, {})
     availability: dict[str, tuple[str, ...]] = {}
     for region_code, names in region_map.items():
@@ -260,4 +264,6 @@ def load_topology(provider: str) -> CloudTopology:
         return load_azure_topology()
     if provider == "gcp":
         return load_gcp_topology()
-    raise ValueError(f"unknown cloud provider {provider!r}; real providers supported: {_REAL_PROVIDERS}")
+    raise ValueError(
+        f"unknown cloud provider {provider!r}; real providers supported: {_REAL_PROVIDERS}"
+    )

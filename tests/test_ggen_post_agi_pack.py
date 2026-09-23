@@ -55,5 +55,11 @@ def test_post_agi_graph_remains_public_vocabulary_abox() -> None:
         URIRef("http://www.w3.org/2002/07/owl#DatatypeProperty"),
         URIRef("http://www.w3.org/2000/01/rdf-schema#Class"),
     }
-    local_subjects = {subject for subject in graph.subjects() if str(subject).startswith("urn:gymact:")}
-    assert not any((subject, RDF.type, forbidden) in graph for subject in local_subjects for forbidden in forbidden_types)
+    local_subjects = {
+        subject for subject in graph.subjects() if str(subject).startswith("urn:gymact:")
+    }
+    assert not any(
+        (subject, RDF.type, forbidden) in graph
+        for subject in local_subjects
+        for forbidden in forbidden_types
+    )

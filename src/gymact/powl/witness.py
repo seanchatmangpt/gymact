@@ -23,8 +23,8 @@ from __future__ import annotations
 
 import hashlib
 import random
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator
 
 from gymact.powl.algebra import (
     Atom,
@@ -38,10 +38,10 @@ from gymact.powl.algebra import (
 from gymact.powl.refusals import PowlError, PowlRefusal
 
 __all__ = [
-    "sample_linearizations",
-    "count_linearizations",
     "WitnessReport",
+    "count_linearizations",
     "rng_for_seed",
+    "sample_linearizations",
 ]
 
 #: Cap on steps in a random choice-graph walk; cyclic choice graphs are legal.
@@ -115,9 +115,7 @@ def _one_linearization(node: PowlNode, rng: random.Random) -> tuple[str, ...]:
     )
 
 
-def sample_linearizations(
-    node: PowlNode, *, samples: int, seed: str
-) -> Iterator[tuple[str, ...]]:
+def sample_linearizations(node: PowlNode, *, samples: int, seed: str) -> Iterator[tuple[str, ...]]:
     """Yield ``samples`` linearizations of ``node``, deterministically seeded.
 
     Samples are drawn with replacement; duplicates are expected and are not

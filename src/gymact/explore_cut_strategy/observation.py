@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+
 from .epoch import ProducerEpoch
+
 
 class Outcome(str, Enum):
     PASS = "PASS"
@@ -9,6 +11,7 @@ class Outcome(str, Enum):
     PENDING = "PENDING"
     UNKNOWN = "UNKNOWN"
     UNSUPPORTED = "UNSUPPORTED"
+
 
 @dataclass(frozen=True)
 class Observation:

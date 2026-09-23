@@ -1,6 +1,6 @@
 import pytest
 
-from gymact.explore_real_certificate_chain.methodology import MethodCoverage, REQUIRED
+from gymact.explore_real_certificate_chain.methodology import REQUIRED, MethodCoverage
 from gymact.explore_real_certificate_chain.pareto import frontier
 from gymact.explore_real_certificate_chain.runtime import RuntimeProjection, correspond
 from gymact.explore_real_certificate_chain.selector import Candidate

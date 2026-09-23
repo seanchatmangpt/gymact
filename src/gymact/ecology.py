@@ -5,6 +5,7 @@ The number of graph nodes grows with the sum of alternatives while the number of
 possible paths represents their product. This is the DCM substrate for planner,
 provider, parameterization, effector, verifier and controller combinations.
 """
+
 from __future__ import annotations
 
 from typing import Any, Self
@@ -12,7 +13,6 @@ from typing import Any, Self
 from pydantic import Field, model_validator
 
 from gymact.action_contract import ReversalClass
-from gymact.consequence_binding import ConsequenceBinding, consequence_binding_attributes
 from gymact.combinatorial import (
     DecisionPhase,
     Factor,
@@ -24,6 +24,7 @@ from gymact.combinatorial import (
     PossibilityObject,
     PossibilityObjectKind,
 )
+from gymact.consequence_binding import ConsequenceBinding, consequence_binding_attributes
 from gymact.evidence import digest
 from gymact.models import FrozenModel, Standing
 

@@ -1,6 +1,7 @@
 from fractions import Fraction
-from .primal import PrimalResult
+
 from .dual import DualResult
+from .primal import PrimalResult
 
 
 def strong_duality(primal: PrimalResult, dual: DualResult) -> Fraction:

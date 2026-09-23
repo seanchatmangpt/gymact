@@ -9,8 +9,8 @@ or downloading source blobs.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 import json
+from collections.abc import Callable
 
 from blake3 import blake3
 
@@ -84,15 +84,12 @@ def derive_googleapis_family_observations(
     """Project six required semantic families from one exact tree receipt."""
 
     def service_config(path: str) -> bool:
-        return (
-            path in {
-                "google/api/service.proto",
-                "google/api/config_change.proto",
-                "google/api/backend.proto",
-                "google/api/http.proto",
-            }
-            or path.endswith((".yaml", ".yml", ".json"))
-        )
+        return path in {
+            "google/api/service.proto",
+            "google/api/config_change.proto",
+            "google/api/backend.proto",
+            "google/api/http.proto",
+        } or path.endswith((".yaml", ".yml", ".json"))
 
     def asset_inventory(path: str) -> bool:
         return path.startswith("google/cloud/asset/") or "/asset/" in path
@@ -101,10 +98,16 @@ def derive_googleapis_family_observations(
         return path.startswith("google/cloud/audit/") or "audit_log" in path or "/audit/" in path
 
     def iam(path: str) -> bool:
-        return path.startswith("google/iam/") or "/iam/" in path or path.endswith("/iam_policy.proto")
+        return (
+            path.startswith("google/iam/") or "/iam/" in path or path.endswith("/iam_policy.proto")
+        )
 
     def quota(path: str) -> bool:
-        return "quota" in path or path.startswith("google/api/serviceusage/") or "/serviceusage/" in path
+        return (
+            "quota" in path
+            or path.startswith("google/api/serviceusage/")
+            or "/serviceusage/" in path
+        )
 
     def lro(path: str) -> bool:
         return path.startswith("google/longrunning/") or "longrunning" in path

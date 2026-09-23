@@ -15,7 +15,7 @@ class Subject:
     semantic: str
 
     @classmethod
-    def admit(cls, repo: str, sha: str, semantic: str) -> "Subject":
+    def admit(cls, repo: str, sha: str, semantic: str) -> Subject:
         if "/" not in repo or not _SHA.fullmatch(sha) or not semantic.strip():
             raise DualityRefusal("INVALID_SUBJECT", f"{repo}@{sha}#{semantic}")
         return cls(repo, sha, semantic)

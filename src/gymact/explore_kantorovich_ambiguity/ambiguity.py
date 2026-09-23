@@ -9,13 +9,19 @@ from .kantorovich import wasserstein1
 from .measure import FiniteMeasure, common_support, q
 from .refusal import Refused
 
+
 class Kind(str, Enum):
     WASSERSTEIN1 = "wasserstein1"
     CHI_SQUARE = "chi_square"
     TOTAL_VARIATION = "total_variation"
 
+
 def total_variation(a: FiniteMeasure, b: FiniteMeasure) -> Fraction:
-    return sum((abs(a.probability(k) - b.probability(k)) for k in common_support(a, b)), Fraction()) / 2
+    return (
+        sum((abs(a.probability(k) - b.probability(k)) for k in common_support(a, b)), Fraction())
+        / 2
+    )
+
 
 def chi_square(candidate: FiniteMeasure, center: FiniteMeasure) -> Fraction:
     value = Fraction()
@@ -27,6 +33,7 @@ def chi_square(candidate: FiniteMeasure, center: FiniteMeasure) -> Fraction:
             value += (p - qv) ** 2 / qv
     return value
 
+
 @dataclass(frozen=True)
 class AmbiguitySet:
     center: FiniteMeasure
@@ -35,7 +42,13 @@ class AmbiguitySet:
     metric: GroundMetric | None = None
 
     @classmethod
-    def create(cls, center: FiniteMeasure, kind: Kind, radius: int | str | Fraction, metric: GroundMetric | None = None) -> "AmbiguitySet":
+    def create(
+        cls,
+        center: FiniteMeasure,
+        kind: Kind,
+        radius: int | str | Fraction,
+        metric: GroundMetric | None = None,
+    ) -> AmbiguitySet:
         r = q(radius)
         if r < 0:
             raise Refused("NEGATIVE_AMBIGUITY_RADIUS")

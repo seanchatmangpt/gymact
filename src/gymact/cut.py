@@ -1,4 +1,5 @@
 """Explicit irreversible cut from maximal possibility closure into BRCE."""
+
 from __future__ import annotations
 
 from typing import Self

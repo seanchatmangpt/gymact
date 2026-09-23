@@ -25,8 +25,8 @@ named_standing_skip(
     "endpoints.json) requires `uv sync --extra gyms`",
 )
 
-from gymact.gyms.cloud_topology import CloudRegion, CloudService, CloudTopology  # noqa: E402
-from gymact.gyms.cloud_topology_validation import (  # noqa: E402
+from gymact.gyms.cloud_topology import CloudRegion, CloudService, CloudTopology
+from gymact.gyms.cloud_topology_validation import (
     ValidationResult,
     _structural_problems,
     validate_all_topologies,

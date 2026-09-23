@@ -19,7 +19,9 @@ class TightComponents:
     count: int
 
 
-def derive_tight_components(plan: TransportPlan, source_support: set[str], target_support: set[str], metric: GroundMetric) -> TightComponents:
+def derive_tight_components(
+    plan: TransportPlan, source_support: set[str], target_support: set[str], metric: GroundMetric
+) -> TightComponents:
     source_neighbors = {x: [] for x in source_support}
     target_neighbors = {y: [] for y in target_support}
     for (x, y), amount in plan.flow.items():

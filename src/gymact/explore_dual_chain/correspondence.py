@@ -2,6 +2,7 @@ from .certificate import DualCertificate
 from .engine_identity import require_independent
 from .refusal import DualChainRefusal
 
+
 def admit_certificate(cert: DualCertificate) -> str:
     require_independent(cert.primal_engine, cert.verifier_engine)
     if not cert.feasible:

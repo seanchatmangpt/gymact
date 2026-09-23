@@ -13,9 +13,7 @@ CAPABILITY = "urn:gymact:memory:capability:set"
 
 @pytest.mark.asyncio
 async def test_private_production_do_port_refuses_wrong_broker_seal() -> None:
-    runtime = ProductionGymAct(
-        authority_resolver=AllowListAuthorityResolver({AUTHORITY})
-    )
+    runtime = ProductionGymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
     runtime.register_provider(MemoryProvider())
     materialized = await runtime.materialize(
         MaterializationIntent(

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from itertools import pairwise
 
 from .refusal import Refused
 from .state import Obligation
@@ -26,7 +27,7 @@ def admit_trajectory(epochs: tuple[ClosureEpoch, ...]) -> tuple[ClosureEpoch, ..
     if len(epochs) < 2:
         raise Refused("INSUFFICIENT_TRAJECTORY", str(len(epochs)))
     universe = {item.key for item in epochs[0].obligations}
-    for previous, current in zip(epochs, epochs[1:], strict=True):
+    for previous, current in pairwise(epochs):
         if current.subject.repo != previous.subject.repo:
             raise Refused("FOREIGN_SUBJECT", current.subject.repo)
         if current.subject.generation != previous.subject.generation + 1:
@@ -39,4 +40,4 @@ def admit_trajectory(epochs: tuple[ClosureEpoch, ...]) -> tuple[ClosureEpoch, ..
 
 
 def now_utc() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)

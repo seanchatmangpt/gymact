@@ -29,14 +29,14 @@ named_standing_skip(
     reason="the 'inspect_ai' package is not importable in this environment",
 )
 
-from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent  # noqa: E402
-from gymact.gyms.inspect_evals import (  # noqa: E402
+from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent
+from gymact.gyms.inspect_evals import (
     INSPECT_SOLVE_SAMPLE_CAPABILITY,
     InspectEvalsProvider,
 )
-from gymact.models import ActuationIntent, Operation, Standing  # noqa: E402
-from gymact.ocel import receipts_to_ocel, validate_ocel_log  # noqa: E402
-from gymact.process import ConformanceChecker  # noqa: E402
+from gymact.models import ActuationIntent, Operation, Standing
+from gymact.ocel import receipts_to_ocel, validate_ocel_log
+from gymact.process import ConformanceChecker
 
 SOLVE_SAMPLE = "urn:gymact:inspect-evals:capability:solve_sample"
 # inspect_evals.py's requires_authority now defaults to True (a real DO

@@ -24,8 +24,8 @@ named_standing_skip(
     "endpoints.json) requires `uv sync --extra gyms`",
 )
 
-from gymact import GymAct, MaterializationIntent  # noqa: E402
-from gymact.gyms.cloud_topology_gym import CloudTopologyProvider  # noqa: E402
+from gymact import GymAct, MaterializationIntent
+from gymact.gyms.cloud_topology_gym import CloudTopologyProvider
 
 
 @pytest.mark.asyncio

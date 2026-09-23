@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from rdflib import Graph, RDF, URIRef
+from rdflib import RDF, Graph, URIRef
 from rdflib.namespace import DCTERMS, PROV, SOSA
 
 ROOT = Path(__file__).resolve().parent.parent

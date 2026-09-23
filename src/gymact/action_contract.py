@@ -314,8 +314,7 @@ def admit_execution(
     if prepared.subject.provider_ref != grant.subject.provider_ref:
         return AdmissionResult(admitted=False, reason=RefusalCode.IDENTITY_REFUSED.value)
     if grant.scope_refs and not (
-        {prepared.subject.semantic_id, prepared.subject.provider_ref}
-        & set(grant.scope_refs)
+        {prepared.subject.semantic_id, prepared.subject.provider_ref} & set(grant.scope_refs)
     ):
         return AdmissionResult(admitted=False, reason=RefusalCode.AUTHORITY_REFUSED.value)
     if (

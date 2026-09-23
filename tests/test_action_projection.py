@@ -62,11 +62,7 @@ def test_action_definition_is_single_digest_bound_projection_source() -> None:
     assert first.do_authority is False
 
     changed = action.model_copy(
-        update={
-            "verification": action.verification.model_copy(
-                update={"expected": {"value": 2}}
-            )
-        }
+        update={"verification": action.verification.model_copy(update={"expected": {"value": 2}})}
     )
     assert CanonicalActionContract.from_action(changed).contract_digest != first.contract_digest
 

@@ -23,7 +23,13 @@ class DualityCertificate:
         return self.primal - self.dual
 
 
-def certify(plan: TransportPlan, potential: DualPotential, source: FiniteMeasure, target: FiniteMeasure, metric: GroundMetric) -> DualityCertificate:
+def certify(
+    plan: TransportPlan,
+    potential: DualPotential,
+    source: FiniteMeasure,
+    target: FiniteMeasure,
+    metric: GroundMetric,
+) -> DualityCertificate:
     plan.admit(source, target)
     potential.admit(set(source.support), set(target.support), metric)
     admit_complementary_slackness(plan, potential, metric)

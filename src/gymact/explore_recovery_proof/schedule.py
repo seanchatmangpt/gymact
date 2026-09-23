@@ -23,8 +23,7 @@ def deterministic_interleaving(
     ]
     rng.shuffle(operations)
     return tuple(
-        ScheduleStep(index, actor, operation)
-        for index, (actor, operation) in enumerate(operations)
+        ScheduleStep(index, actor, operation) for index, (actor, operation) in enumerate(operations)
     )
 
 

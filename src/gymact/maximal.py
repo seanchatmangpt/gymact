@@ -5,9 +5,10 @@ only morphisms whose reversibility is mechanically admitted. Unknown or irrevers
 non-DO edges become explicit frontier/fence evidence rather than silently entering the
 reversible closure.
 """
+
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from gymact.action_contract import ReversalClass
 from gymact.combinatorial import (

@@ -54,7 +54,9 @@ class K8sResourceKind:
     fetched_at: str
 
 
-def load_k8s_resource_kinds(*, snapshot_path: Path = _K8S_SNAPSHOT_PATH) -> tuple[K8sResourceKind, ...]:
+def load_k8s_resource_kinds(
+    *, snapshot_path: Path = _K8S_SNAPSHOT_PATH
+) -> tuple[K8sResourceKind, ...]:
     """Real, bundled-snapshot-backed load of the 6 in-scope Kubernetes
     resource kinds. Raises `RuntimeError` if the snapshot is missing --
     never fabricates resource-kind data as a fallback."""

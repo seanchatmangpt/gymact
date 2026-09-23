@@ -17,7 +17,10 @@ def test_read_probe_executes_real_http_transport_and_never_receipts_token() -> N
 
     def handler(request: httpx.Request) -> httpx.Response:
         seen["authorization"] = request.headers["authorization"]
-        assert str(request.url) == "https://compute.googleapis.com/compute/v1/projects/p/zones/z/instances/i"
+        assert (
+            str(request.url)
+            == "https://compute.googleapis.com/compute/v1/projects/p/zones/z/instances/i"
+        )
         return httpx.Response(
             200,
             headers={"content-type": "application/json", "etag": "abc"},

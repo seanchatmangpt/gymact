@@ -5,4 +5,15 @@ from .identity import Subject
 from .strategies import RolloverStrategy
 from .witness import Witness, WitnessKind
 
-__all__ = ["Admission", "InvalidationEpoch", "Qualification", "RolloverStrategy", "Subject", "Witness", "WitnessKind", "admit", "qualify", "require_do"]
+__all__ = [
+    "Admission",
+    "InvalidationEpoch",
+    "Qualification",
+    "RolloverStrategy",
+    "Subject",
+    "Witness",
+    "WitnessKind",
+    "admit",
+    "qualify",
+    "require_do",
+]

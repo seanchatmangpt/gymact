@@ -33,13 +33,13 @@ named_standing_skip(
     "endpoints.json) requires `uv sync --extra gyms`",
 )
 
-from gymact.gyms.cloud_topology import (  # noqa: E402
+from gymact.gyms.cloud_topology import (
     load_aws_topology,
     load_azure_topology,
     load_gcp_topology,
     load_topology,
 )
-from gymact.gyms.cloud_topology_gym import (  # noqa: E402
+from gymact.gyms.cloud_topology_gym import (
     _CAPABILITY_BY_BINDING,
     CloudTopologyEnvironment,
     CloudTopologyProvider,

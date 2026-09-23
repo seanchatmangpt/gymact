@@ -1,4 +1,5 @@
 """Machine-checkable 80/20 ERRC innovation ledger for GymAct v26.8.7."""
+
 from __future__ import annotations
 
 import json

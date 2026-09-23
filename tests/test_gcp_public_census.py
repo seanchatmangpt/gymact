@@ -222,21 +222,21 @@ def test_exhausted_transient_discovery_is_receipted_partial_not_alive() -> None:
 
 
 def test_cloud_docs_sitemap_index_closes_over_every_child() -> None:
-    root = b'''<?xml version="1.0"?>
+    root = b"""<?xml version="1.0"?>
     <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
       <sitemap><loc>https://cloud.google.com/sitemap-a.xml</loc></sitemap>
       <sitemap><loc>https://cloud.google.com/sitemap-b.xml</loc></sitemap>
-    </sitemapindex>'''
-    first = b'''<?xml version="1.0"?>
+    </sitemapindex>"""
+    first = b"""<?xml version="1.0"?>
     <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
       <url><loc>https://cloud.google.com/a</loc><lastmod>2026-08-17</lastmod></url>
       <url><loc>https://cloud.google.com/shared</loc><lastmod>2026-08-17</lastmod></url>
-    </urlset>'''
-    second = b'''<?xml version="1.0"?>
+    </urlset>"""
+    second = b"""<?xml version="1.0"?>
     <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
       <url><loc>https://cloud.google.com/b</loc></url>
       <url><loc>https://cloud.google.com/shared</loc><lastmod>2026-08-18</lastmod></url>
-    </urlset>'''
+    </urlset>"""
 
     def handler(request: httpx.Request) -> httpx.Response:
         url = str(request.url)

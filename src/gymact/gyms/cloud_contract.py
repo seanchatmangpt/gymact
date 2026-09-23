@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any
 
 import blake3
 import rfc8785
@@ -121,9 +122,7 @@ def _path_payload(path: JsonPath) -> list[str | int]:
 
 def _conditional_rule_payload(rule: CloudConditionalRequiredPathRule) -> dict[str, Any]:
     return {
-        "guard_paths": [
-            _path_payload(path) for path in sorted(rule.guard_paths, key=repr)
-        ],
+        "guard_paths": [_path_payload(path) for path in sorted(rule.guard_paths, key=repr)],
         "path": _path_payload(rule.path),
     }
 
@@ -343,9 +342,7 @@ def _validate_required_paths(
     for path in paths:
         found, _ = _lookup_path(step, path)
         if not found:
-            differences.append(
-                FidelityDifference(index, path, f"{side}_{reason}", "present", None)
-            )
+            differences.append(FidelityDifference(index, path, f"{side}_{reason}", "present", None))
 
 
 def _validate_conditional_required_paths(
@@ -536,9 +533,7 @@ def compare_cloud_traces_under_contract(
 
     reference_steps = tuple(reference)
     twin_steps = tuple(twin)
-    reference_contract = validate_cloud_trace_contract(
-        reference_steps, profile, side="reference"
-    )
+    reference_contract = validate_cloud_trace_contract(reference_steps, profile, side="reference")
     twin_contract = validate_cloud_trace_contract(twin_steps, profile, side="twin")
     fidelity = compare_cloud_traces(reference_steps, twin_steps, **comparison_kwargs)
     differences = (

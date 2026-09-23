@@ -1,4 +1,5 @@
 """Differential multi-oracle verification over explicitly independent access paths."""
+
 from __future__ import annotations
 
 from collections import Counter

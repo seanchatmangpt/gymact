@@ -35,9 +35,7 @@ def _create_bucket_contract() -> CloudContractProfile:
                     ("response", "Location"),
                     ("response", "ResponseMetadata", "HTTPStatusCode"),
                 ),
-                string_prefix_rules=(
-                    CloudValuePrefixRule(("response", "Location"), "/"),
-                ),
+                string_prefix_rules=(CloudValuePrefixRule(("response", "Location"), "/"),),
                 allowed_status_codes=(200,),
                 allowed_error_codes=(None,),
             ),
@@ -136,10 +134,7 @@ def test_same_non_provider_resource_shape_on_both_sides_is_refused() -> None:
     result = compare_cloud_traces_under_contract(malformed, malformed, profile)
 
     assert result.equivalent is False
-    assert sum(
-        diff.reason.endswith("contract_prefix_mismatch")
-        for diff in result.differences
-    ) == 2
+    assert sum(diff.reason.endswith("contract_prefix_mismatch") for diff in result.differences) == 2
 
 
 def test_unknown_operation_is_refused_instead_of_inferred_from_reference() -> None:
@@ -216,10 +211,7 @@ def test_tampered_source_bytes_fail_before_equivalence_can_be_claimed() -> None:
     )
 
     assert result.equivalent is False
-    assert any(
-        diff.reason == "contract_source_digest_mismatch"
-        for diff in result.differences
-    )
+    assert any(diff.reason == "contract_source_digest_mismatch" for diff in result.differences)
 
 
 def test_source_identity_and_digest_are_part_of_evidence_receipt_replay() -> None:

@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from fractions import Fraction
-from .subject import Subject
+
 from .engine_identity import EngineIdentity
+from .subject import Subject
+
 
 @dataclass(frozen=True)
 class DualCertificate:

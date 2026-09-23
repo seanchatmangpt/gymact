@@ -133,9 +133,7 @@ async def test_read_file_refuses_path_traversal_outside_worktree() -> None:
 
 async def test_run_test_executes_the_real_passing_pytest_suite() -> None:
     gym = _authorized_gym()
-    m = await gym.materialize(
-        MaterializationIntent(provider="codebase", config=_seed_config())
-    )
+    m = await gym.materialize(MaterializationIntent(provider="codebase", config=_seed_config()))
     episode_id = m.episode.episode_id
     try:
         result = await gym.act(
@@ -151,9 +149,7 @@ async def test_run_test_executes_the_real_passing_pytest_suite() -> None:
 
 async def test_run_build_py_compiles_the_real_source_files() -> None:
     gym = _authorized_gym()
-    m = await gym.materialize(
-        MaterializationIntent(provider="codebase", config=_seed_config())
-    )
+    m = await gym.materialize(MaterializationIntent(provider="codebase", config=_seed_config()))
     episode_id = m.episode.episode_id
     try:
         result = await gym.act(
@@ -169,9 +165,7 @@ async def test_run_build_py_compiles_the_real_source_files() -> None:
 
 async def test_apply_patch_git_commit_and_diff_flow_mutates_real_files_and_history() -> None:
     gym = _authorized_gym()
-    m = await gym.materialize(
-        MaterializationIntent(provider="codebase", config=_seed_config())
-    )
+    m = await gym.materialize(MaterializationIntent(provider="codebase", config=_seed_config()))
     episode_id = m.episode.episode_id
     env = gym._episodes[episode_id].environment
     try:
@@ -240,14 +234,10 @@ async def test_apply_patch_git_commit_and_diff_flow_mutates_real_files_and_histo
 async def test_do_capabilities_are_refused_without_authority() -> None:
     gym = GymAct()  # DenyAuthorityResolver default
     gym.register_provider(CodebaseProvider())
-    m = await gym.materialize(
-        MaterializationIntent(provider="codebase", config=_seed_config())
-    )
+    m = await gym.materialize(MaterializationIntent(provider="codebase", config=_seed_config()))
     episode_id = m.episode.episode_id
     try:
-        result = await gym.act(
-            ActuationIntent(episode_id=episode_id, capability=RUN_TEST)
-        )
+        result = await gym.act(ActuationIntent(episode_id=episode_id, capability=RUN_TEST))
         assert result.accepted is False
         assert result.standing == Standing.REFUSED
     finally:

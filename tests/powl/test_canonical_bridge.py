@@ -38,7 +38,7 @@ powl_execution = pytest.importorskip(
     ),
 )
 
-from gymact.powl import canonical_bridge  # noqa: E402
+from gymact.powl import canonical_bridge
 
 
 def test_bridge_reexports_are_the_real_powl_execution_objects() -> None:

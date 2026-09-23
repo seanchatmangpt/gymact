@@ -1,4 +1,5 @@
 """Production POWL -> BRCE -> provider -> verification integration crown."""
+
 from __future__ import annotations
 
 import pytest
@@ -136,8 +137,12 @@ async def test_real_powl_replay_is_brce_exclusive_and_crowns_only_verified_trans
 
     assert [transition.standing for transition in transitions] == [Standing.ALIVE, Standing.ALIVE]
     assert all(transition.verification is not None for transition in transitions)
-    assert all(transition.verification.passed for transition in transitions if transition.verification)
+    assert all(
+        transition.verification.passed for transition in transitions if transition.verification
+    )
     assert all(transition.receipt.verified is True for transition in transitions)
-    assert all(transition.receipt.principal == "urn:gymact:test:principal" for transition in transitions)
+    assert all(
+        transition.receipt.principal == "urn:gymact:test:principal" for transition in transitions
+    )
     assert (await runtime.observe(episode_id)).state == {"counter": 15}
     assert runtime.verify_evidence_chain()

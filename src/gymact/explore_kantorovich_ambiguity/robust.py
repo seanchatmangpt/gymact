@@ -1,19 +1,21 @@
 from __future__ import annotations
 
 import itertools
+from collections.abc import Mapping
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import Mapping
 
 from .ambiguity import AmbiguitySet
 from .measure import FiniteMeasure
 from .refusal import Refused
+
 
 @dataclass(frozen=True)
 class WorstCase:
     value: Fraction
     witness: FiniteMeasure
     evaluated: int
+
 
 def simplex_lattice(points: tuple[str, ...], denominator: int) -> tuple[FiniteMeasure, ...]:
     if denominator <= 0:
@@ -26,6 +28,7 @@ def simplex_lattice(points: tuple[str, ...], denominator: int) -> tuple[FiniteMe
         counts = tuple(bars[i + 1] - bars[i] - 1 for i in range(len(points)))
         out.append(FiniteMeasure.from_mapping(dict(zip(points, counts, strict=True))))
     return tuple(out)
+
 
 def worst_case_lattice(
     ambiguity: AmbiguitySet,

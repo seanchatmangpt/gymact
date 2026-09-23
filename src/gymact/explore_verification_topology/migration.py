@@ -1,14 +1,17 @@
 from dataclasses import dataclass
 from pathlib import PurePosixPath
+
 from .collision import collision_classes
 from .inventory import ModuleInventory
 from .policies import CollectorPolicy
+
 
 @dataclass(frozen=True)
 class Edit:
     path: str
     action: str
     value: str
+
 
 @dataclass(frozen=True)
 class MigrationPlan:
@@ -18,6 +21,7 @@ class MigrationPlan:
     @property
     def cost(self) -> int:
         return len(self.edits)
+
 
 def plan_migration(inventory: ModuleInventory, policy: CollectorPolicy) -> MigrationPlan:
     collisions = collision_classes(inventory)

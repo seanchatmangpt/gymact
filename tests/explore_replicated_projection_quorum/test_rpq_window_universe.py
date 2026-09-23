@@ -4,7 +4,6 @@ from fractions import Fraction
 from tests.explore_replicated_projection_quorum.world import NOW, UNIVERSE, WINDOW
 
 
-
 class WindowUniverseCourt(unittest.TestCase):
     def test_half_open_window_and_exact_coverage(self):
         self.assertTrue(WINDOW.contains(NOW))

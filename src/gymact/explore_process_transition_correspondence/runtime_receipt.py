@@ -19,6 +19,8 @@ def admit_runtime_receipt(receipt: RuntimeReceipt, *, require_tls: bool = False)
         raise Refused("REFUSED_RUNTIME_EXIT_FAILURE")
     if require_tls and (receipt.transport != "inet_tls" or not receipt.encrypted):
         raise Refused("REFUSED_TLS_RECEIPT_TRANSPORT_CONTRADICTION")
-    if "tls" in receipt.topology.lower() and (receipt.transport != "inet_tls" or not receipt.encrypted):
+    if "tls" in receipt.topology.lower() and (
+        receipt.transport != "inet_tls" or not receipt.encrypted
+    ):
         raise Refused("REFUSED_TLS_RECEIPT_TRANSPORT_CONTRADICTION")
     return receipt

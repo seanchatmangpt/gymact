@@ -18,7 +18,13 @@ class MigrationDecision:
     disposition: MigrationDisposition
 
 
-def decide(consumer_key: str, from_generation: int, to_generation: int, schema_compatible: bool, producer_healthy: bool) -> MigrationDecision:
+def decide(
+    consumer_key: str,
+    from_generation: int,
+    to_generation: int,
+    schema_compatible: bool,
+    producer_healthy: bool,
+) -> MigrationDecision:
     if to_generation <= from_generation:
         raise ValueError("REFUSED_NON_FORWARD_EPOCH_MIGRATION")
     if not producer_healthy:

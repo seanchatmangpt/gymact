@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import StrEnum
 from fractions import Fraction
-from typing import Iterable
 
 from .refusals import refuse
 

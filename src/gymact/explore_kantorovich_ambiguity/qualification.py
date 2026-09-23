@@ -5,11 +5,13 @@ from fractions import Fraction
 
 from .receipt import Receipt, issue
 
+
 @dataclass(frozen=True)
 class Qualification:
     standing: str
     receipt: Receipt | None
     reasons: tuple[str, ...]
+
 
 def qualify(
     *,

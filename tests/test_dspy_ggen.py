@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from typing import ClassVar
+
 from gymact.dspy_ggen import GgenPredict
 from gymact.ggen_agent import CallableGgenManufacturer, GgenAgentRuntime, GgenAgentSpec
 
 
 class ExampleSignature:
-    input_fields = {"question": object()}
-    output_fields = {"answer": object()}
+    input_fields: ClassVar[dict] = {"question": object()}
+    output_fields: ClassVar[dict] = {"answer": object()}
 
 
 def _runtime() -> GgenAgentRuntime:

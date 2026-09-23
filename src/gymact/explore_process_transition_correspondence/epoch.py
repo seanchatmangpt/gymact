@@ -14,7 +14,7 @@ class SubjectEpoch:
         if self.generation < 0:
             raise Refused("REFUSED_NEGATIVE_GENERATION")
 
-    def successor(self, subject: Subject) -> "SubjectEpoch":
+    def successor(self, subject: Subject) -> SubjectEpoch:
         if subject == self.subject:
             raise Refused("REFUSED_NONADVANCING_SUBJECT")
         return SubjectEpoch(subject, self.generation + 1)

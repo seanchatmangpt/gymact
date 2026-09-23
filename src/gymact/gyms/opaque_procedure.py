@@ -79,9 +79,7 @@ class OpaqueProcedureEnvironment:
             "goal_reached": self._goal_facts <= self._state,
         }
 
-    async def actuate(
-        self, capability: Capability, payload: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def actuate(self, capability: Capability, payload: dict[str, Any]) -> dict[str, Any]:
         self._ensure_open()
         if payload:
             raise ValueError("OPAQUE_ACTION_ACCEPTS_NO_PAYLOAD")
@@ -174,9 +172,7 @@ class OpaqueProcedureProvider:
                     establishes=_as_fact_set(
                         raw.get("establishes", []), f"config.steps[{index}].establishes"
                     ),
-                    removes=_as_fact_set(
-                        raw.get("removes", []), f"config.steps[{index}].removes"
-                    ),
+                    removes=_as_fact_set(raw.get("removes", []), f"config.steps[{index}].removes"),
                 )
             )
         requires_authority = config.get("requires_authority", False)

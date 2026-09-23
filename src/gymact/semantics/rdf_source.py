@@ -34,7 +34,7 @@ class RDFFormat(str, Enum):
     JSON_LD = "json-ld"
 
     @classmethod
-    def from_path(cls, path: Path) -> "RDFFormat":
+    def from_path(cls, path: Path) -> RDFFormat:
         formats = {
             ".ttl": cls.TURTLE,
             ".rdf": cls.RDF_XML,
@@ -76,7 +76,7 @@ class RDFSource:
         source_id: str | None = None,
         source_uri: str | None = None,
         expected_sha256: str | None = None,
-    ) -> "RDFSource":
+    ) -> RDFSource:
         return cls(
             source_id=source_id or path.name,
             source_uri=source_uri or path.resolve().as_uri(),

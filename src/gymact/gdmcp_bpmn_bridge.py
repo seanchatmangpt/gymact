@@ -66,7 +66,9 @@ def compile_program_to_bpmn(program: CompiledGdmcpProgram) -> str:
     nodes: list[str] = []
     flows: list[str] = []
 
-    nodes.append('<bpmn:startEvent id="StartEvent_1"><bpmn:outgoing>Flow_0</bpmn:outgoing></bpmn:startEvent>')
+    nodes.append(
+        '<bpmn:startEvent id="StartEvent_1"><bpmn:outgoing>Flow_0</bpmn:outgoing></bpmn:startEvent>'
+    )
     flows_source = "StartEvent_1"
     for i in range(n):
         task_id = f"Task_step_{i}"
@@ -74,19 +76,25 @@ def compile_program_to_bpmn(program: CompiledGdmcpProgram) -> str:
         out_flow = f"Flow_{i + 1}"
         nodes.append(
             f'<bpmn:serviceTask id="{task_id}" name="Step {i}">'
-            f'<bpmn:extensionElements>'
+            f"<bpmn:extensionElements>"
             f'<spiffworkflow:serviceTaskOperator id="{i}" resultVariable="step_{i}_result">'
-            f'<spiffworkflow:parameters/>'
-            f'</spiffworkflow:serviceTaskOperator>'
-            f'</bpmn:extensionElements>'
-            f'<bpmn:incoming>{in_flow}</bpmn:incoming>'
-            f'<bpmn:outgoing>{out_flow}</bpmn:outgoing>'
-            f'</bpmn:serviceTask>'
+            f"<spiffworkflow:parameters/>"
+            f"</spiffworkflow:serviceTaskOperator>"
+            f"</bpmn:extensionElements>"
+            f"<bpmn:incoming>{in_flow}</bpmn:incoming>"
+            f"<bpmn:outgoing>{out_flow}</bpmn:outgoing>"
+            f"</bpmn:serviceTask>"
         )
-        flows.append(f'<bpmn:sequenceFlow id="{in_flow}" sourceRef="{flows_source}" targetRef="{task_id}"/>')
+        flows.append(
+            f'<bpmn:sequenceFlow id="{in_flow}" sourceRef="{flows_source}" targetRef="{task_id}"/>'
+        )
         flows_source = task_id
-    nodes.append(f'<bpmn:endEvent id="EndEvent_1"><bpmn:incoming>Flow_{n}</bpmn:incoming></bpmn:endEvent>')
-    flows.append(f'<bpmn:sequenceFlow id="Flow_{n}" sourceRef="{flows_source}" targetRef="EndEvent_1"/>')
+    nodes.append(
+        f'<bpmn:endEvent id="EndEvent_1"><bpmn:incoming>Flow_{n}</bpmn:incoming></bpmn:endEvent>'
+    )
+    flows.append(
+        f'<bpmn:sequenceFlow id="Flow_{n}" sourceRef="{flows_source}" targetRef="EndEvent_1"/>'
+    )
 
     return (
         '<?xml version="1.0" encoding="UTF-8"?>'

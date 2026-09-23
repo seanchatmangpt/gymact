@@ -4,6 +4,7 @@ Import DCM behavior from here. Lower-level modules remain available for implemen
 and compatibility, but this facade defines the intended graph -> court -> cut -> BRCE
 surface.
 """
+
 from gymact.action_graph import action_possibility_fragment
 from gymact.algebra import compose_paths, identity_path, zero_objectives
 from gymact.combinatorial import (
@@ -42,6 +43,7 @@ from gymact.compileout_graph import (
     admit_graph_recipe,
     compile_graph_recipe,
 )
+from gymact.consequence_binding import ConsequenceBinding
 from gymact.cut import (
     CombinatorialBRCEBroker,
     CombinatorialBrokerRequest,
@@ -49,7 +51,6 @@ from gymact.cut import (
     manufacture_broker_request,
     select_irreversible_cut,
 )
-from gymact.consequence_binding import ConsequenceBinding
 from gymact.dcm_runtime import DCMDecisionCourt, DecisionCourtRecord, DecisionCourtRequest
 from gymact.ecology import (
     EcologyAlternative,

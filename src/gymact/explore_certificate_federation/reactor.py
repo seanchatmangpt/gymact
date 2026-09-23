@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import hashlib
+from dataclasses import dataclass
 
 from .refusal import FederationRefusal
 from .subject import Subject

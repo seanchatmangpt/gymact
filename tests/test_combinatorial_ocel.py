@@ -33,14 +33,14 @@ named_standing_skip(
     "endpoints.json) requires `uv sync --extra gyms`",
 )
 
-from gymact.combinatorial_ocel import (  # noqa: E402
+from gymact.combinatorial_ocel import (
     GYM_FACTOR,
     SEQUENCE_VARIANT_FACTOR,
     build_combination_space,
     drive_combination,
     run_combinatorial_maximum,
 )
-from gymact.ocel import validate_ocel_log  # noqa: E402
+from gymact.ocel import validate_ocel_log
 
 
 def test_build_combination_space_is_a_real_cartesian_product() -> None:

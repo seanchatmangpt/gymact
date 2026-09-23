@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from pyshacl import validate
-from rdflib import Graph, Literal, Namespace, RDF
+from rdflib import RDF, Graph, Literal, Namespace
 
 ROOT = Path(__file__).resolve().parents[1]
 ONTOLOGY = ROOT / "ggen" / "protocol-gym-pack" / "ontology.ttl"
@@ -82,9 +82,7 @@ def test_modern_core_method_closure_matches_official_2026_07_28_surface() -> Non
 
     assert _method_names(graph, current_methods) == EXPECTED_2026_07_28_CORE_METHODS
     assert len(current_methods) == 21
-    assert all(
-        graph.value(subject, MCP.lifecycle) != MCP.Removed for subject in current_methods
-    )
+    assert all(graph.value(subject, MCP.lifecycle) != MCP.Removed for subject in current_methods)
 
 
 def test_modern_mrtr_embeds_server_intent_instead_of_server_to_client_rpc() -> None:
@@ -97,8 +95,7 @@ def test_modern_mrtr_embeds_server_intent_instead_of_server_to_client_rpc() -> N
 
     assert _method_names(graph, embedded) == EXPECTED_EMBEDDED_MRTR_KINDS
     assert all(
-        graph.value(subject, MCP.messageKind) == MCP.EmbeddedInputRequest
-        for subject in embedded
+        graph.value(subject, MCP.messageKind) == MCP.EmbeddedInputRequest for subject in embedded
     )
     assert all(
         graph.value(subject, MCP.direction) == MCP.ServerIntentClientResponse
@@ -176,10 +173,7 @@ def test_transport_and_header_models_preserve_body_as_semantic_source() -> None:
 
     assert graph.value(MCP["transport-stdio"], MCP.lifecycle) == MCP.Active
     assert graph.value(MCP["transport-streamable-http"], MCP.lifecycle) == MCP.Active
-    assert (
-        graph.value(MCP["transport-legacy-http-sse"], MCP.compatibilityOnly)
-        == Literal(True)
-    )
+    assert graph.value(MCP["transport-legacy-http-sse"], MCP.compatibilityOnly) == Literal(True)
 
     protocol_header = MCP["header-protocol-version"]
     parameter_header = MCP["header-param-mirror"]

@@ -13,8 +13,7 @@ def _run(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
         [sys.executable, str(SCRIPT), "--repo", str(repo), *args],
         check=False,
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
     )
 
 
@@ -24,8 +23,7 @@ def _git(repo: Path, *args: str) -> str:
         cwd=repo,
         check=True,
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
     )
     return process.stdout.strip()
 

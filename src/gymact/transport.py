@@ -1,4 +1,5 @@
 """Transport-neutral candidate-intent normalization and equivalence law."""
+
 from __future__ import annotations
 
 import json

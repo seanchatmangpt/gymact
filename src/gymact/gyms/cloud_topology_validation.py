@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from .cloud_topology import (
@@ -56,9 +56,11 @@ __all__ = ["ValidationResult", "validate_all_topologies"]
 _STALENESS_THRESHOLD = timedelta(days=30)
 
 #: Real, documented exception: providers with cv:hasDegenerateServices=true.
-_PROVIDERS_WITH_DEGENERATE_SERVICES = frozenset({
-    "gcp",
-})
+_PROVIDERS_WITH_DEGENERATE_SERVICES = frozenset(
+    {
+        "gcp",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -114,12 +116,11 @@ def _staleness(fetched_at: str | None) -> tuple[bool, tuple[str, ...]]:
     except ValueError:
         return True, ("UNPARSEABLE_FETCHED_AT",)
     if fetched.tzinfo is None:
-        fetched = fetched.replace(tzinfo=timezone.utc)
-    age = datetime.now(timezone.utc) - fetched
+        fetched = fetched.replace(tzinfo=UTC)
+    age = datetime.now(UTC) - fetched
     if age > _STALENESS_THRESHOLD:
         return True, ("FETCHED_AT_OLDER_THAN_THRESHOLD",)
     return False, ()
-
 
 
 def _independent_aws_recount(*, partition: str = "aws") -> tuple[int, int]:
@@ -165,7 +166,6 @@ def validate_aws() -> ValidationResult:
     )
 
 
-
 def _independent_azure_recount(path: Path) -> tuple[int, int]:
     """Re-parses the bundled azure snapshot file directly, via code that does NOT
     call `_load_snapshot_topology()`."""
@@ -201,7 +201,6 @@ def validate_azure(*, snapshot_path: Path = _AZURE_SNAPSHOT_PATH) -> ValidationR
     )
 
 
-
 def _independent_gcp_recount(path: Path) -> tuple[int, int]:
     """Re-parses the bundled gcp snapshot file directly, via code that does NOT
     call `_load_snapshot_topology()`."""
@@ -235,7 +234,6 @@ def validate_gcp(*, snapshot_path: Path = _GCP_SNAPSHOT_PATH) -> ValidationResul
         loaded_region_count=len(topology.regions),
         loaded_service_count=len(topology.services),
     )
-
 
 
 def validate_all_topologies() -> dict[str, ValidationResult]:

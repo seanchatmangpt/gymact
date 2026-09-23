@@ -9,9 +9,10 @@ rail without granting authority to perform probes itself.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
-from typing import Any, Iterable, Mapping
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
+from typing import Any
 
 from blake3 import blake3
 
@@ -132,7 +133,9 @@ def admit_empirical_probe_receipts(
         )
         for item in ordered
     )
-    graph_payload = [item.payload | {"receipt_digest_blake3": item.receipt_digest_blake3} for item in ordered]
+    graph_payload = [
+        item.payload | {"receipt_digest_blake3": item.receipt_digest_blake3} for item in ordered
+    ]
     digest = blake3(_canonical_json(graph_payload).encode()).hexdigest()
     return ContractSourceObservation(
         family=ContractSourceFamily.EMPIRICAL_OBSERVATION,

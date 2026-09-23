@@ -10,7 +10,9 @@ class DependencyStandingCourt(unittest.TestCase):
         states = {"semantic": ObligationState.PASS, "runtime": ObligationState.FAIL}
         blocked = propagate_blockers({"replay": {"runtime"}}, states)
         self.assertEqual(blocked, {"replay"})
-        self.assertEqual(standing(list(states.values()), blocked=bool(blocked)), Standing.BUILD_BROKEN)
+        self.assertEqual(
+            standing(list(states.values()), blocked=bool(blocked)), Standing.BUILD_BROKEN
+        )
         self.assertEqual(standing([ObligationState.PASS]), Standing.PARTIAL_ALIVE)
 
 

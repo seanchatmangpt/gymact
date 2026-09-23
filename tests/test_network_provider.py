@@ -4,14 +4,15 @@ import asyncio
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import ClassVar
 from urllib.request import urlopen
 
-from gymact.network_providers import HTTPJSONProvider, HTTP_JSON_CAPABILITIES
+from gymact.network_providers import HTTP_JSON_CAPABILITIES, HTTPJSONProvider
 from gymact.oracle import differential_verify, observe_oracle
 
 
 class Handler(BaseHTTPRequestHandler):
-    state = {"count": 1}
+    state: ClassVar[dict] = {"count": 1}
 
     def log_message(self, format: str, *args: object) -> None:
         del format, args

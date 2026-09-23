@@ -116,8 +116,9 @@ interaction.
 from __future__ import annotations
 
 import concurrent.futures
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Sequence
+from typing import Any
 
 from gymact.powl import ocel_bridge
 from gymact.powl.algebra import Atom, NodeId, OrderEdge, PowlNode
@@ -144,9 +145,6 @@ from gymact.powl.spec import (
 from gymact.powl.validate import validate_model
 
 __all__ = [
-    "PipelineStallResult",
-    "classify_pipeline_stall",
-    "run_pipeline",
     # Re-exported for backward-compatible import sites -- now defined in
     # gymact.powl.spec, not this module.
     "ActionBinding",
@@ -154,7 +152,10 @@ __all__ = [
     "BridgeUnavailable",
     "GatedCapabilityBinding",
     "OcelRecorderLike",
+    "PipelineStallResult",
     "PowlPipelineSpec",
+    "classify_pipeline_stall",
+    "run_pipeline",
 ]
 
 
@@ -396,10 +397,14 @@ def run_pipeline(
 
             binding = action_bindings.get(label) if action_bindings else None
             if binding is not None and isinstance(node, Atom):
-                atom_attrs = {"label": node.label, "action": node.action, "bindings": dict(node.bindings)}
+                atom_attrs = {
+                    "label": node.label,
+                    "action": node.action,
+                    "bindings": dict(node.bindings),
+                }
                 try:
                     outcome["action_result"] = binding(atom_attrs)
-                except Exception as exc:  # noqa: BLE001 -- recorded honestly, then re-raised
+                except Exception as exc:
                     recorder.record(
                         activity="powl_action_binding_error",
                         objects=[(node_object_id, "PowlNode")],
@@ -501,7 +506,7 @@ def run_pipeline(
                     path = future_to_path[future]
                     try:
                         results[path] = future.result()
-                    except Exception as exc:  # noqa: BLE001 -- recorded honestly, then re-raised
+                    except Exception as exc:
                         errors[path] = exc
 
         # Step C: record OCEL events sequentially on the calling thread
@@ -509,7 +514,7 @@ def run_pipeline(
         # must never happen from a worker thread), in batch order, for every
         # fired path, success or error, THEN raise the first error in that
         # same deterministic order if any.
-        for path, fired_node, fired_label, fired_step in fired_this_round:
+        for path, _fired_node, fired_label, fired_step in fired_this_round:
             node_object_id = f"{session_id}-node-{'.'.join(map(str, path))}"
             if path in errors:
                 exc = errors[path]

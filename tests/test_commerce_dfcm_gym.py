@@ -16,9 +16,7 @@ def cap(binding: str):
 
 
 def semantic_cap(binding: str):
-    return next(
-        item for item in COMMERCE_DFCM_SEMANTIC_CAPABILITIES if item.binding == binding
-    )
+    return next(item for item in COMMERCE_DFCM_SEMANTIC_CAPABILITIES if item.binding == binding)
 
 
 def grant(subject: str, operation: str) -> dict[str, str]:
@@ -39,9 +37,7 @@ def agreement() -> dict[str, object]:
         "product_id": "product-1",
         "offer_id": "offer-1",
         "billing_authority": "EXTERNAL_COMMERCE",
-        "pricing": [
-            {"dimension_id": "calls", "unit": "call", "unit_price_micros": 7}
-        ],
+        "pricing": [{"dimension_id": "calls", "unit": "call", "unit_price_micros": 7}],
         "effective_at": "2026-08-19T00:00:00Z",
     }
 
@@ -132,9 +128,7 @@ async def test_provider_executes_internal_commerce_pipeline_and_receipts_every_s
     )
     assert meter["subject"]["amount_micros"] == 21
 
-    support = await env.actuate(
-        cap("support.entitle"), {"entitlement_id": "entitlement-1"}
-    )
+    support = await env.actuate(cap("support.entitle"), {"entitlement_id": "entitlement-1"})
     assert support["subject"]["support_tier"] == "enterprise-247"
 
     packaging = {
@@ -145,9 +139,7 @@ async def test_provider_executes_internal_commerce_pipeline_and_receipts_every_s
         "signed_provenance": True,
         "portable_registry_artifact": True,
     }
-    admitted_packaging = await env.actuate(
-        cap("packaging.helm"), {"packaging": packaging}
-    )
+    admitted_packaging = await env.actuate(cap("packaging.helm"), {"packaging": packaging})
     assert admitted_packaging["standing"] == "ALIVE"
 
     state = await env.observe()
@@ -166,9 +158,7 @@ async def test_external_do_is_semantic_frontier_and_fixture_cannot_become_accept
     env = await CommerceDfcmProvider().materialize(scenario=None, config={})
 
     assert "meter.submit" not in {item.binding for item in env.capabilities()}
-    external = await env.actuate(
-        semantic_cap("meter.submit"), {"intent_id": "anything"}
-    )
+    external = await env.actuate(semantic_cap("meter.submit"), {"intent_id": "anything"})
     assert external["standing"] == "REFUSED"
     assert external["refusal"]["code"] == "REFUSED:EXTERNAL_DO_WITHOUT_AUTHORITY"
 

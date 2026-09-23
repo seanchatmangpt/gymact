@@ -1,6 +1,9 @@
 from __future__ import annotations
+
 from dataclasses import replace
+
 from .model import Binding, Refusal
+
 
 def renew(binding: Binding, *, receipt: str, schema: str, binding_id: str) -> Binding:
     if schema != binding.schema:

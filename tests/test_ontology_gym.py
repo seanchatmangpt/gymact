@@ -100,9 +100,7 @@ async def _tiered_gym(tmp_path: Path) -> tuple[GymAct, OntologyDrivenProvider, s
     )
     gym = GymAct(authority_resolver=resolver)
     gym.register_provider(provider)
-    materialization = await gym.materialize(
-        MaterializationIntent(provider="fixture", config={})
-    )
+    materialization = await gym.materialize(MaterializationIntent(provider="fixture", config={}))
     assert materialization.accepted is True, materialization.receipt.reason
     assert materialization.episode is not None
     return gym, provider, materialization.episode.episode_id

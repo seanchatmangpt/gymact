@@ -25,8 +25,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 from gymact import GymAct, MaterializationIntent
 from gymact.gyms.dev_portfolio import (
     DevPortfolioProvider,
@@ -77,8 +75,15 @@ async def test_local_snapshot_does_not_crash_the_episode_on_a_real_timeout(tmp_p
     healthy = tmp_path / "healthy-repo"
     healthy.mkdir()
     subprocess.run(["git", "init"], cwd=healthy, capture_output=True, check=True)
-    subprocess.run(["git", "config", "user.email", "t@example.invalid"], cwd=healthy, capture_output=True, check=True)
-    subprocess.run(["git", "config", "user.name", "Test"], cwd=healthy, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "t@example.invalid"],
+        cwd=healthy,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test"], cwd=healthy, capture_output=True, check=True
+    )
     (healthy / "f.txt").write_text("v1")
     subprocess.run(["git", "add", "-A"], cwd=healthy, capture_output=True, check=True)
     subprocess.run(["git", "commit", "-m", "initial"], cwd=healthy, capture_output=True, check=True)
@@ -127,8 +132,15 @@ def test_snapshot_local_repo_healthy_repo_reports_no_git_error(tmp_path) -> None
     repo = tmp_path / "healthy"
     repo.mkdir()
     subprocess.run(["git", "init"], cwd=repo, capture_output=True, check=True)
-    subprocess.run(["git", "config", "user.email", "t@example.invalid"], cwd=repo, capture_output=True, check=True)
-    subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "t@example.invalid"],
+        cwd=repo,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test"], cwd=repo, capture_output=True, check=True
+    )
     (repo / "f.txt").write_text("v1")
     subprocess.run(["git", "add", "-A"], cwd=repo, capture_output=True, check=True)
     subprocess.run(["git", "commit", "-m", "initial"], cwd=repo, capture_output=True, check=True)
@@ -176,15 +188,16 @@ def test_github_snapshot_reports_none_not_zero_on_a_real_gh_failure(tmp_path, mo
     assert snapshot["branch_query_error"]
 
 
-def test_github_snapshot_reports_none_on_malformed_json_from_a_real_gh(tmp_path, monkeypatch) -> None:
+def test_github_snapshot_reports_none_on_malformed_json_from_a_real_gh(
+    tmp_path, monkeypatch
+) -> None:
     """A real `gh` script that exits 0 (success) but emits invalid JSON --
     the exact truncated/malformed-output failure mode FMEA #6 named."""
     bin_dir = tmp_path / "fakebin"
     bin_dir.mkdir()
     _write_fake_gh(
         bin_dir,
-        'if [[ "$1" == "api" ]]; then echo "main"; exit 0; fi\n'
-        'echo "{not valid json"\nexit 0\n',
+        'if [[ "$1" == "api" ]]; then echo "main"; exit 0; fi\necho "{not valid json"\nexit 0\n',
     )
     monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
 
@@ -206,8 +219,7 @@ def test_github_snapshot_reports_real_data_on_a_real_healthy_gh(tmp_path, monkey
     bin_dir.mkdir()
     _write_fake_gh(
         bin_dir,
-        'if [[ "$1" == "api" ]]; then echo "main"; exit 0; fi\n'
-        'echo "[]"\nexit 0\n',
+        'if [[ "$1" == "api" ]]; then echo "main"; exit 0; fi\necho "[]"\nexit 0\n',
     )
     monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
 

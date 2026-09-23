@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import Mapping
 
 from .refusals import refuse
 
@@ -12,7 +12,7 @@ class FiniteDistribution:
     mass: tuple[tuple[str, Fraction], ...]
 
     @classmethod
-    def from_mapping(cls, values: Mapping[str, Fraction | int]) -> "FiniteDistribution":
+    def from_mapping(cls, values: Mapping[str, Fraction | int]) -> FiniteDistribution:
         if not values:
             raise refuse("EMPTY_DISTRIBUTION", "distribution must contain support")
         items = tuple(sorted((key, Fraction(value)) for key, value in values.items()))

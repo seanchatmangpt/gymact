@@ -26,9 +26,7 @@ from gymact.models import (
 class CrownRuntimeLike(Protocol):
     async def act(self, intent: ActuationIntent) -> ActuationResult: ...
 
-    async def verify(
-        self, episode_id: str, expected: dict[str, Any]
-    ) -> VerificationResult: ...
+    async def verify(self, episode_id: str, expected: dict[str, Any]) -> VerificationResult: ...
 
     def _record(self, receipt: Receipt) -> Receipt: ...
 
@@ -177,8 +175,7 @@ async def reconcile_uncertain(
         standing = Standing.ALIVE
         reason = "RECONCILIATION_EFFECT_CONFIRMED"
     elif (
-        source.pre_state_digest is not None
-        and verification.state_digest == source.pre_state_digest
+        source.pre_state_digest is not None and verification.state_digest == source.pre_state_digest
     ):
         disposition = ReconciliationDisposition.NO_EFFECT
         standing = Standing.REFUSED

@@ -146,5 +146,5 @@ async def test_unbound_implements_action_is_refused_before_any_kernel_call():
 
 
 def test_empty_document_is_refused_before_any_real_parse():
-    with pytest.raises(PowlReplayRefusal, match="NO_POWL_MODEL|EMPTY_MODEL"):
+    with pytest.raises(PowlReplayRefusal, match=r"NO_POWL_MODEL|EMPTY_MODEL"):
         parse_admitted_powl_document("@prefix powl2: <https://truex.io/ontology/powl2#> .")

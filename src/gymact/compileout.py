@@ -1,4 +1,5 @@
 """Compile repeated verified cognition into deterministic powerless HOT recipes."""
+
 from __future__ import annotations
 
 from typing import Self

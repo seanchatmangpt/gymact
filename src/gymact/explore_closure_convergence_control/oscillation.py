@@ -17,8 +17,6 @@ def oscillating_obligations(epochs: tuple[ClosureEpoch, ...]) -> frozenset[str]:
         for state in states[1:]:
             if state != compressed[-1]:
                 compressed.append(state)
-        if len(compressed) >= 3 and compressed[0] == compressed[-1]:
-            oscillating.add(key)
-        elif len(compressed) >= 4:
+        if (len(compressed) >= 3 and compressed[0] == compressed[-1]) or len(compressed) >= 4:
             oscillating.add(key)
     return frozenset(oscillating)

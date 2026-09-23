@@ -125,21 +125,17 @@ def commerce_dfcm_frontier() -> CommerceDfcmFrontier:
 
     by_morphism = {item.morphism_id: item for item in graph.morphisms}
     reversible = sorted(
-        edge.attributes["binding"]
-        for edge in graph.morphisms
-        if edge.phase is not DecisionPhase.DO
+        edge.attributes["binding"] for edge in graph.morphisms if edge.phase is not DecisionPhase.DO
     )
     bounded_internal_do = sorted(
         edge.attributes["binding"]
         for edge in graph.morphisms
-        if edge.phase is DecisionPhase.DO
-        and not edge.attributes["external_authority_required"]
+        if edge.phase is DecisionPhase.DO and not edge.attributes["external_authority_required"]
     )
     external_do = sorted(
         edge.attributes["binding"]
         for edge in graph.morphisms
-        if edge.phase is DecisionPhase.DO
-        and edge.attributes["external_authority_required"]
+        if edge.phase is DecisionPhase.DO and edge.attributes["external_authority_required"]
     )
 
     frontier_ids = {item.morphism_id for item in exploration.irreversible_frontier}

@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
-from rdflib import Graph, Namespace, RDF, URIRef
+from rdflib import RDF, Graph, Namespace, URIRef
 from rdflib.namespace import DCTERMS
 
 from gymact.gyms.ontology_gym import OntologyDrivenProvider, OntologyTask
@@ -33,9 +33,7 @@ PLATFORM_CONSOLE_CAPABILITIES_ONTOLOGY: Final = (
 )
 PROVIDER_NAME: Final = "platform-console-ontology"
 
-CE: Final = Namespace(
-    "https://seanchatmangpt.github.io/chatman-ecosystem/ontology/capabilities#"
-)
+CE: Final = Namespace("https://seanchatmangpt.github.io/chatman-ecosystem/ontology/capabilities#")
 _STANDARD_FAMILY: Final = "standard"
 _ELEVATED_FAMILY: Final = "elevated"
 

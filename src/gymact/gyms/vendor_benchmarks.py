@@ -101,8 +101,7 @@ class VendorSpec:
 
 
 VENDOR_SPECS: dict[str, VendorSpec] = {
-    name: VendorSpec(name=name, revision=revision)
-    for name, revision in VENDOR_REVISIONS.items()
+    name: VendorSpec(name=name, revision=revision) for name, revision in VENDOR_REVISIONS.items()
 }
 
 
@@ -359,11 +358,7 @@ class VendorBenchmarkProvider:
         if audit.standing != "PARTIAL_ALIVE":
             raise VendorAdmissionError(audit.reason, str(audit.root))
         timeout = config.get("timeout_seconds", 300.0)
-        if (
-            isinstance(timeout, bool)
-            or not isinstance(timeout, (int, float))
-            or timeout <= 0
-        ):
+        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
             raise TypeError("config.timeout_seconds must be a positive number")
         return VendorBenchmarkEnvironment(
             spec=self.spec,

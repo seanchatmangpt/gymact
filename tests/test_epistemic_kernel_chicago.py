@@ -192,8 +192,12 @@ class TestAdmitDiagnosis:
                 predicate="command_outlier",
                 value="True",
             ),
-            Fact(id="fact:image_outlier:geo", subject="deployment/geo",
-                 predicate="image_outlier", value="True"),
+            Fact(
+                id="fact:image_outlier:geo",
+                subject="deployment/geo",
+                predicate="image_outlier",
+                value="True",
+            ),
         ]
         hypotheses = [
             # A real SUPPORTED hypothesis, so NO_SUPPORTED_HYPOTHESIS

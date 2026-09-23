@@ -20,7 +20,6 @@ from uuid import uuid4
 
 from gymact.models import Capability, Consequence
 
-
 ENTERPRISE_COMPANY_CAPABILITIES: tuple[Capability, ...] = (
     Capability(
         iri="urn:gymact:enterprise-company:capability:create_lead",
@@ -299,7 +298,10 @@ class EnterpriseCompanyEnvironment:
                 raise ValueError("uplift cannot reduce annual value below zero")
             engagement["annual_value"] *= 1.0 + uplift
             engagement["renewals"] += 1
-            result = {"annual_value": engagement["annual_value"], "renewals": engagement["renewals"]}
+            result = {
+                "annual_value": engagement["annual_value"],
+                "renewals": engagement["renewals"],
+            }
 
         elif binding == "churn":
             engagement_id = _required_str(payload, "engagement_id")

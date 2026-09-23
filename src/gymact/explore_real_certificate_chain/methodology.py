@@ -1,7 +1,20 @@
 from dataclasses import dataclass
 
-
-REQUIRED = frozenset({"discovery","conformance","simulation","prediction","optimization","intervention","monitoring","event","object","declarative","procedural"})
+REQUIRED = frozenset(
+    {
+        "discovery",
+        "conformance",
+        "simulation",
+        "prediction",
+        "optimization",
+        "intervention",
+        "monitoring",
+        "event",
+        "object",
+        "declarative",
+        "procedural",
+    }
+)
 
 
 @dataclass(frozen=True)

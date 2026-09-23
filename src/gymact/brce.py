@@ -1,4 +1,5 @@
 """BRCE production DO port: candidate -> admitted grant -> verified consequence."""
+
 from __future__ import annotations
 
 from typing import Any, Protocol

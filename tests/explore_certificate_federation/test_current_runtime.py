@@ -1,8 +1,12 @@
 import hashlib
+
 import pytest
 
 from gymact.explore_certificate_federation.certificate import Certificate
-from gymact.explore_certificate_federation.correspondence import RuntimeWitness, admit_correspondence
+from gymact.explore_certificate_federation.correspondence import (
+    RuntimeWitness,
+    admit_correspondence,
+)
 from gymact.explore_certificate_federation.currentness import current_frontier
 from gymact.explore_certificate_federation.refusal import FederationRefusal
 from gymact.explore_certificate_federation.runtime import RuntimeKind, RuntimeProjection

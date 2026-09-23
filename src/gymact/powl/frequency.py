@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 from gymact.powl.refusals import PowlError, PowlRefusal
 
-__all__ = ["Frequency", "ONCE", "OPTIONAL", "ONE_OR_MORE", "ZERO_OR_MORE"]
+__all__ = ["ONCE", "ONE_OR_MORE", "OPTIONAL", "ZERO_OR_MORE", "Frequency"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,9 +34,7 @@ class Frequency:
                     PowlRefusal.INVALID_FREQUENCY, f"max must be int or None, got {self.max!r}"
                 )
             if self.max < self.min:
-                raise PowlError(
-                    PowlRefusal.INVALID_FREQUENCY, f"max={self.max} < min={self.min}"
-                )
+                raise PowlError(PowlRefusal.INVALID_FREQUENCY, f"max={self.max} < min={self.min}")
 
     def allows(self, n: int) -> bool:
         """Whether ``n`` repetitions satisfy this cardinality."""

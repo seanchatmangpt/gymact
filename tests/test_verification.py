@@ -125,9 +125,7 @@ def test_shacl_verifier_against_real_togaf_gym_shapes_file() -> None:
     shapes above."""
     from pathlib import Path
 
-    shapes_path = (
-        Path(__file__).resolve().parent.parent / "rust" / "togaf_gym" / "shapes.ttl"
-    )
+    shapes_path = Path(__file__).resolve().parent.parent / "rust" / "togaf_gym" / "shapes.ttl"
     verifier = ShaclPostconditionVerifier(shapes_path=shapes_path)
 
     # An empty data graph trivially fails every targetNode-based oracle shape's sh:hasValue

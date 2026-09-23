@@ -2,7 +2,12 @@ from fractions import Fraction
 
 import pytest
 
-from gymact.explore_distributional_robustness import AmbiguityKind, AmbiguitySet, FiniteDistribution, chi_square
+from gymact.explore_distributional_robustness import (
+    AmbiguityKind,
+    AmbiguitySet,
+    FiniteDistribution,
+    chi_square,
+)
 
 
 def test_tv_membership_is_radius_bounded() -> None:

@@ -1,7 +1,9 @@
 import unittest
-from gymact.explore_verification_topology.module_identity import TestModule
+
 from gymact.explore_verification_topology.inventory import ModuleInventory
+from gymact.explore_verification_topology.module_identity import TestModule
 from gymact.explore_verification_topology.subject import Refusal
+
 
 class TestModuleIdentity(unittest.TestCase):
     def test_identity(self):

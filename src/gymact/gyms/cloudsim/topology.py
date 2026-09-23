@@ -33,9 +33,7 @@ def normalize_topology(value: object | None) -> dict[str, dict[str, list[str]]]:
             raise ValueError(f"topology.{cloud} must be an object")
         result[cloud] = {
             "scopes": _nonempty_strings(raw_cloud.get("scopes"), f"topology.{cloud}.scopes"),
-            "regions": _nonempty_strings(
-                raw_cloud.get("regions"), f"topology.{cloud}.regions"
-            ),
+            "regions": _nonempty_strings(raw_cloud.get("regions"), f"topology.{cloud}.regions"),
         }
     return deepcopy(result)
 

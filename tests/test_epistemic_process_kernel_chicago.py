@@ -105,9 +105,7 @@ class TestAdmitLinks:
             why="cites a fact_id no real observation ever produced",
         )
 
-        admitted, refused_reasons = _admit_links(
-            [grounded, ungrounded], {"fact:real"}
-        )
+        admitted, refused_reasons = _admit_links([grounded, ungrounded], {"fact:real"})
 
         assert admitted == [grounded]
         assert len(refused_reasons) == 1
@@ -183,9 +181,7 @@ class TestAdmitClaims:
             rationale="cites an observation id no real Discriminate call ever produced",
         )
 
-        admitted, refused_reasons = _admit_claims(
-            [grounded, ungrounded], {"obs:0"}
-        )
+        admitted, refused_reasons = _admit_claims([grounded, ungrounded], {"obs:0"})
 
         assert admitted == [grounded]
         assert len(refused_reasons) == 1

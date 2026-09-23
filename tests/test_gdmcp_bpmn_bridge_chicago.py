@@ -20,16 +20,16 @@ named_standing_skip(
     available=_importlib_util.find_spec("SpiffWorkflow") is not None,
     reason="the optional 'bpmn' extra is not installed -- `uv sync --extra bpmn`",
 )
-from gymact.authority import AllowListAuthorityResolver, DenyAuthorityResolver  # noqa: E402
-from gymact.gdmcp import CompiledGdmcpProgram  # noqa: E402
-from gymact.gdmcp_bpmn_bridge import (  # noqa: E402
+from gymact.authority import AllowListAuthorityResolver, DenyAuthorityResolver
+from gymact.gdmcp import CompiledGdmcpProgram
+from gymact.gdmcp_bpmn_bridge import (
     BpmnReplayRefusal,
     compile_program_to_bpmn,
     replay_compiled_program_via_bpmn,
 )
-from gymact.kernel import GymAct  # noqa: E402
-from gymact.models import ActuationIntent, MaterializationIntent  # noqa: E402
-from gymact.providers import MemoryProvider  # noqa: E402
+from gymact.kernel import GymAct
+from gymact.models import ActuationIntent, MaterializationIntent
+from gymact.providers import MemoryProvider
 
 AUTHORITY = "urn:gymact:test:gdmcp-bpmn-bridge"
 SET_CAPABILITY = "urn:gymact:memory:capability:set"

@@ -5,6 +5,7 @@ dependency-closed ggen consumer project plus its declared manifest dependencies
 into a private temporary bundle. ``sync run`` can therefore never actuate the
 caller's source checkout.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -79,7 +80,9 @@ def _declared_dependencies(source: Path, bundle_root: Path) -> tuple[Path, ...]:
     dependencies: list[Path] = []
     for field, raw in raw_paths:
         candidate = Path(raw)
-        resolved = candidate.resolve() if candidate.is_absolute() else (source / candidate).resolve()
+        resolved = (
+            candidate.resolve() if candidate.is_absolute() else (source / candidate).resolve()
+        )
         if not _within(resolved, bundle_root):
             raise ValueError(f"REFUSED:GGEN_DEPENDENCY_OUTSIDE_BUNDLE:{field}")
         if not resolved.exists():
@@ -225,9 +228,7 @@ class GgenEnvironment:
             max_bytes=self._max_bytes,
         )
         observed["workspace"] = self._workspace_relative.as_posix()
-        observed["receipt_present"] = (
-            self._root / ".ggen" / "receipts" / "latest.json"
-        ).is_file()
+        observed["receipt_present"] = (self._root / ".ggen" / "receipts" / "latest.json").is_file()
         return observed
 
     async def _run(self, *args: str) -> dict[str, Any]:
@@ -242,22 +243,18 @@ class GgenEnvironment:
         except FileNotFoundError as exc:
             raise RuntimeError("BLOCKED:GGEN_BINARY_MISSING") from exc
         try:
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(), timeout=self._timeout
-            )
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=self._timeout)
         except TimeoutError:
             process.kill()
             await process.communicate()
-            raise RuntimeError("BLOCKED:GGEN_COMMAND_TIMEOUT")
+            raise RuntimeError("BLOCKED:GGEN_COMMAND_TIMEOUT") from None
         return {
             "returncode": process.returncode,
             "stdout": stdout.decode("utf-8", errors="replace")[-4000:],
             "stderr": stderr.decode("utf-8", errors="replace")[-4000:],
         }
 
-    async def actuate(
-        self, capability: Capability, payload: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def actuate(self, capability: Capability, payload: dict[str, Any]) -> dict[str, Any]:
         del payload
         self._ensure_open()
         before = await self.observe()
@@ -298,8 +295,7 @@ class GgenEnvironment:
         self._ensure_open()
         files = checkpoint.get("files")
         if not isinstance(files, dict) or not all(
-            isinstance(path, str) and isinstance(data, bytes)
-            for path, data in files.items()
+            isinstance(path, str) and isinstance(data, bytes) for path, data in files.items()
         ):
             raise TypeError("checkpoint.files must map path strings to bytes")
         shutil.rmtree(self._bundle)
@@ -327,22 +323,16 @@ class GgenProvider:
     name = "ggen"
     materialization_requires_authority = False
 
-    async def materialize(
-        self, *, scenario: str | None, config: dict[str, Any]
-    ) -> GgenEnvironment:
+    async def materialize(self, *, scenario: str | None, config: dict[str, Any]) -> GgenEnvironment:
         del scenario
         source_value = config.get("source")
         if not isinstance(source_value, str) or not source_value:
-            raise TypeError(
-                "config.source must be a non-empty ggen consumer project directory"
-            )
+            raise TypeError("config.source must be a non-empty ggen consumer project directory")
         source = Path(source_value).expanduser().resolve()
         if not source.is_dir():
             raise TypeError(f"config.source is not a directory: {source}")
         if not (source / "ggen.toml").is_file():
-            raise TypeError(
-                "config.source must contain ggen.toml; a bare pack is not executable"
-            )
+            raise TypeError("config.source must contain ggen.toml; a bare pack is not executable")
 
         bundle_value = config.get("bundle_root", source_value)
         if not isinstance(bundle_value, str) or not bundle_value:
@@ -357,11 +347,7 @@ class GgenProvider:
         if not isinstance(ggen_bin, str) or not ggen_bin:
             raise TypeError("config.ggen_bin must be a non-empty string")
         timeout = config.get("timeout_seconds", 5.0)
-        if (
-            not isinstance(timeout, (int, float))
-            or isinstance(timeout, bool)
-            or timeout <= 0
-        ):
+        if not isinstance(timeout, (int, float)) or isinstance(timeout, bool) or timeout <= 0:
             raise TypeError("config.timeout_seconds must be positive")
         max_files = config.get("max_files", _MAX_FILES_DEFAULT)
         max_bytes = config.get("max_bytes", _MAX_BYTES_DEFAULT)

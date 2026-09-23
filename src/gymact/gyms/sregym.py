@@ -171,7 +171,7 @@ SREGYM_CAPABILITIES = (
     Capability(
         iri="urn:gymact:sregym:capability:jaeger_get_operations",
         title=(
-            'Real Jaeger MCP get_operations -- real operations for one service. Payload: '
+            "Real Jaeger MCP get_operations -- real operations for one service. Payload: "
             '{"service": <str>}.'
         ),
         consequence=Consequence.DO,
@@ -213,7 +213,7 @@ SREGYM_CAPABILITIES = (
     Capability(
         iri="urn:gymact:sregym:capability:loki_get_label_values",
         title=(
-            'Real Loki MCP get_label_values -- real values for one label. Payload: '
+            "Real Loki MCP get_label_values -- real values for one label. Payload: "
             '{"label": <str, e.g. "namespace"/"app"/"pod">}.'
         ),
         consequence=Consequence.DO,
@@ -342,7 +342,7 @@ async def _connect_with_retry(client_factory, *, label: str) -> Any:
         try:
             await client.__aenter__()
             return client
-        except Exception as exc:  # noqa: BLE001 -- real connection failures come in several real exception types (RuntimeError, ConnectError, ...)
+        except Exception as exc:
             attempt_errors.append(f"attempt {attempt}: {type(exc).__name__}: {exc}")
             if attempt < _CLIENT_CONNECT_RETRIES:
                 await asyncio.sleep(_CLIENT_CONNECT_RETRY_DELAY_SECONDS)
@@ -511,7 +511,10 @@ class SregymEnvironment:
         # startup-failure branch below) read the real subprocess output at
         # any time without needing `communicate()` (which requires PIPE and
         # only works once, at process exit).
-        self._log_fh = tempfile.NamedTemporaryFile(  # noqa: SIM115 - kept open for the subprocess's lifetime
+        # The handle is deliberately long-lived (closed in teardown, not in a
+        # `with`): the log must stay readable by `read_log_tail()` for the
+        # whole environment lifetime.
+        self._log_fh = tempfile.NamedTemporaryFile(  # noqa: SIM115
             mode="w+", suffix=".sregym.log", delete=False, encoding="utf-8"
         )
         self.log_path = Path(self._log_fh.name)
@@ -815,7 +818,7 @@ class SregymEnvironment:
         def _poll() -> dict[str, Any]:
             try:
                 return self._status()
-            except Exception:  # noqa: BLE001 -- a transient real network hiccup during polling is not a fatal verify() failure; the bounded deadline below still ends the loop
+            except Exception:
                 return {}
 
         observed: dict[str, Any] = {}
@@ -874,23 +877,17 @@ class SregymEnvironment:
         `ProcessLookupError` -- swallowed, since that only means the whole
         group already exited."""
         pgid = None
-        try:
+        with contextlib.suppress(ProcessLookupError):
             pgid = os.getpgid(self._process.pid)
-        except ProcessLookupError:
-            pass
         if pgid is not None:
-            try:
+            with contextlib.suppress(ProcessLookupError):
                 os.killpg(pgid, signal.SIGTERM)
-            except ProcessLookupError:
-                pass
         try:
             self._process.wait(timeout=wait_timeout)
         except subprocess.TimeoutExpired:
             if pgid is not None:
-                try:
+                with contextlib.suppress(ProcessLookupError):
                     os.killpg(pgid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
             else:
                 self._process.kill()
             self._process.wait(timeout=10.0)
@@ -978,9 +975,7 @@ def _resolve_materialize_argv_and_env(
     if judge_api_base is not None and not isinstance(judge_api_base, str):
         raise TypeError("config.judge_api_base must be a string or None")
     judge_api_key_placeholder = config.get("judge_api_key_placeholder")
-    if judge_api_key_placeholder is not None and not isinstance(
-        judge_api_key_placeholder, str
-    ):
+    if judge_api_key_placeholder is not None and not isinstance(judge_api_key_placeholder, str):
         raise TypeError("config.judge_api_key_placeholder must be a string or None")
     mcp_server_port = config.get("mcp_server_port", _DEFAULT_MCP_SERVER_PORT)
     if isinstance(mcp_server_port, bool) or not isinstance(mcp_server_port, int):
@@ -991,9 +986,7 @@ def _resolve_materialize_argv_and_env(
     startup_timeout_seconds = config.get(
         "startup_timeout_seconds", _DEFAULT_STARTUP_TIMEOUT_SECONDS
     )
-    verify_timeout_seconds = config.get(
-        "verify_timeout_seconds", _DEFAULT_VERIFY_TIMEOUT_SECONDS
-    )
+    verify_timeout_seconds = config.get("verify_timeout_seconds", _DEFAULT_VERIFY_TIMEOUT_SECONDS)
     teardown_timeout_seconds = config.get(
         "teardown_timeout_seconds", _DEFAULT_TEARDOWN_TIMEOUT_SECONDS
     )
@@ -1052,9 +1045,7 @@ class SregymVendorProvider:
         if audit.standing != "PARTIAL_ALIVE":
             raise VendorAdmissionError(audit.reason, str(audit.root))
 
-        argv, env, resolved = _resolve_materialize_argv_and_env(
-            scenario=scenario, config=config
-        )
+        argv, env, resolved = _resolve_materialize_argv_and_env(scenario=scenario, config=config)
 
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(

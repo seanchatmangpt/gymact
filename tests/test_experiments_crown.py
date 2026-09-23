@@ -24,9 +24,7 @@ def test_fault_injection_is_bounded_and_occurrence_specific() -> None:
     assert second.fault is FaultKind.LOST_ACK
     assert not injector.decide("act").inject
     with pytest.raises(ValueError, match="UNBOUNDED"):
-        FaultInjector(
-            [FaultPlan(fault=FaultKind.TIMEOUT, operation_ref="act", bounded=False)]
-        )
+        FaultInjector([FaultPlan(fault=FaultKind.TIMEOUT, operation_ref="act", bounded=False)])
 
 
 def test_self_play_counts_incorrect_safety_crowns() -> None:

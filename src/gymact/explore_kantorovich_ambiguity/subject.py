@@ -8,6 +8,7 @@ from .refusal import Refused
 _SHA = re.compile(r"^[0-9a-f]{40}$")
 _REPO = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 
+
 @dataclass(frozen=True, order=True)
 class Subject:
     repo: str

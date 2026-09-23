@@ -2,7 +2,12 @@ from fractions import Fraction
 
 import pytest
 
-from gymact.explore_kantorovich_duality import DualPotential, DualityRefusal, GroundMetric, TransportPlan
+from gymact.explore_kantorovich_duality import (
+    DualityRefusal,
+    DualPotential,
+    GroundMetric,
+    TransportPlan,
+)
 from gymact.explore_kantorovich_duality.complementarity import admit_complementary_slackness
 
 

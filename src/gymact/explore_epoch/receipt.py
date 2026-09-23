@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
 import json
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -22,6 +22,12 @@ def issue(payload: dict[str, Any]) -> Receipt:
 
 
 def replay(receipt: Receipt) -> bool:
-    if receipt.schema != "gymact.explore-epoch/1" or receipt.payload.get("actuation_performed") is not False:
+    if (
+        receipt.schema != "gymact.explore-epoch/1"
+        or receipt.payload.get("actuation_performed") is not False
+    ):
         return False
-    return issue({k: v for k, v in receipt.payload.items() if k != "actuation_performed"}).digest == receipt.digest
+    return (
+        issue({k: v for k, v in receipt.payload.items() if k != "actuation_performed"}).digest
+        == receipt.digest
+    )

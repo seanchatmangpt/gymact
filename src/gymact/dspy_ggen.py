@@ -9,6 +9,7 @@ keeps the same values available to GymAct callers and tests.
 
 No prompt, completion, token, or model-provider path exists here.
 """
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -105,7 +106,6 @@ class GgenPredict:
             _gymact_standing=result.standing.value,
             _gymact_llm_calls=0,
         )
-
 
 
 def build_dspy_ggen_module(

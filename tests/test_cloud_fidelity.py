@@ -147,7 +147,9 @@ def test_step_scoped_ignore_suppresses_only_the_admitted_operation() -> None:
     )
 
     assert result.equivalent is False
-    assert not any(diff.step == 0 and diff.reason == "value_mismatch" for diff in result.differences)
+    assert not any(
+        diff.step == 0 and diff.reason == "value_mismatch" for diff in result.differences
+    )
     assert any(diff.step == 1 and diff.reason == "value_mismatch" for diff in result.differences)
 
 

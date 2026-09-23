@@ -20,9 +20,9 @@ named_standing_skip(
     reason="the optional 'dspy' extra is not installed -- `uv sync --extra dspy`",
 )
 
-import dspy  # noqa: E402
+import dspy
 
-from gymact.dspy_ocel import DspyOcelCallback, build_and_validate_dspy_ocel_log  # noqa: E402
+from gymact.dspy_ocel import DspyOcelCallback, build_and_validate_dspy_ocel_log
 
 
 def _groq_key_available() -> bool:

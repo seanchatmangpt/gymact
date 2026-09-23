@@ -6,6 +6,7 @@ from fractions import Fraction
 
 from .refusal import Refused
 
+
 @dataclass(frozen=True)
 class Candidate:
     identity: str
@@ -15,12 +16,14 @@ class Candidate:
     support: int
     oracle_gap: Fraction = Fraction()
 
+
 class Strategy(str, Enum):
     MIN_NOMINAL = "min_nominal"
     MIN_WORST = "min_worst"
     MIN_RADIUS = "min_radius"
     MAX_SUPPORT = "max_support"
     MIN_ORACLE_GAP = "min_oracle_gap"
+
 
 def select(candidates: tuple[Candidate, ...], strategy: Strategy) -> Candidate:
     if not candidates:

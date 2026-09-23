@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from .selector import Candidate
 
+
 def dominates(a: Candidate, b: Candidate) -> bool:
     weak = (
         a.nominal <= b.nominal
@@ -19,5 +20,11 @@ def dominates(a: Candidate, b: Candidate) -> bool:
     )
     return weak and strict
 
+
 def frontier(candidates: tuple[Candidate, ...]) -> tuple[Candidate, ...]:
-    return tuple(sorted((c for c in candidates if not any(dominates(o, c) for o in candidates if o != c)), key=lambda c: c.identity))
+    return tuple(
+        sorted(
+            (c for c in candidates if not any(dominates(o, c) for o in candidates if o != c)),
+            key=lambda c: c.identity,
+        )
+    )

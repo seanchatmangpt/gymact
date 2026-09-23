@@ -19,7 +19,9 @@ class Receipt:
     digest: str
 
 
-def _body(subject: Subject, primal: Fraction, dual: Fraction, authority: str, actuation: bool) -> dict[str, str | bool]:
+def _body(
+    subject: Subject, primal: Fraction, dual: Fraction, authority: str, actuation: bool
+) -> dict[str, str | bool]:
     return {
         "repo": subject.repo,
         "sha": subject.sha,
@@ -33,14 +35,24 @@ def _body(subject: Subject, primal: Fraction, dual: Fraction, authority: str, ac
 
 def manufacture_receipt(subject: Subject, primal: Fraction, dual: Fraction) -> Receipt:
     body = _body(subject, primal, dual, "VERIFY", False)
-    digest = hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    digest = hashlib.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
     return Receipt(subject, primal, dual, "VERIFY", False, digest)
 
 
 def replay(receipt: Receipt) -> None:
     if receipt.actuation_performed:
         raise DualityRefusal("RECEIPT_ACTUATION", "verification receipt cannot report actuation")
-    body = _body(receipt.subject, receipt.primal, receipt.dual, receipt.authority, receipt.actuation_performed)
-    digest = hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    body = _body(
+        receipt.subject,
+        receipt.primal,
+        receipt.dual,
+        receipt.authority,
+        receipt.actuation_performed,
+    )
+    digest = hashlib.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
     if digest != receipt.digest:
         raise DualityRefusal("RECEIPT_DRIFT", "receipt digest mismatch")

@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from rdflib import Graph, RDF, URIRef
+from rdflib import RDF, Graph, URIRef
 from rdflib.namespace import DCTERMS, SKOS, SOSA
 
 from gymact.models import Consequence
@@ -18,7 +18,7 @@ from gymact.models import Consequence
 # not silently deleted, per `.claude/rules/ocel-standing.md`'s "a red test
 # naming a real gap is preferable to a silent one" discipline.
 try:
-    from gymact.protocol_gym import PROTOCOL_CAPABILITIES, ProtocolGymProvider, _SCHEMAS
+    from gymact.protocol_gym import _SCHEMAS, PROTOCOL_CAPABILITIES, ProtocolGymProvider
 except ImportError:
     pytest.skip(
         "BLOCKED:PROTOCOL_CAPABILITIES_NEVER_IMPLEMENTED -- see module docstring",

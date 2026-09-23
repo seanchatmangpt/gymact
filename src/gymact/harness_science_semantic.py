@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Final
 
-from rdflib import BNode, Graph, Literal, Namespace, RDF, URIRef
+from rdflib import RDF, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import DCTERMS, PROV, SKOS
 
 from gymact.harness_science import (
@@ -65,9 +65,7 @@ def configuration_effect_graph(effect: ConfigurationEffect, *, run_iri: str) -> 
     graph.add((observation, PROV.wasGeneratedBy, run))
     _source(graph, observation, "harness_bench")
     graph.add((observation, DCTERMS.references, URIRef(PAPER_IRIS["agentcompass"])))
-    graph.add(
-        (observation, DCTERMS.references, URIRef(PAPER_IRIS["rethinking_harness_evolution"]))
-    )
+    graph.add((observation, DCTERMS.references, URIRef(PAPER_IRIS["rethinking_harness_evolution"])))
     return graph
 
 

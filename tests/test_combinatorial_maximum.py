@@ -3,7 +3,6 @@ from __future__ import annotations
 import pytest
 
 from gymact.action_contract import ReversalClass
-from gymact.consequence_binding import ConsequenceBinding, consequence_binding_attributes
 from gymact.combinatorial import (
     AdmissionContext,
     DecisionPhase,
@@ -20,7 +19,7 @@ from gymact.combinatorial import (
     manufacture_combination_space,
     pareto_paths,
 )
-from gymact.models import Standing
+from gymact.consequence_binding import ConsequenceBinding, consequence_binding_attributes
 
 
 def node(object_id: str, kind: PossibilityObjectKind) -> PossibilityObject:
@@ -62,9 +61,7 @@ def edge(
         kind=MorphismKind.ACTUATE if phase is DecisionPhase.DO else MorphismKind.REALIZE,
         phase=phase,
         reversal=(
-            ReversalClass.IRREVERSIBLE
-            if phase is DecisionPhase.DO
-            else ReversalClass.REVERSIBLE
+            ReversalClass.IRREVERSIBLE if phase is DecisionPhase.DO else ReversalClass.REVERSIBLE
         ),
         requirements=MorphismRequirements(
             capability_refs=capability_refs,

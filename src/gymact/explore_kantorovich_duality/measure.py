@@ -11,7 +11,7 @@ class FiniteMeasure:
     mass: dict[str, Fraction]
 
     @classmethod
-    def normalize(cls, values: dict[str, Fraction | int]) -> "FiniteMeasure":
+    def normalize(cls, values: dict[str, Fraction | int]) -> FiniteMeasure:
         if not values:
             raise DualityRefusal("EMPTY_MEASURE", "support must be nonempty")
         raw = {k: Fraction(v) for k, v in values.items()}

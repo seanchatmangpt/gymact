@@ -92,6 +92,4 @@ def test_metrics_and_snapshot_projection_use_dqv_and_prov_bundle():
     graph = sem.snapshot_graph(snapshot, run_iri="urn:test:harness-if:run")
     bundle = sem.HIF[f"snapshot-{snapshot.snapshot_fingerprint}"]
     assert (bundle, RDF.type, sem.PROV.Bundle) in graph
-    assert any(
-        object_ref == sem.DQV.QualityMeasurement for _, _, object_ref in graph
-    )
+    assert any(object_ref == sem.DQV.QualityMeasurement for _, _, object_ref in graph)

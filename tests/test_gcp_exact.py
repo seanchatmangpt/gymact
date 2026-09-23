@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-
 import httpx
 
 from gymact.gyms.gcp_exact import (
@@ -227,10 +225,7 @@ def test_coverage_is_fail_closed_until_every_method_is_receipted_alive() -> None
 
 def test_duplicate_evidence_is_not_exact() -> None:
     census = _census()
-    records = [
-        _alive_record(method.identity, index)
-        for index, method in enumerate(census.methods)
-    ]
+    records = [_alive_record(method.identity, index) for index, method in enumerate(census.methods)]
     records.append(records[0])
     report = GcpCoverageReport.evaluate(census, records)
     assert not report.exact

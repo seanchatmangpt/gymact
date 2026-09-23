@@ -8,10 +8,12 @@ from .ground import GroundMetric
 from .measure import FiniteMeasure, common_support
 from .refusal import Refused
 
+
 @dataclass(frozen=True)
 class TransportPlan:
     cost: Fraction
     shipments: tuple[tuple[str, str, Fraction], ...]
+
 
 def wasserstein1(a: FiniteMeasure, b: FiniteMeasure, metric: GroundMetric) -> TransportPlan:
     support = common_support(a, b)

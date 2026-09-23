@@ -8,12 +8,14 @@ The graph is deliberately incapable of actuation. It contains semantic identitie
 requirements, evidence, costs, reversibility and topology only. ExecutionGrant is
 never stored here; BRCE remains the exclusive DO path.
 """
+
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable
 from enum import StrEnum
 from itertools import islice, product
-from typing import Any, Iterable, Self
+from typing import Any, Self
 
 from pydantic import Field, field_validator, model_validator
 
@@ -415,25 +417,25 @@ def evaluate_morphism(
 
 
 def _dominates(left: PossibilityPath, right: PossibilityPath) -> bool:
-    l = left.objectives
+    lhs = left.objectives
     r = right.objectives
     no_worse = (
-        l.monetary_cost <= r.monetary_cost
-        and l.wall_time_s <= r.wall_time_s
-        and l.compute_units <= r.compute_units
-        and l.human_interventions <= r.human_interventions
-        and l.risk_score <= r.risk_score
-        and l.verification_confidence >= r.verification_confidence
-        and l.expected_value >= r.expected_value
+        lhs.monetary_cost <= r.monetary_cost
+        and lhs.wall_time_s <= r.wall_time_s
+        and lhs.compute_units <= r.compute_units
+        and lhs.human_interventions <= r.human_interventions
+        and lhs.risk_score <= r.risk_score
+        and lhs.verification_confidence >= r.verification_confidence
+        and lhs.expected_value >= r.expected_value
     )
     better = (
-        l.monetary_cost < r.monetary_cost
-        or l.wall_time_s < r.wall_time_s
-        or l.compute_units < r.compute_units
-        or l.human_interventions < r.human_interventions
-        or l.risk_score < r.risk_score
-        or l.verification_confidence > r.verification_confidence
-        or l.expected_value > r.expected_value
+        lhs.monetary_cost < r.monetary_cost
+        or lhs.wall_time_s < r.wall_time_s
+        or lhs.compute_units < r.compute_units
+        or lhs.human_interventions < r.human_interventions
+        or lhs.risk_score < r.risk_score
+        or lhs.verification_confidence > r.verification_confidence
+        or lhs.expected_value > r.expected_value
     )
     return no_worse and better
 

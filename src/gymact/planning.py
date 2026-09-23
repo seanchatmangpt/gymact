@@ -47,7 +47,7 @@ class PlannedBrokerRequest(FrozenModel):
     plan_provenance: PlanProvenance
 
     @model_validator(mode="after")
-    def require_exact_plan_binding(self) -> "PlannedBrokerRequest":
+    def require_exact_plan_binding(self) -> PlannedBrokerRequest:
         if self.request.prepared.planning_provenance_digest != self.plan_provenance.digest:
             raise ValueError("PLAN_PROVENANCE_BINDING_MISMATCH")
         return self
@@ -62,7 +62,7 @@ class PlanReceiptBinding(FrozenModel):
     binding_digest: str
 
     @classmethod
-    def manufacture(cls, plan: PlanProvenance, receipt: Receipt) -> "PlanReceiptBinding":
+    def manufacture(cls, plan: PlanProvenance, receipt: Receipt) -> PlanReceiptBinding:
         plan_digest = plan.digest
         if receipt.planning_provenance_digest != plan_digest:
             raise ValueError("RECEIPT_PLAN_PROVENANCE_MISMATCH")
@@ -92,16 +92,12 @@ class PlannedTransition(FrozenModel):
 
 def bind_plan(request: BrokerRequest, provenance: PlanProvenance) -> PlannedBrokerRequest:
     """CONSTRUCT: bind plan identity into a powerless prepared BRCE request."""
-    prepared = request.prepared.model_copy(
-        update={"planning_provenance_digest": provenance.digest}
-    )
+    prepared = request.prepared.model_copy(update={"planning_provenance_digest": provenance.digest})
     bound_request = request.model_copy(update={"prepared": prepared})
     return PlannedBrokerRequest(request=bound_request, plan_provenance=provenance)
 
 
-async def execute_planned(
-    broker: BRCEBroker, planned: PlannedBrokerRequest
-) -> PlannedTransition:
+async def execute_planned(broker: BRCEBroker, planned: PlannedBrokerRequest) -> PlannedTransition:
     """DO only through BRCE, then prove the final receipt retains plan identity."""
     transition = await broker.execute(planned.request)
     binding = PlanReceiptBinding.manufacture(planned.plan_provenance, transition.receipt)

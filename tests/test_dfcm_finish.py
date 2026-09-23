@@ -209,9 +209,7 @@ def test_admission_refuses_source_evidence_drift() -> None:
     )
     frontier = manufacture_completion_frontier(subject_ref="urn:test:head:source", items=items)
     cut = select_completion_cut(frontier)
-    drifted = (
-        items[0].model_copy(update={"evidence_refs": ("urn:test:evidence:after",)}),
-    )
+    drifted = (items[0].model_copy(update={"evidence_refs": ("urn:test:evidence:after",)}),)
 
     with pytest.raises(CompletionAdmissionError, match="REFUSED:SOURCE_IDENTITY_MISMATCH"):
         admit_completion_cut(cut=cut, items=drifted)

@@ -21,7 +21,10 @@ def test_pareto_frontier_is_order_invariant() -> None:
     strong = candidate("strong", 2, 2, 2, 2, 2, 2)
     tradeoff = candidate("tradeoff", 3, 0, 3, 0, 3, 0)
     assert pareto_frontier((weak, strong, tradeoff)) == pareto_frontier((tradeoff, weak, strong))
-    assert {item.identity for item in pareto_frontier((weak, strong, tradeoff))} == {"strong", "tradeoff"}
+    assert {item.identity for item in pareto_frontier((weak, strong, tradeoff))} == {
+        "strong",
+        "tradeoff",
+    }
 
 
 def test_selection_is_deterministic_and_reversible() -> None:
@@ -43,7 +46,11 @@ def test_screen_receipt_records_zero_irreversible_selection() -> None:
 def test_rendered_action_manufactures_intent_without_actuation() -> None:
     projected = candidate("screen", 1, 1, 1, 1, 1, 1, actions=("approve",))
     receipt = make_screen_receipt(
-        grammar="dd-ui/2", world="world", input_payload="input", frontier=(projected,), screen="screen"
+        grammar="dd-ui/2",
+        world="world",
+        input_payload="input",
+        frontier=(projected,),
+        screen="screen",
     )
     intent = make_intent(receipt, "claim-1", "approve", projected.projected_actions)
     assert intent.actuation is False
@@ -53,7 +60,11 @@ def test_rendered_action_manufactures_intent_without_actuation() -> None:
 def test_unprojected_action_is_refused() -> None:
     projected = candidate("screen", 1, 1, 1, 1, 1, 1, actions=("approve",))
     receipt = make_screen_receipt(
-        grammar="dd-ui/2", world="world", input_payload="input", frontier=(projected,), screen="screen"
+        grammar="dd-ui/2",
+        world="world",
+        input_payload="input",
+        frontier=(projected,),
+        screen="screen",
     )
     with pytest.raises(ValueError, match="REFUSED_UNPROJECTED_ACTION"):
         make_intent(receipt, "claim-1", "delete", projected.projected_actions)

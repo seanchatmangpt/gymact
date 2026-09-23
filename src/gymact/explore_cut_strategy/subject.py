@@ -1,7 +1,8 @@
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 _EXACT = re.compile(r"^[^/\s]+/[^@\s]+@[0-9a-f]{40}$")
+
 
 @dataclass(frozen=True)
 class Subject:

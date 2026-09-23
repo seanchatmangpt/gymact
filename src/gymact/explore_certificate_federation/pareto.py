@@ -17,4 +17,8 @@ def pareto_frontier(candidates: tuple[Candidate, ...]) -> tuple[Candidate, ...]:
         )
         return weak and strict
 
-    return tuple(c for c in candidates if not any(dominates(other, c) for other in candidates if other is not c))
+    return tuple(
+        c
+        for c in candidates
+        if not any(dominates(other, c) for other in candidates if other is not c)
+    )

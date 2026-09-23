@@ -51,16 +51,13 @@ MEMORY_CAPABILITIES = (
         # via `gymact.dspy_agent`'s live-LM test: an untitled-schema tool
         # call guessed `{"counter": 1}` instead of the real
         # `{"key": "counter", "value": 1}` shape.
-        title=(
-            "Set a value in the bounded memory world. "
-            'Payload: {"key": <str>, "value": <any>}.'
-        ),
+        title=('Set a value in the bounded memory world. Payload: {"key": <str>, "value": <any>}.'),
         consequence=Consequence.DO,
         binding="set",
     ),
     Capability(
         iri="urn:gymact:memory:capability:delete",
-        title="Delete a value from the bounded memory world. Payload: {\"key\": <str>}.",
+        title='Delete a value from the bounded memory world. Payload: {"key": <str>}.',
         consequence=Consequence.DO,
         binding="delete",
     ),
@@ -68,7 +65,7 @@ MEMORY_CAPABILITIES = (
         iri="urn:gymact:memory:capability:increment",
         title=(
             "Increment a numeric value in the bounded memory world. "
-            "Payload: {\"key\": <str>, \"amount\": <number, default 1>}."
+            'Payload: {"key": <str>, "amount": <number, default 1>}.'
         ),
         consequence=Consequence.DO,
         binding="increment",

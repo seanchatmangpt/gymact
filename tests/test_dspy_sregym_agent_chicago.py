@@ -27,7 +27,7 @@ named_standing_skip(
     reason="the optional 'dspy' extra is not installed -- `uv sync --extra dspy`",
 )
 
-from gymact.dspy_sregym_agent import (  # noqa: E402
+from gymact.dspy_sregym_agent import (
     DeploymentConfigSummary,
     K8sDeployment,
     _summarize_deployment_configs,

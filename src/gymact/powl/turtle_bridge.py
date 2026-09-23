@@ -49,10 +49,8 @@ Scope refusals, named rather than silent
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
-
-from rdflib import Graph, Literal, URIRef
-from rdflib.namespace import Namespace, RDF
+from rdflib import Graph, URIRef
+from rdflib.namespace import RDF, Namespace
 
 from gymact.powl._turtle import (
     MFWP,
@@ -68,10 +66,10 @@ from gymact.powl.algebra import Atom, NodeId, OrderEdge, PartialOrder, PowlNode
 
 __all__ = [
     "BridgeError",
+    "model_to_turtle",
     "parse_powl_turtle",
     "powl_model_to_node",
     "powl_node_to_model",
-    "model_to_turtle",
 ]
 
 _POWL2 = Namespace(POWL2)
@@ -110,11 +108,11 @@ def powl_model_to_node(model: PowlModel) -> PowlNode:
     if not ordered:
         raise BridgeError("EMPTY_MODEL: powl2:Model has zero powl2:ChildBinding children")
 
-    index_of_child_iri: Dict[str, int] = {
+    index_of_child_iri: dict[str, int] = {
         child.iri: position for position, child in enumerate(ordered)
     }
 
-    atoms: List[Atom] = []
+    atoms: list[Atom] = []
     for child in ordered:
         leaf = model.leaves.get(child.child_model)
         if leaf is None:
@@ -125,7 +123,7 @@ def powl_model_to_node(model: PowlModel) -> PowlNode:
                 f"DANGLING_CHILD_MODEL: <{child.iri}> powl2:childModel "
                 f"<{child.child_model}> has no matching powl2:ActivityLeaf"
             )
-        bindings: Dict[str, str] = {}
+        bindings: dict[str, str] = {}
         for binding_iri in leaf.binds_parameter:
             binding = model.bindings.get(binding_iri)
             if binding is None:
@@ -182,11 +180,11 @@ def powl_node_to_model(
     ``fabric/powl.py`` itself emits for a pure total order.
     """
     if isinstance(node, Atom):
-        atoms: Tuple[Atom, ...] = (node,)
-        precedes_by_index: Dict[int, Tuple[int, ...]] = {0: ()}
+        atoms: tuple[Atom, ...] = (node,)
+        precedes_by_index: dict[int, tuple[int, ...]] = {0: ()}
     elif isinstance(node, PartialOrder) and all(isinstance(c, Atom) for c in node.children):
         atoms = node.children  # type: ignore[assignment]
-        by_src: Dict[int, List[int]] = {i: [] for i in range(len(atoms))}
+        by_src: dict[int, list[int]] = {i: [] for i in range(len(atoms))}
         for edge in node.closure:
             by_src[int(edge.src)].append(int(edge.dst))
         precedes_by_index = {i: tuple(sorted(dsts)) for i, dsts in by_src.items()}
@@ -200,19 +198,21 @@ def powl_node_to_model(
     plan_iri = f"{base_iri}/plan"
     domain_iri = f"{base_iri}/domain"
 
-    children: Dict[str, ChildBinding] = {}
-    leaves: Dict[str, ActivityLeaf] = {}
-    bindings: Dict[str, ParameterBinding] = {}
-    has_child: List[str] = []
+    children: dict[str, ChildBinding] = {}
+    leaves: dict[str, ActivityLeaf] = {}
+    bindings: dict[str, ParameterBinding] = {}
+    has_child: list[str] = []
 
     for index, atom in enumerate(atoms):
         step_iri = f"{plan_iri}/step/{index}"
         slot_iri = f"{plan_iri}/binding-slot/{index}"
         implements_action = (
-            atom.action if isinstance(atom.action, str) and atom.action else f"{base_iri}/{atom.label}"
+            atom.action
+            if isinstance(atom.action, str) and atom.action
+            else f"{base_iri}/{atom.label}"
         )
 
-        binds_parameter: List[str] = []
+        binds_parameter: list[str] = []
         for position, key in enumerate(sorted(atom.bindings, key=_binding_sort_key)):
             binding_iri = f"{step_iri}/binding/{position}"
             bound_object = atom.bindings[key]
@@ -274,7 +274,7 @@ def _binding_index(key: str, fallback_position: int) -> int:
         return fallback_position
 
 
-def _binding_sort_key(key: str) -> Tuple[int, str]:
+def _binding_sort_key(key: str) -> tuple[int, str]:
     try:
         return (0, f"{int(key):020d}")
     except ValueError:
@@ -312,12 +312,10 @@ def parse_powl_turtle(text: str) -> PowlModel:
     graph = Graph()
     try:
         graph.parse(data=text, format="turtle")
-    except Exception as exc:  # noqa: BLE001 -- real rdflib parse errors, re-typed
+    except Exception as exc:
         raise BridgeError(f"UNPARSEABLE_TURTLE: {exc}") from exc
 
-    model_subjects = sorted(
-        str(s) for s in graph.subjects(RDF.type, _POWL2.Model)
-    )
+    model_subjects = sorted(str(s) for s in graph.subjects(RDF.type, _POWL2.Model))
     if not model_subjects:
         raise BridgeError("NO_POWL_MODEL: no subject typed powl2:Model in the document")
     if len(model_subjects) > 1:
@@ -327,7 +325,9 @@ def parse_powl_turtle(text: str) -> PowlModel:
         )
     root = URIRef(model_subjects[0])
 
-    def _one_literal(subject: URIRef, predicate: URIRef, *, required: bool, label: str) -> str | None:
+    def _one_literal(
+        subject: URIRef, predicate: URIRef, *, required: bool, label: str
+    ) -> str | None:
         values = list(graph.objects(subject, predicate))
         if not values:
             if required:
@@ -336,15 +336,15 @@ def parse_powl_turtle(text: str) -> PowlModel:
         if len(values) > 1:
             raise BridgeError(f"MULTI_VALUED_SCALAR: <{subject}> has more than one {label}")
         value = values[0]
-        return str(value) if isinstance(value, Literal) else str(value)
+        return str(value)
 
     activity_count_literal = _one_literal(
         root, _MFWP.activityCount, required=False, label="mfwp:activityCount"
     )
 
-    children: Dict[str, ChildBinding] = {}
-    leaves: Dict[str, ActivityLeaf] = {}
-    bindings: Dict[str, ParameterBinding] = {}
+    children: dict[str, ChildBinding] = {}
+    leaves: dict[str, ActivityLeaf] = {}
+    bindings: dict[str, ParameterBinding] = {}
 
     for child_iri in sorted(str(c) for c in graph.objects(root, _POWL2.hasChild)):
         child_subject = URIRef(child_iri)
@@ -360,9 +360,7 @@ def parse_powl_turtle(text: str) -> PowlModel:
         child_model = _one_literal(
             child_subject, _POWL2.childModel, required=True, label="powl2:childModel"
         )
-        precedes = tuple(
-            sorted(str(t) for t in graph.objects(child_subject, _POWL2.precedes))
-        )
+        precedes = tuple(sorted(str(t) for t in graph.objects(child_subject, _POWL2.precedes)))
         children[child_iri] = ChildBinding(
             iri=child_iri,
             child_index=int(child_index_literal),  # type: ignore[arg-type]
@@ -453,7 +451,7 @@ def model_to_turtle(model: PowlModel) -> str:
     :class:`PowlModel` object rather than from raw plan lines, so it can
     round-trip a model built by :func:`powl_node_to_model`.
     """
-    out: List[str] = [
+    out: list[str] = [
         f"@prefix powl2: <{POWL2}> .",
         f"@prefix mfwp: <{MFWP}> .",
         f"@prefix prov: <{PROV}> .",
@@ -476,7 +474,9 @@ def model_to_turtle(model: PowlModel) -> str:
         root.append(f'    mfwp:projection "{model.projection}" ;')
     for iri in model.has_child:
         root.append(f"    powl2:hasChild <{iri}> ;")
-    activity_count = model.activity_count if model.activity_count is not None else len(model.children)
+    activity_count = (
+        model.activity_count if model.activity_count is not None else len(model.children)
+    )
     root.append(f'    mfwp:activityCount "{activity_count}"^^xsd:integer .')
     out.extend(root)
     out.append("")

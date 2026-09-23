@@ -25,22 +25,22 @@ named_standing_skip(
     reason="the optional 'dspy' extra is not installed -- `uv sync --extra dspy`",
 )
 
-from gymact import (  # noqa: E402
+from gymact import (
     AllowListAuthorityResolver,
     GymAct,
     MaterializationIntent,
     MemoryProvider,
     Standing,
 )
-from gymact.dspy_agent import (  # noqa: E402
+from gymact.dspy_agent import (
     GymActReActAgent,
     UngroundedActuationRefused,
     _assert_payload_is_grounded,
     _collect_string_leaves,
 )
-from gymact.gyms.sregym import SregymVendorProvider  # noqa: E402
-from gymact.limits import RuntimeLimits  # noqa: E402
-from tests.test_sregym_provider import (  # noqa: E402
+from gymact.gyms.sregym import SregymVendorProvider
+from gymact.limits import RuntimeLimits
+from tests.test_sregym_provider import (
     _real_sregym_checkout_ready as _real_sregym_ready,
 )
 

@@ -4,8 +4,8 @@ import pytest
 
 from gymact.explore_real_certificate_chain.dual import bind_dual
 from gymact.explore_real_certificate_chain.oracle import bind_oracle
-from gymact.explore_real_certificate_chain.primal import bind_primal
 from gymact.explore_real_certificate_chain.pipeline import certify
+from gymact.explore_real_certificate_chain.primal import bind_primal
 
 
 def test_three_way_certificate_chain_accepts_exact_agreement() -> None:

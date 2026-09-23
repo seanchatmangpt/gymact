@@ -124,7 +124,9 @@ def _run_inspect_eval(
         inspect_hooks.start_sample_event_emitter = start_sample_event_emitter_tracking_receive
         inspect_hooks.drain_sample_events = drain_sample_events_closing_receive
         if runner_start is original_start:
-            inspect_task_run.start_sample_event_emitter = start_sample_event_emitter_tracking_receive
+            inspect_task_run.start_sample_event_emitter = (
+                start_sample_event_emitter_tracking_receive
+            )
         if runner_drain is original_drain:
             inspect_task_run.drain_sample_events = drain_sample_events_closing_receive
         try:

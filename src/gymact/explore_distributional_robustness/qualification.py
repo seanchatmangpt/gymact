@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from fractions import Fraction
 from enum import StrEnum
+from fractions import Fraction
 
 from .calibration import Calibration
 from .receipt import Receipt, ReceiptBody

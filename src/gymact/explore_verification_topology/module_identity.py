@@ -12,7 +12,12 @@ class TestModule:
 
     def __post_init__(self) -> None:
         p = PurePosixPath(self.path)
-        if p.is_absolute() or ".." in p.parts or p.suffix != ".py" or not p.name.startswith("test_"):
+        if (
+            p.is_absolute()
+            or ".." in p.parts
+            or p.suffix != ".py"
+            or not p.name.startswith("test_")
+        ):
             raise Refusal("REFUSED_INVALID_TEST_MODULE")
         object.__setattr__(self, "path", p.as_posix())
 

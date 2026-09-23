@@ -74,7 +74,7 @@ class GrantIssue(FrozenModel):
     reason: str
 
     @model_validator(mode="after")
-    def admitted_issue_requires_grant(self) -> "GrantIssue":
+    def admitted_issue_requires_grant(self) -> GrantIssue:
         if self.standing is Standing.ALIVE and self.grant is None:
             raise ValueError("ALIVE_GRANT_ISSUE_REQUIRES_GRANT")
         return self
@@ -160,7 +160,7 @@ class ConsequenceRequest(FrozenModel):
     require_verification: bool = True
 
     @model_validator(mode="after")
-    def require_unambiguous_capability_and_verification(self) -> "ConsequenceRequest":
+    def require_unambiguous_capability_and_verification(self) -> ConsequenceRequest:
         if self.capability_ref is not None and self.capability_binding is not None:
             raise ValueError("CAPABILITY_SELECTOR_MUST_USE_REF_OR_BINDING_NOT_BOTH")
         if self.require_verification and not self.expected:

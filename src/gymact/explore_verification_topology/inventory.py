@@ -1,6 +1,8 @@
 from dataclasses import dataclass
+
 from .module_identity import TestModule
 from .subject import Refusal
+
 
 @dataclass(frozen=True)
 class ModuleInventory:

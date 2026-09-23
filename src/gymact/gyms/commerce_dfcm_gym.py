@@ -10,10 +10,11 @@ external marketplace action in an ALIVE actuation receipt.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import fields, is_dataclass
 from enum import Enum
-from typing import Any, Mapping
+from typing import Any
 from uuid import uuid4
 
 from gymact.models import Capability as GymCapability
@@ -72,9 +73,7 @@ COMMERCE_DFCM_EXTERNAL_FRONTIER: tuple[GymCapability, ...] = tuple(
     for capability in COMMERCE_DFCM_SEMANTIC_CAPABILITIES
     if capability.binding in _EXTERNAL_DO_BINDINGS
 )
-_CAPABILITY_BY_BINDING = {
-    item.binding: item for item in COMMERCE_DFCM_SEMANTIC_CAPABILITIES
-}
+_CAPABILITY_BY_BINDING = {item.binding: item for item in COMMERCE_DFCM_SEMANTIC_CAPABILITIES}
 _PACKAGING_BINDINGS = frozenset(
     {
         "packaging.helm",
@@ -171,9 +170,7 @@ def _event(payload: Mapping[str, Any]) -> EntitlementEvent:
         revision=int(body["revision"]),
         quantity=int(body.get("quantity", 1)),
         capabilities=frozenset(str(item) for item in capabilities),
-        support_tier=(
-            str(body["support_tier"]) if body.get("support_tier") is not None else None
-        ),
+        support_tier=(str(body["support_tier"]) if body.get("support_tier") is not None else None),
     )
 
 
@@ -282,9 +279,7 @@ class CommerceDfcmEnvironment:
         self._ensure_open()
         return self._state()
 
-    async def actuate(
-        self, capability: GymCapability, payload: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def actuate(self, capability: GymCapability, payload: dict[str, Any]) -> dict[str, Any]:
         self._ensure_open()
         if capability.binding not in _CAPABILITY_BY_BINDING:
             raise ValueError(f"unsupported commerce-dfcm binding: {capability.binding}")

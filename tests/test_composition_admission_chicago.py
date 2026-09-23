@@ -57,7 +57,9 @@ def test_crown_p1_resolves_to_adapt_not_reuse_compose_or_create():
     orchestration-only. The honest mechanical result is ADAPT: GymAct already
     has the physics, only composition/wiring is missing — not COMPOSE (that
     would falsely claim zero residual) and not CREATE_PROVIDER."""
-    contract = CapabilityContract(name="UnauthorizedActuationPath", required_capabilities=CROWN_P1_REQUIRED)
+    contract = CapabilityContract(
+        name="UnauthorizedActuationPath", required_capabilities=CROWN_P1_REQUIRED
+    )
     inventory = known_component_inventory()
     classifications = known_capability_classifications()
 
@@ -82,7 +84,9 @@ def test_crown_p1_resolves_to_adapt_not_reuse_compose_or_create():
 def test_create_provider_is_refused_for_crown_p1():
     """The enforcement half must raise for CROWN_P1 given current inventory and
     classifications — an ADAPT decision does not authorize CREATE_PROVIDER."""
-    contract = CapabilityContract(name="UnauthorizedActuationPath", required_capabilities=CROWN_P1_REQUIRED)
+    contract = CapabilityContract(
+        name="UnauthorizedActuationPath", required_capabilities=CROWN_P1_REQUIRED
+    )
     inventory = known_component_inventory()
     classifications = known_capability_classifications()
 

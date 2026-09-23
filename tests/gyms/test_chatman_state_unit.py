@@ -11,8 +11,9 @@ now deleted).
 
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 from gymact import GymAct, MaterializationIntent
 from gymact.gyms.chatman_state_gym import ChatmanStateProvider
@@ -35,35 +36,33 @@ async def test_chatman_state_materialize_read_teardown() -> None:
     episode_id = materialization.episode.episode_id
 
     try:
-
         result_1 = await gym.read(
             episode_id,
-            f"urn:gymact:chatman-state:capability:list_local_repos",
+            "urn:gymact:chatman-state:capability:list_local_repos",
             {},
         )
         assert "result" in result_1
 
         result_2 = await gym.read(
             episode_id,
-            f"urn:gymact:chatman-state:capability:list_github_repos",
+            "urn:gymact:chatman-state:capability:list_github_repos",
             {},
         )
         assert "result" in result_2
 
         result_3 = await gym.read(
             episode_id,
-            f"urn:gymact:chatman-state:capability:portfolio_summary",
+            "urn:gymact:chatman-state:capability:portfolio_summary",
             {},
         )
         assert "result" in result_3
 
         result_4 = await gym.read(
             episode_id,
-            f"urn:gymact:chatman-state:capability:estimated_effort_cost",
+            "urn:gymact:chatman-state:capability:estimated_effort_cost",
             {"repo": str(Path.home() / "gymact"), "since": "30 days ago"},
         )
         assert "result" in result_4
-
 
         verification = await gym.verify(episode_id, {"repo_limit": 10})
         assert verification.passed, verification.observation

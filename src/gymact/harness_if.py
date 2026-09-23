@@ -12,13 +12,13 @@ precedence analysis.
 
 from __future__ import annotations
 
+import json
+import math
+import random
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from enum import StrEnum
 from hashlib import sha256
-import json
-import math
-import random
 from typing import Any, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -164,7 +164,7 @@ class Constraint(FrozenModel):
     depends_on: tuple[str, ...] = ()
 
     @model_validator(mode="after")
-    def validate_surface_contract(self) -> "Constraint":
+    def validate_surface_contract(self) -> Constraint:
         if Surface.HARNESS_DEFAULT in self.surface_variants:
             raise ValueError("HARNESS_IF_HD_IS_FIXED_NOT_CONFIGURABLE")
         for surface, rendering in self.surface_variants.items():
@@ -212,7 +212,7 @@ class BenchmarkItem(FrozenModel):
     placements: tuple[ConstraintPlacement, ...]
 
     @model_validator(mode="after")
-    def unique_rules(self) -> "BenchmarkItem":
+    def unique_rules(self) -> BenchmarkItem:
         ids = [placement.rule_id for placement in self.placements]
         if len(ids) != len(set(ids)):
             raise ValueError("HARNESS_IF_RULE_PLACED_MORE_THAN_ONCE")
@@ -233,9 +233,7 @@ def place_constraint(constraint: Constraint, surface: Surface) -> ConstraintPlac
     if surface == Surface.HARNESS_DEFAULT:
         raise ValueError("HARNESS_IF_HD_IS_FIXED_NOT_CONFIGURABLE")
     if not constraint.admits(surface):
-        raise ValueError(
-            f"HARNESS_IF_INADMISSIBLE_SURFACE:{constraint.rule_id}:{surface.value}"
-        )
+        raise ValueError(f"HARNESS_IF_INADMISSIBLE_SURFACE:{constraint.rule_id}:{surface.value}")
     return ConstraintPlacement(
         rule_id=constraint.rule_id,
         surface=surface,
@@ -265,10 +263,7 @@ def admit_panel_item(
         if not library[placement.rule_id].admits(placement.surface):
             return PanelAdmission(
                 accepted=False,
-                reason=(
-                    f"INADMISSIBLE_SURFACE:{placement.rule_id}:"
-                    f"{placement.surface.value}"
-                ),
+                reason=(f"INADMISSIBLE_SURFACE:{placement.rule_id}:{placement.surface.value}"),
                 rule_count=len(item.placements),
                 scorable_count=0,
             )
@@ -281,8 +276,7 @@ def admit_panel_item(
             scorable_count=0,
         )
     scorable = sum(
-        library[p.rule_id].verifiability != Verifiability.SUBJECTIVE
-        for p in item.placements
+        library[p.rule_id].verifiability != Verifiability.SUBJECTIVE for p in item.placements
     )
     if not min_scorable <= scorable <= max_scorable:
         return PanelAdmission(
@@ -339,9 +333,7 @@ def majority_vote(votes: Sequence[JudgeVote]) -> RuleAssessment:
     if len(votes) != 3:
         raise ValueError("HARNESS_IF_JUDGE_REQUIRES_THREE_VOTES")
     binary = [
-        vote.status
-        for vote in votes
-        if vote.status in (VerdictStatus.PASS, VerdictStatus.FAIL)
+        vote.status for vote in votes if vote.status in (VerdictStatus.PASS, VerdictStatus.FAIL)
     ]
     if len(binary) < 2:
         return RuleAssessment(
@@ -586,9 +578,7 @@ def _pearson(xs: Sequence[float], ys: Sequence[float]) -> float | None:
     mean_y = sum(ys) / len(ys)
     dx = [x - mean_x for x in xs]
     dy = [y - mean_y for y in ys]
-    denominator = math.sqrt(
-        sum(value * value for value in dx) * sum(value * value for value in dy)
-    )
+    denominator = math.sqrt(sum(value * value for value in dx) * sum(value * value for value in dy))
     if denominator == 0:
         return None
     return sum(x * y for x, y in zip(dx, dy, strict=True)) / denominator
@@ -619,13 +609,8 @@ def _discriminating_keys(
 def _discrimination_weights(
     by_agent: Mapping[str, Sequence[RuleVerdict]],
 ) -> dict[str, float]:
-    overall = {
-        agent: _rate([verdict.z for verdict in rows])
-        for agent, rows in by_agent.items()
-    }
-    per_rule_agent: dict[str, dict[str, list[int]]] = defaultdict(
-        lambda: defaultdict(list)
-    )
+    overall = {agent: _rate([verdict.z for verdict in rows]) for agent, rows in by_agent.items()}
+    per_rule_agent: dict[str, dict[str, list[int]]] = defaultdict(lambda: defaultdict(list))
     for agent, rows in by_agent.items():
         for verdict in rows:
             per_rule_agent[verdict.rule_id][agent].append(verdict.z)
@@ -640,9 +625,7 @@ def _discrimination_weights(
             ys.append(float(overall[agent]))
         correlation = _pearson(xs, ys)
         weights[rule_id] = (
-            max(0.0, correlation)
-            if correlation is not None and math.isfinite(correlation)
-            else 0.0
+            max(0.0, correlation) if correlation is not None and math.isfinite(correlation) else 0.0
         )
     return weights
 
@@ -664,32 +647,21 @@ def compute_metrics(
     for agent in sorted(by_agent):
         eligible = by_agent[agent]
         binary = [verdict.z for verdict in eligible]
-        filtered = [
-            verdict.z
-            for verdict in eligible
-            if verdict.observation_key in discriminating
-        ]
+        filtered = [verdict.z for verdict in eligible if verdict.observation_key in discriminating]
         against_prior = [
-            verdict.z
-            for verdict in eligible
-            if library[verdict.rule_id].prior == Prior.AGAINST
+            verdict.z for verdict in eligible if library[verdict.rule_id].prior == Prior.AGAINST
         ]
         weighted_numerator = sum(
-            weights.get(verdict.rule_id, 0.0) * verdict.z
-            for verdict in eligible
+            weights.get(verdict.rule_id, 0.0) * verdict.z for verdict in eligible
         )
-        weighted_denominator = sum(
-            weights.get(verdict.rule_id, 0.0) for verdict in eligible
-        )
+        weighted_denominator = sum(weights.get(verdict.rule_id, 0.0) for verdict in eligible)
         rows.append(
             AgentMetrics(
                 agent_id=agent,
                 accuracy=_rate(binary),
                 filtered_accuracy=_rate(filtered),
                 discrimination_weighted_accuracy=(
-                    weighted_numerator / weighted_denominator
-                    if weighted_denominator > 0
-                    else None
+                    weighted_numerator / weighted_denominator if weighted_denominator > 0 else None
                 ),
                 against_prior_accuracy=_rate(against_prior),
                 eligible=len(binary),
@@ -716,17 +688,11 @@ def common_support(
     for verdict in verdicts:
         if verdict.agent_id in cohort and verdict.eligible:
             by_key[verdict.observation_key][verdict.agent_id] = verdict
-    keys = {
-        key
-        for key, by_agent in by_key.items()
-        if frozenset(by_agent) == cohort
-    }
+    keys = {key for key, by_agent in by_key.items() if frozenset(by_agent) == cohort}
     return tuple(
         verdict
         for verdict in verdicts
-        if verdict.agent_id in cohort
-        and verdict.observation_key in keys
-        and verdict.eligible
+        if verdict.agent_id in cohort and verdict.observation_key in keys and verdict.eligible
     )
 
 
@@ -747,10 +713,7 @@ def grouped_accuracy(
         else:
             raise ValueError("HARNESS_IF_GROUP_BY_MUST_BE_SURFACE_OR_FAMILY")
         groups[key].append(verdict.z)
-    return {
-        key: sum(values) / len(values)
-        for key, values in sorted(groups.items())
-    }
+    return {key: sum(values) / len(values) for key, values in sorted(groups.items())}
 
 
 class FailureStats(FrozenModel):
@@ -778,11 +741,7 @@ def decompose_failures(
             failure_class=klass,
             failures=failures[klass],
             eligible=eligible[klass],
-            failure_rate=(
-                failures[klass] / eligible[klass]
-                if eligible[klass]
-                else None
-            ),
+            failure_rate=(failures[klass] / eligible[klass] if eligible[klass] else None),
         )
         for klass in FailureClass
     )
@@ -797,7 +756,7 @@ class ConflictRun(FrozenModel):
     winner: Surface | None
 
     @model_validator(mode="after")
-    def validate_conflict(self) -> "ConflictRun":
+    def validate_conflict(self) -> ConflictRun:
         if self.surface_a == self.surface_b:
             raise ValueError("HARNESS_IF_CONFLICT_REQUIRES_TWO_SURFACES")
         if (
@@ -846,34 +805,26 @@ def bradley_terry(
     strengths = [1.0] * len(surfaces)
     converged = False
     iteration = 0
-    for iteration in range(1, max_iter + 1):
+    for iteration in range(1, max_iter + 1):  # noqa: B007
         updated: list[float] = []
         for i in range(len(surfaces)):
             denominator = 0.0
             for j in range(len(surfaces)):
                 if i != j and matches[i][j]:
                     denominator += matches[i][j] / (strengths[i] + strengths[j])
-            updated.append(
-                max(wins[i] / denominator, 1e-15)
-                if denominator
-                else strengths[i]
-            )
+            updated.append(max(wins[i] / denominator, 1e-15) if denominator else strengths[i])
         log_mean = sum(math.log(value) for value in updated) / len(updated)
         scale = math.exp(log_mean)
         updated = [value / scale for value in updated]
         delta = max(
-            abs(math.log(updated[i]) - math.log(strengths[i]))
-            for i in range(len(strengths))
+            abs(math.log(updated[i]) - math.log(strengths[i])) for i in range(len(strengths))
         )
         strengths = updated
         if delta < tolerance:
             converged = True
             break
     return BradleyTerryResult(
-        log_strengths={
-            surface: math.log(strengths[index[surface]])
-            for surface in surfaces
-        },
+        log_strengths={surface: math.log(strengths[index[surface]]) for surface in surfaces},
         decisive_runs=decisive,
         converged=converged,
         iterations=iteration,
@@ -915,11 +866,7 @@ def precedence_support(
         if not any(run.winner is not None for run in sample):
             continue
         strengths = bradley_terry(sample).log_strengths
-        if (
-            min(strengths[surface] for surface in top)
-            > strengths[middle]
-            > strengths[bottom]
-        ):
+        if min(strengths[surface] for surface in top) > strengths[middle] > strengths[bottom]:
             support += 1
     return support / replicates
 

@@ -1,15 +1,18 @@
 from dataclasses import dataclass
 from fractions import Fraction
+
 from .trajectory import Trajectory
+
 
 @dataclass(frozen=True)
 class Hazard:
     discharge: Fraction
     regression: Fraction
 
+
 def transition_hazard(trajectory: Trajectory) -> Hazard:
     discharge = regression = count = 0
-    for before, after in zip(trajectory.epochs, trajectory.epochs[1:]):
+    for before, after in zip(trajectory.epochs, trajectory.epochs[1:], strict=False):
         old = {o.key: o.state for o in before.obligations}
         new = {o.key: o.state for o in after.obligations}
         for key in old:

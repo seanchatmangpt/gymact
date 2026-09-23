@@ -163,9 +163,7 @@ def test_errc_ledger_is_complete_and_declares_dcm_as_canonical_authority() -> No
 
 @pytest.mark.asyncio
 async def test_production_runtime_refuses_raw_do_then_brce_executes_verified() -> None:
-    runtime = ProductionGymAct(
-        authority_resolver=AllowListAuthorityResolver({AUTHORITY})
-    )
+    runtime = ProductionGymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
     runtime.register_provider(MemoryProvider())
     materialized = await runtime.materialize(
         MaterializationIntent(

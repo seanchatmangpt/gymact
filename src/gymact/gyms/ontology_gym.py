@@ -269,9 +269,7 @@ class OntologyDrivenEnvironment:
             "goal_reached": self._all_subjects() <= self._state,
         }
 
-    async def actuate(
-        self, capability: Capability, payload: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def actuate(self, capability: Capability, payload: dict[str, Any]) -> dict[str, Any]:
         self._ensure_open()
         task = self._task_by_capability.get(capability.binding)
         if task is None:
@@ -478,21 +476,16 @@ class OdrlAuthorityResolver:
         matching = [
             p
             for p in self._permissions
-            if p.target == request.capability_ref
-            or p.permission_iri == request.capability_ref
+            if p.target == request.capability_ref or p.permission_iri == request.capability_ref
         ]
         if not matching:
-            return AuthorityDecision(
-                admitted=False, reason="ODRL_NO_PERMISSION_FOR_CAPABILITY"
-            )
+            return AuthorityDecision(admitted=False, reason="ODRL_NO_PERMISSION_FOR_CAPABILITY")
         if ref is None:
             return AuthorityDecision(admitted=False, reason="LIVE_AUTHORITY_REQUIRED")
         assigners = {p.assigner for p in matching if p.assigner is not None}
         if assigners:
             if ref not in assigners:
-                return AuthorityDecision(
-                    admitted=False, reason="ODRL_ASSIGNER_MISMATCH"
-                )
+                return AuthorityDecision(admitted=False, reason="ODRL_ASSIGNER_MISMATCH")
             return AuthorityDecision(
                 admitted=True,
                 reason="ODRL_ASSIGNER_ADMITTED",

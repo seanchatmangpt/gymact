@@ -45,7 +45,7 @@ async def _discover(runner: DiscoveryProbeRunner) -> tuple[str, ...]:
                 }
                 continue
             after = frozenset(evidence.after_facts)
-            candidate = prefix + (action,)
+            candidate = (*prefix, action)
             if "done" in after:
                 return candidate
             if after not in seen:

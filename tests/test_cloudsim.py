@@ -451,9 +451,7 @@ async def test_dependency_law_refuses_parent_delete_while_child_is_active() -> N
 async def test_custom_topology_scales_without_provider_code_changes() -> None:
     scopes = [f"business-unit-{index}" for index in range(20)]
     regions = [f"global-region-{index}" for index in range(12)]
-    topology = {
-        cloud: {"scopes": scopes, "regions": regions} for cloud in ("aws", "azure", "gcp")
-    }
+    topology = {cloud: {"scopes": scopes, "regions": regions} for cloud in ("aws", "azure", "gcp")}
     value = runtime()
     episode = await materialize(
         value,

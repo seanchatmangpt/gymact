@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from enum import IntEnum
 from fractions import Fraction
+
 from .errors import Refused
+
 
 class State(IntEnum):
     PASS = 0
@@ -10,6 +12,7 @@ class State(IntEnum):
     REFUSED = 3
     BLOCKED = 4
     FAIL = 5
+
 
 @dataclass(frozen=True)
 class ObligationState:

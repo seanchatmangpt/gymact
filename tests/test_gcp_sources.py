@@ -3,10 +3,10 @@ from __future__ import annotations
 import httpx
 
 from gymact.gyms.gcp_sources import (
+    REQUIRED_SOURCE_FAMILIES,
     ContractArtifact,
     ContractSourceFamily,
     ContractSourceObservation,
-    REQUIRED_SOURCE_FAMILIES,
     evaluate_source_admission,
     load_cloud_docs_sitemap,
     load_googleapis_tree,
@@ -127,11 +127,11 @@ def test_truncated_googleapis_tree_is_blocked_not_partial_success() -> None:
 
 
 def test_cloud_docs_sitemap_is_censused_with_lastmod() -> None:
-    xml = b'''<?xml version="1.0" encoding="UTF-8"?>
+    xml = b"""<?xml version="1.0" encoding="UTF-8"?>
     <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
       <url><loc>https://cloud.google.com/a</loc><lastmod>2026-08-18</lastmod></url>
       <url><loc>https://cloud.google.com/b</loc></url>
-    </urlset>'''
+    </urlset>"""
 
     client = httpx.Client(
         transport=httpx.MockTransport(lambda request: httpx.Response(200, content=xml))

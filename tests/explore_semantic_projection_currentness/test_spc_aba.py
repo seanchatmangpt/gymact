@@ -1,12 +1,11 @@
 import unittest
 
-from tests.explore_semantic_projection_currentness._fixtures import DIGEST, SHA
-
 from gymact.explore_semantic_projection_currentness.currentness import (
     ProjectionEpoch,
     detects_aba,
 )
 from gymact.explore_semantic_projection_currentness.subject import Subject
+from tests.explore_semantic_projection_currentness._fixtures import DIGEST, SHA
 
 
 class Court(unittest.TestCase):

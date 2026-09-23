@@ -37,16 +37,22 @@ def issue_receipt(subject: VerificationSubject, witness: IndependentWitness) -> 
         "authority": "VERIFY",
         "actuation_performed": False,
     }
-    digest = hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    digest = hashlib.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
     return VerificationReceipt(**body, digest=digest)
 
 
 def replay(receipt: VerificationReceipt) -> bool:
     if receipt.authority != "VERIFY" or receipt.actuation_performed:
-        raise IndependentVerifierRefusal("RECEIPT_AUTHORITY_DRIFT", "verification receipt cannot claim consequential actuation")
+        raise IndependentVerifierRefusal(
+            "RECEIPT_AUTHORITY_DRIFT", "verification receipt cannot claim consequential actuation"
+        )
     body = asdict(receipt)
     supplied = body.pop("digest")
-    expected = hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    expected = hashlib.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
     if supplied != expected:
         raise IndependentVerifierRefusal("RECEIPT_DIGEST_MISMATCH", f"{supplied}!={expected}")
     return True

@@ -1,11 +1,13 @@
 from dataclasses import dataclass
-from .trajectory import Trajectory
+
+from .authority import ActionClass, admit
 from .classifier import Strategy, classify
 from .dependency import DependencyGraph
 from .pareto import candidates, frontier
-from .standing import Standing, standing
 from .receipt import Receipt
-from .authority import ActionClass, admit
+from .standing import Standing, standing
+from .trajectory import Trajectory
+
 
 @dataclass(frozen=True)
 class Qualification:
@@ -14,7 +16,10 @@ class Qualification:
     standing: Standing
     receipt: Receipt
 
-def qualify(trajectory: Trajectory, graph: DependencyGraph, strategy: Strategy = Strategy.LYAPUNOV) -> Qualification:
+
+def qualify(
+    trajectory: Trajectory, graph: DependencyGraph, strategy: Strategy = Strategy.LYAPUNOV
+) -> Qualification:
     admit(ActionClass.CONSTRUCT)
     direction = classify(trajectory, strategy)
     result = standing(trajectory.epochs[-1], direction, graph)

@@ -1,5 +1,6 @@
-from fractions import Fraction
 import hashlib
+from fractions import Fraction
+
 import pytest
 
 from gymact.explore_certificate_federation.certificate import Certificate

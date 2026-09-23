@@ -29,10 +29,10 @@ named_standing_skip(
     available=_importlib_util.find_spec("dspy") is not None,
     reason="the optional 'dspy' extra is not installed -- `uv sync --extra dspy`",
 )
-import dspy  # noqa: E402
+import dspy
 
-from gymact.dspy_verifier import SuspicionOfMismatch  # noqa: E402
-from gymact.epistemic_dspy import (  # noqa: E402
+from gymact.dspy_verifier import SuspicionOfMismatch
+from gymact.epistemic_dspy import (
     CommitDiagnosis,
     ConstructPlanPortfolio,
     ExplainReceipt,

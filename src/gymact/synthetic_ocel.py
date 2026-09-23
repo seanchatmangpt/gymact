@@ -13,10 +13,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from dataclasses import asdict, dataclass
 from enum import StrEnum
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from gymact.models import Receipt
 from gymact.ocel import digest_ocel_log, receipts_to_ocel, validate_ocel_log
@@ -98,12 +99,14 @@ class OCELGymResult:
             raise ValueError("OCEL_TRACE_DIGEST_MISMATCH")
         object.__setattr__(self, "log", copied)
 
-        if self.provenance.origin is OCELTraceOrigin.GGEN_MANUFACTURED:
-            if self.execution_receipt_refs:
-                raise ValueError("MANUFACTURED_TRACE_CANNOT_CARRY_EXECUTION_RECEIPT")
-        elif self.provenance.origin is OCELTraceOrigin.GYM_EXECUTED:
-            if not self.execution_receipt_refs:
-                raise ValueError("GYM_EXECUTED_TRACE_REQUIRES_EXECUTION_RECEIPT")
+        if self.provenance.origin is OCELTraceOrigin.GGEN_MANUFACTURED and (
+            self.execution_receipt_refs
+        ):
+            raise ValueError("MANUFACTURED_TRACE_CANNOT_CARRY_EXECUTION_RECEIPT")
+        elif self.provenance.origin is OCELTraceOrigin.GYM_EXECUTED and (
+            not self.execution_receipt_refs
+        ):
+            raise ValueError("GYM_EXECUTED_TRACE_REQUIRES_EXECUTION_RECEIPT")
 
     def operational_view(self) -> dict[str, Any]:
         """Projection supplied to ordinary domain observers/discriminators."""
@@ -209,6 +212,4 @@ def observed_ocel_result(
 def operationally_equivalent(left: OCELGymResult, right: OCELGymResult) -> bool:
     """Exact equivalence under the canonical operational OCEL projection."""
 
-    return _canonical_digest(left.operational_view()) == _canonical_digest(
-        right.operational_view()
-    )
+    return _canonical_digest(left.operational_view()) == _canonical_digest(right.operational_view())

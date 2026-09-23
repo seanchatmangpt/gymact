@@ -18,7 +18,7 @@ named_standing_skip(
     available=_importlib_util.find_spec("SpiffWorkflow") is not None,
     reason="the optional 'bpmn' extra is not installed -- `uv sync --extra bpmn`",
 )
-from gymact.bpmn_runtime import BpmnWorkflowRefusal, run_bpmn_workflow  # noqa: E402
+from gymact.bpmn_runtime import BpmnWorkflowRefusal, run_bpmn_workflow
 
 FIXTURE = Path(__file__).parent / "fixtures" / "simple_sequential.bpmn"
 

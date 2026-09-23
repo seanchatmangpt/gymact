@@ -10,11 +10,10 @@ performed by logical ggen agents compiled from the M&A pack's RDF ABox. DO
 mutates only the synthetic gym under explicit standard/elevated authority and
 produces normal GymAct receipts.
 """
+
 from __future__ import annotations
 
 from typing import Any, Literal
-
-from pydantic import Field
 
 from gymact.combinatorial import (
     CombinationSpace,
@@ -169,14 +168,9 @@ def _validate_selected_plan(
     plan: MnaSelectedPlan,
 ) -> str:
     assignments = plan.model_dump(mode="python")
-    if not any(
-        combination.assignments == assignments
-        for combination in space.combinations
-    ):
+    if not any(combination.assignments == assignments for combination in space.combinations):
         if space.truncated:
-            raise ValueError(
-                "SELECTED_PLAN_NOT_MATERIALIZED_WITHIN_DFCM_BOUNDS"
-            )
+            raise ValueError("SELECTED_PLAN_NOT_MATERIALIZED_WITHIN_DFCM_BOUNDS")
         raise ValueError("SELECTED_PLAN_NOT_IN_DFCM_SPACE")
     return digest(assignments)
 
@@ -235,9 +229,7 @@ async def execute_fortune5_mna_simulation(
         )
     )
     if not materialization.accepted or materialization.episode is None:
-        raise RuntimeError(
-            materialization.receipt.reason or "MNA_MATERIALIZATION_REFUSED"
-        )
+        raise RuntimeError(materialization.receipt.reason or "MNA_MATERIALIZATION_REFUSED")
     episode_id = materialization.episode.episode_id
 
     manufactured_receipts: list[str] = []
@@ -252,9 +244,7 @@ async def execute_fortune5_mna_simulation(
             if task.family in provider.elevated_task_families
             else STANDARD_AUTHORITY
         )
-        subjects: tuple[str | None, ...] = (
-            task.subjects if len(task.subjects) > 1 else (None,)
-        )
+        subjects: tuple[str | None, ...] = task.subjects if len(task.subjects) > 1 else (None,)
 
         for subject in subjects:
             observed = await gym.observe(episode_id)
@@ -276,10 +266,7 @@ async def execute_fortune5_mna_simulation(
             output_capability = manufactured.output["capability"]
             output_payload = manufactured.output["payload"]
 
-            if (
-                task.family == "simulated-close"
-                and standard_close_refusal_receipt_id is None
-            ):
+            if task.family == "simulated-close" and standard_close_refusal_receipt_id is None:
                 refused = await gym.act(
                     ActuationIntent(
                         episode_id=episode_id,
@@ -287,15 +274,11 @@ async def execute_fortune5_mna_simulation(
                         payload=output_payload,
                         authority_ref=STANDARD_AUTHORITY,
                         principal=PRINCIPAL,
-                        idempotency_key=(
-                            f"mna:{selection_digest}:close-standard-refusal"
-                        ),
+                        idempotency_key=(f"mna:{selection_digest}:close-standard-refusal"),
                     )
                 )
                 if refused.accepted or refused.standing is not Standing.REFUSED:
-                    raise RuntimeError(
-                        "MNA_CLOSE_MUST_REFUSE_STANDARD_AUTHORITY"
-                    )
+                    raise RuntimeError("MNA_CLOSE_MUST_REFUSE_STANDARD_AUTHORITY")
                 standard_close_refusal_receipt_id = refused.receipt.receipt_id
 
             result = await gym.act(
@@ -315,22 +298,15 @@ async def execute_fortune5_mna_simulation(
                 )
             )
             if not result.accepted:
-                raise RuntimeError(
-                    f"{task.identifier}:{result.receipt.reason}"
-                )
+                raise RuntimeError(f"{task.identifier}:{result.receipt.reason}")
             if task.family == "simulated-close":
                 simulated_close_receipt_id = result.receipt.receipt_id
 
     verification = await gym.verify(episode_id, {"goal_reached": True})
     observed = await gym.observe(episode_id)
-    receipts = tuple(
-        receipt.receipt_id for receipt in gym.episode_receipts(episode_id)
-    )
+    receipts = tuple(receipt.receipt_id for receipt in gym.episode_receipts(episode_id))
 
-    if (
-        standard_close_refusal_receipt_id is None
-        or simulated_close_receipt_id is None
-    ):
+    if standard_close_refusal_receipt_id is None or simulated_close_receipt_id is None:
         raise RuntimeError("MNA_CLOSE_EVIDENCE_INCOMPLETE")
     if not verification.passed:
         raise RuntimeError("MNA_FINAL_VERIFICATION_FAILED")
