@@ -1,0 +1,13 @@
+{
+  "wo": "GYMACT-26922-10",
+  "base_sha": "f70826b (origin/main)",
+  "command": "edit lib/xaas/ultracode/target_suites.ex (lift the 09defab deliberate non-registration) + mix test test/xaas/ultracode",
+  "exit": 0,
+  "output_excerpt": "NOT EXECUTED: depends_on XAAS-26922-10 is unmet - L9's prerequisite commits 6a4edb1 and 7b7055e are NOT ancestors of xaas main (c2a7ea9); xaas is outside this lane's two repos and is actively serialized with the ERRC session",
+  "standing": "BLOCKED:XAAS-26922-10",
+  "notes": {
+    "prerequisites_now_satisfied_by_this_wave": "the 09defab non-registration block cites: collection death on optional imports (FIXED - named standing skips), tracked-file rewrites (FIXED - tmp_path), .inspect_logs/*.eval churn (FIXED - tmp_path + gitignore), chatman_state PROVIDER_ERROR (FIXED - codebase _bounded_path /var-/private/var), discovery failures (FIXED - NETWORK:github-api gate), ruff/promoted-GC-warnings (ADDRESSED - full ruff gate + owning-boundary finalization), missing uv.lock (ALREADY TRACKED + uv lock --check in sync)",
+    "ready_suite_shape": "gymact-dod: ['uv','run','--frozen','pytest','-q'] with GYMACT_ALLOW_DEGRADED_STANDINGS unset (hermetic by default now) and toolchain [['uv','--version'],['git','--version']]; gymact-canonical: identical argv at the integration head",
+    "unblock": "after L9 lands XAAS-26922-10, apply the registration replacing the 09defab block, then mix test test/xaas/ultracode"
+  }
+}

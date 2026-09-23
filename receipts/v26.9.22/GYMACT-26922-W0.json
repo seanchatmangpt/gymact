@@ -1,0 +1,29 @@
+{
+  "wo": "GYMACT-26922-W0",
+  "repo": "/Users/sac/gymact",
+  "base_sha": "e75344d45d5694e15e73652eb1b4b796de29b0a9",
+  "origin_main": "e75344d45d5694e15e73652eb1b4b796de29b0a9",
+  "command": "git fetch --all",
+  "exit": 0,
+  "output_excerpt": "fetch clean; origin/main in sync at e75344d; no new heads fetched",
+  "standing": "BUILD_BROKEN",
+  "notes": {
+    "stashes": "none",
+    "dirty_preserved": [".act-events/pull-request.json (modified, act churn - untouched)", "docs/jira/v26.9.19/ (9 untracked survey tickets - committed in GYMACT-26922-09)"],
+    "sj008_worktree": {
+      "path": "/Users/sac/xaas/worktrees/sjira/sj-008",
+      "registered": true,
+      "prunable": false,
+      "branch": "sjira/sj-008 @ 333aeb5",
+      "dirty": ["reports/ocel/crown-p1-allowed/episode.ocel.json", "reports/ocel/crown-p1-denied/episode.ocel.json", "tests/fixtures/real_episode.ocel.json", ".py (untracked stray, content='tests/test_', accidental shell debris - recorded here then removed)"]
+    },
+    "baseline_gates": {
+      "ruff_format_check": "EXIT=1 - 577 files would be reformatted",
+      "ruff_check": "EXIT=1 - 1751 errors (654 auto-fixable); lint step in CI never runs because test step fails first",
+      "ci_at_e75344d": {"CI": "failure (3.11 failure, 3.12 cancelled, 3.13 failure)", "v26.9.1 world execution crown": "failure", "GCP Public Contract Census": "failure", "AWS botocore scalar contract court": "success", "Delivery": "skipped"},
+      "gymact5_baseline": "uv run pytest -q tests/test_terraform_plan.py tests/test_verify_replay.py -> collection INTERRUPTED: LOCAL_GYM:terraform-plan standing unavailable (terragoat submodule missing); module-level env gate blocks test_verify_replay entirely"
+    },
+    "integration_worktree": "/Users/sac/wt/v26922/gymact/int on release/v26.9.22 @ e75344d (pre-existing)",
+    "pr_heads": {"135": "6d2373a2d6a7094c8f2813db84c630b92d893e29 (feat/sa2a-model-advice-boundary, MERGEABLE; WO's 291e599 stale)", "136": "9966cd041cb09f288aacad1228b5294a93c89a65 (adopt/engineering-standards-v26.9.21, MERGEABLE)"}
+  }
+}

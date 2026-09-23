@@ -1,0 +1,15 @@
+{
+  "wo": "GYMACT-26922-02",
+  "base_sha": "bf123ddbfb8fb7983e2dd8ed53d91b0a1c0ba637",
+  "command": "uv run pytest -q -p no:cacheprovider tests/test_terraform_plan.py tests/test_verify_replay.py (plus tests/test_standing_enforcement.py)",
+  "exit": 0,
+  "output_excerpt": "21 passed; 0 'cannot import name AUTHORITY' occurrences; ruff check/format clean on changed files; standing-enforcement contract incl. 2 new per-test-skip subprocess proofs all pass",
+  "standing": "ALIVE",
+  "notes": {
+    "branch": "feat/v26922-gymact5-constants @ bd1445b",
+    "merge": "no-ff into release/v26.9.22 in /Users/sac/wt/v26922/gymact/int",
+    "fix": "new gate-free tests/terraform_plan_support.py; require_standing(skip_module_level=) keyword; e2e test gates itself per-test",
+    "environment_repair": "terragoat submodule 729f8da6 initialized in ~/autofde-lab (read-only for its index); terraform court ran real init+plan, 16 passed 0 skipped",
+    "acceptance": {"pytest_exit": 0, "importerror_absent": true}
+  }
+}

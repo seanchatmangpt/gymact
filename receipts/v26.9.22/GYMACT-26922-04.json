@@ -1,0 +1,16 @@
+{
+  "wo": "GYMACT-26922-04",
+  "base_sha": "ca8edae (release/v26.9.22)",
+  "command": "command -v ggen && uv run --python 3.13 pytest -q -rs tests/test_ggen_togaf_gym_pack.py",
+  "exit": 0,
+  "output_excerpt": "/opt/homebrew/bin/ggen (26.8.18); 14 tests: 12 passed, 1 xfail (pin mismatch, real binary evidence), 1 expected skip (Linux capsule test is GITHUB_ACTIONS-gated and cannot execute a linux-x86_64 binary on macOS)",
+  "standing": "PARTIAL_ALIVE",
+  "notes": {
+    "branch": "feat/v26922-gymact4-togaf-templates @ 20c7d3f",
+    "merge": "no-ff into release/v26.9.22",
+    "fix": "tracked symlink rust/togaf_gym/templates -> ../../ggen/togaf-gym-pack/templates (repo's own convention per FM-CONFIG-003 comment); the ephemeral CI checkout previously had no templates at all - the FM-CONFIG-004 root cause",
+    "partial_why": "the acceptance's '0 skipped' requires the pinned linux-x86_64 ggen 26.8.11 capsule, which only executes on the CI Python 3.13 leg; local macOS cannot run it. Exact-head CI (GYMACT-26922-07) is the deciding verifier for that leg.",
+    "hazard_recorded": "ggen 26.8.18 FM-WRITE-008 duplicate-output gate refuses the pack/consumer template aliasing (reproduced live); pinned 26.8.11 predates it. Future repin must reconcile declarations first.",
+    "dependency_note": "depends_on GGEN-26922-05 (L5 lane: ggen v26.9.13 release + homebrew tap install). Local ggen remains 26.8.18 - the stale install that WO names. Not blocking this repair; the capsule pins 26.8.11."
+  }
+}

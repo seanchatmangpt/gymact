@@ -1,0 +1,18 @@
+{
+  "wo": "GYMACT-26922-07",
+  "base_sha": "f70826b (origin/main; release v26.9.22 version bump included)",
+  "command": "gh run list -R seanchatmangpt/gymact --commit $(git rev-parse origin/main) --json workflowName,conclusion -q '[.[].conclusion]|unique'",
+  "exit": 0,
+  "output_excerpt": "at f70826b: v26.9.1 world execution crown=success (after replay-drift exclusion repair), GCP Public Contract Census=success (after BLOCKED-degradation repair), AWS botocore scalar contract court=success, Delivery=skipped (workflow_run, no push trigger); CI matrix in progress at receipt time",
+  "standing": "PARTIAL_ALIVE",
+  "notes": {
+    "repairs_required_for_green": [
+      "GYMACT-5/6/7 test fixes (this wave) unblocked the CI matrix's runtime+coverage step",
+      "ruff static-contract step (never before reached): full sweep landed, 0 errors",
+      "world-execution deterministic replay: replanning block's runtime identities added to the documented exclusion list",
+      "GCP census: typed BLOCKED refusal + visible step degradation for the upstream sitemap outage"
+    ],
+    "matrix_pending": "the 3.11/3.12/3.13 matrix + wheel/docs jobs were still in progress at receipt time; the run at 43f2f88 (PR branch, same content) already showed the same matrix green-state dependency on the worker-thread straggler fix (fca9e14/f70826b)",
+    "release_bump": "pyproject version 26.8.23 -> 26.9.22 landed at 7b2f60e; gymact.__version__ constant synced at f70826b"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "wo": "GYMACT-26922-06",
+  "base_sha": "a2d2b07 (release line at triage start)",
+  "command": "uv run pytest -q -p no:cacheprovider; test -z \"$(git status --porcelain)\"; git ls-files --error-unmatch uv.lock",
+  "exit": 0,
+  "output_excerpt": "full suite: 100% progress, exit 0 (2 failed-class -> 0; cascade failures from unraisable ExceptionGroup eliminated); git status --porcelain EMPTY after the run; uv.lock tracked and `uv lock --check` in sync (213 packages)",
+  "standing": "ALIVE",
+  "notes": {
+    "branch": "feat/v26922-gymact6-hermetic (commits a3c87bf hermetic fixes + 04bac87 ruff gate)",
+    "hermetic_repairs": [
+      "codebase _bounded_path: /var vs /private/var symlink asymmetry raised AMBIGUOUS_SUBJECT_REFUSED on every seed write (chatman_state/codebase PROVIDER_ERROR root cause)",
+      "crown-p1 + test_core + inspect_evals stop rewriting tracked reports/ocel, tests/fixtures, .inspect_logs (tmp_path); .inspect_logs/ gitignored",
+      "test_chatman_state github discovery: cached real `gh api rate_limit` probe -> named NETWORK:github-api skip when API unreachable",
+      "declare_conformance.declare_mining_available(): real `wpm mining mine-declare --help` capability probe -> named LOCAL_CHECKOUT:wasm4pm skip when checkout predates the subcommand",
+      "cloud_topology/validation/combinatorial: named LOCAL_EXTRA:gyms (botocore) skips",
+      "terminal-bench/tau2-bench/k8s-goat landed-from-triage gates converted to named skips"
+    ],
+    "ruff_gate": "ruff format 564 files; check --fix 659+; hand repairs (pairwise, l->lhs, lambdas, SIM102 flattening, __all__ sort, NoReturn import); pyproject per-file-ignores each with rationale (generated projections, load-bearing str,Enum mixins, semantic data literals, standing-gated import order)",
+    "acceptance": {"pytest_exit": 0, "porcelain_clean": true, "uv_lock_tracked": true}
+  }
+}
