@@ -1,0 +1,19 @@
+{
+  "wo": "GYMACT-26922-09",
+  "base_sha": "5fc3cc2 -> 304e6c5 (triage merges) -> 163c47f (tickets)",
+  "command": "git merge (serialized --no-ff per branch) + git push origin release/v26.9.22:main + git branch -r --no-merged origin/main | wc -l + git ls-files docs/jira/v26.9.19 | wc -l",
+  "exit": 0,
+  "output_excerpt": "triage merges: brce-full-chain-test, ci/local-act-parity (s4-mk1), task/codebase-env-generalize, verify/browsergym-container, worktree-agent-a4a0a74 (kubernetes-goat v1), worktree-agent-af75a90 (corrected kubernetes-goat, committed from its dirty worktree then merged), terminal-bench-gym, tau2-bench (ac79210f), vendor-benchmark-coverage, pr10-verify, fix/registry-pack-outcome-predicates, integrate5, integrate6 (-s ours, tree-identical duplicate, empty diff proven), preserve/main-wip (-s ours: conftest sweep already salvaged in GYMACT-03, v26.9.15 docs landed, rejected artifacts absent); zoe-devotional-outcome deleted (fully merged at e75344d); docs/jira/v26.9.19 committed: 9 files tracked, 003-008 marked DONE resolved-by-push",
+  "standing": "PARTIAL_ALIVE",
+  "notes": {
+    "unmerged_count": "1: origin/feat/sa2a-model-advice-boundary (PR #135) - merges when the matrix goes green; all other 14 heads triaged and merged",
+    "acceptance_progress": {
+      "docs_jira_9_files": true,
+      "tickets_003_008_resolved_by_push": true,
+      "zoe_deleted": true,
+      "af75a90_handled": true,
+      "unmerged_zero": "pending PR #135 merge"
+    },
+    "conflict_resolutions": "pyproject extras kept-both-sides (terminal-bench, tau2-bench pins added to HEAD's list); docs conflicts kept-both-providers; ocel_standing.py kept HEAD noqa style + branch's _OUTCOME_PREDICATES import; test_verify_replay kept GYMACT-5 gate side"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "wo": "GYMACT-26922-01",
+  "base_sha": "e75344d45d5694e15e73652eb1b4b796de29b0a9",
+  "command": "git worktree repair /Users/sac/xaas/worktrees/sjira/sj-008 && git push origin sjira/sj-008 && git merge --no-ff sjira/sj-008 (in /Users/sac/wt/v26922/gymact/int on release/v26.9.22) && git push origin release/v26.9.22:main",
+  "exit": 0,
+  "output_excerpt": "repair exit 0, no prunable worktrees; branch sjira/sj-008 pushed (new branch); merge bf123dd (3 files, +266/-4, docs only); origin/main e75344d..bf123dd; local main ff to bf123dd",
+  "standing": "ALIVE",
+  "notes": {
+    "worktree_repair": "registered worktree /Users/sac/xaas/worktrees/sjira/sj-008 repaired, never pruned; gitdir backlink refreshed",
+    "churn_dropped": "3 regenerated OCEL files restored (same structure, new episode/environment ids + timestamps from a 2026-09-21T23:52 test run) and stray untracked .py (content 'tests/test_', accidental shell debris, recorded in W0) removed",
+    "acceptance": {
+      "merge_base_ancestor_333aeb5_in_origin_main": true,
+      "sa2a_replay_receipt_file": true,
+      "backlog_done_count": 4,
+      "no_prunable_worktrees": true
+    },
+    "new_main_head": "bf123ddbfb8fb7983e2dd8ed53d91b0a1c0ba637"
+  }
+}

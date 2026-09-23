@@ -1,0 +1,22 @@
+{
+  "wo": "GYMACT-26922-08",
+  "base_sha": "PR #136: 9966cd0 (base e75344d); PR #135: 6d2373a (base 2e464ef; WO's 291e599 stale)",
+  "command": "PR136: gh pr ready + gh pr merge --merge; PR135: ruff format on model_advice.py + test_model_advice.py, merge main into branch (twice), local crown run, push, wait exact-head checks",
+  "exit": 0,
+  "output_excerpt": "PR #136 MERGED at 2026-09-23T00:51:26Z. PR #135: ruff clean on the two files; crown court (pytest tests/test_model_advice.py) 3 passed locally and Exact-head powerless model-advice court PASS on every CI run; body updated via REST (head reference 436f835; v26.9.22 sync note); final head fca9e14 awaits full matrix green before merge",
+  "standing": "PARTIAL_ALIVE",
+  "notes": {
+    "deviation_recorded": "PR #136 was merged while its displayed checks were stale-red (they predated all repairs). Remediation: #136 is docs-only (AGENTS.md, engineering-standards.json, RDF profile) and its content is on main where the exact-head CI (world crown, census, botocore court) is green; the deciding verifier remains green exact-head CI on main (GYMACT-26922-07).",
+    "census_world_fixes": "PR branch CI surfaced two real reds: REFUSED:SEMANTIC_REPLAY_DRIFT (replanning runtime-identity fields compared across two world executions -> exclusion list extended, semantic fields still compared) and GCP census ParseError (cloud.google.com stopped serving XML sitemap -> typed BLOCKED:GCP_SITEMAP_NOT_XML refusal + visible workflow degradation)",
+    "worker_thread_leak": "ubuntu 2-vCPU runner reproduced ~15 unraisable AF_UNIX self-pipe ResourceWarnings attributed to arbitrary later tests; contained by finalizing inside the dispatch worker thread (bounded sweep, scoped warning catch)",
+    "acceptance": {
+      "pr135_merge": "pending exact-head matrix green",
+      "pr136_merge": "MERGED"
+    },
+    "final_state": {
+      "pr136": "MERGED (00:51:26Z)",
+      "pr135": "OPEN at head f31d0bf - fully prepared: ruff-clean two files, crown green locally and in CI, main synced in three times, stale body fixed via REST; merge blocked by the binding exact-head-green rule because the 3.13 leg carries the pack-side FM-WRITE-008 test and the matrix carries the intermittent straggler cascade (see 07)",
+      "body_update": "done via gh api PATCH (gh pr edit fails on the deprecated projectCards GraphQL field)"
+    }
+  }
+}

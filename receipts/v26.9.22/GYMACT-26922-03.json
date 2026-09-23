@@ -1,0 +1,15 @@
+{
+  "wo": "GYMACT-26922-03",
+  "base_sha": "ca8edae (release/v26.9.22 after GYMACT-26922-02)",
+  "command": "uv run pytest -q -W error::pytest.PytestUnraisableExceptionWarning tests/test_sregym_provider.py tests/test_world_cyber.py tests/test_ontology_gym.py",
+  "exit": 0,
+  "output_excerpt": "49 passed, 1 skipped (named live-cluster skip, pre-existing); zero unraisable warnings across 5 runs with the class-level filterwarnings mark removed",
+  "standing": "ALIVE",
+  "notes": {
+    "branch": "feat/v26922-gymact6-mcp-closure @ ef5f8a9",
+    "merge": "no-ff into release/v26.9.22 in /Users/sac/wt/v26922/gymact/int",
+    "fix": "class-level PytestUnraisableExceptionWarning ignore mark removed from ConcurrentMcpDispatchTests (no filterwarnings suppression); deterministic closure documented and preserved (per-attempt asyncio.run loop close incl. self-pipe, close-in-finally, conftest owning-boundary 5x GC sweep); conftest sessionfinish sweep salvaged from preserve/main-wip-20260917 (scoped ResourceWarning suppression inside the sweep only; .eval binaries/OCEL churn/--basetemp not carried)",
+    "evidence": "4 consecutive clean runs before conftest salvage + acceptance run after",
+    "acceptance": {"pytest_exit": 0}
+  }
+}

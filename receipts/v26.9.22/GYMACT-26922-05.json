@@ -1,0 +1,14 @@
+{
+  "wo": "GYMACT-26922-05",
+  "base_sha": "ca8edae (release/v26.9.22)",
+  "command": "uv run pytest -q --co",
+  "exit": 0,
+  "output_excerpt": "exit 0; `grep -ci error` on full collect output = 0 (baseline: 5 collection errors visible, 18 total once unblocked); named skips now carry standing strings + reasons",
+  "standing": "ALIVE",
+  "notes": {
+    "branch": "feat/v26922-gymact7-named-skips @ 2ef8038 (24 files, mechanical conversion; exceeds the <=12-file default - documented exception, uniform one-line-per-site transformation)",
+    "fix": "new gymact.standing.named_standing_skip(standing, available, reason, module_level=True) - named visible skips by default; require_standing consent contract unchanged and still pinned by test_standing_enforcement subprocess proofs; converted 14 collection gates + added 7 optional-extra import guards + 4 in-body per-test skips",
+    "incident": "a repo-wide `ruff check --fix` was run by mistake, stashed, and the stash dropped; recovered via git fsck (ac59d17c) and restored ONLY the 24 intended files - no unintended file remains modified",
+    "acceptance": {"collect_exit": 0, "grep_error_count": 0}
+  }
+}
