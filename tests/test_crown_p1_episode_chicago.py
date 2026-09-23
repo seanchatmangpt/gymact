@@ -70,7 +70,7 @@ async def test_crown_p1_episode_produces_a_schema_valid_conformant_ocel_log():
 
 
 @pytest.mark.asyncio
-async def test_standing_invariant_holds_across_human_access_conditions():
+async def test_standing_invariant_holds_across_human_access_conditions(tmp_path):
     """The actual crown claim: Standing(A|HumanReads=true) ==
     Standing(A|HumanReads=false), checked against two real, independently run
     episodes -- not asserted in prose."""
@@ -88,8 +88,13 @@ async def test_standing_invariant_holds_across_human_access_conditions():
     assert pair.unauthorized_path_found_allowed is False
     assert pair.unauthorized_path_found_denied is False
 
-    write_ocel_log(REPORTS_DIR / "crown-p1-allowed" / "episode.ocel.json", list(allowed.receipts))
-    write_ocel_log(REPORTS_DIR / "crown-p1-denied" / "episode.ocel.json", list(denied.receipts))
+    # GYMACT-6 hermetic suite: the episode logs are written into the test's
+    # own tmp_path. The tracked reports/ocel/crown-p1-*/episode.ocel.json
+    # files stay exactly as committed as recorded evidence of the run that
+    # produced them -- a test run must not rewrite tracked files (every run
+    # regenerated real timestamps/ids and dirtied the checkout).
+    write_ocel_log(tmp_path / "crown-p1-allowed" / "episode.ocel.json", list(allowed.receipts))
+    write_ocel_log(tmp_path / "crown-p1-denied" / "episode.ocel.json", list(denied.receipts))
 
 
 @pytest.mark.asyncio

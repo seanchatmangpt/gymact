@@ -20,17 +20,27 @@ anywhere in this file.
 from __future__ import annotations
 
 import asyncio
+import importlib.util as _importlib_util
 
 import pytest
 
-from gymact.combinatorial_ocel import (
+from gymact.standing import named_standing_skip
+
+named_standing_skip(
+    "LOCAL_EXTRA:gyms",
+    available=_importlib_util.find_spec("botocore") is not None,
+    reason="the 'gyms' extra is not installed -- botocore (bundled real AWS "
+    "endpoints.json) requires `uv sync --extra gyms`",
+)
+
+from gymact.combinatorial_ocel import (  # noqa: E402
     GYM_FACTOR,
     SEQUENCE_VARIANT_FACTOR,
     build_combination_space,
     drive_combination,
     run_combinatorial_maximum,
 )
-from gymact.ocel import validate_ocel_log
+from gymact.ocel import validate_ocel_log  # noqa: E402
 
 
 def test_build_combination_space_is_a_real_cartesian_product() -> None:
@@ -73,7 +83,9 @@ def test_drive_combination_memory_reaches_real_refused_fail_closed_authority() -
 
 
 def test_drive_combination_switchboard_with_checkpoint_restore_is_real() -> None:
-    receipts, final_standing = asyncio.run(drive_combination("switchboard", "with_checkpoint_restore"))
+    receipts, final_standing = asyncio.run(
+        drive_combination("switchboard", "with_checkpoint_restore")
+    )
     assert len(receipts) >= 3  # materialize + toggle + checkpoint/restore bookkeeping + teardown
     assert final_standing == "ALIVE"
 
