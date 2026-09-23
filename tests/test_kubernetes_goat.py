@@ -21,7 +21,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
 _VENDORED_CHECKOUT = Path.home() / "autofde-lab" / "vendor" / "gyms" / "kubernetes-goat"
 _PINNED_REVISION = "723a0db478f050d173d23b4ce5044b65bce0bdd0"
@@ -65,7 +65,7 @@ def _vendored_checkout_at_pinned_revision() -> bool:
     return sha == _PINNED_REVISION
 
 
-require_standing(
+named_standing_skip(
     "LOCAL_GYM:kubernetes-goat",
     available=_real_cluster_reachable() and _vendored_checkout_at_pinned_revision(),
     reason="no reachable Kubernetes cluster on the current kubeconfig context, or the "
@@ -102,9 +102,7 @@ async def test_materialize_is_refused_without_authority() -> None:
     gym.register_provider(KubernetesGoatProvider())
 
     materialization = await gym.materialize(
-        MaterializationIntent(
-            provider="kubernetes-goat", scenario="batch-check", config=_CONFIG
-        )
+        MaterializationIntent(provider="kubernetes-goat", scenario="batch-check", config=_CONFIG)
     )
     assert materialization.accepted is False
     assert materialization.standing == Standing.REFUSED

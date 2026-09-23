@@ -16,12 +16,14 @@ toolchain binary genuinely is not on this machine's PATH.
 from __future__ import annotations
 
 import shutil
+import subprocess
 
 import pytest
 
 from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent
 from gymact.gyms.codebase import CodebaseProvider
 from gymact.models import ActuationIntent
+from gymact.standing import named_standing_skip
 
 AUTHORITY = "urn:test:codebase-dispatch-authority"
 RUN_BUILD = "urn:gymact:codebase:capability:run_build"
@@ -176,9 +178,7 @@ async def _materialize(gym: GymAct, seed_files: dict[str, str]) -> str:
 @pytest.mark.skipif(shutil.which("cargo") is None, reason="cargo not on PATH")
 async def test_run_build_dispatches_real_cargo_build() -> None:
     gym = _authorized_gym()
-    episode_id = await _materialize(
-        gym, {"Cargo.toml": _CARGO_TOML, "src/main.rs": _MAIN_RS}
-    )
+    episode_id = await _materialize(gym, {"Cargo.toml": _CARGO_TOML, "src/main.rs": _MAIN_RS})
     try:
         result = await gym.act(
             ActuationIntent(episode_id=episode_id, capability=RUN_BUILD, authority_ref=AUTHORITY)
@@ -196,9 +196,7 @@ async def test_run_build_dispatches_real_cargo_build() -> None:
 @pytest.mark.skipif(shutil.which("cargo") is None, reason="cargo not on PATH")
 async def test_run_test_dispatches_real_cargo_test() -> None:
     gym = _authorized_gym()
-    episode_id = await _materialize(
-        gym, {"Cargo.toml": _CARGO_TOML, "src/main.rs": _MAIN_RS}
-    )
+    episode_id = await _materialize(gym, {"Cargo.toml": _CARGO_TOML, "src/main.rs": _MAIN_RS})
     try:
         result = await gym.act(
             ActuationIntent(episode_id=episode_id, capability=RUN_TEST, authority_ref=AUTHORITY)
@@ -217,9 +215,7 @@ async def test_run_test_dispatches_real_cargo_test() -> None:
 async def test_run_test_dispatches_real_cargo_test_and_really_fails_on_a_real_bug() -> None:
     broken_main_rs = _MAIN_RS.replace("a + b", "a - b", 1)
     gym = _authorized_gym()
-    episode_id = await _materialize(
-        gym, {"Cargo.toml": _CARGO_TOML, "src/main.rs": broken_main_rs}
-    )
+    episode_id = await _materialize(gym, {"Cargo.toml": _CARGO_TOML, "src/main.rs": broken_main_rs})
     try:
         result = await gym.act(
             ActuationIntent(episode_id=episode_id, capability=RUN_TEST, authority_ref=AUTHORITY)
@@ -235,6 +231,12 @@ async def test_run_test_dispatches_real_cargo_test_and_really_fails_on_a_real_bu
 
 @pytest.mark.skipif(shutil.which("mix") is None, reason="mix not on PATH")
 async def test_run_build_dispatches_real_mix_compile() -> None:
+    named_standing_skip(
+        "LOCAL_TOOLCHAIN:mix",
+        available=_mix_functional(),
+        reason="mix is on PATH but not functional (e.g. asdf shim with no pinned Elixir version)",
+        module_level=False,
+    )
     gym = _authorized_gym()
     episode_id = await _materialize(
         gym,
@@ -259,8 +261,34 @@ async def test_run_build_dispatches_real_mix_compile() -> None:
         await gym.teardown(episode_id, authority_ref=AUTHORITY)
 
 
+def _mix_functional() -> bool:
+    """Real, cached health probe: a mix binary on PATH that cannot even
+    `mix --version` (e.g. an asdf shim with no pinned version) is not a
+    working Elixir toolchain, and the two real mix courts must degrade to a
+    named standing skip rather than fail on the toolchain's own breakage."""
+    global _MIX_FUNCTIONAL
+    if _MIX_FUNCTIONAL is None:
+        try:
+            probe = subprocess.run(
+                ["mix", "--version"], capture_output=True, text=True, timeout=30, check=False
+            )
+            _MIX_FUNCTIONAL = probe.returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            _MIX_FUNCTIONAL = False
+    return _MIX_FUNCTIONAL
+
+
+_MIX_FUNCTIONAL: bool | None = None
+
+
 @pytest.mark.skipif(shutil.which("mix") is None, reason="mix not on PATH")
 async def test_run_test_dispatches_real_mix_test() -> None:
+    named_standing_skip(
+        "LOCAL_TOOLCHAIN:mix",
+        available=_mix_functional(),
+        reason="mix is on PATH but not functional (e.g. asdf shim with no pinned Elixir version)",
+        module_level=False,
+    )
     gym = _authorized_gym()
     episode_id = await _materialize(
         gym,

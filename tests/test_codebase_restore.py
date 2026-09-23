@@ -48,9 +48,7 @@ async def test_checkpoint_records_a_real_head_sha() -> None:
             )
         )
         checkpoint = await env.checkpoint()
-        real_head = (
-            env._run_git(["rev-parse", "HEAD"]).stdout.strip()
-        )
+        real_head = env._run_git(["rev-parse", "HEAD"]).stdout.strip()
         assert checkpoint["head_sha"] == real_head
         assert len(checkpoint["head_sha"]) == 40
         assert checkpoint["source"] is None
@@ -59,8 +57,7 @@ async def test_checkpoint_records_a_real_head_sha() -> None:
         await gym.teardown(episode_id, authority_ref=AUTHORITY)
 
 
-async def test_restore_filesystem_dimension_really_reverts_a_real_file_via_git_reset(
-) -> None:
+async def test_restore_filesystem_dimension_really_reverts_a_real_file_via_git_reset() -> None:
     gym = _authorized_gym()
     materialization = await gym.materialize(
         MaterializationIntent(
@@ -144,8 +141,7 @@ async def test_restore_filesystem_dimension_removes_real_untracked_files_too() -
         await gym.teardown(episode_id, authority_ref=AUTHORITY)
 
 
-async def test_restore_unsupported_dimension_raises_notimplementederror_not_silent_noop(
-) -> None:
+async def test_restore_unsupported_dimension_raises_notimplementederror_not_silent_noop() -> None:
     gym = _authorized_gym()
     materialization = await gym.materialize(
         MaterializationIntent(

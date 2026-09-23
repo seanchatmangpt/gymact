@@ -20,6 +20,7 @@ All six run against the same ``ProductionGymAct`` instance, the same
 ``BRCEBroker``, and the same ``runtime.ledger`` (a real
 ``gymact.evidence.MemoryReceiptLedger``) -- no fake Ledger/Receipt stand-ins.
 """
+
 from __future__ import annotations
 
 import pytest
