@@ -12,16 +12,50 @@ scenario manifests). This provider applies the REAL, checked-out
 reconstructed or fabricated here.
 
 Scope of this provider: kubernetes-goat's `batch/v1` Job-shaped scenarios
-(`batch-check`, `hidden-in-layers`). These were chosen because a Kubernetes
-Job has a real, unambiguous, generic completion signal that this provider
-does not have to invent: `status.succeeded == 1` on the real Job object
-returned by `kubectl get job ... -o json`. Kubernetes-goat's other
-scenarios (`kubernetes-goat-home`, `insecure-rbac`, `metadata-db`, ...) are
+(`batch-check`, `hidden-in-layers`). Kubernetes-goat's other scenarios
+(`kubernetes-goat-home`, `insecure-rbac`, `metadata-db`, ...) are
 long-running Deployments/Services with no analogous single-shot completion
-condition and are out of scope for this provider -- adding them would mean
-inventing an ad hoc "solved" signal instead of reusing a real one, which
-`.claude/rules/actuation-authority.md` (verified effect, not fabricated
-pass/fail) and this repo's CLAUDE.md consequence law both rule out.
+condition and are out of scope for this provider.
+
+IMPORTANT (corrects an earlier, wrong assumption in this same module): even
+though these two scenarios are declared as `batch/v1` Job manifests, their
+real, currently-published container images (`madhuakula/k8s-goat-batch-check`,
+`madhuakula/k8s-goat-hidden-in-layers`) both run a persistent, never-exiting
+process (a Fiber v2 HTTP server listening on :3000 for `batch-check`; `tail -f
+/dev/null` for `hidden-in-layers`). Their Job's `status.succeeded` therefore
+NEVER becomes `1` -- treating it as the completion signal is wrong for these
+two scenarios specifically, confirmed by real inspection of the real,
+currently-published images (`docker run`, `docker logs`, `docker exec`, real
+`docker save`/`docker history` layer inspection). Kubernetes-goat's own
+walkthrough docs (`guide/docs/scenarios/scenario-10` for `batch-check`,
+`scenario-15` for `hidden-in-layers`) define "solved" as a real, documented
+interaction outcome instead:
+
+- `batch-check` (scenario-10, "Analyzing crypto miner container"): the
+  running container bakes in a real `/app` git repository whose history
+  (not its current tree) contains a committed-then-removed config file with
+  a `k8s_goat_flag = k8s-goat-<32 hex chars>` line -- confirmed for real via
+  `git -C /app log --all -p`. `verify()` reaches this via a real
+  `kubectl exec` into the real running scenario pod (git is already
+  installed in the real image, confirmed via `docker exec ... which git`),
+  not a fabricated string.
+- `hidden-in-layers` (scenario-15, "Hidden in layers"): the real Dockerfile
+  `ADD`s `/root/secret.txt` in one layer and `rm -rf`s it in a later layer --
+  gone from the final running filesystem (a `kubectl exec` read finds
+  nothing, confirmed for real), but still really present in the earlier
+  layer's tarball. `verify()` reaches this via a real `docker save` of the
+  scenario's exact image (read from the real, cluster-observed Job spec, not
+  hardcoded) plus real per-layer `tar` extraction, matching kubernetes-goat's
+  own documented Method (`docker save` + `tar -xvf`) -- this specific check
+  therefore also requires a real local `docker` CLI talking to a real Docker
+  daemon on the machine running the verifier (the same requirement `kind`
+  itself already has via its Docker-backed node containers).
+
+Both real solved-conditions are matched against the real, documented flag
+pattern `k8s-goat-[0-9a-f]{32}` rather than one hardcoded literal value, so
+this provider keeps working if the vendored images are rebuilt with a
+different random flag suffix (a real property of kubernetes-goat's own
+generation script) while still refusing to pass on any other string.
 
 Per `.claude/rules/actuation-authority.md`, applying a kubernetes-goat
 scenario deploys a real, intentionally-vulnerable workload onto a real
@@ -42,7 +76,11 @@ named, visible skip in tests.
 from __future__ import annotations
 
 import json
+import re
+import shutil
 import subprocess
+import tarfile
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -55,6 +93,15 @@ _POLL_INTERVAL_SECONDS = 2.0
 _DEFAULT_VERIFY_TIMEOUT_SECONDS = 180.0
 _DEFAULT_TEARDOWN_TIMEOUT_SECONDS = 120.0
 _DEFAULT_NAMESPACE_TIMEOUT_SECONDS = 30.0
+_DEFAULT_EXEC_TIMEOUT_SECONDS = 30.0
+_DEFAULT_DOCKER_TIMEOUT_SECONDS = 120.0
+
+# Real, documented kubernetes-goat flag shape (`k8s_goat_flag = k8s-goat-<32
+# hex chars>` in scenario-10's/scenario-15's own walkthrough docs). Matching
+# a pattern, not one hardcoded literal, so this keeps working if the
+# vendored images are rebuilt with a different random suffix while still
+# refusing any other string as "solved".
+_FLAG_PATTERN = re.compile(r"k8s-goat-[0-9a-f]{32}")
 
 # Real, checked-out kubernetes-goat scenarios this provider supports, and the
 # real Job name each scenario's own manifest declares (verified against the
@@ -156,6 +203,193 @@ def _get_namespace_json(name: str, context: str | None) -> dict[str, Any] | None
         return json.loads(result.stdout)
     except json.JSONDecodeError:
         return None
+
+
+def _get_running_pod_name(
+    job_name: str, namespace: str, context: str | None
+) -> str | None:
+    """Real `kubectl get pods -l job-name=<job_name>` lookup, restricted to a
+    pod the cluster itself reports as `Running` -- a pod that has not yet
+    reached `Running` cannot be `kubectl exec`'d into meaningfully."""
+    args = [
+        "get",
+        "pods",
+        "-n",
+        namespace,
+        "-l",
+        f"job-name={job_name}",
+        "-o",
+        "json",
+    ]
+    if context:
+        args = ["--context", context, *args]
+    result = _run_kubectl(args)
+    if result.returncode != 0:
+        return None
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    for item in payload.get("items", []):
+        if item.get("status", {}).get("phase") == "Running":
+            return str(item["metadata"]["name"])
+    return None
+
+
+def _get_job_container_image(
+    job_name: str, namespace: str, context: str | None
+) -> str | None:
+    """Reads the real, cluster-observed container image for this Job from
+    the real Job spec `kubectl` returns -- not a hardcoded literal -- so the
+    real layer inspection below always inspects the exact image the real
+    manifest declared."""
+    job_json = _get_job_json(job_name, namespace, context)
+    if job_json is None:
+        return None
+    containers = job_json.get("spec", {}).get("template", {}).get("spec", {}).get(
+        "containers", []
+    )
+    if not containers:
+        return None
+    image = containers[0].get("image")
+    return str(image) if image else None
+
+
+def _check_batch_check_solved(
+    job_name: str, namespace: str, context: str | None
+) -> dict[str, Any]:
+    """Real `kubectl exec` into the real running `batch-check` pod, running a
+    real `git log --all -p` over the real `/app` git repository baked into
+    kubernetes-goat's real, currently-published image, looking for the real,
+    documented `k8s_goat_flag = k8s-goat-<32 hex>` line committed then
+    removed from that repository's history. Never fabricates a flag."""
+    pod_name = _get_running_pod_name(job_name, namespace, context)
+    if pod_name is None:
+        return {"solved": False, "flag": None, "detail": "no Running batch-check pod yet"}
+    exec_args = [
+        "exec",
+        pod_name,
+        "-n",
+        namespace,
+        "--",
+        "sh",
+        "-c",
+        "git config --global --add safe.directory /app "
+        "&& git -C /app log --all -p 2>&1",
+    ]
+    if context:
+        exec_args = ["--context", context, *exec_args]
+    result = _run_kubectl(exec_args, timeout=_DEFAULT_EXEC_TIMEOUT_SECONDS)
+    if result.returncode != 0:
+        return {
+            "solved": False,
+            "flag": None,
+            "detail": f"kubectl exec git log failed: {_truncate(result.stderr)}",
+        }
+    match = _FLAG_PATTERN.search(result.stdout)
+    if match is None:
+        return {
+            "solved": False,
+            "flag": None,
+            "detail": "no k8s-goat flag pattern found in real git history",
+        }
+    return {"solved": True, "flag": match.group(0), "detail": "flag found in real git history"}
+
+
+def _run_docker(args: list[str], *, timeout: float) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["docker", *args],
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        check=False,
+    )
+
+
+def _check_hidden_in_layers_solved(
+    job_name: str, namespace: str, context: str | None
+) -> dict[str, Any]:
+    """Real `docker save` of the real, cluster-observed image for this Job
+    plus real per-layer `tar` extraction, matching kubernetes-goat's own
+    documented Method (scenario-15: `docker save` + `tar -xvf`) for
+    recovering `/root/secret.txt`, which the real Dockerfile `ADD`s in one
+    layer and `rm -rf`s in a later one -- absent from the running
+    container's own filesystem, still real in an earlier layer's tarball.
+    Requires a real local `docker` CLI + daemon; returns a typed, honest
+    `solved: False` (never a fabricated pass) if that real dependency is
+    unavailable."""
+    if shutil.which("docker") is None:
+        return {
+            "solved": False,
+            "flag": None,
+            "detail": "no local docker CLI available for real layer inspection",
+        }
+    image = _get_job_container_image(job_name, namespace, context)
+    if image is None:
+        return {"solved": False, "flag": None, "detail": "no Job spec/image observed yet"}
+    pull_result = _run_docker(["pull", image], timeout=_DEFAULT_DOCKER_TIMEOUT_SECONDS)
+    if pull_result.returncode != 0:
+        return {
+            "solved": False,
+            "flag": None,
+            "detail": f"real docker pull {image!r} failed: {_truncate(pull_result.stderr)}",
+        }
+    with tempfile.TemporaryDirectory(prefix="gymact-k8s-goat-hidden-in-layers-") as tmp_dir:
+        tar_path = Path(tmp_dir) / "image.tar"
+        save_result = _run_docker(
+            ["save", image, "-o", str(tar_path)], timeout=_DEFAULT_DOCKER_TIMEOUT_SECONDS
+        )
+        if save_result.returncode != 0:
+            return {
+                "solved": False,
+                "flag": None,
+                "detail": f"real docker save failed: {_truncate(save_result.stderr)}",
+            }
+        try:
+            with tarfile.open(tar_path, "r:") as image_tar:
+                image_tar.extractall(tmp_dir, filter="data")
+        except (tarfile.TarError, OSError) as exc:
+            return {"solved": False, "flag": None, "detail": f"real tar extraction failed: {exc}"}
+        blobs_dir = Path(tmp_dir) / "blobs" / "sha256"
+        if not blobs_dir.is_dir():
+            return {
+                "solved": False,
+                "flag": None,
+                "detail": "no OCI blobs/sha256 layout in real docker save output",
+            }
+        for blob_path in sorted(blobs_dir.iterdir()):
+            try:
+                with tarfile.open(blob_path, "r:*") as layer_tar:
+                    member = next(
+                        (m for m in layer_tar.getmembers() if m.name == "root/secret.txt"),
+                        None,
+                    )
+                    if member is None:
+                        continue
+                    extracted = layer_tar.extractfile(member)
+                    if extracted is None:
+                        continue
+                    content = extracted.read().decode("utf-8", errors="replace").strip()
+            except (tarfile.TarError, OSError):
+                continue
+            match = _FLAG_PATTERN.search(content)
+            if match is not None:
+                return {
+                    "solved": True,
+                    "flag": match.group(0),
+                    "detail": f"flag recovered from real deleted layer in {blob_path.name}",
+                }
+        return {
+            "solved": False,
+            "flag": None,
+            "detail": "root/secret.txt not found with a matching flag in any real image layer",
+        }
+
+
+_SOLVED_CHECKS = {
+    "batch-check": _check_batch_check_solved,
+    "hidden-in-layers": _check_hidden_in_layers_solved,
+}
 
 
 class KubernetesGoatEnvironment:

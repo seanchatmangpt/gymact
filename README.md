@@ -248,6 +248,12 @@ external collaborator -- no mocks anywhere in `src/` or `tests/`:
 - `kubernetes_reconciliation.KubernetesReconciliationProvider` -- a real local Kubernetes
   cluster (`kind`/`k3d`/colima `--kubernetes`) via real `kubectl` subprocess calls; `verify()`
   polls real cluster-observed pod phase rather than trusting `kubectl apply`'s exit code.
+- `kubernetes_goat.KubernetesGoatProvider` -- a real local Kubernetes cluster plus the real,
+  vendored [kubernetes-goat](https://github.com/madhuakula/kubernetes-goat) checkout pinned in
+  `~/autofde-lab/docs/papers/gym-lock.ttl` (`vendor-kubernetes-goat`); applies kubernetes-goat's
+  own real `scenarios/<name>/*.yaml` Job manifests via `kubectl apply -f <real path>`, gated
+  `DO`/authority-required throughout since it deploys real, deliberately-vulnerable workloads;
+  `verify()` polls the real Job's `status.succeeded`.
 - `terraform_plan.TerraformPlanProvider` -- a real `terraform`/`tofu` subprocess running
   `init -backend=false` and `plan` (never `apply`/`destroy`) against a real checked-out
   Terraform configuration directory.

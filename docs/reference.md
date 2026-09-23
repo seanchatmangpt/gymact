@@ -96,6 +96,8 @@
 
 ::: gymact.gyms.kubernetes_reconciliation.KubernetesReconciliationProvider
 
+::: gymact.gyms.kubernetes_goat.KubernetesGoatProvider
+
 ::: gymact.gyms.terraform_plan.TerraformPlanProvider
 
 ::: gymact.gyms.terraform_docker_apply.TerraformDockerApplyProvider
