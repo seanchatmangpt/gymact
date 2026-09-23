@@ -143,9 +143,7 @@ KUBERNETES_GOAT_CAPABILITIES = (
 )
 
 
-def _run_kubectl(
-    args: list[str], *, timeout: float = 30.0
-) -> subprocess.CompletedProcess[str]:
+def _run_kubectl(args: list[str], *, timeout: float = 30.0) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["kubectl", *args],
         capture_output=True,
@@ -205,9 +203,7 @@ def _get_namespace_json(name: str, context: str | None) -> dict[str, Any] | None
         return None
 
 
-def _get_running_pod_name(
-    job_name: str, namespace: str, context: str | None
-) -> str | None:
+def _get_running_pod_name(job_name: str, namespace: str, context: str | None) -> str | None:
     """Real `kubectl get pods -l job-name=<job_name>` lookup, restricted to a
     pod the cluster itself reports as `Running` -- a pod that has not yet
     reached `Running` cannot be `kubectl exec`'d into meaningfully."""
@@ -236,9 +232,7 @@ def _get_running_pod_name(
     return None
 
 
-def _get_job_container_image(
-    job_name: str, namespace: str, context: str | None
-) -> str | None:
+def _get_job_container_image(job_name: str, namespace: str, context: str | None) -> str | None:
     """Reads the real, cluster-observed container image for this Job from
     the real Job spec `kubectl` returns -- not a hardcoded literal -- so the
     real layer inspection below always inspects the exact image the real
@@ -246,18 +240,14 @@ def _get_job_container_image(
     job_json = _get_job_json(job_name, namespace, context)
     if job_json is None:
         return None
-    containers = job_json.get("spec", {}).get("template", {}).get("spec", {}).get(
-        "containers", []
-    )
+    containers = job_json.get("spec", {}).get("template", {}).get("spec", {}).get("containers", [])
     if not containers:
         return None
     image = containers[0].get("image")
     return str(image) if image else None
 
 
-def _check_batch_check_solved(
-    job_name: str, namespace: str, context: str | None
-) -> dict[str, Any]:
+def _check_batch_check_solved(job_name: str, namespace: str, context: str | None) -> dict[str, Any]:
     """Real `kubectl exec` into the real running `batch-check` pod, running a
     real `git log --all -p` over the real `/app` git repository baked into
     kubernetes-goat's real, currently-published image, looking for the real,
@@ -274,8 +264,7 @@ def _check_batch_check_solved(
         "--",
         "sh",
         "-c",
-        "git config --global --add safe.directory /app "
-        "&& git -C /app log --all -p 2>&1",
+        "git config --global --add safe.directory /app && git -C /app log --all -p 2>&1",
     ]
     if context:
         exec_args = ["--context", context, *exec_args]
@@ -533,9 +522,7 @@ class KubernetesGoatEnvironment:
                 timeout=self._teardown_timeout,
             )
             apply_result = _run_kubectl(
-                self._kubectl_args(
-                    "apply", "-n", self._namespace, "-f", str(self._manifest_path)
-                ),
+                self._kubectl_args("apply", "-n", self._namespace, "-f", str(self._manifest_path)),
                 timeout=30.0,
             )
             after = self._state()

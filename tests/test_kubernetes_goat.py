@@ -102,9 +102,7 @@ async def test_materialize_is_refused_without_authority() -> None:
     gym.register_provider(KubernetesGoatProvider())
 
     materialization = await gym.materialize(
-        MaterializationIntent(
-            provider="kubernetes-goat", scenario="batch-check", config=_CONFIG
-        )
+        MaterializationIntent(provider="kubernetes-goat", scenario="batch-check", config=_CONFIG)
     )
     assert materialization.accepted is False
     assert materialization.standing == Standing.REFUSED
