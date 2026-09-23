@@ -4,6 +4,7 @@ force: true
 sparql:
   providers: "PREFIX rg: <http://seanchatmangpt.github.io/packs/gymact-registry#> SELECT ?registryKey ?providerModule ?providerClassName ?capabilitiesModule ?capabilitiesImportClause ?capabilitiesExpr WHERE { ?p a rg:RegisteredProvider ; rg:registryKey ?registryKey ; rg:providerModule ?providerModule ; rg:providerClassName ?providerClassName ; rg:capabilitiesModule ?capabilitiesModule ; rg:capabilitiesImportClause ?capabilitiesImportClause ; rg:capabilitiesExpr ?capabilitiesExpr } ORDER BY ?registryKey"
   excluded: "PREFIX rg: <http://seanchatmangpt.github.io/packs/gymact-registry#> SELECT ?excludedClass ?exclusionReason WHERE { ?e a rg:ExcludedProvider ; rg:excludedClass ?excludedClass ; rg:exclusionReason ?exclusionReason } ORDER BY ?excludedClass"
+  outcomePredicates: "PREFIX rg: <http://seanchatmangpt.github.io/packs/gymact-registry#> SELECT ?registryKey ?outcomePredicateModule ?outcomePredicateExpr WHERE { ?p a rg:RegisteredProvider ; rg:registryKey ?registryKey ; rg:outcomePredicateModule ?outcomePredicateModule ; rg:outcomePredicateExpr ?outcomePredicateExpr } ORDER BY ?registryKey"
 ---
 """Built-in provider registry; semantic capability identity stays shared across transports.
 
@@ -13,21 +14,34 @@ editing this file's import block or `_BUILTINS` dict directly -- the generator c
 "forget" a registration the way hand-editing two separate files (a new gym module plus this
 dict) once did (see tests/test_registry_completeness_chicago.py's own docstring for the real
 gap this closes: CloudTopologyProvider shipped without ever being registered here).
+
+`_OUTCOME_PREDICATES` is the opt-in structured-outcome counterpart: most providers declare
+neither rg:outcomePredicateModule nor rg:outcomePredicateExpr, so this dict is empty for them
+and scripts/ocel_standing.py keeps using its generic solved=True substring fallback -- see
+that ontology property's rdfs:comment for the opt-in contract.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
 {% for p in providers %}{% if p.capabilitiesModule == p.providerModule %}from {{ p.providerModule }} import {{ p.providerClassName }}, {{ p.capabilitiesImportClause }}
 {% else %}from {{ p.providerModule }} import {{ p.providerClassName }}
 from {{ p.capabilitiesModule }} import {{ p.capabilitiesImportClause }}
 {% endif %}{% endfor %}
+{% for op in outcomePredicates %}from {{ op.outcomePredicateModule }} import {{ op.outcomePredicateExpr }}
+{% endfor %}
 # NOT registered here (deliberately, not an oversight):
 {% for e in excluded %}#   - {{ e.excludedClass }}: {{ e.exclusionReason }}
 {% endfor %}
 _BUILTINS = {
 {% for p in providers %}    "{{ p.registryKey }}": ({{ p.providerClassName }}, {{ p.capabilitiesExpr }}),
+{% endfor %}}
+
+# Opt-in structured outcome predicates -- only providers with a real rg:outcomePredicateModule
+# / rg:outcomePredicateExpr pair appear here. Empty for most providers by design.
+_OUTCOME_PREDICATES: dict[str, Callable[[str, dict], bool]] = {
+{% for op in outcomePredicates %}    "{{ op.registryKey }}": {{ op.outcomePredicateExpr }},
 {% endfor %}}
 
 

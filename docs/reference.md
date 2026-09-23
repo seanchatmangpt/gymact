@@ -96,11 +96,16 @@
 
 ::: gymact.gyms.kubernetes_reconciliation.KubernetesReconciliationProvider
 
+::: gymact.gyms.kubernetes_goat.KubernetesGoatProvider
+
 ::: gymact.gyms.terraform_plan.TerraformPlanProvider
 
 ::: gymact.gyms.terraform_docker_apply.TerraformDockerApplyProvider
 
 ::: gymact.gyms.inspect_evals.InspectEvalsProvider
+
+
+::: gymact.gyms.vendor_benchmarks.VendorBenchmarkProvider
 
 ::: gymact.contract.RuntimeContract
 

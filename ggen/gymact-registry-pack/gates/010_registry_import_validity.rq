@@ -33,6 +33,18 @@ SELECT ?provider ?violation WHERE {
     FILTER (?p1 != ?p2)
     BIND(CONCAT("duplicate rg:registryKey: ", ?k) AS ?violation)
   } UNION {
+    ?provider a rg:RegisteredProvider ; rg:outcomePredicateExpr ?ope .
+    FILTER NOT EXISTS { ?provider rg:outcomePredicateModule ?opm }
+    BIND("RegisteredProvider declares rg:outcomePredicateExpr without rg:outcomePredicateModule" AS ?violation)
+  } UNION {
+    ?provider a rg:RegisteredProvider ; rg:outcomePredicateModule ?opm .
+    FILTER NOT EXISTS { ?provider rg:outcomePredicateExpr ?ope }
+    BIND("RegisteredProvider declares rg:outcomePredicateModule without rg:outcomePredicateExpr" AS ?violation)
+  } UNION {
+    ?provider a rg:RegisteredProvider ; rg:outcomePredicateExpr ?ope .
+    FILTER (!REGEX(?ope, "^[A-Za-z_][A-Za-z0-9_]*$"))
+    BIND(CONCAT("RegisteredProvider rg:outcomePredicateExpr is not a syntactically-plausible Python callable name: ", ?ope) AS ?violation)
+  } UNION {
     ?e a rg:ExcludedProvider .
     FILTER NOT EXISTS { ?e rg:excludedClass ?c }
     BIND("ExcludedProvider missing rg:excludedClass" AS ?violation)

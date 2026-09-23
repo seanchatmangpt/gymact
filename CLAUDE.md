@@ -2,6 +2,12 @@
 
 GymAct is a Python reference runtime for a public-semantic execution profile over bounded benchmark worlds.
 
+Check `docs/KNOWN_FACTS.md` before re-probing environment constraints (e.g. local
+cluster reachability), re-deriving repo conventions (git workflow, OCEL standing),
+or restating roster/count claims from memory — read it first, verify against its
+cited pointer if you need more, and add a dated entry if you learn something new
+that cost real re-derivation time.
+
 ## Semantic authority
 
 - Do not add GymAct-owned OWL/RDFS classes or RDF/OWL properties merely for convenience.
