@@ -202,6 +202,31 @@ def _real_ggen_packs_with_gates() -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 _INTENTIONALLY_UNCATALOGED: dict[str, str] = {
+    "KubernetesGoatProvider": (
+        "gymact.gyms/kubernetes_goat.KubernetesGoatProvider (landed from "
+        "worktree-agent-a4a0a74 + the agent-af75a90 corrected revision during "
+        "the v26.9.22 branch triage) hard-requires a reachable Kubernetes "
+        "cluster AND the vendored kubernetes-goat checkout at its pinned "
+        "gym-lock.ttl revision; it degrades to a named standing skip and is "
+        "pending its first real-qualification pass before full "
+        "CapabilityEvidence cataloging."
+    ),
+    "Tau2BenchProvider": (
+        "gymact.gyms/tau2_bench.Tau2BenchProvider (landed from "
+        "worktree-agent-ac79210f during the v26.9.22 triage) hard-requires "
+        "the pinned tau2-bench git extra (Python >=3.12) plus a real "
+        "TAU2_DATA_DIR checkout; it degrades to a named standing skip and is "
+        "pending its first real-qualification pass before full "
+        "CapabilityEvidence cataloging."
+    ),
+    "TerminalBenchProvider": (
+        "gymact.gyms/terminal_bench.TerminalBenchProvider (landed from "
+        "agent/terminal-bench-gym during the v26.9.22 triage) hard-requires "
+        "the pinned terminal-bench==0.2.18 extra (Python >=3.12); it "
+        "degrades to a named standing skip and is pending its first "
+        "real-qualification pass before full CapabilityEvidence cataloging."
+    ),
+
     "PlatformConsoleOntologyDrivenProvider": (
         "gymact.gyms.platform_console_ontology_provider.PlatformConsoleOntologyDrivenProvider "
         "is a configured ontology-driven planning-state specialization constructed "

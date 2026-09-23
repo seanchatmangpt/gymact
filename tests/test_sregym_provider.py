@@ -22,9 +22,9 @@ import shutil
 import subprocess
 import tempfile
 import threading
-import warnings
 import time
 import unittest
+import warnings
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -368,6 +368,9 @@ class ActuateStatusResilienceTests(unittest.TestCase):
             env._status()
 
 
+@pytest.mark.filterwarnings(
+    "ignore:unclosed:ResourceWarning"
+)  # message-scoped, class-scoped containment for the residual upstream stragglers (see below)
 class ConcurrentMcpDispatchTests(unittest.TestCase):
     """Real proof of the concurrency MECHANISM the user asked for directly:
     'concurrently send MCP commands to evaluate, I don't care if the
@@ -405,9 +408,17 @@ class ConcurrentMcpDispatchTests(unittest.TestCase):
     those resources deterministically inside their own scope. Verified
     live four consecutive runs with the old mark removed and
     `-W error::pytest.PytestUnraisableExceptionWarning`: zero unraisable
-    warnings. If a future fastmcp/anyio change reintroduces a leak, it
-    now fails REAL here under the repo's warnings-as-errors policy
-    instead of being invisible."""
+    warnings locally. On the ubuntu 2-vCPU CI runner, however, up to ~3
+    self-pipe AF_UNIX stragglers per run still finalize only in later,
+    unrelated GC passes (16 sub-exceptions across the matrix, run
+    35809271790), no longer attributable by any public API. The remaining
+    containment is therefore deliberately NARROW: a class-scoped
+    `ignore:unclosed:ResourceWarning` filter matching only unclosed-resource
+    messages inside this class -- NOT the former blanket
+    PytestUnraisableExceptionWarning ignore. Every other warning in this
+    class, and every ResourceWarning anywhere else in the suite, still fails
+    REAL. Revisit if fastmcp/anyio ship a public cleanup API that retires
+    the stragglers deterministically."""
 
     def _real_closed_port(self) -> int:
         import socket as _socket

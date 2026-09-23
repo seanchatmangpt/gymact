@@ -47,3 +47,15 @@ rg:x-sregym-vendor-physics a rg:ExcludedProvider ;
     rg:excludedClass "gymact.gyms.sregym.SregymVendorProvider" ;
     rg:exclusionReason "real SREGym transport/process physics implementation wrapped by the registered SregymOntologyProvider; its historical hand-authored capability metadata is intentionally not admitted as runtime semantic truth." .
 
+
+rg:x-kubernetes-goat a rg:ExcludedProvider ;
+    rg:excludedClass "gymact.gyms.kubernetes_goat.KubernetesGoatProvider" ;
+    rg:exclusionReason "requires a reachable Kubernetes cluster plus the real vendored kubernetes-goat checkout at its pinned gym-lock.ttl revision; it is a standing-gated court (named skip without the collaborator), not a zero-argument flat builtin usable in every environment." .
+
+rg:x-tau2-bench a rg:ExcludedProvider ;
+    rg:excludedClass "gymact.gyms.tau2_bench.Tau2BenchProvider" ;
+    rg:exclusionReason "requires the pinned tau2-bench git extra (Python >=3.12) plus a real TAU2_DATA_DIR checkout of tau2-bench's task/domain fixtures; it is a standing-gated court (named skip without the collaborator), not a zero-argument flat builtin." .
+
+rg:x-terminal-bench a rg:ExcludedProvider ;
+    rg:excludedClass "gymact.gyms.terminal_bench.TerminalBenchProvider" ;
+    rg:exclusionReason "requires the pinned terminal-bench==0.2.18 extra (Python >=3.12); it is a standing-gated court (named skip without the collaborator), not a zero-argument flat builtin." .
