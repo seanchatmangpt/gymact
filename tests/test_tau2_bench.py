@@ -34,7 +34,7 @@ import pytest
 
 from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent
 from gymact.models import ActuationIntent, Operation
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
 try:
     import tau2  # noqa: F401
@@ -48,7 +48,7 @@ _TASK_DATA_AVAILABLE = bool(_DATA_DIR) and os.path.isdir(
     os.path.join(_DATA_DIR, "tau2", "domains", "retail")
 )
 
-require_standing(
+named_standing_skip(
     "LOCAL_GYM:tau2-bench",
     available=TAU2_IMPORTABLE and _TASK_DATA_AVAILABLE,
     reason=(
