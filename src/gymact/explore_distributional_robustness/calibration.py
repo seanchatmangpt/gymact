@@ -16,7 +16,9 @@ class Calibration:
 
     def __post_init__(self) -> None:
         if self.generation < 0 or self.support <= 0 or not self.digest:
-            raise refuse("INVALID_CALIBRATION", "generation, digest, and positive support are required")
+            raise refuse(
+                "INVALID_CALIBRATION", "generation, digest, and positive support are required"
+            )
         if not 0 <= self.miss_rate <= 1 or self.mean_width < 0:
             raise refuse("INVALID_CALIBRATION", "miss rate must be in [0,1] and width nonnegative")
 

@@ -32,7 +32,7 @@ class CloudOperation:
     visibility_delay: int
 
     @classmethod
-    def from_payload(cls, cloud: str, payload: dict[str, Any]) -> "CloudOperation":
+    def from_payload(cls, cloud: str, payload: dict[str, Any]) -> CloudOperation:
         return cls(
             cloud=cloud,
             service=_required(payload, "service"),

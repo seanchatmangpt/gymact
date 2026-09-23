@@ -1,8 +1,9 @@
-from .primal import PrimalPlan
 from .dual import DualPotential
-from .metric import CostMatrix
 from .feasibility import reduced_costs
+from .metric import CostMatrix
+from .primal import PrimalPlan
 from .refusal import DualChainRefusal
+
 
 def verify_complementarity(plan: PrimalPlan, dual: DualPotential, metric: CostMatrix) -> None:
     slack = reduced_costs(dual, metric)

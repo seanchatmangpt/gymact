@@ -67,7 +67,6 @@ import difflib
 import json
 import subprocess
 import sys
-from pathlib import Path
 
 from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent
 from gymact.gyms.codebase import CodebaseProvider
@@ -83,21 +82,9 @@ RUN_TEST = "urn:gymact:codebase:capability:run_test"
 
 AUTHORITY = "urn:test:codebase-crown-authority"
 
-_BUGGY_CALC = (
-    "def add_one(x):\n"
-    "    return x - 1  # BUG: should add 1, subtracts instead\n"
-)
-_FIXED_CALC = (
-    "def add_one(x):\n"
-    "    return x + 1\n"
-)
-_TEST_CALC = (
-    "from calc import add_one\n"
-    "\n"
-    "\n"
-    "def test_add_one():\n"
-    "    assert add_one(2) == 3\n"
-)
+_BUGGY_CALC = "def add_one(x):\n    return x - 1  # BUG: should add 1, subtracts instead\n"
+_FIXED_CALC = "def add_one(x):\n    return x + 1\n"
+_TEST_CALC = "from calc import add_one\n\n\ndef test_add_one():\n    assert add_one(2) == 3\n"
 
 
 def _unified_diff_patch(path: str, before: str, after: str) -> str:
@@ -166,9 +153,7 @@ async def test_full_mission_codebase_episode_with_independent_ocel_replay(tmp_pa
         # --- architecture discovery: real READ capabilities, direct
         # env.actuate (READ is refused at the kernel act() port -- matches
         # test_terraform_docker_apply.py's `plan` pattern). ---
-        inspect_capability = next(
-            c for c in env.capabilities() if c.binding == "inspect_tree"
-        )
+        inspect_capability = next(c for c in env.capabilities() if c.binding == "inspect_tree")
         tree_effect = await env.actuate(inspect_capability, {})
         assert "calc.py" in tree_effect["after"]["tree"]
         assert "test_calc.py" in tree_effect["after"]["tree"]

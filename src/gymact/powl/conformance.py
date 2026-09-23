@@ -119,13 +119,9 @@ def check_ocel_conformance(
 
     for index, label in enumerate(observed):
         live = enabled(model, marking, bound)
-        candidates = sorted(
-            path for path in live if _label_of(node_at(model, path), path) == label
-        )
+        candidates = sorted(path for path in live if _label_of(node_at(model, path), path) == label)
         if not candidates:
-            enabled_labels = tuple(
-                sorted(_label_of(node_at(model, path), path) for path in live)
-            )
+            enabled_labels = tuple(sorted(_label_of(node_at(model, path), path) for path in live))
             return ConformanceResult(
                 conforms=False,
                 fired_count=fired_count,

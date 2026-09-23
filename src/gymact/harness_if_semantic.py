@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Final
 
-from rdflib import BNode, Graph, Literal, Namespace, RDF, URIRef
+from rdflib import RDF, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import DCTERMS, PROV, SKOS
 
 from gymact.harness_if import (
@@ -166,9 +166,7 @@ def metrics_graph(metrics: CohortMetrics, *, run_iri: str) -> Graph:
     metric_refs = {
         "accuracy": _metric(graph, "acc", "Harness-IF Acc"),
         "filtered_accuracy": _metric(graph, "f-acc", "Harness-IF F-Acc"),
-        "discrimination_weighted_accuracy": _metric(
-            graph, "dw-acc", "Harness-IF DW-Acc"
-        ),
+        "discrimination_weighted_accuracy": _metric(graph, "dw-acc", "Harness-IF DW-Acc"),
         "against_prior_accuracy": _metric(graph, "ap-acc", "Harness-IF AP-Acc"),
     }
     for row in metrics.agents:

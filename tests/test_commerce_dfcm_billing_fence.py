@@ -20,9 +20,7 @@ def agreement(authority: str) -> dict[str, object]:
         "product_id": "chatman-ecosystem",
         "offer_id": "offer-selected",
         "billing_authority": authority,
-        "pricing": [
-            {"dimension_id": "calls", "unit": "call", "unit_price_micros": 7}
-        ],
+        "pricing": [{"dimension_id": "calls", "unit": "call", "unit_price_micros": 7}],
         "effective_at": "2026-08-19T00:00:00Z",
     }
 

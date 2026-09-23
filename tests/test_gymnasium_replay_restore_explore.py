@@ -19,13 +19,13 @@ named_standing_skip(
     available=_importlib_util.find_spec("gymnasium") is not None,
     reason="the optional 'gyms' extra is not installed -- `uv sync --extra gyms`",
 )
-from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent  # noqa: E402
-from gymact.gyms.gymnasium_env import (  # noqa: E402
+from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent
+from gymact.gyms.gymnasium_env import (
     GYMNASIUM_CAPABILITIES,
     GymnasiumEnvironment,
     GymnasiumProvider,
 )
-from gymact.models import ActuationIntent, Standing  # noqa: E402
+from gymact.models import ActuationIntent, Standing
 
 STEP = next(capability for capability in GYMNASIUM_CAPABILITIES if capability.binding == "step")
 SAMPLE = next(

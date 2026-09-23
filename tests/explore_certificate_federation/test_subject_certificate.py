@@ -1,4 +1,5 @@
 import hashlib
+
 import pytest
 
 from gymact.explore_certificate_federation.certificate import Certificate

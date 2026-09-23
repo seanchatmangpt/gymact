@@ -248,7 +248,9 @@ CAPABILITY_REGISTRY: tuple[Capability, ...] = (
     ),
 )
 
-_BY_BINDING: dict[str, Capability] = {capability.binding: capability for capability in CAPABILITY_REGISTRY}
+_BY_BINDING: dict[str, Capability] = {
+    capability.binding: capability for capability in CAPABILITY_REGISTRY
+}
 
 
 def _require(payload: dict[str, Any], key: str) -> str:
@@ -431,7 +433,9 @@ def _aws_ec2_authorize_security_group_ingress(
     return entry
 
 
-def _aws_ec2_describe_security_groups(state: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+def _aws_ec2_describe_security_groups(
+    state: dict[str, Any], payload: dict[str, Any]
+) -> dict[str, Any]:
     del payload
     return deepcopy(state["aws"]["security_group_rules"])
 
@@ -510,7 +514,9 @@ def _azure_compute_list_virtual_machines(
     return deepcopy(state["azure"]["compute_instances"])
 
 
-def _azure_network_create_security_rule(state: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+def _azure_network_create_security_rule(
+    state: dict[str, Any], payload: dict[str, Any]
+) -> dict[str, Any]:
     rule_name = _require(payload, "rule_name")
     rules = state["azure"]["network_security_rules"]
     if rule_name in rules:
@@ -528,12 +534,16 @@ def _azure_network_create_security_rule(state: dict[str, Any], payload: dict[str
     return entry
 
 
-def _azure_network_list_security_rules(state: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+def _azure_network_list_security_rules(
+    state: dict[str, Any], payload: dict[str, Any]
+) -> dict[str, Any]:
     del payload
     return deepcopy(state["azure"]["network_security_rules"])
 
 
-def _gcp_iam_create_service_account(state: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+def _gcp_iam_create_service_account(
+    state: dict[str, Any], payload: dict[str, Any]
+) -> dict[str, Any]:
     account_id = _require(payload, "account_id")
     accounts = state["gcp"]["iam_service_accounts"]
     if account_id in accounts:
@@ -547,7 +557,9 @@ def _gcp_iam_create_service_account(state: dict[str, Any], payload: dict[str, An
     return entry
 
 
-def _gcp_iam_add_iam_policy_binding(state: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+def _gcp_iam_add_iam_policy_binding(
+    state: dict[str, Any], payload: dict[str, Any]
+) -> dict[str, Any]:
     member = _require(payload, "member")
     role = _require(payload, "role")
     bindings = state["gcp"]["iam_policy_bindings"].setdefault(role, [])
@@ -556,7 +568,9 @@ def _gcp_iam_add_iam_policy_binding(state: dict[str, Any], payload: dict[str, An
     return {"role": role, "member": member}
 
 
-def _gcp_iam_list_service_accounts(state: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+def _gcp_iam_list_service_accounts(
+    state: dict[str, Any], payload: dict[str, Any]
+) -> dict[str, Any]:
     del payload
     return deepcopy(state["gcp"]["iam_service_accounts"])
 

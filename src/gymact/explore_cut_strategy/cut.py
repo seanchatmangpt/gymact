@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from datetime import datetime
+
 from .epoch import ProducerEpoch
+
 
 @dataclass(frozen=True)
 class EvidenceCut:
@@ -17,7 +19,7 @@ class EvidenceCut:
             raise ValueError("REFUSED_NAIVE_CUT_LEASE")
         if self.valid_until <= self.valid_from:
             raise ValueError("REFUSED_INVALID_CUT_LEASE")
-        repos=[e.subject.repo for e in self.epochs]
+        repos = [e.subject.repo for e in self.epochs]
         if len(repos) != len(set(repos)):
             raise ValueError("REFUSED_DUPLICATE_PRODUCER")
 

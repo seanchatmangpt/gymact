@@ -1,4 +1,5 @@
 """Portable semantic/runtime contract for cross-language manufacture."""
+
 from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
@@ -30,7 +31,12 @@ from gymact.compileout_graph import (
 from gymact.cut import CombinatorialBrokerRequest, IrreversibleSelection
 from gymact.dcm_runtime import DecisionCourtRecord, DecisionCourtRequest
 from gymact.decision_cache import CandidateDecision, DecisionKey, RefusalDecision
-from gymact.ecology import EcologyAlternative, EcologyDimension, IrreversibleOption, ManufacturedEcology
+from gymact.ecology import (
+    EcologyAlternative,
+    EcologyDimension,
+    IrreversibleOption,
+    ManufacturedEcology,
+)
 from gymact.evidence import digest
 from gymact.experiments import (
     AntiAgentPoint,

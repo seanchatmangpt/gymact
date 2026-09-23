@@ -362,7 +362,7 @@ class ActuateStatusResilienceTests(unittest.TestCase):
         env = object.__new__(SregymEnvironment)
         env._closed = False
         env._api_base = f"http://127.0.0.1:{self._real_closed_port()}"
-        with self.assertRaises(Exception):
+        with self.assertRaises(Exception):  # noqa: B017
             env._status()
 
 

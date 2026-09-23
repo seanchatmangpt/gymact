@@ -179,9 +179,7 @@ class DspyOcelCallback(BaseCallback):
         the result, matching this repo's own OCEL-standing discipline
         (a log is only real evidence once independently schema-validated,
         not because this method returned without raising)."""
-        objects: list[dict[str, Any]] = [
-            {"id": self.run_id, "type": "dspy_run", "attributes": []}
-        ]
+        objects: list[dict[str, Any]] = [{"id": self.run_id, "type": "dspy_run", "attributes": []}]
         objects.extend({"id": mid, "type": "lm", "attributes": []} for mid in sorted(self._lm_ids))
         objects.extend(
             {"id": tid, "type": "tool", "attributes": []} for tid in sorted(self._tool_ids)

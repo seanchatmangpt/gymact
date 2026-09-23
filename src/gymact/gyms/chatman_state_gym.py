@@ -156,6 +156,4 @@ class ChatmanStateProvider:
         repo_limit = config.get("repo_limit", 25)
         if not isinstance(repo_limit, int) or repo_limit <= 0:
             raise TypeError("config.repo_limit must be a positive int")
-        return ChatmanStateEnvironment(
-            requires_authority=requires_authority, repo_limit=repo_limit
-        )
+        return ChatmanStateEnvironment(requires_authority=requires_authority, repo_limit=repo_limit)

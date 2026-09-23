@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from rdflib import Graph, Literal, Namespace, RDF, URIRef
+from rdflib import RDF, Graph, Literal, Namespace, URIRef
 
 from gymact.models import Capability, Consequence
 
@@ -86,11 +86,15 @@ class DependencyWorldCatalog:
     max_impacted_resources: int
 
     @classmethod
-    def from_graph(cls, graph: Graph, *, local_prefix: str) -> "DependencyWorldCatalog":
+    def from_graph(cls, graph: Graph, *, local_prefix: str) -> DependencyWorldCatalog:
         assets: list[DependencyAsset] = []
         asset_by_iri: dict[str, str] = {}
         for asset in sorted(
-            {s for s in graph.subjects(RDF.type, PROV.Entity) if (s, RDF.type, SOSA.FeatureOfInterest) in graph},
+            {
+                s
+                for s in graph.subjects(RDF.type, PROV.Entity)
+                if (s, RDF.type, SOSA.FeatureOfInterest) in graph
+            },
             key=str,
         ):
             assert isinstance(asset, URIRef)
@@ -133,8 +137,12 @@ class DependencyWorldCatalog:
             identifier = str(_one(graph, cap, DCT.identifier, label="CAPABILITY_IDENTIFIER"))
             title = str(_one(graph, cap, DCT.title, label="CAPABILITY_TITLE"))
             family = _notation(graph, _one(graph, cap, DCT.type, label="CAPABILITY_FAMILY"))
-            effect_status = _notation(graph, _one(graph, cap, DCT.subject, label="CAPABILITY_EFFECT"))
-            access = _notation(graph, _one(graph, cap, DCT.accessRights, label="CAPABILITY_CONSEQUENCE"))
+            effect_status = _notation(
+                graph, _one(graph, cap, DCT.subject, label="CAPABILITY_EFFECT")
+            )
+            access = _notation(
+                graph, _one(graph, cap, DCT.accessRights, label="CAPABILITY_CONSEQUENCE")
+            )
             if access.upper() != "DO":
                 raise ValueError(f"UNSUPPORTED_CAPABILITY_CONSEQUENCE:{identifier}:{access}")
             synthetic_only = (cap, DCT.conformsTo, synthetic_profile) in graph
@@ -177,7 +185,10 @@ class DependencyWorldCatalog:
             metric_iri = URIRef(f"{local_prefix}metric:{metric_suffix}")
             values: list[int] = []
             for measurement in graph.subjects(DQV.isMeasurementOf, metric_iri):
-                if computed_on is not None and (measurement, DQV.computedOn, computed_on) not in graph:
+                if (
+                    computed_on is not None
+                    and (measurement, DQV.computedOn, computed_on) not in graph
+                ):
                     continue
                 raw = _one(graph, measurement, DQV.value, label="DQV_VALUE")
                 values.append(int(raw.toPython() if isinstance(raw, Literal) else str(raw)))
@@ -205,7 +216,14 @@ class DependencyWorldCatalog:
 class DependencyWorldEnvironment:
     """Transactional graph world with actor-scoped observation and DO surfaces."""
 
-    def __init__(self, *, provider_name: str, catalog: DependencyWorldCatalog, actor: str, requires_authority: bool) -> None:
+    def __init__(
+        self,
+        *,
+        provider_name: str,
+        catalog: DependencyWorldCatalog,
+        actor: str,
+        requires_authority: bool,
+    ) -> None:
         if actor not in catalog.actor_actions:
             raise ValueError(f"UNKNOWN_ACTOR:{actor}")
         self.environment_id = f"urn:gymact:{provider_name}:environment:{uuid4().hex}"
@@ -238,7 +256,9 @@ class DependencyWorldEnvironment:
 
     def capabilities(self) -> tuple[Capability, ...]:
         self._ensure_open()
-        return tuple(cap.runtime() for cap in self._catalog.capabilities if cap.iri in self._allowed_caps)
+        return tuple(
+            cap.runtime() for cap in self._catalog.capabilities if cap.iri in self._allowed_caps
+        )
 
     async def observe(self) -> dict[str, Any]:
         """Independent read from committed history, never an actuator echo."""
@@ -254,7 +274,9 @@ class DependencyWorldEnvironment:
             "assets": {key: snapshot[key] for key in sorted(self._visible)},
         }
 
-    def _desired_status(self, asset_id: str, *, direct: dict[str, str], effective: dict[str, str]) -> str:
+    def _desired_status(
+        self, asset_id: str, *, direct: dict[str, str], effective: dict[str, str]
+    ) -> str:
         own = direct[asset_id]
         if own != "healthy":
             return own
@@ -262,7 +284,9 @@ class DependencyWorldEnvironment:
             return "degraded"
         return "healthy"
 
-    def _simulate(self, *, target: str, effect_status: str) -> tuple[dict[str, str], dict[str, str], tuple[str, ...]]:
+    def _simulate(
+        self, *, target: str, effect_status: str
+    ) -> tuple[dict[str, str], dict[str, str], tuple[str, ...]]:
         direct = dict(self._direct)
         effective = dict(self._effective)
         direct[target] = effect_status
@@ -325,11 +349,21 @@ class DependencyWorldEnvironment:
         expected_assets = expected.get("assets", {})
         if not isinstance(expected_assets, dict):
             raise TypeError("expected.assets must be an object")
-        unknown = set(expected) - {"assets", "world_step", "observed_step", "staleness_steps", "actor"}
+        unknown = set(expected) - {
+            "assets",
+            "world_step",
+            "observed_step",
+            "staleness_steps",
+            "actor",
+        }
         if unknown:
             raise ValueError(f"UNSUPPORTED_VERIFICATION:{sorted(unknown)!r}")
-        passed = all(observed.get(key) == value for key, value in expected.items() if key != "assets")
-        passed = passed and all(observed["assets"].get(key) == value for key, value in expected_assets.items())
+        passed = all(
+            observed.get(key) == value for key, value in expected.items() if key != "assets"
+        )
+        passed = passed and all(
+            observed["assets"].get(key) == value for key, value in expected_assets.items()
+        )
         return passed, observed
 
     async def checkpoint(self) -> dict[str, Any]:
@@ -386,7 +420,9 @@ class DependencyWorldProvider:
     def catalog(self) -> DependencyWorldCatalog:
         return DependencyWorldCatalog.from_graph(self.graph(), local_prefix=self.local_prefix)
 
-    async def materialize(self, *, scenario: str | None, config: dict[str, Any]) -> DependencyWorldEnvironment:
+    async def materialize(
+        self, *, scenario: str | None, config: dict[str, Any]
+    ) -> DependencyWorldEnvironment:
         del scenario
         actor = config.get("actor", "blue")
         if not isinstance(actor, str):

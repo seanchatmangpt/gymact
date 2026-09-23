@@ -14,7 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from rdflib import RDF, Graph, Namespace, URIRef
+from rdflib import RDF, Graph, Namespace
 from rdflib.namespace import DCTERMS
 
 from gymact.authority import AllowListAuthorityResolver
@@ -96,7 +96,9 @@ def test_capability_registry_has_unique_iris_and_bindings() -> None:
     iris = [capability.iri for capability in CAPABILITY_REGISTRY]
     bindings = [capability.binding for capability in CAPABILITY_REGISTRY]
     assert len(iris) == len(set(iris)), "duplicate capability IRIs in CAPABILITY_REGISTRY"
-    assert len(bindings) == len(set(bindings)), "duplicate capability bindings in CAPABILITY_REGISTRY"
+    assert len(bindings) == len(set(bindings)), (
+        "duplicate capability bindings in CAPABILITY_REGISTRY"
+    )
 
 
 def test_capability_registry_covers_all_three_clouds() -> None:
@@ -328,9 +330,7 @@ async def test_checkpoint_and_restore_round_trip_real_state() -> None:
     observation = await runtime.observe(episode.episode_id)
     assert len(observation.state["aws"]["compute_instances"]) == 2
 
-    restore_receipt = await runtime.restore(
-        episode.episode_id, checkpoint, authority_ref=AUTHORITY
-    )
+    restore_receipt = await runtime.restore(episode.episode_id, checkpoint, authority_ref=AUTHORITY)
     assert restore_receipt.standing == Standing.ALIVE
 
     restored = await runtime.observe(episode.episode_id)

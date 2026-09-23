@@ -2,7 +2,14 @@ from __future__ import annotations
 
 import pytest
 
-from gymact.sota import FrontierResult, SotaAdmissionError, StandingEvidence, dominates, pareto_frontier, sota_claim
+from gymact.sota import (
+    FrontierResult,
+    SotaAdmissionError,
+    StandingEvidence,
+    dominates,
+    pareto_frontier,
+    sota_claim,
+)
 
 
 def evidence(*, replay: bool = True) -> StandingEvidence:
@@ -35,7 +42,10 @@ def test_pareto_frontier_preserves_non_dominated_tradeoffs() -> None:
     dominated = result("dominated", 0.90, 0.90)
     assert dominates(balanced, dominated)
     assert not dominates(quality_only, balanced)
-    assert {item.result_id for item in pareto_frontier((balanced, quality_only, dominated))} == {"balanced", "quality-only"}
+    assert {item.result_id for item in pareto_frontier((balanced, quality_only, dominated))} == {
+        "balanced",
+        "quality-only",
+    }
 
 
 def test_metric_space_mismatch_is_refused_not_silently_projected() -> None:

@@ -1,4 +1,5 @@
 """Executable lab experiments for fault injection, self-play, VCT, and cognition compile-out."""
+
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
@@ -160,12 +161,12 @@ def anti_agent_benchmark(points: Iterable[AntiAgentPoint]) -> AntiAgentReport:
     lower_marginal = False
     if len(ordered) >= 2:
         first, last = ordered[0], ordered[-1]
-        frontier_slope = (
-            last.frontier.monetary_cost - first.frontier.monetary_cost
-        ) / (last.repetitions - first.repetitions)
-        gymact_slope = (
-            last.gymact.monetary_cost - first.gymact.monetary_cost
-        ) / (last.repetitions - first.repetitions)
+        frontier_slope = (last.frontier.monetary_cost - first.frontier.monetary_cost) / (
+            last.repetitions - first.repetitions
+        )
+        gymact_slope = (last.gymact.monetary_cost - first.gymact.monetary_cost) / (
+            last.repetitions - first.repetitions
+        )
         lower_marginal = gymact_slope < frontier_slope
     return AntiAgentReport(
         points=ordered,

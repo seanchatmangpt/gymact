@@ -29,14 +29,14 @@ named_standing_skip(
     reason="the 'inspect_ai' package is not importable in this environment",
 )
 
-from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent  # noqa: E402
-from gymact.gyms.inspect_evals import (  # noqa: E402
+from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent
+from gymact.gyms.inspect_evals import (
     INSPECT_SOLVE_SAMPLE_CAPABILITY,
     InspectEvalsProvider,
 )
-from gymact.models import ActuationIntent, Operation, Standing  # noqa: E402
-from gymact.ocel import receipts_to_ocel, validate_ocel_log  # noqa: E402
-from gymact.process import ConformanceChecker  # noqa: E402
+from gymact.models import ActuationIntent, Operation, Standing
+from gymact.ocel import receipts_to_ocel, validate_ocel_log
+from gymact.process import ConformanceChecker
 
 SOLVE_SAMPLE = "urn:gymact:inspect-evals:capability:solve_sample"
 # inspect_evals.py's requires_authority now defaults to True (a real DO
@@ -51,7 +51,7 @@ def _authorized_gym() -> GymAct:
     return gym
 
 
-async def _run_real_inspect_episode(*, custom_outputs: list[str]) -> list:
+async def _run_real_inspect_episode(*, custom_outputs: list[str], log_dir: str) -> list:
     gym = _authorized_gym()
     receipts = []
 
@@ -63,7 +63,7 @@ async def _run_real_inspect_episode(*, custom_outputs: list[str]) -> list:
                 "target": "4",
                 "model": "mockllm/model",
                 "model_args": {"custom_outputs": custom_outputs},
-                "log_dir": "./.inspect_logs",
+                "log_dir": log_dir,
             },
         )
     )
@@ -85,7 +85,7 @@ async def _run_real_inspect_episode(*, custom_outputs: list[str]) -> list:
     return receipts
 
 
-async def test_real_materialize_builds_a_real_inspect_task_environment() -> None:
+async def test_real_materialize_builds_a_real_inspect_task_environment(tmp_path) -> None:
     gym = GymAct()
     gym.register_provider(InspectEvalsProvider())
 
@@ -104,7 +104,9 @@ async def test_real_materialize_builds_a_real_inspect_task_environment() -> None
     await gym.teardown(episode_id)
 
 
-async def test_solve_sample_capability_really_runs_inspect_eval_and_scores_correct() -> None:
+async def test_solve_sample_capability_really_runs_inspect_eval_and_scores_correct(
+    tmp_path,
+) -> None:
     """Inspect's real mockllm provider replays the literal completion "4";
     Inspect's real match() scorer really compares it against the real
     target "4" -- this is a real CORRECT verdict from Inspect's own scoring
@@ -119,7 +121,7 @@ async def test_solve_sample_capability_really_runs_inspect_eval_and_scores_corre
                 "target": "4",
                 "model": "mockllm/model",
                 "model_args": {"custom_outputs": ["4"]},
-                "log_dir": "./.inspect_logs",
+                "log_dir": str(tmp_path / "inspect_logs"),
             },
         )
     )
@@ -138,7 +140,9 @@ async def test_solve_sample_capability_really_runs_inspect_eval_and_scores_corre
     await gym.teardown(episode_id, authority_ref=AUTHORITY)
 
 
-async def test_solve_sample_capability_really_scores_incorrect_when_the_model_is_wrong() -> None:
+async def test_solve_sample_capability_really_scores_incorrect_when_the_model_is_wrong(
+    tmp_path,
+) -> None:
     """The negative case: Inspect's real match() scorer really marks a wrong
     completion INCORRECT -- proves this provider surfaces Inspect's genuine
     verdict rather than always reporting success."""
@@ -152,7 +156,7 @@ async def test_solve_sample_capability_really_scores_incorrect_when_the_model_is
                 "target": "4",
                 "model": "mockllm/model",
                 "model_args": {"custom_outputs": ["not a number"]},
-                "log_dir": "./.inspect_logs",
+                "log_dir": str(tmp_path / "inspect_logs"),
             },
         )
     )
@@ -307,8 +311,12 @@ async def test_materialize_rejects_non_boolean_requires_authority() -> None:
     assert raised is True
 
 
-async def test_inspect_evals_episode_replays_conformant_and_produces_a_valid_ocel_log() -> None:
-    receipts = await _run_real_inspect_episode(custom_outputs=["4"])
+async def test_inspect_evals_episode_replays_conformant_and_produces_a_valid_ocel_log(
+    tmp_path,
+) -> None:
+    receipts = await _run_real_inspect_episode(
+        custom_outputs=["4"], log_dir=str(tmp_path / "inspect_logs")
+    )
     operations = [r.operation for r in receipts]
 
     assert operations == [

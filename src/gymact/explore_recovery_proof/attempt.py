@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from .context import RecoveryContext
 from .subject import Refusal
@@ -41,7 +41,7 @@ class RecoveryAttempt:
             base.fingerprint,
             target.fingerprint,
             strategy,
-            issued_at or datetime.now(timezone.utc),
+            issued_at or datetime.now(UTC),
         )
 
     @property

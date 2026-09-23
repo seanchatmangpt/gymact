@@ -42,9 +42,7 @@ class VendorBenchmarkProviderTests(unittest.TestCase):
             check=True,
         )
         runner = root / "vendor_runner.py"
-        runner.write_text(
-            'import sys\nprint(f"real-vendor:{sys.argv[1]}")\n', encoding="utf-8"
-        )
+        runner.write_text('import sys\nprint(f"real-vendor:{sys.argv[1]}")\n', encoding="utf-8")
         subprocess.run(["git", "-C", str(root), "add", "vendor_runner.py"], check=True)
         subprocess.run(
             ["git", "-C", str(root), "commit", "-qm", "fixture collaborator"], check=True

@@ -83,9 +83,10 @@ def test_manufactures_nested_collection_chain_deterministically() -> None:
     assert len(nested) == 1
     rule = nested[0]
     assert rule.container_path == ("request", "Groups")
-    assert [
-        (step.relative_path, step.container_kind) for step in rule.nested_collections
-    ] == [(('Tags',), "map"), ((), "list")]
+    assert [(step.relative_path, step.container_kind) for step in rule.nested_collections] == [
+        (("Tags",), "map"),
+        ((), "list"),
+    ]
     assert rule.required_relative_paths == (("Value",),)
 
 
@@ -162,8 +163,7 @@ def test_nested_collection_path_is_bound_into_receipt_replay() -> None:
             replace(
                 operation,
                 rules=tuple(
-                    weakened_rule if rule == nested_rule else rule
-                    for rule in operation.rules
+                    weakened_rule if rule == nested_rule else rule for rule in operation.rules
                 ),
             ),
         ),

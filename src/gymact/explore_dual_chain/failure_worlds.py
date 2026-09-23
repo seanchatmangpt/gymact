@@ -1,9 +1,11 @@
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class FailureWorld:
     name: str
     expected_refusal: str
+
 
 WORLDS = (
     FailureWorld("subject_drift", "INVALID_SUBJECT"),

@@ -17,6 +17,12 @@ class CheckResult:
     gap: Fraction
 
 
-def independent_check(plan: TransportPlan, potential: DualPotential, source: FiniteMeasure, target: FiniteMeasure, metric: GroundMetric) -> CheckResult:
+def independent_check(
+    plan: TransportPlan,
+    potential: DualPotential,
+    source: FiniteMeasure,
+    target: FiniteMeasure,
+    metric: GroundMetric,
+) -> CheckResult:
     cert = certify(plan, potential, source, target, metric)
     return CheckResult(cert.primal, cert.dual, cert.gap)

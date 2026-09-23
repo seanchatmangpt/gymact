@@ -54,9 +54,7 @@ SWITCHBOARD_CAPABILITIES = (
 class SwitchboardEnvironment:
     """N boolean switches plus a latch, with a seeded required-decoy pattern."""
 
-    def __init__(
-        self, *, seed: int, n_switches: int, requires_authority: bool = False
-    ) -> None:
+    def __init__(self, *, seed: int, n_switches: int, requires_authority: bool = False) -> None:
         if n_switches < 3:
             raise ValueError("switchboard requires n_switches >= 3")
         self.environment_id = f"urn:gymact:switchboard:environment:{uuid4().hex}"
@@ -176,8 +174,7 @@ class SwitchboardEnvironment:
         switches = checkpoint.get("switches")
         if not isinstance(switches, list) or len(switches) != self.n_switches:
             raise ValueError(
-                f"checkpoint.switches must be a list of length {self.n_switches}, "
-                f"got {switches!r}"
+                f"checkpoint.switches must be a list of length {self.n_switches}, got {switches!r}"
             )
         if "master" not in checkpoint or "toggles" not in checkpoint:
             raise ValueError("checkpoint must contain 'master' and 'toggles'")

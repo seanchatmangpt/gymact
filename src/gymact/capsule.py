@@ -1,4 +1,5 @@
 """Execution capsules for defensible local ALIVE reuse without subject overclaiming."""
+
 from __future__ import annotations
 
 from pydantic import Field

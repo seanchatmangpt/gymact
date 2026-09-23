@@ -234,8 +234,7 @@ class LockAndKeyEnvironment:
             )
         if not (held_key == NO_KEY or 0 <= held_key < self.depth):
             raise ValueError(
-                f"checkpoint.held_key must be {NO_KEY} or in [0, {self.depth}), "
-                f"got {held_key!r}"
+                f"checkpoint.held_key must be {NO_KEY} or in [0, {self.depth}), got {held_key!r}"
             )
         self._locks_open = locks_open
         self._held = held_key
@@ -263,6 +262,4 @@ class LockAndKeyProvider:
         requires_authority = config.get("requires_authority", False)
         if not isinstance(requires_authority, bool):
             raise TypeError("config.requires_authority must be a boolean")
-        return LockAndKeyEnvironment(
-            seed=seed, depth=depth, requires_authority=requires_authority
-        )
+        return LockAndKeyEnvironment(seed=seed, depth=depth, requires_authority=requires_authority)

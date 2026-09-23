@@ -4,7 +4,6 @@ import hashlib
 import importlib.metadata
 import json
 from copy import deepcopy
-from pathlib import Path
 
 import anyio
 import pytest
@@ -367,7 +366,9 @@ async def test_do_capability_cannot_be_smuggled_through_read() -> None:
     )
     assert result.episode is not None
     do_capability = next(
-        c for c in runtime.capabilities(result.episode.episode_id) if c.consequence is Consequence.DO
+        c
+        for c in runtime.capabilities(result.episode.episode_id)
+        if c.consequence is Consequence.DO
     )
     with pytest.raises(ValueError, match="DO_CAPABILITY_IS_NOT_A_READ"):
         await runtime.read(result.episode.episode_id, do_capability.iri, {})
@@ -500,7 +501,9 @@ async def test_memory_delete_increment_verify_and_idempotent_teardown() -> None:
 
 
 @pytest.mark.asyncio
-async def test_real_episode_produces_a_valid_ocel_log_and_writes_the_conformance_fixture() -> None:
+async def test_real_episode_produces_a_valid_ocel_log_and_writes_the_conformance_fixture(
+    tmp_path,
+) -> None:
     """Van der Aalst item 1: instrument a real run as a real OCEL log.
 
     Drives the exact same real lifecycle as
@@ -510,11 +513,15 @@ async def test_real_episode_produces_a_valid_ocel_log_and_writes_the_conformance
     schema-valid OCEL 2.0 log via `episode_ocel_log` -- pure wiring over
     `receipts_to_ocel`, nothing synthesized here.
 
-    Also writes the real resulting log to `tests/fixtures/real_episode.ocel.json`
-    via `write_ocel_log` (validates before writing, digests the exact bytes on
-    disk) -- this is the real, captured fixture the ggen-side conformance test
-    (`gymact_bridge_pack_e2e.rs` / a conformance sibling) discovers a DFG from
-    and checks fitness/precision against.
+    Validates the real resulting log and writes it to the test's own
+    tmp_path via `write_ocel_log` (validates before writing, digests the
+    exact bytes on disk). The tracked `tests/fixtures/real_episode.ocel.json`
+    is the real, captured fixture the ggen-side conformance test
+    (`gymact_bridge_pack_e2e.rs` / a conformance sibling) discovers a DFG
+    from and checks fitness/precision against -- and per the GYMACT-6
+    hermetic-suite order the test run no longer rewrites it (every run
+    regenerated real timestamps/ids and dirtied the checkout); re-capture
+    that fixture deliberately, not as a test side effect.
     """
     runtime = GymAct()
     runtime.register_provider(MemoryProvider())
@@ -556,7 +563,7 @@ async def test_real_episode_produces_a_valid_ocel_log_and_writes_the_conformance
     assert len(log["events"]) == len(receipts)
     assert {e["type"] for e in log["events"]} == {"materialize", "act", "verify", "teardown"}
 
-    fixture_path = Path(__file__).parent / "fixtures" / "real_episode.ocel.json"
+    fixture_path = tmp_path / "real_episode.ocel.json"
     written_log, digest = write_ocel_log(fixture_path, receipts)
     assert written_log == log
     assert len(digest) == 64

@@ -1,9 +1,11 @@
+import re
 from dataclasses import dataclass
 from datetime import datetime
-import re
+
 from .subject import Subject
 
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
+
 
 @dataclass(frozen=True)
 class ProducerEpoch:

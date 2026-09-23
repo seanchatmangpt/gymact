@@ -12,7 +12,7 @@ import importlib
 from pathlib import Path
 
 import pytest
-from rdflib import Graph, Namespace, RDF
+from rdflib import RDF, Graph, Namespace
 
 from gymact import registry
 
@@ -83,12 +83,10 @@ def test_every_real_gym_provider_class_is_registered_or_ontology_excluded() -> N
 
     registered_class_names = {cls.__name__ for cls, _caps in registry._BUILTINS.values()}
     excluded_class_names = set(_ontology_exclusions())
-    unaccounted = sorted(
-        set(provider_classes) - registered_class_names - excluded_class_names
-    )
+    unaccounted = sorted(set(provider_classes) - registered_class_names - excluded_class_names)
     assert unaccounted == [], (
         "real gym Provider classes lack both registry standing and an ontology exclusion: "
-        f"{unaccounted}; source files={ [str(provider_classes[name]) for name in unaccounted] }"
+        f"{unaccounted}; source files={[str(provider_classes[name]) for name in unaccounted]}"
     )
 
 
@@ -108,7 +106,9 @@ def test_ontology_exclusions_and_registry_do_not_overlap() -> None:
 
 def test_generated_registry_exactly_matches_registered_provider_ontology() -> None:
     expected = _ontology_registered()
-    observed = {key: provider_type.__name__ for key, (provider_type, _caps) in registry._BUILTINS.items()}
+    observed = {
+        key: provider_type.__name__ for key, (provider_type, _caps) in registry._BUILTINS.items()
+    }
     assert observed == expected
 
 

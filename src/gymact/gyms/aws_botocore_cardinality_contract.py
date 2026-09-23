@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass, replace
-from typing import Any, Iterable, Literal
+from typing import Any, Literal
 
 import blake3
 import rfc8785
@@ -84,9 +85,13 @@ def _shape(shapes: dict[str, Any], name: str) -> dict[str, Any]:
 def _pascal_to_snake(value: str) -> str:
     out: list[str] = []
     for index, char in enumerate(value):
-        if index and char.isupper() and (
-            not value[index - 1].isupper()
-            or (index + 1 < len(value) and value[index + 1].islower())
+        if (
+            index
+            and char.isupper()
+            and (
+                not value[index - 1].isupper()
+                or (index + 1 < len(value) and value[index + 1].islower())
+            )
         ):
             out.append("_")
         out.append(char.lower())
@@ -393,8 +398,7 @@ def receipt_aws_botocore_cardinality_contract(
         source_digest=contract.source_digest,
         operation_count=len(contract.operations),
         rule_count=sum(
-            len(operation.rules) + len(operation.success_rules)
-            for operation in contract.operations
+            len(operation.rules) + len(operation.success_rules) for operation in contract.operations
         ),
     )
 
@@ -422,7 +426,9 @@ def _lookup(step: CloudTraceStep, path: JsonPath) -> tuple[bool, Any]:
     return True, value
 
 
-def _collection_members(value: Any, kind: Literal["list", "map"]) -> Iterable[tuple[str | int, Any]]:
+def _collection_members(
+    value: Any, kind: Literal["list", "map"]
+) -> Iterable[tuple[str | int, Any]]:
     if kind == "list":
         if not isinstance(value, list):
             return ()

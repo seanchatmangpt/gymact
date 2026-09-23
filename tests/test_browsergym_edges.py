@@ -49,9 +49,9 @@ named_standing_skip(
     ),
 )
 
-from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent  # noqa: E402
-from gymact.gyms.browsergym import BrowserGymEnvironment, BrowserGymProvider  # noqa: E402
-from gymact.models import ActuationIntent, Standing  # noqa: E402
+from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent
+from gymact.gyms.browsergym import BrowserGymEnvironment, BrowserGymProvider
+from gymact.models import ActuationIntent, Standing
 
 START_URL = "about:blank#start"
 AUTHORITY = "urn:test:browsergym-authority"

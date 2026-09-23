@@ -8,11 +8,12 @@ standing.
 
 from __future__ import annotations
 
+import json
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from hashlib import sha256
-import json
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 
 class Standing(StrEnum):
@@ -69,9 +70,7 @@ class RefusalCode(StrEnum):
     CROSS_TENANT_ENTITLEMENT = "REFUSED:CROSS_TENANT_ENTITLEMENT"
     USAGE_WITHOUT_ACTIVE_ENTITLEMENT = "REFUSED:USAGE_WITHOUT_ACTIVE_ENTITLEMENT"
     METER_WITHOUT_ADMITTED_USAGE = "REFUSED:METER_WITHOUT_ADMITTED_USAGE"
-    SETTLEMENT_WITHOUT_PROVIDER_ACCEPTANCE = (
-        "REFUSED:SETTLEMENT_WITHOUT_PROVIDER_ACCEPTANCE"
-    )
+    SETTLEMENT_WITHOUT_PROVIDER_ACCEPTANCE = "REFUSED:SETTLEMENT_WITHOUT_PROVIDER_ACCEPTANCE"
     PROVIDER_ACCEPTANCE_NOT_OBSERVED = "REFUSED:PROVIDER_ACCEPTANCE_NOT_OBSERVED"
     EXTERNAL_DO_WITHOUT_AUTHORITY = "REFUSED:EXTERNAL_DO_WITHOUT_AUTHORITY"
     BRCE_REQUIRED = "REFUSED:BRCE_REQUIRED"
@@ -470,9 +469,7 @@ class CommerceWorld:
         if event.event_id in self.processed_events:
             return None, Refusal(RefusalCode.DUPLICATE_OR_STALE_EVENT, "event replay")
         if event.product_id != agreement.product_id:
-            return None, Refusal(
-                RefusalCode.CROSS_TENANT_ENTITLEMENT, "product/agreement mismatch"
-            )
+            return None, Refusal(RefusalCode.CROSS_TENANT_ENTITLEMENT, "product/agreement mismatch")
 
         current = self.entitlements.get(event.entitlement_id)
         if current is None:
@@ -483,18 +480,13 @@ class CommerceWorld:
                 )
             target = EntitlementState.PENDING
         else:
-            if (
-                current.agreement_id != event.agreement_id
-                or current.tenant_id != event.tenant_id
-            ):
+            if current.agreement_id != event.agreement_id or current.tenant_id != event.tenant_id:
                 return None, Refusal(
                     RefusalCode.CROSS_TENANT_ENTITLEMENT,
                     "entitlement cannot move agreement/tenant",
                 )
             if event.revision <= current.revision:
-                return None, Refusal(
-                    RefusalCode.DUPLICATE_OR_STALE_EVENT, "stale revision"
-                )
+                return None, Refusal(RefusalCode.DUPLICATE_OR_STALE_EVENT, "stale revision")
             target = _TRANSITIONS[current.state].get(event.kind)
             if target is None:
                 return None, Refusal(
@@ -558,14 +550,10 @@ class CommerceWorld:
                 RefusalCode.USAGE_WITHOUT_ACTIVE_ENTITLEMENT, "entitlement not active"
             )
         if entitlement.tenant_id != observation.tenant_id:
-            return None, Refusal(
-                RefusalCode.CROSS_TENANT_ENTITLEMENT, "usage tenant mismatch"
-            )
+            return None, Refusal(RefusalCode.CROSS_TENANT_ENTITLEMENT, "usage tenant mismatch")
         agreement = self.agreements[entitlement.agreement_id]
         if observation.dimension_id not in agreement.pricing_by_id:
-            return None, Refusal(
-                RefusalCode.PRICING_DIMENSION_MISMATCH, "dimension not priced"
-            )
+            return None, Refusal(RefusalCode.PRICING_DIMENSION_MISMATCH, "dimension not priced")
         admitted = replace(observation, admitted=True)
         self.usage[observation_id] = admitted
         receipt = self._store(
@@ -600,9 +588,7 @@ class CommerceWorld:
         agreement = self.agreements[entitlement.agreement_id]
         price = agreement.pricing_by_id.get(dimension_id)
         if price is None:
-            return None, Refusal(
-                RefusalCode.PRICING_DIMENSION_MISMATCH, "dimension not priced"
-            )
+            return None, Refusal(RefusalCode.PRICING_DIMENSION_MISMATCH, "dimension not priced")
         quantity = sum(item.quantity for item in observations)
         amount = quantity * price.unit_price_micros
         receipt = self._store(
@@ -647,9 +633,7 @@ class CommerceWorld:
                 "provider acceptance requires observed LIVE_EXTERNAL evidence",
             )
         if acceptance.intent_id not in self.meter_intents:
-            return None, Refusal(
-                RefusalCode.METER_WITHOUT_ADMITTED_USAGE, "unknown meter intent"
-            )
+            return None, Refusal(RefusalCode.METER_WITHOUT_ADMITTED_USAGE, "unknown meter intent")
         self.acceptances[acceptance.acceptance_id] = acceptance
         receipt = self._store(
             _receipt(
@@ -744,9 +728,7 @@ class CommerceWorld:
     ) -> ReadinessReport:
         finding = self.assert_identity_preservation()
         findings = (str(finding.code),) if finding else ()
-        active = any(
-            item.state is EntitlementState.ACTIVE for item in self.entitlements.values()
-        )
+        active = any(item.state is EntitlementState.ACTIVE for item in self.entitlements.values())
         internal_executed = bool(
             self.agreements
             and active

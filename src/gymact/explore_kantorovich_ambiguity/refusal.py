@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 class Refused(ValueError):
     """Typed, fail-closed semantic refusal."""
 

@@ -102,9 +102,7 @@ def _request(episode_id: str, idempotency_key: str) -> BrokerRequest:
 
 @pytest.mark.asyncio
 async def test_planned_brce_actuation_binds_exact_plan_and_replays_without_duplicate_do() -> None:
-    runtime = ProductionGymAct(
-        authority_resolver=AllowListAuthorityResolver({AUTHORITY})
-    )
+    runtime = ProductionGymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
     episode_id = await _episode(runtime, requires_authority=True)
     broker = BRCEBroker(runtime)
     planned = bind_plan(_request(episode_id, "planned-once"), _plan())
@@ -125,9 +123,7 @@ async def test_planned_brce_actuation_binds_exact_plan_and_replays_without_dupli
 
 @pytest.mark.asyncio
 async def test_plan_identity_participates_in_brce_semantic_idempotency() -> None:
-    runtime = ProductionGymAct(
-        authority_resolver=AllowListAuthorityResolver({AUTHORITY})
-    )
+    runtime = ProductionGymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
     episode_id = await _episode(runtime, requires_authority=True)
     broker = BRCEBroker(runtime)
     request = _request(episode_id, "same-key-different-plan")

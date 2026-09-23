@@ -1,13 +1,13 @@
 from gymact.gyms.commerce_dfcm import (
+    CAPABILITIES,
     BillingAuthority,
     BrokerGrant,
-    CAPABILITIES,
     CommerceWorld,
     CommercialAgreement,
     EntitlementEvent,
     EntitlementState,
-    EvidenceOrigin,
     EventKind,
+    EvidenceOrigin,
     ExternalAcceptance,
     ExternalBlocker,
     PackagingEvidence,
@@ -190,9 +190,7 @@ def test_suspension_fences_future_usage_and_cancel_is_terminal():
     assert suspended and suspended.state is EntitlementState.SUSPENDED
 
     world.observe_usage(
-        UsageObservation(
-            "u-2", "ent-1", "tenant-1", "api_calls", 1, "2026-08-19T02:00:00Z"
-        )
+        UsageObservation("u-2", "ent-1", "tenant-1", "api_calls", 1, "2026-08-19T02:00:00Z")
     )
     admitted, refusal = world.admit_usage("u-2")
     assert admitted is None
@@ -227,9 +225,7 @@ def test_pricing_and_tenant_boundaries_fail_closed():
     assert refusal.code is RefusalCode.CROSS_TENANT_ENTITLEMENT
 
     world.observe_usage(
-        UsageObservation(
-            "u-4", "ent-1", "tenant-1", "unpriced", 2, "2026-08-19T02:00:00Z"
-        )
+        UsageObservation("u-4", "ent-1", "tenant-1", "unpriced", 2, "2026-08-19T02:00:00Z")
     )
     _, refusal = world.admit_usage("u-4")
     assert refusal.code is RefusalCode.PRICING_DIMENSION_MISMATCH
@@ -240,9 +236,7 @@ def test_readiness_separates_internal_execution_from_external_authority():
     world.admit_agreement(agreement())
     activate(world)
     world.observe_usage(
-        UsageObservation(
-            "u-5", "ent-1", "tenant-1", "api_calls", 3, "2026-08-19T02:00:00Z"
-        )
+        UsageObservation("u-5", "ent-1", "tenant-1", "api_calls", 3, "2026-08-19T02:00:00Z")
     )
     world.admit_usage("u-5")
     world.construct_meter_intent(intent_id="m-5", observation_ids=["u-5"])

@@ -10,6 +10,7 @@ in this file.
 from __future__ import annotations
 
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -21,6 +22,32 @@ from gymact.gyms.chatman_state import (
     discover_local_repos,
     estimated_effort_cost,
 )
+from gymact.standing import named_standing_skip
+
+_GITHUB_API_REACHABLE: bool | None = None
+
+
+def _github_api_reachable() -> bool:
+    """Real, cached reachability probe for the GitHub API through the same
+    authenticated `gh` binary the network tests drive. GYMACT-6: the
+    discovery tests failed whenever the network hiccupped mid-suite (real
+    `gh repo list` exit 1), so a genuinely unreachable API now degrades to
+    a NAMED standing skip instead of a flaky red."""
+    global _GITHUB_API_REACHABLE
+    if _GITHUB_API_REACHABLE is None:
+        try:
+            probe = subprocess.run(
+                ["gh", "api", "rate_limit"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+                check=False,
+            )
+            _GITHUB_API_REACHABLE = probe.returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            _GITHUB_API_REACHABLE = False
+    return _GITHUB_API_REACHABLE
+
 
 pytestmark = pytest.mark.skipif(
     shutil.which("gh") is None or shutil.which("git") is None,
@@ -48,6 +75,12 @@ def test_count_local_repos_is_at_least_the_capped_result_size() -> None:
 
 
 def test_discover_github_repos_returns_real_recent_repos() -> None:
+    named_standing_skip(
+        "NETWORK:github-api",
+        available=_github_api_reachable(),
+        reason="the real GitHub API is not reachable through the authenticated `gh` CLI",
+        module_level=False,
+    )
     repos = discover_github_repos(owner="seanchatmangpt", limit=5)
     assert len(repos) <= 5
     assert len(repos) > 0
@@ -57,6 +90,12 @@ def test_discover_github_repos_returns_real_recent_repos() -> None:
 
 
 def test_count_github_repos_is_a_real_positive_int() -> None:
+    named_standing_skip(
+        "NETWORK:github-api",
+        available=_github_api_reachable(),
+        reason="the real GitHub API is not reachable through the authenticated `gh` CLI",
+        module_level=False,
+    )
     total = count_github_repos(owner="seanchatmangpt")
     assert isinstance(total, int)
     assert total > 0

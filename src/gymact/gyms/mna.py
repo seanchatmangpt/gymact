@@ -6,6 +6,7 @@ for Fortune-scale planning/benchmark episodes.  Analysis tasks use standard
 synthetic authority; governance and simulated close use a distinct elevated
 authority tier.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

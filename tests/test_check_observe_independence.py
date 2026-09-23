@@ -36,41 +36,41 @@ render_report = check_observe_independence.render_report
 main = check_observe_independence.main
 
 
-SYNTHETIC_HAS_IO_DIRECT = '''
+SYNTHETIC_HAS_IO_DIRECT = """
 class FooEnvironment:
     async def observe(self):
         import subprocess
         result = subprocess.run(["echo", "hi"], capture_output=True)
         return {"out": result.stdout}
-'''
+"""
 
-SYNTHETIC_HAS_IO_HTTPX = '''
+SYNTHETIC_HAS_IO_HTTPX = """
 import httpx
 
 class FooEnvironment:
     async def observe(self):
         resp = httpx.get("http://localhost:9/status")
         return {"status": resp.status_code}
-'''
+"""
 
-SYNTHETIC_HAS_IO_OPEN = '''
+SYNTHETIC_HAS_IO_OPEN = """
 class FooEnvironment:
     async def observe(self):
         with open("state.json") as f:
             data = f.read()
         return {"data": data}
-'''
+"""
 
-SYNTHETIC_NO_IO = '''
+SYNTHETIC_NO_IO = """
 class FooEnvironment:
     def __init__(self):
         self._state = {"counter": 0}
 
     async def observe(self):
         return dict(self._state)
-'''
+"""
 
-SYNTHETIC_HAS_IO_TWO_HOP_SELF_THEN_MODULE_FN = '''
+SYNTHETIC_HAS_IO_TWO_HOP_SELF_THEN_MODULE_FN = """
 import subprocess
 
 def _run_it():
@@ -82,9 +82,9 @@ class FooEnvironment:
 
     async def observe(self):
         return self._state()
-'''
+"""
 
-SYNTHETIC_NO_IO_UNRELATED_RUN_METHOD = '''
+SYNTHETIC_NO_IO_UNRELATED_RUN_METHOD = """
 class FooEnvironment:
     def __init__(self):
         self._history = []
@@ -97,7 +97,7 @@ class FooEnvironment:
 
     async def observe(self):
         return {"history": list(self._history)}
-'''
+"""
 
 
 def _write(tmp_path: Path, name: str, source: str) -> Path:
@@ -164,7 +164,9 @@ class TestReportShapeAndAdvisoryContract:
         path = _write(tmp_path, "no_observe.py", source)
         assert check_file(path) == []
 
-    def test_build_report_over_synthetic_directory_classifies_each_file(self, tmp_path: Path) -> None:
+    def test_build_report_over_synthetic_directory_classifies_each_file(
+        self, tmp_path: Path
+    ) -> None:
         gyms_dir = tmp_path / "gyms"
         gyms_dir.mkdir()
         _write(gyms_dir, "has_io.py", SYNTHETIC_HAS_IO_DIRECT)

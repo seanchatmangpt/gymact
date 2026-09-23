@@ -1,12 +1,15 @@
-from dataclasses import dataclass
 import random
+from dataclasses import dataclass
+
 from .inventory import ModuleInventory
 from .module_identity import TestModule
+
 
 @dataclass(frozen=True)
 class FailureWorld:
     seed: int
     duplicate_count: int
+
 
 def inject_collisions(inventory: ModuleInventory, world: FailureWorld) -> ModuleInventory:
     rng = random.Random(world.seed)

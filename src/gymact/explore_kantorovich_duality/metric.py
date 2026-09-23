@@ -11,7 +11,7 @@ class GroundMetric:
     cost: dict[tuple[str, str], Fraction]
 
     @classmethod
-    def admit(cls, support: set[str], cost: dict[tuple[str, str], Fraction | int]) -> "GroundMetric":
+    def admit(cls, support: set[str], cost: dict[tuple[str, str], Fraction | int]) -> GroundMetric:
         c = {k: Fraction(v) for k, v in cost.items()}
         for x in support:
             if c.get((x, x), Fraction(0)) != 0:
@@ -26,7 +26,9 @@ class GroundMetric:
         for x in support:
             for y in support:
                 for z in support:
-                    if c.get((x, z), Fraction(0)) > c.get((x, y), Fraction(0)) + c.get((y, z), Fraction(0)):
+                    if c.get((x, z), Fraction(0)) > c.get((x, y), Fraction(0)) + c.get(
+                        (y, z), Fraction(0)
+                    ):
                         raise DualityRefusal("TRIANGLE_VIOLATION", f"{x},{y},{z}")
         return cls(c)
 

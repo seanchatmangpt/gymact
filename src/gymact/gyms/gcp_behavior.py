@@ -8,9 +8,9 @@ derivable without pretending inference is empirical proof.  Custom actions stay
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Iterable
 
 from gymact.gyms.gcp_exact import DiscoveryMethod, GcpContractCensus
 
@@ -73,19 +73,15 @@ class GcpBehaviorRule:
     @property
     def long_running(self) -> bool:
         schema = (self.response_schema or "").lower()
-        return (
-            self.effect
-            in {
-                GcpBehaviorEffect.CREATE,
-                GcpBehaviorEffect.REPLACE,
-                GcpBehaviorEffect.PATCH,
-                GcpBehaviorEffect.DELETE,
-                GcpBehaviorEffect.SERVICE_ENABLE,
-                GcpBehaviorEffect.SERVICE_DISABLE,
-                GcpBehaviorEffect.CUSTOM,
-            }
-            and (schema == "operation" or schema.endswith("operation"))
-        )
+        return self.effect in {
+            GcpBehaviorEffect.CREATE,
+            GcpBehaviorEffect.REPLACE,
+            GcpBehaviorEffect.PATCH,
+            GcpBehaviorEffect.DELETE,
+            GcpBehaviorEffect.SERVICE_ENABLE,
+            GcpBehaviorEffect.SERVICE_DISABLE,
+            GcpBehaviorEffect.CUSTOM,
+        } and (schema == "operation" or schema.endswith("operation"))
 
     @property
     def empirically_admitted(self) -> bool:
@@ -95,7 +91,7 @@ class GcpBehaviorRule:
     def structurally_executable(self) -> bool:
         return self.effect is not GcpBehaviorEffect.CUSTOM or self.empirically_admitted
 
-    def with_empirical_admission(self, receipt: str) -> "GcpBehaviorRule":
+    def with_empirical_admission(self, receipt: str) -> GcpBehaviorRule:
         if not receipt:
             raise ValueError("EMPIRICAL_BEHAVIOR_RECEIPT_REQUIRED")
         return GcpBehaviorRule(

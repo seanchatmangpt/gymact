@@ -114,9 +114,7 @@ def test_manufactures_list_map_and_success_rules_deterministically() -> None:
     assert {
         (rule.container_path, rule.container_kind): frozenset(rule.required_relative_paths)
         for rule in operation.success_rules
-    } == {
-        (("response", "Results"), "list"): frozenset({("Id",)})
-    }
+    } == {(("response", "Results"), "list"): frozenset({("Id",)})}
 
 
 def test_absent_optional_collections_do_not_activate_rules() -> None:
@@ -201,9 +199,10 @@ def test_receipt_replay_falsifies_rejected_no_collection_alternative() -> None:
     receipt = receipt_aws_botocore_collection_contract(contract)
 
     assert replay_aws_botocore_collection_contract(contract, receipt) is True
-    assert replay_aws_botocore_collection_contract(
-        without_collection_rules(contract), receipt
-    ) is False
+    assert (
+        replay_aws_botocore_collection_contract(without_collection_rules(contract), receipt)
+        is False
+    )
 
 
 def test_rule_change_invalidates_receipt_even_when_source_identity_is_unchanged() -> None:
@@ -226,7 +225,7 @@ def test_dangling_collection_member_shape_fails_closed() -> None:
 
     with pytest.raises(
         AwsBotocoreCollectionContractCompilationError,
-        match="shapes.Missing is missing",
+        match=r"shapes.Missing is missing",
     ):
         _compile(json.dumps(model, separators=(",", ":")).encode())
 
@@ -247,15 +246,7 @@ def test_nested_collection_element_shape_is_manufactured_and_executed() -> None:
     ] == [((), "list")]
 
     result = validate_aws_botocore_collection_contract(
-        (
-            _step(
-                request={
-                    "Envelope": {
-                        "Items": [[{"Id": "a", "Spec": {"Region": "us-east-1"}}]]
-                    }
-                }
-            ),
-        ),
+        (_step(request={"Envelope": {"Items": [[{"Id": "a", "Spec": {"Region": "us-east-1"}}]]}}),),
         contract,
     )
     assert result.admitted is True

@@ -40,9 +40,7 @@ CAPABILITY = "urn:gymact:memory:capability:set"
 
 @pytest.mark.asyncio
 async def test_real_consequence_receipt_binds_graph_path_and_irreversible_cut() -> None:
-    runtime = ProductionGymAct(
-        authority_resolver=AllowListAuthorityResolver({AUTHORITY})
-    )
+    runtime = ProductionGymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
     runtime.register_provider(MemoryProvider())
     materialized = await runtime.materialize(
         MaterializationIntent(

@@ -9,7 +9,6 @@ from gymact.gyms.enterprise_company import (
     EnterpriseCompanyProvider,
 )
 
-
 CAP = {cap.binding: cap for cap in ENTERPRISE_COMPANY_CAPABILITIES}
 
 
@@ -35,9 +34,9 @@ def test_full_revenue_loop_produces_real_simulated_economic_state() -> None:
         "qualify_lead",
         {"lead_id": lead_id, "annual_value": 1_200_000, "probability": 0.7},
     )["result"]["opportunity_id"]
-    engagement_id = _act(
-        env, "close_engagement", {"opportunity_id": opportunity_id}
-    )["result"]["engagement_id"]
+    engagement_id = _act(env, "close_engagement", {"opportunity_id": opportunity_id})["result"][
+        "engagement_id"
+    ]
     person_id = _act(
         env,
         "hire_persona",
@@ -58,9 +57,7 @@ def test_full_revenue_loop_produces_real_simulated_economic_state() -> None:
         "deliver_milestone",
         {"engagement_id": engagement_id, "billable": 50_000, "hours": 100},
     )
-    invoice_id = _act(env, "invoice", {"engagement_id": engagement_id})["result"][
-        "invoice_id"
-    ]
+    invoice_id = _act(env, "invoice", {"engagement_id": engagement_id})["result"]["invoice_id"]
     _act(env, "collect", {"invoice_id": invoice_id})
 
     assert delivered["result"]["delivery_cost"] == 10_000
@@ -81,9 +78,7 @@ def test_full_revenue_loop_produces_real_simulated_economic_state() -> None:
 
 
 def test_public_synthetic_profile_requires_disclosure() -> None:
-    env = asyncio.run(
-        EnterpriseCompanyProvider().materialize(scenario=None, config={})
-    )
+    env = asyncio.run(EnterpriseCompanyProvider().materialize(scenario=None, config={}))
     person_id = _act(
         env,
         "hire_persona",

@@ -20,8 +20,18 @@ anywhere in this file.
 from __future__ import annotations
 
 import asyncio
+import importlib.util as _importlib_util
 
 import pytest
+
+from gymact.standing import named_standing_skip
+
+named_standing_skip(
+    "LOCAL_EXTRA:gyms",
+    available=_importlib_util.find_spec("botocore") is not None,
+    reason="the 'gyms' extra is not installed -- botocore (bundled real AWS "
+    "endpoints.json) requires `uv sync --extra gyms`",
+)
 
 from gymact.gyms.cloud_topology import (
     load_aws_topology,
@@ -34,7 +44,6 @@ from gymact.gyms.cloud_topology_gym import (
     CloudTopologyEnvironment,
     CloudTopologyProvider,
 )
-
 
 # ---------------------------------------------------------------------------
 # Real AWS topology (live-loaded from botocore, no network/credentials)
@@ -60,7 +69,9 @@ def test_real_aws_topology_contains_real_named_regions() -> None:
 def test_real_aws_topology_services_in_region_is_a_real_nonempty_subset() -> None:
     topology = load_aws_topology()
     services_in_us_east_1 = topology.services_in_region("us-east-1")
-    assert len(services_in_us_east_1) > 100, "us-east-1 is AWS's most-served region, real count should be large"
+    assert len(services_in_us_east_1) > 100, (
+        "us-east-1 is AWS's most-served region, real count should be large"
+    )
     assert "s3" in services_in_us_east_1 or "s3" in topology.service_names()
 
 

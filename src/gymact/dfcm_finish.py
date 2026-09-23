@@ -12,9 +12,9 @@ planner can enumerate a move for it.
 
 from __future__ import annotations
 
+import json
 from functools import reduce
 from itertools import islice, product
-import json
 from operator import mul
 from typing import Literal
 
@@ -131,9 +131,7 @@ def _validate_items(items: tuple[CompletionItem, ...]) -> dict[str, CompletionIt
         by_id[item.item_id] = item
         for move in item.moves:
             if move.item_id != item.item_id:
-                raise ValueError(
-                    f"MOVE_ITEM_MISMATCH:{move.move_id}:{move.item_id}:{item.item_id}"
-                )
+                raise ValueError(f"MOVE_ITEM_MISMATCH:{move.move_id}:{move.item_id}:{item.item_id}")
             if move.move_id in move_ids:
                 raise ValueError(f"DUPLICATE_COMPLETION_MOVE:{move.move_id}")
             move_ids.add(move.move_id)
@@ -159,9 +157,7 @@ def _reversible_moves(item: CompletionItem) -> tuple[CompletionMove, ...]:
             (
                 move
                 for move in item.moves
-                if move.reversible
-                and not move.requires_authority
-                and move.kind in _CONSTRUCT_KINDS
+                if move.reversible and not move.requires_authority and move.kind in _CONSTRUCT_KINDS
             ),
             key=lambda move: (move.cost, move.kind, move.move_id),
         )

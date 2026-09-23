@@ -26,15 +26,15 @@ named_standing_skip(
     reason="the optional 'dspy' extra is not installed -- `uv sync --extra dspy`",
 )
 
-from gymact import (  # noqa: E402
+from gymact import (
     AllowListAuthorityResolver,
     GymAct,
     MaterializationIntent,
     MemoryProvider,
 )
-from gymact.dspy_verifier import DspyTrustedMonitorVerifier, suspicion_scoring_program  # noqa: E402
-from gymact.models import ActuationIntent  # noqa: E402
-from gymact.verification import PostconditionVerifier, _partial_match  # noqa: E402
+from gymact.dspy_verifier import DspyTrustedMonitorVerifier, suspicion_scoring_program
+from gymact.models import ActuationIntent
+from gymact.verification import PostconditionVerifier, _partial_match
 
 AUTHORITY = "urn:test:dspy-verifier-authority"
 

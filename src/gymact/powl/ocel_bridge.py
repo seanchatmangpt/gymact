@@ -32,7 +32,8 @@ from __future__ import annotations
 
 import datetime
 import itertools
-from typing import Any, Iterable, Mapping
+from collections.abc import Iterable, Mapping
+from typing import Any
 
 from gymact.ocel import digest_ocel_log, validate_ocel_log
 
@@ -40,7 +41,7 @@ __all__ = ["GymactOcelSessionRecorder"]
 
 
 def _utc_now_iso() -> str:
-    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+    return datetime.datetime.now(datetime.UTC).isoformat()
 
 
 class GymactOcelSessionRecorder:
@@ -68,9 +69,7 @@ class GymactOcelSessionRecorder:
             {
                 "id": session_id,
                 "type": "PowlSession",
-                "attributes": [
-                    {"name": "server", "value": server_name, "time": _utc_now_iso()}
-                ],
+                "attributes": [{"name": "server", "value": server_name, "time": _utc_now_iso()}],
             }
         ]
         self._object_types: dict[str, dict[str, Any]] = {

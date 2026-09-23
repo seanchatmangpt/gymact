@@ -86,9 +86,7 @@ T = TypeVar("T")
 def _require_binding(binding: Mapping[str, T], action: str) -> T:
     value = binding.get(action)
     if value is None:
-        raise PowlReplayRefusal(
-            f"REFUSED:UNBOUND_IMPLEMENTS_ACTION:action={action!r}"
-        )
+        raise PowlReplayRefusal(f"REFUSED:UNBOUND_IMPLEMENTS_ACTION:action={action!r}")
     return value
 
 

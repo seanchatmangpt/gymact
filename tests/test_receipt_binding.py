@@ -147,9 +147,7 @@ async def test_admitted_success_binds_grant_and_parent_receipt() -> None:
     assert result.receipt.principal == grant.principal
     assert result.receipt.delegated_principal == grant.delegated_principal
     assert result.receipt.policy_revision == grant.policy_revision
-    assert result.receipt.intended_effects == (
-        {"predicate": "state", "parameters": {"value": 1}},
-    )
+    assert result.receipt.intended_effects == ({"predicate": "state", "parameters": {"value": 1}},)
     assert result.receipt.acknowledgement_status == "ACKNOWLEDGED"
     assert result.receipt.verified is True
     assert result.receipt.parent_receipt_ids

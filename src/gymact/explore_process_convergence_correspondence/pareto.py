@@ -1,10 +1,12 @@
 from dataclasses import dataclass
 from fractions import Fraction
-from .classifier import Strategy, Direction, classify
-from .trajectory import Trajectory
+
+from .classifier import Direction, Strategy, classify
 from .hazard import transition_hazard
 from .oscillation import oscillating_keys
 from .potential import weighted_l1
+from .trajectory import Trajectory
+
 
 @dataclass(frozen=True)
 class Candidate:
@@ -14,15 +16,25 @@ class Candidate:
     oscillations: int
     direction: Direction
 
+
 def candidates(trajectory: Trajectory) -> tuple[Candidate, ...]:
     hazard = transition_hazard(trajectory)
     debt = weighted_l1(trajectory.epochs[-1])
     oscillations = len(oscillating_keys(trajectory))
-    return tuple(Candidate(strategy, debt, hazard.regression, oscillations, classify(trajectory, strategy)) for strategy in Strategy)
+    return tuple(
+        Candidate(strategy, debt, hazard.regression, oscillations, classify(trajectory, strategy))
+        for strategy in Strategy
+    )
+
 
 def frontier(items: tuple[Candidate, ...]) -> tuple[Candidate, ...]:
     def dominates(a: Candidate, b: Candidate) -> bool:
         weak = a.debt <= b.debt and a.regress <= b.regress and a.oscillations <= b.oscillations
         strict = a.debt < b.debt or a.regress < b.regress or a.oscillations < b.oscillations
         return weak and strict
-    return tuple(item for item in items if not any(dominates(other, item) for other in items if other != item))
+
+    return tuple(
+        item
+        for item in items
+        if not any(dominates(other, item) for other in items if other != item)
+    )

@@ -32,9 +32,7 @@ def base_action(**updates: object) -> ActionDefinition:
         "capability_ref": "urn:test:cap:set",
         "subject_type": "schema:Thing",
         "input_schema": {"type": "object"},
-        "expected_effects": (
-            ExpectedEffect(predicate="state_equals", parameters={"x": 1}),
-        ),
+        "expected_effects": (ExpectedEffect(predicate="state_equals", parameters={"x": 1}),),
         "verification": VerificationStrategy(
             kind=VerificationKind.EXACT_STATE,
             observer_ref="urn:test:observer",

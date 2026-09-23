@@ -40,9 +40,7 @@ async def _materialize_tiered() -> tuple[GymAct, str]:
     )
     gym = GymAct(authority_resolver=resolver)
     gym.register_provider(provider)
-    materialization = await gym.materialize(
-        MaterializationIntent(provider="togaf", config={})
-    )
+    materialization = await gym.materialize(MaterializationIntent(provider="togaf", config={}))
     assert materialization.accepted is True, materialization.receipt.reason
     assert materialization.episode is not None
     return gym, materialization.episode.episode_id
@@ -75,7 +73,9 @@ async def _walk_all_ten_phases(gym: GymAct, episode_id: str) -> None:
                         authority_ref=ref,
                     )
                 )
-                assert result.accepted is True, f"{task.identifier}:{subject}: {result.receipt.reason}"
+                assert result.accepted is True, (
+                    f"{task.identifier}:{subject}: {result.receipt.reason}"
+                )
 
 
 async def test_all_ten_phases_walk_and_phase_h_reopens_requirements() -> None:
@@ -210,18 +210,14 @@ async def test_do_capability_is_refused_without_admitted_authority() -> None:
     provider = build_togaf_provider()
     gym = GymAct()
     gym.register_provider(provider)
-    materialization = await gym.materialize(
-        MaterializationIntent(provider="togaf", config={})
-    )
+    materialization = await gym.materialize(MaterializationIntent(provider="togaf", config={}))
     assert materialization.accepted is True, materialization.receipt.reason
     episode_id = materialization.episode.episode_id
 
     preliminary_task = provider.tasks()[0]
     preliminary_iri = capability_iri(provider_name="togaf", task=preliminary_task)
 
-    result = await gym.act(
-        ActuationIntent(episode_id=episode_id, capability=preliminary_iri)
-    )
+    result = await gym.act(ActuationIntent(episode_id=episode_id, capability=preliminary_iri))
 
     assert result.accepted is False
     assert result.standing is Standing.REFUSED

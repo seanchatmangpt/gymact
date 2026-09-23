@@ -14,6 +14,17 @@ module itself is rendered from, so the two can never silently drift apart.
 
 from __future__ import annotations
 
+import importlib.util as _importlib_util
+
+from gymact.standing import named_standing_skip
+
+named_standing_skip(
+    "LOCAL_EXTRA:gyms",
+    available=_importlib_util.find_spec("botocore") is not None,
+    reason="the 'gyms' extra is not installed -- botocore (bundled real AWS "
+    "endpoints.json) requires `uv sync --extra gyms`",
+)
+
 from gymact.gyms.cloud_topology import CloudRegion, CloudService, CloudTopology
 from gymact.gyms.cloud_topology_validation import (
     ValidationResult,
@@ -48,6 +59,7 @@ def test_validate_aws_real_run_is_structurally_valid() -> None:
     assert result.independent_region_count == result.loaded_region_count
     assert result.independent_service_count == result.loaded_service_count
 
+
 def test_validate_azure_real_run_is_structurally_valid() -> None:
     """A real run against the currently-loaded azure data must be free of
     structural problems -- this is the real regression guard: if `cloud_topology.py`'s loader
@@ -59,6 +71,7 @@ def test_validate_azure_real_run_is_structurally_valid() -> None:
     assert result.independent_region_count == result.loaded_region_count
     assert result.independent_service_count == result.loaded_service_count
 
+
 def test_validate_gcp_real_run_is_structurally_valid() -> None:
     """A real run against the currently-loaded gcp data must be free of
     structural problems -- this is the real regression guard: if `cloud_topology.py`'s loader
@@ -69,7 +82,6 @@ def test_validate_gcp_real_run_is_structurally_valid() -> None:
     assert result.valid is True
     assert result.independent_region_count == result.loaded_region_count
     assert result.independent_service_count == result.loaded_service_count
-
 
 
 def test_structural_problems_catches_a_real_dangling_region_reference() -> None:
@@ -142,4 +154,3 @@ def test_structural_problems_zero_services_flags_non_degenerate_providers() -> N
         source_url="test-fixture",
     )
     assert "ZERO_SERVICES" in _structural_problems(non_degenerate)
-

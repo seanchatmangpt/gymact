@@ -23,7 +23,9 @@ def _rule(
     return GcpBehaviorRule(
         method_id=method_id,
         effect=effect,
-        http_method="GET" if effect in {GcpBehaviorEffect.READ_ONE, GcpBehaviorEffect.READ_MANY} else "POST",
+        http_method="GET"
+        if effect in {GcpBehaviorEffect.READ_ONE, GcpBehaviorEffect.READ_MANY}
+        else "POST",
         path="v1/{name}",
         response_schema=response_schema,
         source=source,

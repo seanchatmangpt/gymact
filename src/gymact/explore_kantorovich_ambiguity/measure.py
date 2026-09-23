@@ -1,20 +1,22 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import Mapping
 
 from .refusal import Refused
 
+
 def q(value: int | str | Fraction) -> Fraction:
     return value if isinstance(value, Fraction) else Fraction(value)
+
 
 @dataclass(frozen=True)
 class FiniteMeasure:
     mass: tuple[tuple[str, Fraction], ...]
 
     @classmethod
-    def from_mapping(cls, values: Mapping[str, int | str | Fraction]) -> "FiniteMeasure":
+    def from_mapping(cls, values: Mapping[str, int | str | Fraction]) -> FiniteMeasure:
         if not values:
             raise Refused("EMPTY_MEASURE")
         pairs = tuple(sorted((str(k), q(v)) for k, v in values.items()))
@@ -40,6 +42,7 @@ class FiniteMeasure:
 
     def digest_tuple(self) -> tuple[tuple[str, str], ...]:
         return tuple((k, f"{v.numerator}/{v.denominator}") for k, v in self.mass)
+
 
 def common_support(*measures: FiniteMeasure) -> tuple[str, ...]:
     return tuple(sorted(set().union(*(m.support for m in measures))))

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from blake3 import blake3
 import pytest
+from blake3 import blake3
 
 from gymact import ActuationIntent, GymAct, MaterializationIntent
 from gymact.gyms.gcp_behavior import (
@@ -72,7 +72,9 @@ def test_behavior_compiler_covers_gcp_control_plane_families() -> None:
         _method("setIamPolicy", "POST").identity: GcpBehaviorEffect.IAM_SET,
         _method("testIamPermissions", "POST").identity: GcpBehaviorEffect.IAM_TEST,
         _method("get", "GET", resource="operations").identity: GcpBehaviorEffect.OPERATION_GET,
-        _method("cancel", "POST", resource="operations").identity: GcpBehaviorEffect.OPERATION_CANCEL,
+        _method(
+            "cancel", "POST", resource="operations"
+        ).identity: GcpBehaviorEffect.OPERATION_CANCEL,
     }
     for method_id, expected in cases.items():
         method = next(
@@ -233,7 +235,9 @@ async def test_long_running_operation_defers_mutation_until_clock_advances() -> 
 
 
 @pytest.mark.asyncio
-async def test_exact_empirical_replay_outranks_structural_inference_and_custom_gap_refuses() -> None:
+async def test_exact_empirical_replay_outranks_structural_inference_and_custom_gap_refuses() -> (
+    None
+):
     custom = _method("rotateCredentials", "POST", response="RotateCredentialsResponse")
     request = {
         "method_id": custom.identity,
@@ -257,12 +261,14 @@ async def test_exact_empirical_replay_outranks_structural_inference_and_custom_g
         },
     }
     receipt = blake3(
-        __import__("json").dumps(
+        __import__("json")
+        .dumps(
             fixture_payload,
             sort_keys=True,
             separators=(",", ":"),
             ensure_ascii=False,
-        ).encode()
+        )
+        .encode()
     ).hexdigest()
     fixture = GcpReplayFixture(
         method_id=custom.identity,

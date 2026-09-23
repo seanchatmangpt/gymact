@@ -1,4 +1,5 @@
 """FastMCP surface over GymAct's semantic runtime."""
+
 from __future__ import annotations
 
 import os

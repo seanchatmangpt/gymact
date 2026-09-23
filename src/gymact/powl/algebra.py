@@ -41,30 +41,31 @@ Nothing in this module actuates, admits, brokers, or issues receipts.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, Literal, Mapping, NewType, TypeAlias, Union
+from typing import Any, Literal, NewType, TypeAlias
 
 from gymact.powl._canonical import canonical_json
 from gymact.powl.frequency import ONCE, Frequency
 from gymact.powl.refusals import PowlError, PowlRefusal
 
 __all__ = [
-    "NodeId",
     "MAX_POWL_DEPTH",
-    "Consequence",
-    "Guard",
-    "OrderEdge",
-    "ChoiceGraphEdge",
-    "Start",
-    "End",
     "Atom",
-    "Silent",
-    "PartialOrder",
     "ChoiceGraph",
+    "ChoiceGraphEdge",
+    "Consequence",
+    "End",
+    "Guard",
+    "NodeId",
+    "OrderEdge",
+    "PartialOrder",
     "PowlNode",
+    "Silent",
+    "Start",
+    "node_depth",
     "transitive_closure",
     "transitive_reduction",
-    "node_depth",
 ]
 
 NodeId = NewType("NodeId", int)
@@ -122,7 +123,9 @@ class Guard:
         object.__setattr__(
             self,
             "key",
-            canonical_json({"predicate_name": self.predicate_name, "predicate_args": dict(self.predicate_args)}),
+            canonical_json(
+                {"predicate_name": self.predicate_name, "predicate_args": dict(self.predicate_args)}
+            ),
         )
 
 
@@ -146,9 +149,9 @@ class ChoiceGraphEdge:
 
     src: NodeId
     dst: NodeId
-    guard: "Guard | None" = None
+    guard: Guard | None = None
 
-    def __lt__(self, other: "ChoiceGraphEdge") -> bool:
+    def __lt__(self, other: ChoiceGraphEdge) -> bool:
         if not isinstance(other, ChoiceGraphEdge):
             return NotImplemented
         self_guard_key = self.guard.key if self.guard is not None else ""
@@ -199,14 +202,9 @@ def transitive_closure(edges: frozenset[OrderEdge], n: int) -> frozenset[OrderEd
     reach = _reachability(edges, n)
     for i in range(n):
         if reach[i][i]:
-            raise PowlError(
-                PowlRefusal.CYCLIC_PARTIAL_ORDER, f"node index {i} reaches itself"
-            )
+            raise PowlError(PowlRefusal.CYCLIC_PARTIAL_ORDER, f"node index {i} reaches itself")
     return frozenset(
-        OrderEdge(NodeId(i), NodeId(j))
-        for i in range(n)
-        for j in range(n)
-        if reach[i][j]
+        OrderEdge(NodeId(i), NodeId(j)) for i in range(n) for j in range(n) if reach[i][j]
     )
 
 
@@ -277,7 +275,7 @@ class Atom:
     label: str
     action: Any = field(default=None, compare=False)
     bindings: Mapping[str, Any] = field(default_factory=dict, compare=False)
-    consequence: "Consequence" = "PURE"
+    consequence: Consequence = "PURE"
     key: str = field(init=False, compare=True, repr=False)
 
     def __post_init__(self) -> None:
@@ -321,7 +319,7 @@ class PartialOrder:
     :attr:`closure` is computed once at construction and cached.
     """
 
-    children: tuple["PowlNode", ...]
+    children: tuple[PowlNode, ...]
     order: frozenset[OrderEdge] = frozenset()
     frequency: Frequency = ONCE
     _closure: frozenset[OrderEdge] = field(
@@ -363,7 +361,7 @@ class ChoiceGraph:
     not here.
     """
 
-    children: tuple["PowlNode", ...]
+    children: tuple[PowlNode, ...]
     edges: frozenset[ChoiceGraphEdge] = frozenset()
     start: int = 0
     end: int = 1
@@ -419,7 +417,7 @@ class ChoiceGraph:
         return self._depth
 
 
-PowlNode: TypeAlias = Union[Start, End, Atom, Silent, PartialOrder, ChoiceGraph]
+PowlNode: TypeAlias = Start | End | Atom | Silent | PartialOrder | ChoiceGraph
 
 
 # ── depth ───────────────────────────────────────────────────────────────────

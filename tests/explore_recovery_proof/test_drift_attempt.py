@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from gymact.explore_recovery_proof.attempt import RecoveryAttempt
 from gymact.explore_recovery_proof.context import RecoveryContext
@@ -15,12 +15,10 @@ class TestDriftAttempt(unittest.TestCase):
         before = RecoveryContext(SUBJECT, "c1", "A", POLICY, 1)
         after = RecoveryContext(SUBJECT, "c2", "B", "b" * 64, 2)
         self.assertEqual(classify(before, after).kind, DriftKind.MULTI)
-        attempt = RecoveryAttempt.issue("x", 1, before, after, "CAS", datetime.now(timezone.utc))
+        attempt = RecoveryAttempt.issue("x", 1, before, after, "CAS", datetime.now(UTC))
         self.assertEqual(len(attempt.identity), 64)
 
     def test_naive_time_refuses(self):
         context = RecoveryContext(SUBJECT, "c", "A", POLICY, 1)
         with self.assertRaisesRegex(Refusal, "NAIVE"):
-            RecoveryAttempt(
-                "x", 1, context.fingerprint, context.fingerprint, "CAS", datetime.now()
-            )
+            RecoveryAttempt("x", 1, context.fingerprint, context.fingerprint, "CAS", datetime.now())

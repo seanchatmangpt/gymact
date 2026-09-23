@@ -1,11 +1,14 @@
 from enum import Enum
+
 from .engine_identity import EngineIdentity
 from .refusal import DualChainRefusal
+
 
 class Selector(str, Enum):
     INDEPENDENCE = "independence"
     RUNTIME_DIVERSITY = "runtime_diversity"
     DETERMINISTIC = "deterministic"
+
 
 def select(engines: tuple[EngineIdentity, ...], strategy: Selector) -> EngineIdentity:
     if not engines:

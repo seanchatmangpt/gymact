@@ -1,9 +1,11 @@
 from enum import StrEnum
-from .trajectory import Trajectory
-from .oscillation import oscillating_keys
-from .hazard import transition_hazard
+
 from .discrete_calculus import velocity
+from .hazard import transition_hazard
 from .lyapunov import witness
+from .oscillation import oscillating_keys
+from .trajectory import Trajectory
+
 
 class Direction(StrEnum):
     CONVERGING = "CONVERGING"
@@ -12,11 +14,13 @@ class Direction(StrEnum):
     STALLED = "STALLED"
     UNKNOWN = "UNKNOWN"
 
+
 class Strategy(StrEnum):
     POTENTIAL = "POTENTIAL"
     HAZARD = "HAZARD"
     LYAPUNOV = "LYAPUNOV"
     MINIMAX = "MINIMAX"
+
 
 def classify(trajectory: Trajectory, strategy: Strategy) -> Direction:
     speeds = velocity(trajectory)

@@ -1,6 +1,8 @@
 from dataclasses import dataclass
+
 from .epoch import ClosureEpoch
 from .errors import Refused
+
 
 @dataclass(frozen=True)
 class Trajectory:
@@ -10,7 +12,7 @@ class Trajectory:
         if len(self.epochs) < 2:
             raise Refused("REFUSED_TRAJECTORY_TOO_SHORT")
         universe = self.epochs[0].universe
-        for a, b in zip(self.epochs, self.epochs[1:]):
+        for a, b in zip(self.epochs, self.epochs[1:], strict=False):
             if b.subject.generation != a.subject.generation + 1:
                 raise Refused("REFUSED_TORN_GENERATION")
             if b.observed_at <= a.observed_at:

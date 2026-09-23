@@ -1,7 +1,9 @@
 from dataclasses import dataclass
-from .errors import Refused
+
 from .epoch import ClosureEpoch
+from .errors import Refused
 from .obligation import State
+
 
 @dataclass(frozen=True)
 class DependencyGraph:
@@ -10,6 +12,7 @@ class DependencyGraph:
     def __post_init__(self) -> None:
         seen: set[str] = set()
         active: set[str] = set()
+
         def visit(node: str) -> None:
             if node in active:
                 raise Refused("REFUSED_DEPENDENCY_CYCLE", node)
@@ -20,6 +23,7 @@ class DependencyGraph:
                 visit(parent)
             active.remove(node)
             seen.add(node)
+
         for node in self.parents:
             visit(node)
 

@@ -1,6 +1,6 @@
-from .primal import PrimalResult
 from .dual import DualResult
 from .oracle import OracleResult
+from .primal import PrimalResult
 
 
 def three_way_agreement(primal: PrimalResult, dual: DualResult, oracle: OracleResult) -> None:

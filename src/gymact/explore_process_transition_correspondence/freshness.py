@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from .identity import Refused
 
@@ -14,8 +14,8 @@ class TimedEvidence:
 def require_fresh(item: TimedEvidence, *, now: datetime, ttl: timedelta) -> TimedEvidence:
     if item.observed_at.tzinfo is None or now.tzinfo is None:
         raise Refused("REFUSED_NAIVE_TIME")
-    observed = item.observed_at.astimezone(timezone.utc)
-    current = now.astimezone(timezone.utc)
+    observed = item.observed_at.astimezone(UTC)
+    current = now.astimezone(UTC)
     if observed > current:
         raise Refused("REFUSED_FUTURE_EVIDENCE")
     if current - observed > ttl:

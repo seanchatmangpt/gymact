@@ -104,9 +104,7 @@ class SharedDependencyWorldEnvironment:
             observed["world_id"] = self.world_id
             return observed
 
-    async def actuate(
-        self, capability: Capability, payload: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def actuate(self, capability: Capability, payload: dict[str, Any]) -> dict[str, Any]:
         self._ensure_open()
         async with self._shared.lock:
             await self._load()
@@ -133,13 +131,10 @@ class SharedDependencyWorldEnvironment:
         if unknown:
             raise ValueError(f"UNSUPPORTED_VERIFICATION:{sorted(unknown)!r}")
         passed = all(
-            observed.get(key) == value
-            for key, value in expected.items()
-            if key != "assets"
+            observed.get(key) == value for key, value in expected.items() if key != "assets"
         )
         passed = passed and all(
-            observed["assets"].get(key) == value
-            for key, value in expected_assets.items()
+            observed["assets"].get(key) == value for key, value in expected_assets.items()
         )
         return passed, observed
 

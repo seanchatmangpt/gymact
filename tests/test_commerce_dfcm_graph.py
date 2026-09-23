@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from gymact.commerce_dfcm_graph import commerce_dfcm_frontier, commerce_possibility_graph
 from gymact.combinatorial import DecisionPhase
+from gymact.commerce_dfcm_graph import commerce_dfcm_frontier, commerce_possibility_graph
 
 
 def test_commerce_possibility_graph_preserves_all_semantics_without_authority() -> None:

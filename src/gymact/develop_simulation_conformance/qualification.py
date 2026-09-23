@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class Qualification:
     standing: str
@@ -9,7 +10,9 @@ class Qualification:
     providers: int
 
 
-def qualify(calibration_rmse: float, providers: int, dependency_standings: list[str]) -> Qualification:
+def qualify(
+    calibration_rmse: float, providers: int, dependency_standings: list[str]
+) -> Qualification:
     if "BUILD_BROKEN" in dependency_standings:
         return Qualification("BUILD_BROKEN", calibration_rmse, providers)
     if "BLOCKED" in dependency_standings:

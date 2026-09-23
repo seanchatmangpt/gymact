@@ -1,7 +1,10 @@
 import unittest
 
 from gymact.explore_process_transition_correspondence.identity import Refused, Subject
-from gymact.explore_process_transition_correspondence.runtime_receipt import RuntimeReceipt, admit_runtime_receipt
+from gymact.explore_process_transition_correspondence.runtime_receipt import (
+    RuntimeReceipt,
+    admit_runtime_receipt,
+)
 
 
 class RuntimeReceiptCourt(unittest.TestCase):

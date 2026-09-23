@@ -49,9 +49,7 @@ def test_warm_path_is_bounded_and_cold_path_preserves_novelty() -> None:
 
 
 def test_repeated_verified_cognition_becomes_compilation_candidate() -> None:
-    candidate = detect_compilation_candidate(
-        (episode("receipt-1"), episode("receipt-2"))
-    )
+    candidate = detect_compilation_candidate((episode("receipt-1"), episode("receipt-2")))
     assert candidate.candidate is True
     assert candidate.repetitions == 2
     assert candidate.model_tokens == 200

@@ -94,18 +94,12 @@ def test_identity_agreement_adjustments_support_and_packaging_execute():
         support_tier="enterprise-247",
         capabilities=frozenset({"api"}),
     )
-    world.apply_entitlement_event(
-        "external", create, grant=grant("ent", "entitlement.apply-event")
-    )
-    world.apply_entitlement_event(
-        "external", active, grant=grant("ent", "entitlement.apply-event")
-    )
+    world.apply_entitlement_event("external", create, grant=grant("ent", "entitlement.apply-event"))
+    world.apply_entitlement_event("external", active, grant=grant("ent", "entitlement.apply-event"))
     support, _ = world.project_support("ent")
     assert support and support.support_tier == "enterprise-247"
 
-    packaging, _ = world.admit_packaging(
-        PackagingEvidence(True, True, True, True, True, True)
-    )
+    packaging, _ = world.admit_packaging(PackagingEvidence(True, True, True, True, True, True))
     assert packaging
 
     cancelled = world.cancel_agreement("a", grant=grant("a", "agreement.cancel"))

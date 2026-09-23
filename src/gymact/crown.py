@@ -1,4 +1,5 @@
 """Crown admission: bind consequential evidence before comparative standing."""
+
 from __future__ import annotations
 
 from pydantic import Field

@@ -33,10 +33,10 @@ named_standing_skip(
     reason="optional 'cube' extra not installed (uv sync --extra cube / --all-extras)",
 )
 
-from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent  # noqa: E402
-from gymact.gyms.cube_counter import CubeCounterProvider  # noqa: E402
-from gymact.models import ActuationIntent, Operation, Standing  # noqa: E402
-from gymact.process import ConformanceChecker  # noqa: E402
+from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent
+from gymact.gyms.cube_counter import CubeCounterProvider
+from gymact.models import ActuationIntent, Operation, Standing
+from gymact.process import ConformanceChecker
 
 INCREMENT_CAPABILITY = "urn:gymact:cube-counter:capability:increment"
 AUTHORITY = "urn:test:cube-counter-authority"

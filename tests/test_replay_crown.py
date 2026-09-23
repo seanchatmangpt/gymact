@@ -69,9 +69,7 @@ def test_replay_validates_parent_closure_and_identity() -> None:
 
 
 def test_replay_detects_tamper_and_forward_parent() -> None:
-    assert replay_ledger(Ledger([], valid=False)).mismatches == (
-        "EVIDENCE_CHAIN_INVALID",
-    )
+    assert replay_ledger(Ledger([], valid=False)).mismatches == ("EVIDENCE_CHAIN_INVALID",)
     report = replay_ledger(Ledger([Record("a", Receipt("r1", ("future",)))]))
     assert not report.valid
     assert report.mismatches[0].startswith("PARENT_RECEIPT_MISSING_OR_FORWARD")

@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 from datetime import datetime
+
 from .errors import Refused
-from .subject import SubjectEpoch
 from .obligation import ObligationState
+from .subject import SubjectEpoch
+
 
 @dataclass(frozen=True)
 class ClosureEpoch:
@@ -16,7 +18,9 @@ class ClosureEpoch:
         keys = [o.key for o in self.obligations]
         if len(keys) != len(set(keys)):
             raise Refused("REFUSED_DUPLICATE_OBLIGATION")
-        object.__setattr__(self, "obligations", tuple(sorted(self.obligations, key=lambda o: o.key)))
+        object.__setattr__(
+            self, "obligations", tuple(sorted(self.obligations, key=lambda o: o.key))
+        )
 
     @property
     def universe(self) -> tuple[str, ...]:

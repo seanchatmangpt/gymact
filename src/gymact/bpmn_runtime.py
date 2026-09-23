@@ -40,7 +40,7 @@ from SpiffWorkflow.task import TaskState
 
 from gymact.models import FrozenModel
 
-__all__ = ["BpmnWorkflowResult", "BpmnWorkflowRefusal", "run_bpmn_workflow"]
+__all__ = ["BpmnWorkflowRefusal", "BpmnWorkflowResult", "run_bpmn_workflow"]
 
 
 class BpmnWorkflowRefusal(RuntimeError):
@@ -89,9 +89,7 @@ def run_bpmn_workflow(
     workflow.run_all()
 
     completed_task_names = tuple(
-        task.task_spec.name
-        for task in workflow.get_tasks()
-        if task.state == TaskState.COMPLETED
+        task.task_spec.name for task in workflow.get_tasks() if task.state == TaskState.COMPLETED
     )
 
     return BpmnWorkflowResult(

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import NoReturn
 
 
 @dataclass(frozen=True, slots=True)
@@ -12,7 +13,6 @@ class Refused(ValueError):
         return f"REFUSED[{self.code}]: {self.detail}"
 
 
-def refuse(code: str, detail: str) -> "NoReturn":
-    from typing import NoReturn
+def refuse(code: str, detail: str) -> NoReturn:
 
     raise Refused(code, detail)

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import Mapping
 
 from .measure import q
 from .refusal import Refused
+
 
 @dataclass(frozen=True)
 class GroundMetric:
@@ -15,7 +16,7 @@ class GroundMetric:
     @classmethod
     def from_mapping(
         cls, points: tuple[str, ...], costs: Mapping[tuple[str, str], int | str | Fraction]
-    ) -> "GroundMetric":
+    ) -> GroundMetric:
         pts = tuple(dict.fromkeys(points))
         if not pts:
             raise Refused("EMPTY_GROUND_SPACE")

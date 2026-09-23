@@ -1,4 +1,5 @@
 """Real network provider using an explicit JSON-over-HTTP executable-world contract."""
+
 from __future__ import annotations
 
 import json

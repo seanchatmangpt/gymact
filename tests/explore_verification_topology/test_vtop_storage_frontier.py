@@ -1,8 +1,10 @@
 import unittest
-from gymact.explore_verification_topology.storage import StoreKind, select_store
+
 from gymact.explore_verification_topology.frontier import PlanWitness, current_frontier
 from gymact.explore_verification_topology.policies import CollectorPolicy
+from gymact.explore_verification_topology.storage import StoreKind, select_store
 from gymact.explore_verification_topology.subject import Refusal
+
 
 class TestStorageFrontier(unittest.TestCase):
     def test_transactional_selects_sqlite(self):

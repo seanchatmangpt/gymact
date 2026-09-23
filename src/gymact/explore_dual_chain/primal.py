@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from fractions import Fraction
+
 from .refusal import DualChainRefusal
+
 
 @dataclass(frozen=True)
 class PrimalPlan:

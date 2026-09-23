@@ -89,7 +89,7 @@ class Move(BaseModel):
 
 
 class _AffordanceMarker:
-    __slots__ = ("kind", "capability_ref")
+    __slots__ = ("capability_ref", "kind")
 
     def __init__(self, kind: AffordanceKind, capability_ref: str | None = None) -> None:
         self.kind = kind
@@ -102,7 +102,7 @@ def _mark(
     kind: AffordanceKind,
     capability_ref: str | None = None,
 ) -> Callable[..., Any]:
-    setattr(fn, "__gymact_affordance__", _AffordanceMarker(kind, capability_ref))
+    fn.__gymact_affordance__ = _AffordanceMarker(kind, capability_ref)
     return fn
 
 

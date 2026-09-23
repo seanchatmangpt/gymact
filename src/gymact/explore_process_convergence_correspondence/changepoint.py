@@ -1,11 +1,14 @@
 from dataclasses import dataclass
 from fractions import Fraction
+
 from .errors import Refused
+
 
 @dataclass(frozen=True)
 class ChangePoint:
     index: int
     score: Fraction
+
 
 def cusum(values: tuple[Fraction, ...], threshold: Fraction) -> ChangePoint | None:
     if threshold <= 0:

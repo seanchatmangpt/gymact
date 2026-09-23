@@ -65,12 +65,13 @@ from pathlib import Path
 from typing import Any
 
 __all__ = [
-    "DeclareConstraintViolation",
-    "DeclareConformanceReport",
     "WASM4PM_ROOT",
-    "wasm4pm_available",
-    "mine_declare_constraints",
+    "DeclareConformanceReport",
+    "DeclareConstraintViolation",
     "check_declare_conformance",
+    "declare_mining_available",
+    "mine_declare_constraints",
+    "wasm4pm_available",
 ]
 
 WASM4PM_ROOT = Path(os.environ.get("WASM4PM_ROOT", str(Path.home() / "wasm4pm"))).resolve()
@@ -86,6 +87,39 @@ def wasm4pm_available() -> bool:
     `tests/test_ggen_legacy_gym.py::test_ocel_export_is_independently_validated_by_wasm4pm`
     already uses for its `wpm receipt verify-ocel2` cross-validation."""
     return (WASM4PM_ROOT / "Cargo.toml").is_file() and shutil.which("cargo") is not None
+
+
+_MINING_CAPABILITY_PROBE: bool | None = None
+
+
+def declare_mining_available() -> bool:
+    """True iff the checked-out `wpm` actually implements the
+    `mining mine-declare` / `mining conformance-declare` subcommands this
+    module drives.
+
+    Presence of a checkout + cargo (wasm4pm_available) is necessary but not
+    sufficient: a checkout predating the mining-DECLARE work has no such
+    subcommands and every real invocation would die with
+    "unrecognized subcommand" (GYMACT-6/GYMACT-7: the environment-gated
+    `wpm mine-declare` failures). The probe runs the real binary's
+    `--help` once per process and caches the observation; updating the
+    ~/wasm4pm checkout re-enables the real courts with no code change.
+    """
+    global _MINING_CAPABILITY_PROBE
+    if _MINING_CAPABILITY_PROBE is None:
+        if not wasm4pm_available():
+            _MINING_CAPABILITY_PROBE = False
+        else:
+            probe = subprocess.run(
+                ["cargo", "run", "--bin", "wpm", "--", "mining", "mine-declare", "--help"],
+                cwd=str(WASM4PM_ROOT),
+                capture_output=True,
+                text=True,
+                timeout=_SUBPROCESS_TIMEOUT_SECONDS,
+                check=False,
+            )
+            _MINING_CAPABILITY_PROBE = probe.returncode == 0
+    return _MINING_CAPABILITY_PROBE
 
 
 @dataclass(frozen=True)

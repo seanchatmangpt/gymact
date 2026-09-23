@@ -12,15 +12,15 @@ receipt as PARTIAL_ALIVE while remaining ineligible for source admission.
 
 from __future__ import annotations
 
+import json
 from collections import deque
 from dataclasses import dataclass
 from hashlib import sha256
-import json
 from typing import Any
 from xml.etree import ElementTree
 
-from blake3 import blake3
 import httpx
+from blake3 import blake3
 
 from gymact.gyms.gcp_discovery_live import (
     ResilientDiscoveryCensus,
@@ -91,7 +91,10 @@ def discovery_source_observation(
                 ("advertised_api_versions", str(advertised)),
                 ("available_api_versions", str(len(census.apis))),
                 ("unavailable_api_versions", str(len(unavailable))),
-                ("transiently_unavailable_api_versions", str(sum(item.transient for item in unavailable))),
+                (
+                    "transiently_unavailable_api_versions",
+                    str(sum(item.transient for item in unavailable)),
+                ),
                 ("methods", str(len(census.methods))),
                 ("schemas", str(len(census.schemas))),
                 ("directory_sha256", census.directory_digest_sha256),
@@ -231,7 +234,9 @@ class GcpPublicContractCensus:
 
     @property
     def public_sources_alive(self) -> bool:
-        return len(self.public_sources) == 9 and all(source.admitted for source in self.public_sources)
+        return len(self.public_sources) == 9 and all(
+            source.admitted for source in self.public_sources
+        )
 
     @property
     def public_sources_receipted(self) -> bool:

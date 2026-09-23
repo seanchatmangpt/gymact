@@ -9,13 +9,16 @@ from .ground import GroundMetric
 from .measure import FiniteMeasure
 from .refusal import Refused
 
+
 @dataclass(frozen=True)
 class OraclePlan:
     cost: Fraction
     shipments: tuple[tuple[str, str, Fraction], ...]
 
+
 def _lcm(values: list[int]) -> int:
     return reduce(math.lcm, values, 1)
+
 
 def exhaustive_transport(
     a: FiniteMeasure, b: FiniteMeasure, metric: GroundMetric, *, max_units: int = 64

@@ -54,7 +54,8 @@ def test_a_genuinely_unsupplied_physics_capability_still_authorizes_create_provi
         name="StillOpenPhysicsGap",
         required_capabilities=frozenset({"DISTRIBUTED_TRACING_CORRELATION_ENGINE"}),
     )
-    local_classifications = known_capability_classifications() + (
+    local_classifications = (
+        *known_capability_classifications(),
         CapabilityClassification(
             capability_id="DISTRIBUTED_TRACING_CORRELATION_ENGINE",
             kind="world_physics",

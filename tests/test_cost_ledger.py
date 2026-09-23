@@ -29,9 +29,7 @@ def test_sum_costs_by_unit_sums_real_events_across_episode() -> None:
         _accepted_act_receipt(
             capability_ref="urn:gymact:capability:launch",
             costs=(
-                CostDimension(
-                    unit="usd", quantity=1.25, kind="observed_actual", source="measured"
-                ),
+                CostDimension(unit="usd", quantity=1.25, kind="observed_actual", source="measured"),
                 CostDimension(
                     unit="fuel_liter",
                     quantity=3.0,
@@ -43,9 +41,7 @@ def test_sum_costs_by_unit_sums_real_events_across_episode() -> None:
         _accepted_act_receipt(
             capability_ref="urn:gymact:capability:launch",
             costs=(
-                CostDimension(
-                    unit="usd", quantity=0.75, kind="observed_actual", source="measured"
-                ),
+                CostDimension(unit="usd", quantity=0.75, kind="observed_actual", source="measured"),
             ),
         ),
     ]
@@ -115,9 +111,7 @@ def test_capability_costs_echo_into_accepted_act_receipt_via_real_kernel() -> No
         assert materialization.accepted
         assert materialization.episode is not None
         episode_id = materialization.episode.episode_id
-        capability = next(
-            c for c in gymact.capabilities(episode_id) if c.binding == "set"
-        )
+        capability = next(c for c in gymact.capabilities(episode_id) if c.binding == "set")
         result = await gymact.act(
             ActuationIntent(
                 episode_id=episode_id,

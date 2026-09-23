@@ -1,10 +1,13 @@
 from dataclasses import dataclass
+
 from .refusal import DualChainRefusal
+
 
 @dataclass(frozen=True)
 class Generation:
     number: int
     digest: str
+
 
 def current(items: tuple[Generation, ...]) -> Generation:
     if not items:

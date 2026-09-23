@@ -14,7 +14,12 @@ import pytest
 
 from gymact.authority import AllowListAuthorityResolver, DenyAuthorityResolver
 from gymact.kernel import GymAct
-from gymact.mcp_process_control import DispatchRefusal, ProcessControlGraph, ProcessTransition, dispatch
+from gymact.mcp_process_control import (
+    DispatchRefusal,
+    ProcessControlGraph,
+    ProcessTransition,
+    dispatch,
+)
 from gymact.models import MaterializationIntent
 from gymact.providers import MemoryProvider
 

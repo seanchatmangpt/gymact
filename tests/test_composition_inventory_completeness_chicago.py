@@ -122,9 +122,7 @@ def _real_postcondition_verifier_classes() -> dict[str, str]:
                 continue
             # Only classes that actually define a `judge` method are real
             # PostconditionVerifier implementations, not unrelated *Verifier names.
-            has_judge = any(
-                isinstance(b, ast.FunctionDef) and b.name == "judge" for b in node.body
-            )
+            has_judge = any(isinstance(b, ast.FunctionDef) and b.name == "judge" for b in node.body)
             if not has_judge:
                 continue
             found[node.name] = f"{module}.{node.name}"

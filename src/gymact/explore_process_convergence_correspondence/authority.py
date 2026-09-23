@@ -1,5 +1,7 @@
 from enum import StrEnum
+
 from .errors import Refused
+
 
 class ActionClass(StrEnum):
     OBSERVE = "OBSERVE"
@@ -7,6 +9,7 @@ class ActionClass(StrEnum):
     CONSTRUCT = "CONSTRUCT"
     VERIFY = "VERIFY"
     DO = "DO"
+
 
 def admit(action: ActionClass) -> None:
     if action is ActionClass.DO:

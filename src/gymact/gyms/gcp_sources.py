@@ -9,22 +9,23 @@ silently approximated.
 
 from __future__ import annotations
 
+import json
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import StrEnum
 from hashlib import sha256
-import json
-from typing import Any, Iterable
+from typing import Any
 from xml.etree import ElementTree
 
-from blake3 import blake3
 import httpx
+from blake3 import blake3
 
 __all__ = [
+    "REQUIRED_SOURCE_FAMILIES",
     "ContractArtifact",
     "ContractSourceFamily",
     "ContractSourceObservation",
     "GcpSourceAdmissionReport",
-    "REQUIRED_SOURCE_FAMILIES",
     "evaluate_source_admission",
     "load_cloud_docs_sitemap",
     "load_googleapis_tree",
@@ -119,14 +120,18 @@ def evaluate_source_admission(
         sorted(
             family.value
             for family, item in latest.items()
-            if family in REQUIRED_SOURCE_FAMILIES and item.disposition == "ALIVE" and not item.receipt
+            if family in REQUIRED_SOURCE_FAMILIES
+            and item.disposition == "ALIVE"
+            and not item.receipt
         )
     )
     empty = tuple(
         sorted(
             family.value
             for family, item in latest.items()
-            if family in REQUIRED_SOURCE_FAMILIES and item.disposition == "ALIVE" and not item.artifacts
+            if family in REQUIRED_SOURCE_FAMILIES
+            and item.disposition == "ALIVE"
+            and not item.artifacts
         )
     )
     non_alive = tuple(
@@ -196,8 +201,7 @@ def load_googleapis_tree(
         revision = str(branch["commit"]["sha"])
         tree_sha = str(branch["commit"]["commit"]["tree"]["sha"])
         tree_url = (
-            f"https://api.github.com/repos/googleapis/googleapis/git/trees/{tree_sha}"
-            "?recursive=1"
+            f"https://api.github.com/repos/googleapis/googleapis/git/trees/{tree_sha}?recursive=1"
         )
         tree_response = http.get(tree_url)
         tree_response.raise_for_status()
@@ -232,10 +236,7 @@ def load_googleapis_tree(
                 ContractArtifact(
                     family=ContractSourceFamily.GOOGLEAPIS_PROTO,
                     identity=path,
-                    locator=(
-                        "https://github.com/googleapis/googleapis/blob/"
-                        f"{revision}/{path}"
-                    ),
+                    locator=(f"https://github.com/googleapis/googleapis/blob/{revision}/{path}"),
                     digest=blob_sha,
                     digest_algorithm="git-sha1",
                     media_type=media_type,
@@ -282,7 +283,9 @@ def load_cloud_docs_sitemap(
                 continue
             locator = loc_node.text.strip()
             lastmod_node = node.find(f"{namespace}lastmod")
-            lastmod = lastmod_node.text.strip() if lastmod_node is not None and lastmod_node.text else ""
+            lastmod = (
+                lastmod_node.text.strip() if lastmod_node is not None and lastmod_node.text else ""
+            )
             identity_payload = {"url": locator, "lastmod": lastmod}
             artifacts.append(
                 ContractArtifact(

@@ -5,6 +5,7 @@ experiment identities are bound to replayable receipt evidence.  This module
 is deliberately small: it provides the 80/20 comparison algebra without
 pretending that GymAct can establish external SOTA by itself.
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping

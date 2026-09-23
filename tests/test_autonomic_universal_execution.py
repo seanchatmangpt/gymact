@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from gymact.authority import AllowListAuthorityResolver
+from gymact.automation import AutomationPolicy, AutonomicAutomation
 from gymact.autonomic import (
     AutonomicController,
     AutonomicPhase,
@@ -10,14 +11,12 @@ from gymact.autonomic import (
     ConsequenceRequest,
     FailureClass,
 )
-from gymact.automation import AutonomicAutomation, AutomationPolicy
 from gymact.catalog import ProviderSource, default_provider_catalog
 from gymact.gyms.vendor_benchmarks import VENDOR_SPECS
 from gymact.models import ActuationIntent, Standing
 from gymact.providers import MEMORY_CAPABILITIES, MemoryProvider
 from gymact.registry import builtin_provider_names
 from gymact.runtime import ProductionGymAct
-
 
 AUTHORITY = "urn:test:authority:autonomic"
 

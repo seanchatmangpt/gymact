@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 _HEX40 = re.compile(r"^[0-9a-f]{40}$")
 

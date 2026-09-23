@@ -82,13 +82,13 @@ def _temporary_consumer(tmp_path: Path) -> Path:
     os.symlink("../../ggen/world-cyber-gym-pack/ontology.ttl", consumer / "ontology.ttl")
     os.symlink("../../ggen/world-cyber-gym-pack", consumer / "world-cyber-gym-pack")
     (consumer / "ggen.toml").write_text(
-        '[project]\n'
+        "[project]\n"
         'name = "gymact-world-cyber-gym"\n\n'
-        '[ontology]\n'
+        "[ontology]\n"
         'source = "ontology.ttl"\n\n'
-        '[packs]\n'
+        "[packs]\n"
         'world-cyber-gym-pack = { path = "world-cyber-gym-pack" }\n\n'
-        '[templates]\n'
+        "[templates]\n"
         'dir = "templates"\n'
     )
     return consumer
@@ -116,9 +116,7 @@ def test_installed_ggen_manufactures_static_world_cyber_projection(tmp_path: Pat
 
         pytest.skip("no `ggen` binary found on PATH for local execution")
     consumer = _temporary_consumer(tmp_path)
-    result = subprocess.run(
-        ["ggen", "sync", "run"], cwd=consumer, capture_output=True, text=True
-    )
+    result = subprocess.run(["ggen", "sync", "run"], cwd=consumer, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
     _assert_generated(consumer)
     receipt = consumer / ".ggen-v2" / "receipt.json"

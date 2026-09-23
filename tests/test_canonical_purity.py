@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from gymact.semantics.canonical_graph import ingest_paths
 
-TTL = b'''@prefix dct: <http://purl.org/dc/terms/> .
+TTL = b"""@prefix dct: <http://purl.org/dc/terms/> .
 <urn:enterprise:artifact> dct:identifier "artifact.1" .
-'''
+"""
 
 
 def test_ingestion_is_deterministic_and_leaves_source_tree_unchanged(tmp_path) -> None:

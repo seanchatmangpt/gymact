@@ -4,6 +4,7 @@ A HOT recipe is an index into an admitted possibility topology: reversible path 
 irreversible frontier identity. Reuse re-admits that route against the current graph.
 Execution authority is deliberately absent and must still be minted at the cut.
 """
+
 from __future__ import annotations
 
 from typing import Self
@@ -128,8 +129,7 @@ def admit_graph_recipe(
             reason="COMPILED_GRAPH_RECIPE_ROUTE_DRIFT",
         )
     frontier_exists = any(
-        item.path_id == recipe.path_id
-        and item.morphism_id == recipe.irreversible_morphism_id
+        item.path_id == recipe.path_id and item.morphism_id == recipe.irreversible_morphism_id
         for item in exploration.irreversible_frontier
     )
     if not frontier_exists:

@@ -70,7 +70,7 @@ from gymact.powl.algebra import (
 from gymact.powl.identity import node_id
 from gymact.powl.refusals import PowlError, PowlRefusal
 
-__all__ = ["canonical_form", "model_digest", "CROSS_REPO_DIGEST_BLOCKER"]
+__all__ = ["CROSS_REPO_DIGEST_BLOCKER", "canonical_form", "model_digest"]
 
 #: Named blocker for cross-repository digest agreement. See the module
 #: docstring: this package's normalizer is local, and no shared normalizer
@@ -95,8 +95,7 @@ def canonical_form(node: PowlNode) -> PowlNode:
         new_index = {old: new for new, old in enumerate(perm)}
         reduced = transitive_reduction(frozenset(node.order), n)
         edges = frozenset(
-            OrderEdge(NodeId(new_index[e.src]), NodeId(new_index[e.dst]))
-            for e in reduced
+            OrderEdge(NodeId(new_index[e.src]), NodeId(new_index[e.dst])) for e in reduced
         )
         return PartialOrder(tuple(kids[i] for i in perm), edges, node.frequency)
 

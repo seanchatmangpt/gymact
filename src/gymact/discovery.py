@@ -73,15 +73,11 @@ class DiscoveryProbeRunner:
             or materialized.episode is None
             or materialized.observation is None
         ):
-            raise RuntimeError(
-                f"DISCOVERY_MATERIALIZATION_FAILED:{materialized.receipt.reason}"
-            )
+            raise RuntimeError(f"DISCOVERY_MATERIALIZATION_FAILED:{materialized.receipt.reason}")
         episode_id = materialized.episode.episode_id
         try:
             facts = self._facts(materialized.observation.state)
-            capabilities = tuple(
-                cap.iri for cap in self.runtime.capabilities(episode_id)
-            )
+            capabilities = tuple(cap.iri for cap in self.runtime.capabilities(episode_id))
             return facts, capabilities
         finally:
             await self.runtime.teardown(episode_id)
@@ -93,14 +89,9 @@ class DiscoveryProbeRunner:
             raise RuntimeError("OPAQUE_OBSERVATION_FACTS_REQUIRED")
         return tuple(sorted(raw))
 
-    def _action(
-        self, *, capability_ref: str, environment_id: str
-    ) -> ActionDefinition:
+    def _action(self, *, capability_ref: str, environment_id: str) -> ActionDefinition:
         return ActionDefinition(
-            semantic_id=(
-                "urn:gymact:discovery:action:"
-                f"{capability_ref.rsplit(':', 1)[-1]}"
-            ),
+            semantic_id=(f"urn:gymact:discovery:action:{capability_ref.rsplit(':', 1)[-1]}"),
             provider_ref=environment_id,
             capability_ref=capability_ref,
             subject_type="urn:gymact:opaque:subject",
@@ -159,9 +150,7 @@ class DiscoveryProbeRunner:
             )
         )
 
-    async def probe(
-        self, *, prefix: tuple[str, ...], action_id: str
-    ) -> ProbeEvidence:
+    async def probe(self, *, prefix: tuple[str, ...], action_id: str) -> ProbeEvidence:
         materialized = await self.runtime.create_episode(
             self.provider,
             scenario=self.subject,
@@ -169,9 +158,7 @@ class DiscoveryProbeRunner:
             idempotency_key=f"probe-episode-{uuid4().hex}",
         )
         if not materialized.accepted or materialized.episode is None:
-            raise RuntimeError(
-                f"DISCOVERY_MATERIALIZATION_FAILED:{materialized.receipt.reason}"
-            )
+            raise RuntimeError(f"DISCOVERY_MATERIALIZATION_FAILED:{materialized.receipt.reason}")
         episode_id = materialized.episode.episode_id
         environment_id = materialized.episode.environment_id
         try:
@@ -220,9 +207,7 @@ class DiscoveryProbeRunner:
             idempotency_key=f"replay-episode-{uuid4().hex}",
         )
         if not materialized.accepted or materialized.episode is None:
-            raise RuntimeError(
-                f"DISCOVERY_MATERIALIZATION_FAILED:{materialized.receipt.reason}"
-            )
+            raise RuntimeError(f"DISCOVERY_MATERIALIZATION_FAILED:{materialized.receipt.reason}")
         episode_id = materialized.episode.episode_id
         environment_id = materialized.episode.environment_id
         final_transition = None
@@ -237,9 +222,7 @@ class DiscoveryProbeRunner:
             if final_transition.standing is not Standing.ALIVE:
                 break
         observation = await self.runtime.observe(episode_id)
-        verification = await self.runtime.verify(
-            episode_id, {"goal_reached": True}
-        )
+        verification = await self.runtime.verify(episode_id, {"goal_reached": True})
         await self.runtime.teardown(episode_id)
         receipts = self.runtime.episode_receipts(episode_id)
         log = self.runtime.episode_ocel_log(episode_id)

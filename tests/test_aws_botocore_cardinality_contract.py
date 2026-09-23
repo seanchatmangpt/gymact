@@ -14,7 +14,6 @@ from gymact.gyms.aws_botocore_cardinality_contract import (
 )
 from gymact.gyms.cloud_fidelity import CloudTraceStep
 
-
 SOURCE_URI = "botocore://s3/2006-03-01/service-2.json"
 
 
@@ -71,8 +70,7 @@ def _step(
     return CloudTraceStep(
         surface="boto3",
         operation="s3.put_batch",
-        request=request
-        or {"Groups": [{"Tags": {"alpha": [{"Value": "ok"}]}}]},
+        request=request or {"Groups": [{"Tags": {"alpha": [{"Value": "ok"}]}}]},
         response=response if response is not None else {"Results": [{"Id": "r-1"}]},
         status_code=400 if error_code else 200,
         error_code=error_code,

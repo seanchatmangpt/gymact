@@ -29,9 +29,9 @@ named_standing_skip(
     "`cargo install ggen`, or ensure ~/.cargo/bin is on PATH)",
 )
 
-from gymact.gyms.ggen import GGEN_CAPABILITIES, GgenProvider  # noqa: E402
-from gymact.models import Consequence  # noqa: E402
-from gymact.registry import builtin_provider_names  # noqa: E402
+from gymact.gyms.ggen import GGEN_CAPABILITIES, GgenProvider
+from gymact.models import Consequence
+from gymact.registry import builtin_provider_names
 
 
 def _fixture_project(source: Path) -> None:

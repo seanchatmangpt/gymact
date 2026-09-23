@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import hashlib
+from dataclasses import dataclass
 
 from .refusal import FederationRefusal
 
@@ -33,5 +33,8 @@ def dag_root(nodes: tuple[ReceiptNode, ...]) -> str:
 
     for node_id in sorted(by_id):
         visit(node_id)
-    payload = "|".join(f"{node.node_id}:{node.digest}:{','.join(sorted(node.parents))}" for node in sorted(nodes, key=lambda n: n.node_id))
+    payload = "|".join(
+        f"{node.node_id}:{node.digest}:{','.join(sorted(node.parents))}"
+        for node in sorted(nodes, key=lambda n: n.node_id)
+    )
     return hashlib.sha256(payload.encode()).hexdigest()

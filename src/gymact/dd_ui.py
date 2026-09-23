@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import Iterable, Mapping
 
 DIMENSIONS = ("semantic", "avatar", "context", "evidence", "materiality", "grammar")
 
@@ -42,7 +42,9 @@ def _dominates(left: PresentationCandidate, right: PresentationCandidate) -> boo
     return ge and gt
 
 
-def pareto_frontier(candidates: Iterable[PresentationCandidate]) -> tuple[PresentationCandidate, ...]:
+def pareto_frontier(
+    candidates: Iterable[PresentationCandidate],
+) -> tuple[PresentationCandidate, ...]:
     ordered = tuple(sorted(candidates, key=lambda candidate: candidate.identity))
     return tuple(
         candidate
@@ -52,7 +54,9 @@ def pareto_frontier(candidates: Iterable[PresentationCandidate]) -> tuple[Presen
 
 
 def deterministic_select(frontier: Iterable[PresentationCandidate]) -> PresentationCandidate:
-    ordered = tuple(sorted(frontier, key=lambda candidate: (candidate.scores, candidate.identity), reverse=True))
+    ordered = tuple(
+        sorted(frontier, key=lambda candidate: (candidate.scores, candidate.identity), reverse=True)
+    )
     if not ordered:
         raise ValueError("presentation frontier is empty")
     return ordered[0]
@@ -64,7 +68,12 @@ def digest(parts: Iterable[str]) -> str:
 
 
 def make_screen_receipt(
-    *, grammar: str, world: str, input_payload: str, frontier: Iterable[PresentationCandidate], screen: str
+    *,
+    grammar: str,
+    world: str,
+    input_payload: str,
+    frontier: Iterable[PresentationCandidate],
+    screen: str,
 ) -> ScreenReceipt:
     frontier_ids = tuple(candidate.identity for candidate in pareto_frontier(frontier))
     return ScreenReceipt(
@@ -76,7 +85,9 @@ def make_screen_receipt(
     )
 
 
-def make_intent(receipt: ScreenReceipt, claim: str, action: str, projected_actions: Iterable[str]) -> IntentReceipt:
+def make_intent(
+    receipt: ScreenReceipt, claim: str, action: str, projected_actions: Iterable[str]
+) -> IntentReceipt:
     if action not in set(projected_actions):
         raise ValueError("REFUSED_UNPROJECTED_ACTION")
     return IntentReceipt(screen_digest=receipt.screen_digest, claim=claim, action=action)
@@ -90,4 +101,6 @@ def replay_matches(receipt: ScreenReceipt, observed: Mapping[str, str]) -> bool:
         "frontier_digest": receipt.frontier_digest,
         "screen_digest": receipt.screen_digest,
     }
-    return receipt.irreversible_selections == 0 and all(observed.get(key) == value for key, value in expected.items())
+    return receipt.irreversible_selections == 0 and all(
+        observed.get(key) == value for key, value in expected.items()
+    )

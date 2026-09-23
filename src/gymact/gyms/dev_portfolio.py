@@ -58,7 +58,7 @@ class _RunFailure:
     `returncode=None` (never a real exit code) plus a human-readable
     `stderr` so callers can tell "failed to run" from "ran and said no"."""
 
-    __slots__ = ("returncode", "stdout", "stderr")
+    __slots__ = ("returncode", "stderr", "stdout")
 
     def __init__(self, stderr: str) -> None:
         self.returncode: int | None = None
@@ -135,15 +135,33 @@ def _snapshot_one_github_repo(owner_slash_name: str) -> dict[str, Any]:
 
     pr_result = _run(
         [
-            "gh", "pr", "list", "--repo", owner_slash_name, "--state", "open",
-            "--json", "number,title,headRefName,isDraft,mergeable", "--limit", "50",
+            "gh",
+            "pr",
+            "list",
+            "--repo",
+            owner_slash_name,
+            "--state",
+            "open",
+            "--json",
+            "number,title,headRefName,isDraft,mergeable",
+            "--limit",
+            "50",
         ],
         timeout=_GH_TIMEOUT_SECONDS,
     )
     issue_result = _run(
         [
-            "gh", "issue", "list", "--repo", owner_slash_name, "--state", "open",
-            "--json", "number,title", "--limit", "50",
+            "gh",
+            "issue",
+            "list",
+            "--repo",
+            owner_slash_name,
+            "--state",
+            "open",
+            "--json",
+            "number,title",
+            "--limit",
+            "50",
         ],
         timeout=_GH_TIMEOUT_SECONDS,
     )
@@ -177,7 +195,9 @@ def _snapshot_one_github_repo(owner_slash_name: str) -> dict[str, Any]:
         "open_prs": open_prs if open_prs_ok else [],
         "pr_query_error": None if open_prs_ok else pr_result.stderr,
         "issues_disabled": not open_issues_ok and "disabled" in issue_result.stderr.lower(),
-        "open_issue_count": len(open_issues) if open_issues_ok and open_issues is not None else None,
+        "open_issue_count": len(open_issues)
+        if open_issues_ok and open_issues is not None
+        else None,
         "open_issues": open_issues if open_issues else [],
         "branch_count": len(all_branches) if branches_ok else None,
         "stale_branch_count": len(stale_branches) if stale_branches is not None else None,
@@ -341,15 +361,16 @@ class DevPortfolioProvider:
     name = "dev_portfolio"
     materialization_requires_authority = False
 
-    async def materialize(self, *, scenario: str | None, config: dict[str, Any]) -> DevPortfolioEnvironment:
+    async def materialize(
+        self, *, scenario: str | None, config: dict[str, Any]
+    ) -> DevPortfolioEnvironment:
         del scenario
 
         raw_local = config.get("local_repos")
         if raw_local is not None and not isinstance(raw_local, dict):
             raise TypeError("config.local_repos must be a dict[str, str] of {name: path}")
         local_repos: dict[str, Path] = {
-            name: Path(str(path)).expanduser().resolve()
-            for name, path in (raw_local or {}).items()
+            name: Path(str(path)).expanduser().resolve() for name, path in (raw_local or {}).items()
         }
 
         raw_github = config.get("github_repos")

@@ -53,15 +53,21 @@ def test_gates_refuse_regressions() -> None:
     assert _gate_rows(graph, "010_no_custom_tbox.rq")
 
     graph = _graph()
-    graph.remove((URIRef(f"{LOCAL}atsCandidateProfile"), RDF.type, URIRef("https://schema.org/ProfilePage")))
+    graph.remove(
+        (URIRef(f"{LOCAL}atsCandidateProfile"), RDF.type, URIRef("https://schema.org/ProfilePage"))
+    )
     assert _gate_rows(graph, "030_ats_interop_basis.rq")
 
     graph = _graph()
-    graph.remove((URIRef(f"{LOCAL}workAuthorization"), URIRef("http://purl.org/dc/terms/description"), None))
+    graph.remove(
+        (URIRef(f"{LOCAL}workAuthorization"), URIRef("http://purl.org/dc/terms/description"), None)
+    )
     assert _gate_rows(graph, "040_sensitive_unknowns.rq")
 
     graph = _graph()
-    graph.remove((URIRef(f"{LOCAL}jobApplication"), URIRef("https://schema.org/actionStatus"), None))
+    graph.remove(
+        (URIRef(f"{LOCAL}jobApplication"), URIRef("https://schema.org/actionStatus"), None)
+    )
     assert _gate_rows(graph, "050_consequence_separation.rq")
 
 

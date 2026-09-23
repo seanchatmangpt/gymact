@@ -12,7 +12,14 @@ from gymact.explore_kantorovich_independent.witness import IndependentWitness
 
 def test_verification_receipt_replays_without_importing_do_authority() -> None:
     subject = VerificationSubject.admit("seanchatmangpt/gymact", "5" * 40, "kantorovich-duality/v1")
-    witness = IndependentWitness("gymact.kantorovich.independent-equation-verifier/v1", Fraction(1), Fraction(1), Fraction(0), Fraction(8), 2)
+    witness = IndependentWitness(
+        "gymact.kantorovich.independent-equation-verifier/v1",
+        Fraction(1),
+        Fraction(1),
+        Fraction(0),
+        Fraction(8),
+        2,
+    )
     assert admit_authority("VERIFY").allowed
     receipt = issue_receipt(subject, witness)
     assert replay(receipt)

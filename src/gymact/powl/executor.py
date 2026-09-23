@@ -56,9 +56,10 @@ and so cannot address a position in the tree.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
-from typing import Iterable, Mapping, Sequence, TypeAlias
+from typing import TypeAlias
 
 from gymact.powl.algebra import (
     Atom,
@@ -74,17 +75,17 @@ from gymact.powl.identity import OccurrenceKey, activity_sha256, node_id
 from gymact.powl.refusals import PowlError, PowlRefusal
 
 __all__ = [
-    "NodePath",
-    "Marking",
+    "INITIAL_MARKING",
     "ChoiceRecord",
     "DeadlockKind",
+    "Marking",
+    "NodePath",
     "ReplayDivergedError",
-    "INITIAL_MARKING",
-    "node_at",
+    "classify_stall",
     "enabled",
     "fire",
     "is_final",
-    "classify_stall",
+    "node_at",
     "replay",
     "trace_of",
 ]
@@ -152,16 +153,11 @@ class Marking:
         """Canonical, sorted description — set order can never leak out."""
         return {
             "completed": sorted(
-                [k.activity_sha256, k.occurrence_index, k.context_sha256]
-                for k in self.completed
+                [k.activity_sha256, k.occurrence_index, k.context_sha256] for k in self.completed
             ),
             "completed_paths": sorted(list(p) for p in self.completed_paths),
-            "cursor": sorted(
-                [list(p), c] for p, c in dict(self.cursor).items()
-            ),
-            "visits": sorted(
-                [list(p), i, n] for (p, i), n in dict(self.visits).items()
-            ),
+            "cursor": sorted([list(p), c] for p, c in dict(self.cursor).items()),
+            "visits": sorted([list(p), i, n] for (p, i), n in dict(self.visits).items()),
             "rounds": sorted([list(p), n] for p, n in dict(self.rounds).items()),
             "fires": self.fires,
         }
@@ -264,25 +260,18 @@ def _in_progress(path: NodePath, marking: Marking) -> bool:
         return True
     if any(p[:k] == path for p in dict(marking.cursor)):
         return True
-    return any(
-        len(p) > k and p[:k] == path and n > 0 for p, n in dict(marking.rounds).items()
-    )
+    return any(len(p) > k and p[:k] == path and n > 0 for p, n in dict(marking.rounds).items())
 
 
 def _body_complete(node: PowlNode, path: NodePath, marking: Marking) -> bool:
     """Whether *one* round of the composite at ``path`` has just finished."""
     if isinstance(node, PartialOrder):
-        return all(
-            _is_complete(c, path + (i,), marking)
-            for i, c in enumerate(node.children)
-        )
+        return all(_is_complete(c, (*path, i), marking) for i, c in enumerate(node.children))
     if isinstance(node, ChoiceGraph):
         cur = dict(marking.cursor).get(path)
         if cur is None:
             return False
-        return cur == node.end and _is_complete(
-            node.children[cur], path + (cur,), marking
-        )
+        return cur == node.end and _is_complete(node.children[cur], (*path, cur), marking)
     raise PowlError(
         PowlRefusal.PROHIBITED_NODE_KIND,
         f"{type(node).__name__} is not a POWL 2.0 node kind",
@@ -331,45 +320,42 @@ def _enabled(
         if freq.max is not None and done >= freq.max:
             # every permitted repetition has been run; nothing further to offer
             return set()
-        if done > 0 and not _in_progress(path, marking):
+        if (
+            done > 0
+            and not _in_progress(path, marking)
+            and apply_visit_cap
+            and dict(marking.visits).get((path, -1), 0) >= bound.max_node_visits
+        ):
             # about to *start* another round. A repetition whose round counter
             # has reached the declared cap is REMOVED from the enabled set, not
             # raised on — the same rule that terminates a cyclic choice graph.
             # ``visits[(path, -1)]`` is a round counter; ``-1`` can never collide
             # with a child index, and like every other visit count it is carried,
             # never reset (law 2), so unbounded frequency still terminates.
-            if (
-                apply_visit_cap
-                and dict(marking.visits).get((path, -1), 0) >= bound.max_node_visits
-            ):
-                return set()
+            return set()
 
     if isinstance(node, PartialOrder):
         out: set[NodePath] = set()
         for i, child in enumerate(node.children):
-            child_path = path + (i,)
+            child_path = (*path, i)
             if _is_complete(child, child_path, marking):
                 continue
             # closure, never .order — a reduction hides indirect precedence
             preds = (e.src for e in node.closure if e.dst == i)
-            if not all(
-                _is_complete(node.children[j], path + (j,), marking) for j in preds
-            ):
+            if not all(_is_complete(node.children[j], (*path, j), marking) for j in preds):
                 continue
-            out |= _enabled(
-                child, child_path, marking, bound, apply_visit_cap=apply_visit_cap
-            )
+            out |= _enabled(child, child_path, marking, bound, apply_visit_cap=apply_visit_cap)
         return out
 
     if isinstance(node, ChoiceGraph):
         cur = dict(marking.cursor).get(path)
         if cur is not None:
-            if not _is_complete(node.children[cur], path + (cur,), marking):
+            if not _is_complete(node.children[cur], (*path, cur), marking):
                 # still inside the selected child; it was already counted on
                 # entry, so no cap check here.
                 return _enabled(
                     node.children[cur],
-                    path + (cur,),
+                    (*path, cur),
                     marking,
                     bound,
                     apply_visit_cap=apply_visit_cap,
@@ -390,10 +376,10 @@ def _enabled(
             # entering a child starts it afresh — a self-loop or a cycle must
             # be able to re-run a child it already completed. Visit counters
             # are NOT part of the purge: law 2.
-            view = _purged(marking, path + (c,))
+            view = _purged(marking, (*path, c))
             out |= _enabled(
                 node.children[c],
-                path + (c,),
+                (*path, c),
                 view,
                 bound,
                 apply_visit_cap=apply_visit_cap,
@@ -453,9 +439,7 @@ def fire(
 
     node = node_at(model, path)
     activity = _activity_of(node)
-    occurrence_index = sum(
-        1 for k in marking.completed if k.activity_sha256 == activity
-    )
+    occurrence_index = sum(1 for k in marking.completed if k.activity_sha256 == activity)
 
     # Record entry into every choice-graph ancestor on the way down. Visit
     # counters are carried, never reset: see law 2 in the module docstring.
@@ -467,7 +451,7 @@ def fire(
         if not isinstance(ancestor, ChoiceGraph):
             continue
         idx = path[depth]
-        child_path = prefix + (idx,)
+        child_path = (*prefix, idx)
         entering = dict(working.cursor).get(prefix) != idx or _is_complete(
             ancestor.children[idx], child_path, working
         )
@@ -486,8 +470,7 @@ def fire(
 
     out = replace(
         working,
-        completed=working.completed
-        | {OccurrenceKey(activity, occurrence_index, context_sha256)},
+        completed=working.completed | {OccurrenceKey(activity, occurrence_index, context_sha256)},
         completed_paths=working.completed_paths | {path},
         visits=visits,
         fires=marking.fires + 1,

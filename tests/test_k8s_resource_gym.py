@@ -76,6 +76,7 @@ def test_providers_offering_configmap_is_real() -> None:
     result = asyncio.run(_run())
     assert set(result) <= {"aws", "azure", "gcp"}
 
+
 def test_required_fields_for_deployment_is_real() -> None:
     async def _run() -> list[str]:
         env = K8sResourceEnvironment()
@@ -96,6 +97,7 @@ def test_providers_offering_deployment_is_real() -> None:
 
     result = asyncio.run(_run())
     assert set(result) <= {"aws", "azure", "gcp"}
+
 
 def test_required_fields_for_namespace_is_real() -> None:
     async def _run() -> list[str]:
@@ -118,6 +120,7 @@ def test_providers_offering_namespace_is_real() -> None:
     result = asyncio.run(_run())
     assert set(result) <= {"aws", "azure", "gcp"}
 
+
 def test_required_fields_for_pod_is_real() -> None:
     async def _run() -> list[str]:
         env = K8sResourceEnvironment()
@@ -139,6 +142,7 @@ def test_providers_offering_pod_is_real() -> None:
     result = asyncio.run(_run())
     assert set(result) <= {"aws", "azure", "gcp"}
 
+
 def test_required_fields_for_secret_is_real() -> None:
     async def _run() -> list[str]:
         env = K8sResourceEnvironment()
@@ -159,6 +163,7 @@ def test_providers_offering_secret_is_real() -> None:
 
     result = asyncio.run(_run())
     assert set(result) <= {"aws", "azure", "gcp"}
+
 
 def test_required_fields_for_service_is_real() -> None:
     async def _run() -> list[str]:

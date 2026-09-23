@@ -6,9 +6,7 @@ from .state import ObligationState
 from .trajectory import ClosureEpoch
 
 
-def stable_dwell(
-    epochs: tuple[ClosureEpoch, ...], key: str, target: ObligationState
-) -> timedelta:
+def stable_dwell(epochs: tuple[ClosureEpoch, ...], key: str, target: ObligationState) -> timedelta:
     started = None
     ended = None
     for epoch in reversed(epochs):

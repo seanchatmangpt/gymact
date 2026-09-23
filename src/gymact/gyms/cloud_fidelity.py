@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 import blake3
 import rfc8785
@@ -55,7 +56,9 @@ class CloudTraceReceipt:
     step_count: int
 
 
-def _trace_payload(trace: Iterable[CloudTraceStep]) -> tuple[tuple[CloudTraceStep, ...], list[dict[str, Any]]]:
+def _trace_payload(
+    trace: Iterable[CloudTraceStep],
+) -> tuple[tuple[CloudTraceStep, ...], list[dict[str, Any]]]:
     steps = tuple(trace)
     payload = [
         {
@@ -249,7 +252,9 @@ def compare_cloud_traces(
 
     if len(reference_steps) != len(twin_steps):
         differences.append(
-            FidelityDifference(None, (), "step_count_mismatch", len(reference_steps), len(twin_steps))
+            FidelityDifference(
+                None, (), "step_count_mismatch", len(reference_steps), len(twin_steps)
+            )
         )
 
     compared_steps = min(len(reference_steps), len(twin_steps))

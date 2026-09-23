@@ -90,10 +90,7 @@ def verify_contract(snapshot: CanonicalGraph, contract: SemanticContract) -> Non
         )
 
     graph_iris = {
-        str(term)
-        for triple in snapshot.graph
-        for term in triple
-        if isinstance(term, URIRef)
+        str(term) for triple in snapshot.graph for term in triple if isinstance(term, URIRef)
     }
     missing_iris = contract.required_iris - graph_iris
     if missing_iris:

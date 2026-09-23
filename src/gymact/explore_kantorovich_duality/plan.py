@@ -11,7 +11,7 @@ from .refusal import DualityRefusal
 class TransportPlan:
     flow: dict[tuple[str, str], Fraction]
 
-    def admit(self, source: FiniteMeasure, target: FiniteMeasure) -> "TransportPlan":
+    def admit(self, source: FiniteMeasure, target: FiniteMeasure) -> TransportPlan:
         if any(v < 0 for v in self.flow.values()):
             raise DualityRefusal("NEGATIVE_FLOW", "transport flow must be nonnegative")
         for x, mass in source.mass.items():

@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from fractions import Fraction
+
 from .refusal import DualChainRefusal
+
 
 @dataclass(frozen=True)
 class DualPotential:
@@ -12,4 +14,6 @@ class DualPotential:
             raise DualChainRefusal("DUPLICATE_DUAL_LABEL")
 
     def value(self, mu: dict[str, Fraction], nu: dict[str, Fraction]) -> Fraction:
-        return sum((mu[x] * v for x, v in self.left), Fraction()) + sum((nu[y] * v for y, v in self.right), Fraction())
+        return sum((mu[x] * v for x, v in self.left), Fraction()) + sum(
+            (nu[y] * v for y, v in self.right), Fraction()
+        )
