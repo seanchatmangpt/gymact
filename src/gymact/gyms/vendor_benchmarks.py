@@ -353,7 +353,13 @@ class VendorBenchmarkProvider:
         root_value = config.get("root")
         if root_value is not None and not isinstance(root_value, str):
             raise TypeError("config.root must be a string path when supplied")
-        root = Path(root_value).expanduser() if root_value else vendor_root(self.name)
+        if root_value:
+            candidate = Path(root_value).expanduser()
+            if ".." in candidate.parts:
+                raise VendorAdmissionError("REFUSED:VENDOR_ROOT_TRAVERSAL", str(candidate))
+            root = candidate.resolve()
+        else:
+            root = vendor_root(self.name)
         audit = _audit_spec(self.spec, root)
         if audit.standing != "PARTIAL_ALIVE":
             raise VendorAdmissionError(audit.reason, str(audit.root))

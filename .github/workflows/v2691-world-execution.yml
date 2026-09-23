@@ -107,11 +107,19 @@ jobs:
           # Runtime receipt/event identities are intentionally fresh per episode. Replay
           # determinism is semantic: the bounded frontier, consequence counts, authority
           # refusal, independent verify and falsifier cardinality must reproduce exactly.
+          # The replanning block's episode ids and its receipt-derived causal-link digest
+          # are runtime identities of the same class (the block predates this exclusion
+          # list and never updated it) -- the semantic replan facts (trigger_facts, both
+          # plans' contents, replan_verified) remain compared.
           for report in (first, second):
               report["canonical"].pop("receipt_count", None)
               report["canonical"].pop("manufactured_agent_receipt_count", None)
               report["independent_court"].pop("ocel_sha256", None)
               report["independent_court"].pop("standard_authority_refusal_receipt_id", None)
+              if "replanning" in report:
+                  report["replanning"].pop("canonical_episode_id", None)
+                  report["replanning"].pop("replan_episode_id", None)
+                  report["replanning"].pop("causal_link_digest", None)
           if first != second:
               raise SystemExit("REFUSED:SEMANTIC_REPLAY_DRIFT")
           print("ALIVE:SEMANTIC_REPLAY")

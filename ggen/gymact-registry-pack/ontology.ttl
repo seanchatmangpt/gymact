@@ -23,6 +23,11 @@ rg:capabilitiesImportClause a rdf:Property ; rdfs:domain rg:RegisteredProvider ;
 rg:capabilitiesExpr a rdf:Property ; rdfs:domain rg:RegisteredProvider ; rdfs:range xsd:string ;
     rdfs:comment "Raw Python expression rendered as the dict value's second tuple element." .
 
+rg:outcomePredicateModule a rdf:Property ; rdfs:domain rg:RegisteredProvider ; rdfs:range xsd:string ;
+    rdfs:comment "OPTIONAL. Module a provider's structured outcome predicate is imported from. Mirrors rg:capabilitiesModule/rg:capabilitiesExpr: unlike that pair there is no separate ImportClause property here, because rg:outcomePredicateExpr IS the importable name (the predicate is always a single top-level callable, never a tuple-literal or aliased import). Must co-occur with rg:outcomePredicateExpr -- see gates/010_registry_import_validity.rq." .
+rg:outcomePredicateExpr a rdf:Property ; rdfs:domain rg:RegisteredProvider ; rdfs:range xsd:string ;
+    rdfs:comment "OPTIONAL. Name of a real, importable Python callable with signature (reason: str, attributes: dict) -> bool, rendered into gymact.registry._OUTCOME_PREDICATES[registryKey]. A provider MAY declare this to replace scripts/ocel_standing.py's generic 'solved=True' substring fallback with a structured, domain-specific outcome check; providers that do not declare it keep using the substring fallback unchanged. Opt-in per-provider -- most providers correctly have neither this nor rg:outcomePredicateModule set. Must co-occur with rg:outcomePredicateModule -- see gates/010_registry_import_validity.rq." .
+
 rg:excludedClass a rdf:Property ; rdfs:domain rg:ExcludedProvider ; rdfs:range xsd:string .
 rg:exclusionReason a rdf:Property ; rdfs:domain rg:ExcludedProvider ; rdfs:range xsd:string .
 

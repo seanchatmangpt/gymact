@@ -100,3 +100,4 @@ playground.py
 .secrets
 .act-artifacts/
 .act-events/
+.inspect_logs/
