@@ -2,20 +2,24 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any
 
 from .refusal import Refused
 
 SCHEMA = "gymact.explore-kantorovich-ambiguity/1"
 
+
 def canonical(payload: Mapping[str, Any]) -> bytes:
     return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
+
 
 @dataclass(frozen=True)
 class Receipt:
     body: dict[str, Any]
     digest: str
+
 
 def issue(body: Mapping[str, Any]) -> Receipt:
     data = dict(body)
@@ -25,6 +29,7 @@ def issue(body: Mapping[str, Any]) -> Receipt:
         raise Refused("RECEIPT_AUTHORITY_INVALID")
     data["schema"] = SCHEMA
     return Receipt(data, hashlib.sha256(canonical(data)).hexdigest())
+
 
 def replay(receipt: Receipt) -> bool:
     if receipt.body.get("actuation_performed") is not False:

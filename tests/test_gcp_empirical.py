@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from blake3 import blake3
 import json
+
+from blake3 import blake3
 
 from gymact.gyms.gcp_empirical import (
     EmpiricalProbeReceipt,
@@ -20,9 +21,7 @@ def _receipt(method_id: str = "compute:v1:instances.get") -> EmpiricalProbeRecei
         "observed_at": "2026-08-19T15:00:00Z",
         "executor": "brce:gcp-live-probe",
     }
-    digest = blake3(
-        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
+    digest = blake3(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     return EmpiricalProbeReceipt(**payload, receipt_digest_blake3=digest)
 
 

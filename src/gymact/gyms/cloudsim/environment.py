@@ -11,7 +11,7 @@ from gymact.gyms.cloud_fidelity import (
 )
 from gymact.models import Capability
 
-from .capabilities import CAPABILITY_BY_BINDING, CLOUDSIM_CAPABILITIES, CLOUD_BY_BINDING
+from .capabilities import CAPABILITY_BY_BINDING, CLOUD_BY_BINDING, CLOUDSIM_CAPABILITIES
 from .contracts import CloudOperation
 from .state import CloudStateMachine
 

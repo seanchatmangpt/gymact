@@ -1,4 +1,5 @@
 """Safety-first structural contracts for robotics, industrial/OT, and edge controllers."""
+
 from __future__ import annotations
 
 from enum import StrEnum
@@ -71,9 +72,7 @@ def admit_physical_command(
 ) -> PhysicalAdmission:
     """Admit a candidate physical command. This function has no actuator handle."""
     if command.domain is not envelope.domain:
-        return PhysicalAdmission(
-            admitted=False, standing=Standing.REFUSED, reason="DOMAIN_REFUSED"
-        )
+        return PhysicalAdmission(admitted=False, standing=Standing.REFUSED, reason="DOMAIN_REFUSED")
     if command.operation not in envelope.allowed_operations:
         return PhysicalAdmission(
             admitted=False, standing=Standing.REFUSED, reason="CAPABILITY_REFUSED"

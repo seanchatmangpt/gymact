@@ -60,8 +60,14 @@ def _bounded_path(root: Path, relative: str) -> Path:
     if not relative or Path(relative).is_absolute():
         raise ValueError("AMBIGUOUS_SUBJECT_REFUSED")
     candidate = (root / relative).resolve()
+    # `root` must be resolved to the same canonical form as `candidate`:
+    # on macOS, `tempfile.mkdtemp()` returns `/var/...` while `.resolve()`
+    # produces `/private/var/...` (`/var` is a symlink), so comparing the
+    # raw root against a resolved candidate raised a spurious
+    # AMBIGUOUS_SUBJECT_REFUSED for every seed file (PROVIDER_ERROR on
+    # materialize, GYMACT-6 hermetic-suite repair).
     try:
-        candidate.relative_to(root)
+        candidate.relative_to(Path(root).resolve())
     except ValueError as exc:
         raise ValueError("AMBIGUOUS_SUBJECT_REFUSED") from exc
     return candidate
@@ -132,7 +138,9 @@ class CodebaseEnvironment:
         if self._closed:
             raise RuntimeError("environment is torn down")
 
-    def _run_git(self, args: list[str], *, timeout: float = _DEFAULT_GIT_TIMEOUT_SECONDS) -> subprocess.CompletedProcess[str]:
+    def _run_git(
+        self, args: list[str], *, timeout: float = _DEFAULT_GIT_TIMEOUT_SECONDS
+    ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             ["git", *args],
             cwd=self._worktree,
@@ -175,7 +183,11 @@ class CodebaseEnvironment:
             if not target.is_file():
                 after = {"path": relative, "exists": False, "content": None}
             else:
-                after = {"path": relative, "exists": True, "content": target.read_text(encoding="utf-8")}
+                after = {
+                    "path": relative,
+                    "exists": True,
+                    "content": target.read_text(encoding="utf-8"),
+                }
         elif binding == "inspect_manifest":
             manifest_name = None
             content = None
@@ -310,7 +322,9 @@ class CodebaseProvider:
     name = "codebase"
     materialization_requires_authority = False
 
-    async def materialize(self, *, scenario: str | None, config: dict[str, Any]) -> CodebaseEnvironment:
+    async def materialize(
+        self, *, scenario: str | None, config: dict[str, Any]
+    ) -> CodebaseEnvironment:
         del scenario
         requires_authority = config.get("requires_authority", True)
         if not isinstance(requires_authority, bool):

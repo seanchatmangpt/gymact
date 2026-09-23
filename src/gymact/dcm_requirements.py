@@ -1,4 +1,5 @@
 """Machine-checkable Design for Combinatorial Maximum requirements."""
+
 from __future__ import annotations
 
 import json

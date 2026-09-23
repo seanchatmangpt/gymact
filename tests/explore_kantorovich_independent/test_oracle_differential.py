@@ -14,7 +14,9 @@ from gymact.explore_kantorovich_independent.refusal import IndependentVerifierRe
 
 def test_dual_evidence_agrees_with_manufacturer_and_two_primal_oracles() -> None:
     points = {"a": 0, "b": 10, "c": 1, "d": 11}
-    metric = GroundMetric.admit(set(points), {(x, y): abs(points[x] - points[y]) for x in points for y in points})
+    metric = GroundMetric.admit(
+        set(points), {(x, y): abs(points[x] - points[y]) for x in points for y in points}
+    )
     source = FiniteMeasure.normalize({"a": 1, "b": 1})
     target = FiniteMeasure.normalize({"c": 1, "d": 1})
     plan = TransportPlan({("a", "c"): Fraction(1, 2), ("b", "d"): Fraction(1, 2)})

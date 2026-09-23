@@ -30,7 +30,7 @@ from gymact import (
 )
 from gymact.gyms.ggen_legacy import GGEN_LEGACY_CAPABILITIES, GgenLegacyVerifierProvider
 from gymact.ocel import write_ocel_log
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
 AUTHORITY = "urn:test:ggen-legacy-authority"
 OBSERVE_CAPABILITY = "urn:gymact:ggen-legacy:capability:observe"
@@ -42,7 +42,7 @@ GGEN_LEGACY_ROOT = Path(
 
 WASM4PM_ROOT = Path(os.environ.get("WASM4PM_ROOT", str(Path.home() / "wasm4pm"))).resolve()
 
-require_standing(
+named_standing_skip(
     "LOCAL_CHECKOUT:ggen-legacy",
     available=(GGEN_LEGACY_ROOT / "tools" / "v26.8.1" / "Cargo.toml").is_file(),
     reason=f"no ggen-legacy checkout found at {GGEN_LEGACY_ROOT}",
@@ -208,10 +208,11 @@ async def test_ocel_export_is_independently_validated_by_wasm4pm(tmp_path) -> No
     BUILD_BROKEN / release_admitted=false) into a false pass; that standing
     is recorded faithfully in the exported log, not overwritten.
     """
-    require_standing(
+    named_standing_skip(
         "LOCAL_CHECKOUT:wasm4pm",
         available=(WASM4PM_ROOT / "Cargo.toml").is_file() and shutil.which("cargo") is not None,
         reason=f"no wasm4pm checkout with cargo available at {WASM4PM_ROOT}",
+        module_level=False,
     )
 
     runtime = authorized_runtime()

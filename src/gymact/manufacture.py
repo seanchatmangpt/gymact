@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 from gymact.contract import build_contract
 from gymact.evidence import canonical_bytes

@@ -122,9 +122,7 @@ def _error_contract(
     if errors is None:
         return (None,), (), ()
     if not isinstance(errors, list):
-        raise AwsBotocoreContractCompilationError(
-            f"operations.{operation}.errors must be an array"
-        )
+        raise AwsBotocoreContractCompilationError(f"operations.{operation}.errors must be an array")
     codes: set[str | None] = {None}
     statuses: set[int] = set()
     statuses_by_code: dict[str, set[int]] = {}
@@ -171,7 +169,9 @@ def compile_aws_botocore_contract(
     try:
         model = json.loads(source_document)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise AwsBotocoreContractCompilationError("source_document must be valid UTF-8 JSON") from exc
+        raise AwsBotocoreContractCompilationError(
+            "source_document must be valid UTF-8 JSON"
+        ) from exc
     model = _mapping(model, "service_model")
     metadata = _mapping(model.get("metadata"), "metadata")
     service = metadata.get("endpointPrefix")

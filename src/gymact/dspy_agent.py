@@ -370,9 +370,7 @@ class GymActReActAgent:
                         # changed as intended.
                         if expected:
                             outcome.update(
-                                await verify_after_actuation(
-                                    self._gym, self._episode_id, expected
-                                )
+                                await verify_after_actuation(self._gym, self._episode_id, expected)
                             )
                     steps.append(
                         AgentStep(tool_name=cap.binding, payload=real_payload, result=outcome)
@@ -444,9 +442,7 @@ class GymActReActAgent:
             only values already present in a real prior `observe()` result --
             never invent a resource name, key, or identifier."""
 
-            episode_goal: str = dspy.InputField(
-                desc="the real goal to accomplish in this episode"
-            )
+            episode_goal: str = dspy.InputField(desc="the real goal to accomplish in this episode")
             outcome_summary: str = dspy.OutputField(
                 desc="a real, honest summary of what was actually accomplished"
             )

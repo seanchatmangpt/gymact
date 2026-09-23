@@ -1,6 +1,8 @@
-from dataclasses import dataclass
 from collections import defaultdict
+from dataclasses import dataclass
+
 from .inventory import ModuleInventory
+
 
 @dataclass(frozen=True)
 class CollisionClass:
@@ -10,6 +12,7 @@ class CollisionClass:
     @property
     def cardinality(self) -> int:
         return len(self.paths)
+
 
 def collision_classes(inventory: ModuleInventory) -> tuple[CollisionClass, ...]:
     groups: dict[str, list[str]] = defaultdict(list)

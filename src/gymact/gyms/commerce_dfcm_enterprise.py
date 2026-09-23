@@ -6,8 +6,8 @@ the kernel without introducing any marketplace SDK or external DO authority.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
-from typing import Mapping
 
 from gymact.gyms.commerce_dfcm import (
     CAPABILITIES,
@@ -92,12 +92,15 @@ class EnterpriseCommerceWorld(CommerceWorld):
                 "identity binding requires exact account/tenant/issuer/subject",
             )
         for binding in self.identity_bindings.values():
-            if binding.issuer == issuer and binding.subject == subject:
-                if binding.tenant_id != tenant_id or binding.account_id != account_id:
-                    return None, Refusal(
-                        RefusalCode.CROSS_TENANT_ENTITLEMENT,
-                        "external subject already bound to another account/tenant",
-                    )
+            if (
+                binding.issuer == issuer
+                and binding.subject == subject
+                and (binding.tenant_id != tenant_id or binding.account_id != account_id)
+            ):
+                return None, Refusal(
+                    RefusalCode.CROSS_TENANT_ENTITLEMENT,
+                    "external subject already bound to another account/tenant",
+                )
         evidence = self._store(
             _receipt(
                 "identity.bind",
@@ -350,8 +353,7 @@ def missing_internal_handlers() -> tuple[str, ...]:
     external_only = {
         capability.capability_id
         for capability in CAPABILITIES
-        if capability.operation_kind is OperationKind.DO
-        and capability.external_authority_required
+        if capability.operation_kind is OperationKind.DO and capability.external_authority_required
     }
     expected = {
         capability.capability_id

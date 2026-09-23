@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from fractions import Fraction
+from itertools import pairwise
 
-from .state import ObligationState, WEIGHT
+from .state import WEIGHT
 from .trajectory import ClosureEpoch
 
 
@@ -17,7 +18,7 @@ def transition_hazard(epochs: tuple[ClosureEpoch, ...]) -> Hazard:
     discharge = 0
     regression = 0
     transitions = 0
-    for previous, current in zip(epochs, epochs[1:], strict=True):
+    for previous, current in pairwise(epochs):
         old = {item.key: item.state for item in previous.obligations}
         for item in current.obligations:
             transitions += 1

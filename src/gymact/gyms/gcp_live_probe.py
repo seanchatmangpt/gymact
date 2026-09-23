@@ -13,14 +13,15 @@ reference are present. Missing credentials are BLOCKED, not UNSUPPORTED.
 
 from __future__ import annotations
 
+import json
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any, Mapping
+from typing import Any
 from urllib.parse import urlparse
-import json
 
-from blake3 import blake3
 import httpx
+from blake3 import blake3
 
 from gymact.gyms.gcp_behavior import GcpBehaviorEffect
 from gymact.gyms.gcp_exact import GcpObservation, ObservationProjection, normalize_http_response
@@ -57,7 +58,7 @@ def _canonical_json(value: Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
-def _request_digest(request: "GcpLiveProbeRequest") -> str:
+def _request_digest(request: GcpLiveProbeRequest) -> str:
     payload = {
         "case_id": request.case_id,
         "method_id": request.method_id,
@@ -73,7 +74,7 @@ def _request_digest(request: "GcpLiveProbeRequest") -> str:
 
 def _receipt(
     *,
-    request: "GcpLiveProbeRequest",
+    request: GcpLiveProbeRequest,
     disposition: GcpLiveProbeDisposition,
     observation: GcpObservation | None,
     reason: str | None,
@@ -190,7 +191,9 @@ def execute_live_probe(
             request=request,
             disposition=disposition,
             observation=None,
-            receipt=_receipt(request=request, disposition=disposition, observation=None, reason=reason),
+            receipt=_receipt(
+                request=request, disposition=disposition, observation=None, reason=reason
+            ),
             reason=reason,
         )
     if request.consequential and not request.authority_ref:
@@ -200,7 +203,9 @@ def execute_live_probe(
             request=request,
             disposition=disposition,
             observation=None,
-            receipt=_receipt(request=request, disposition=disposition, observation=None, reason=reason),
+            receipt=_receipt(
+                request=request, disposition=disposition, observation=None, reason=reason
+            ),
             reason=reason,
         )
     if not access_token:
@@ -210,7 +215,9 @@ def execute_live_probe(
             request=request,
             disposition=disposition,
             observation=None,
-            receipt=_receipt(request=request, disposition=disposition, observation=None, reason=reason),
+            receipt=_receipt(
+                request=request, disposition=disposition, observation=None, reason=reason
+            ),
             reason=reason,
         )
 
@@ -243,14 +250,21 @@ def execute_live_probe(
                 reason=None,
             ),
         )
-    except (httpx.ConnectError, httpx.ReadError, httpx.RemoteProtocolError, httpx.TimeoutException) as exc:
+    except (
+        httpx.ConnectError,
+        httpx.ReadError,
+        httpx.RemoteProtocolError,
+        httpx.TimeoutException,
+    ) as exc:
         reason = f"GCP_TRANSPORT_BLOCKED:{type(exc).__name__}"
         disposition = GcpLiveProbeDisposition.BLOCKED
         return GcpLiveProbeResult(
             request=request,
             disposition=disposition,
             observation=None,
-            receipt=_receipt(request=request, disposition=disposition, observation=None, reason=reason),
+            receipt=_receipt(
+                request=request, disposition=disposition, observation=None, reason=reason
+            ),
             reason=reason,
         )
     finally:

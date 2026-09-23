@@ -20,14 +20,32 @@ class Qualification:
     receipt: Receipt
 
 
-def qualify(epoch: InvalidationEpoch, consumers: tuple[Subject, ...], witnesses: tuple[Witness, ...], strategy: RolloverStrategy, critical: frozenset[str] = frozenset(), *, durable: bool = False, transactional: bool = False) -> Qualification:
+def qualify(
+    epoch: InvalidationEpoch,
+    consumers: tuple[Subject, ...],
+    witnesses: tuple[Witness, ...],
+    strategy: RolloverStrategy,
+    critical: frozenset[str] = frozenset(),
+    *,
+    durable: bool = False,
+    transactional: bool = False,
+) -> Qualification:
     admitted = admit(epoch, consumers, witnesses)
     keys = tuple(c.key for c in consumers)
     result = evaluate(strategy, admitted.frontier, keys, critical)
     _ = compare(admitted.frontier, keys, critical)
     store = select_store(durable=durable, transactional=transactional)
     standing = "PARTIAL_ALIVE" if result.complete else "UNKNOWN"
-    receipt = issue({"producer": epoch.producer.key, "generation": epoch.generation, "event_id": epoch.event_id, "strategy": strategy.value, "standing": standing, "store": store.kind.value})
+    receipt = issue(
+        {
+            "producer": epoch.producer.key,
+            "generation": epoch.generation,
+            "event_id": epoch.event_id,
+            "strategy": strategy.value,
+            "standing": standing,
+            "store": store.kind.value,
+        }
+    )
     return Qualification(strategy, standing, store.kind.value, receipt)
 
 

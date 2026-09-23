@@ -1,12 +1,15 @@
 from dataclasses import dataclass
+
 from .policies import CollectorPolicy
 from .subject import Refusal
+
 
 @dataclass(frozen=True, order=True)
 class PlanWitness:
     generation: int
     policy: CollectorPolicy
     digest: str
+
 
 def current_frontier(witnesses: tuple[PlanWitness, ...]) -> PlanWitness | None:
     if not witnesses:

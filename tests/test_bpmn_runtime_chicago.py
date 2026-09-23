@@ -6,10 +6,18 @@ module only adapts its real result.
 
 from __future__ import annotations
 
+import importlib.util as _importlib_util
 from pathlib import Path
 
 import pytest
 
+from gymact.standing import named_standing_skip
+
+named_standing_skip(
+    "LOCAL_EXTRA:bpmn",
+    available=_importlib_util.find_spec("SpiffWorkflow") is not None,
+    reason="the optional 'bpmn' extra is not installed -- `uv sync --extra bpmn`",
+)
 from gymact.bpmn_runtime import BpmnWorkflowRefusal, run_bpmn_workflow
 
 FIXTURE = Path(__file__).parent / "fixtures" / "simple_sequential.bpmn"

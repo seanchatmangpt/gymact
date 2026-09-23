@@ -19,16 +19,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
 __all__ = [
     "MFWP",
     "POWL2",
     "PROV",
     "XSD",
-    "ParameterBinding",
     "ActivityLeaf",
     "ChildBinding",
+    "ParameterBinding",
     "PowlModel",
 ]
 
@@ -56,7 +55,7 @@ class ActivityLeaf:
     activity_label: str
     implements_action: str
     plan_ordinal: int
-    binds_parameter: Tuple[str, ...] = ()
+    binds_parameter: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -66,7 +65,7 @@ class ChildBinding:
     iri: str
     child_index: int
     child_model: str
-    precedes: Tuple[str, ...] = ()
+    precedes: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -74,18 +73,18 @@ class PowlModel:
     """The decoded ``powl2:Model`` root plus everything it reaches."""
 
     iri: str
-    types: Tuple[str, ...]
-    derived_from: Tuple[str, ...]
-    was_derived_from: Tuple[str, ...]
-    has_child: Tuple[str, ...]
-    projection: Optional[str] = None
-    planner_run: Optional[str] = None
-    domain_digest: Optional[str] = None
-    problem_digest: Optional[str] = None
-    activity_count: Optional[int] = None
-    children: Dict[str, ChildBinding] = field(default_factory=dict)
-    leaves: Dict[str, ActivityLeaf] = field(default_factory=dict)
-    bindings: Dict[str, ParameterBinding] = field(default_factory=dict)
+    types: tuple[str, ...]
+    derived_from: tuple[str, ...]
+    was_derived_from: tuple[str, ...]
+    has_child: tuple[str, ...]
+    projection: str | None = None
+    planner_run: str | None = None
+    domain_digest: str | None = None
+    problem_digest: str | None = None
+    activity_count: int | None = None
+    children: dict[str, ChildBinding] = field(default_factory=dict)
+    leaves: dict[str, ActivityLeaf] = field(default_factory=dict)
+    bindings: dict[str, ParameterBinding] = field(default_factory=dict)
 
-    def ordered_children(self) -> List[ChildBinding]:
+    def ordered_children(self) -> list[ChildBinding]:
         return sorted(self.children.values(), key=lambda c: c.child_index)

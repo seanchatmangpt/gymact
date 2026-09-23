@@ -88,9 +88,7 @@ def test_compiler_manufactures_deterministic_boto3_contract() -> None:
     assert create.success_required_paths == (("response", "Location"),)
     assert create.allowed_status_codes == (200, 400, 409)
     assert create.allowed_error_codes == (None, "BucketAlreadyExists", "InvalidBucketName")
-    assert [
-        (rule.error_code, rule.status_codes) for rule in create.error_status_rules
-    ] == [
+    assert [(rule.error_code, rule.status_codes) for rule in create.error_status_rules] == [
         ("BucketAlreadyExists", (409,)),
         ("InvalidBucketName", (400,)),
     ]
@@ -147,9 +145,7 @@ def test_provider_error_code_and_status_must_be_a_modeled_pair() -> None:
     assert validate_cloud_trace_contract(correct, evidence.profile).admitted is True
     invalid = validate_cloud_trace_contract(cross_paired, evidence.profile)
     assert invalid.admitted is False
-    assert [diff.reason for diff in invalid.differences] == [
-        "trace_contract_error_status_mismatch"
-    ]
+    assert [diff.reason for diff in invalid.differences] == ["trace_contract_error_status_mismatch"]
 
 
 def test_compiled_evidence_replays_and_qualifies_trace() -> None:
@@ -166,9 +162,7 @@ def test_compiled_evidence_replays_and_qualifies_trace() -> None:
     )
 
     assert replay_cloud_contract_evidence(evidence, receipt) is True
-    assert compare_cloud_traces_under_evidence(
-        trace, trace, evidence, source
-    ).equivalent is True
+    assert compare_cloud_traces_under_evidence(trace, trace, evidence, source).equivalent is True
 
 
 def test_success_requirement_is_bound_into_profile_receipt() -> None:
@@ -209,9 +203,7 @@ def test_source_tamper_invalidates_compiled_evidence() -> None:
         ),
     )
 
-    result = compare_cloud_traces_under_evidence(
-        trace, trace, evidence, source + b"tampered"
-    )
+    result = compare_cloud_traces_under_evidence(trace, trace, evidence, source + b"tampered")
 
     assert result.equivalent is False
     assert any(diff.reason == "contract_source_digest_mismatch" for diff in result.differences)
@@ -230,9 +222,7 @@ def test_duplicate_error_declarations_do_not_change_profile() -> None:
     source = _service_model()
     baseline = compile_aws_botocore_contract(source, source_uri=SOURCE_URI)
     model = json.loads(source)
-    model["operations"]["CreateBucket"]["errors"].append(
-        {"shape": "BucketAlreadyExists"}
-    )
+    model["operations"]["CreateBucket"]["errors"].append({"shape": "BucketAlreadyExists"})
     duplicate = compile_aws_botocore_contract(
         json.dumps(model, separators=(",", ":")).encode(),
         source_uri=SOURCE_URI,
@@ -253,9 +243,7 @@ def test_duplicate_error_declarations_do_not_change_profile() -> None:
             json.dumps(
                 {
                     "metadata": {"endpointPrefix": "s3", "apiVersion": "2006-03-01"},
-                    "operations": {
-                        "CreateBucket": {"input": {"shape": "MissingShape"}}
-                    },
+                    "operations": {"CreateBucket": {"input": {"shape": "MissingShape"}}},
                     "shapes": {},
                 }
             ).encode(),
@@ -272,7 +260,7 @@ def test_dangling_output_shape_fails_closed() -> None:
     model = json.loads(_service_model())
     model["operations"]["CreateBucket"]["output"] = {"shape": "MissingOutput"}
 
-    with pytest.raises(AwsBotocoreContractCompilationError, match="shapes.MissingOutput"):
+    with pytest.raises(AwsBotocoreContractCompilationError, match=r"shapes.MissingOutput"):
         compile_aws_botocore_contract(json.dumps(model).encode(), source_uri=SOURCE_URI)
 
 

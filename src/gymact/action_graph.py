@@ -1,4 +1,5 @@
 """Project ActionDefinition into the canonical combinatorial possibility topology."""
+
 from __future__ import annotations
 
 from gymact.action_contract import (

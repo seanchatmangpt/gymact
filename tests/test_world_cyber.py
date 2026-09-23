@@ -25,9 +25,7 @@ def materialized_gym(authority_resolver) -> tuple[GymAct, str]:
     gym = GymAct(authority_resolver=authority_resolver)
     gym.register_provider(build_world_cyber_provider())
     result = run(
-        gym.materialize(
-            MaterializationIntent(provider="world-cyber", config={"actor": "red"})
-        )
+        gym.materialize(MaterializationIntent(provider="world-cyber", config={"actor": "red"}))
     )
     assert result.accepted is True, result.receipt.reason
     assert result.episode is not None
@@ -89,9 +87,7 @@ def test_kernel_refuses_ambient_do_and_receipts_authorized_actuation() -> None:
     assert result.accepted is True
     assert result.standing is Standing.ALIVE
     assert result.receipt.authority_ref == AUTHORITY
-    assert result.receipt.authority_evidence_ref == (
-        f"urn:gymact:authority-decision:{AUTHORITY}"
-    )
+    assert result.receipt.authority_evidence_ref == (f"urn:gymact:authority-decision:{AUTHORITY}")
     assert result.receipt.pre_state_digest != result.receipt.post_state_digest
     assert result.effect is not None
     assert result.effect["procedure"] == "interrupt-identity"
@@ -152,11 +148,7 @@ def test_blue_restore_recomputes_dependency_state_not_actuator_narration() -> No
     blue_checkpoint["effective"] = checkpoint["effective"]
     blue_checkpoint["history"] = checkpoint["history"]
     run(blue.restore(blue_checkpoint))
-    result = run(
-        blue.actuate(
-            capability(blue, "restore-resource"), {"target": "identity-core"}
-        )
-    )
+    result = run(blue.actuate(capability(blue, "restore-resource"), {"target": "identity-core"}))
     assert "identity-core" in result["changed_assets"]
     observed = run(blue.observe())
     assert observed["staleness_steps"] == 1
@@ -169,11 +161,7 @@ def test_blue_restore_recomputes_dependency_state_not_actuator_narration() -> No
 def test_checkpoint_restore_is_deterministic() -> None:
     env = run(build_world_cyber_provider().materialize(scenario=None, config={"actor": "gray"}))
     before = run(env.checkpoint())
-    run(
-        env.actuate(
-            capability(env, "cause-region-failure"), {"target": "telecom-backbone"}
-        )
-    )
+    run(env.actuate(capability(env, "cause-region-failure"), {"target": "telecom-backbone"}))
     assert run(env.checkpoint()) != before
     run(env.restore(before))
     assert run(env.checkpoint()) == before

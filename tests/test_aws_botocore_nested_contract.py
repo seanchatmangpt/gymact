@@ -109,9 +109,7 @@ def test_nested_required_structures_are_manufactured_deterministically() -> None
         ("response", "Result"),
         ("response", "Result", "Id"),
     )
-    assert {
-        (rule.guard_paths, rule.path) for rule in contract.conditional_required_paths
-    } == {
+    assert {(rule.guard_paths, rule.path) for rule in contract.conditional_required_paths} == {
         (
             (("request", "Config", "Optional"),),
             ("request", "Config", "Optional", "Token"),
@@ -178,9 +176,7 @@ def test_optional_parent_present_requires_provider_required_descendant() -> None
 
 
 def test_optional_parent_with_required_descendant_is_admitted() -> None:
-    step = _success_step(
-        request={"Config": {"Region": "us-east-1", "Optional": {"Token": "t"}}}
-    )
+    step = _success_step(request={"Config": {"Region": "us-east-1", "Optional": {"Token": "t"}}})
 
     assert validate_cloud_trace_contract((step,), _compile().profile).admitted is True
 
@@ -282,7 +278,7 @@ def test_dangling_optional_shape_fails_closed() -> None:
     model["shapes"]["Config"]["members"]["Optional"] = {"shape": "MissingShape"}
     source = json.dumps(model, separators=(",", ":")).encode()
 
-    with pytest.raises(AwsBotocoreContractCompilationError, match="shapes.MissingShape"):
+    with pytest.raises(AwsBotocoreContractCompilationError, match=r"shapes.MissingShape"):
         _compile(source)
 
 

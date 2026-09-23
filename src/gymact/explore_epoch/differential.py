@@ -15,5 +15,7 @@ class Differential:
         return len({r.complete for r in self.results})
 
 
-def compare(frontier: dict[str, WitnessKind], consumers: tuple[str, ...], critical: frozenset[str]) -> Differential:
+def compare(
+    frontier: dict[str, WitnessKind], consumers: tuple[str, ...], critical: frozenset[str]
+) -> Differential:
     return Differential(tuple(evaluate(s, frontier, consumers, critical) for s in RolloverStrategy))

@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
-from rdflib import Graph, Literal, Namespace, RDF, URIRef
+from rdflib import RDF, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import DCTERMS, SOSA
 
 from gymact import registry
@@ -60,7 +60,9 @@ def test_sregym_capability_catalog_is_exactly_ontology_projection() -> None:
     for subject in subjects:
         row = projected[str(subject)]
         consequence = graph.value(subject, SR.consequence)
-        consequence_label = graph.value(consequence, URIRef("http://www.w3.org/2004/02/skos/core#prefLabel"))
+        consequence_label = graph.value(
+            consequence, URIRef("http://www.w3.org/2004/02/skos/core#prefLabel")
+        )
         route_node = graph.value(subject, DCTERMS.relation)
         assert str(graph.value(subject, SR.binding)) == row["binding"]
         assert str(consequence_label) == row["consequence"]
@@ -70,12 +72,8 @@ def test_sregym_capability_catalog_is_exactly_ontology_projection() -> None:
 
 
 def test_sregym_read_do_partition_matches_kernel_semantics() -> None:
-    projected_do = {
-        row["iri"] for row in SREGYM_CAPABILITY_ROWS if row["consequence"] == "DO"
-    }
-    projected_read = {
-        row["iri"] for row in SREGYM_CAPABILITY_ROWS if row["consequence"] == "READ"
-    }
+    projected_do = {row["iri"] for row in SREGYM_CAPABILITY_ROWS if row["consequence"] == "DO"}
+    projected_read = {row["iri"] for row in SREGYM_CAPABILITY_ROWS if row["consequence"] == "READ"}
 
     assert projected_do == EXPECTED_DO
     assert len(projected_do) == 3
@@ -118,8 +116,7 @@ def test_sregym_lite_corpus_and_program_set_are_exact() -> None:
         for subject in graph.subjects(RDF.type, SR.CorpusSubject)
     }
     programs = {
-        str(graph.value(subject, SR.problemId))
-        for subject in graph.subjects(RDF.type, SR.Program)
+        str(graph.value(subject, SR.problemId)) for subject in graph.subjects(RDF.type, SR.Program)
     }
 
     assert corpus == set(SREGYM_LITE_PROBLEMS)

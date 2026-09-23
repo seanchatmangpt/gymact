@@ -69,8 +69,8 @@ pytestmark = pytest.mark.skipif(
 if str(_POWL_REPO) not in sys.path:
     sys.path.insert(0, str(_POWL_REPO))
 
-from gymact.powl.algebra import Atom, NodeId, OrderEdge, PartialOrder  # noqa: E402
-from gymact.powl.frequency import ONCE  # noqa: E402
+from gymact.powl.algebra import Atom, NodeId, OrderEdge, PartialOrder
+from gymact.powl.frequency import ONCE
 
 FIXTURE_LABELS: tuple[str, str, str] = ("Pay", "Prepare Coffee", "Serve")
 
@@ -105,17 +105,17 @@ def _install_namespace_stub(name: str, directory: Path) -> None:
 
 _install_namespace_stub("powl", _POWL_REPO / "powl")
 _install_namespace_stub("powl.objects", _POWL_REPO / "powl" / "objects")
-_install_namespace_stub(
-    "powl.objects.tagged_powl", _POWL_REPO / "powl" / "objects" / "tagged_powl"
-)
+_install_namespace_stub("powl.objects.tagged_powl", _POWL_REPO / "powl" / "objects" / "tagged_powl")
 
 
 def _import_reference():
     """Import only the leaf reference submodules -- never `import powl`
     itself, and never `powl.objects.tagged_powl`'s own `__init__.py`
     (see `_install_namespace_stub`'s docstring above)."""
-    from powl.objects.tagged_powl.activity import Activity  # noqa: PLC0415
-    from powl.objects.tagged_powl.partial_order import PartialOrder as RefPartialOrder  # noqa: PLC0415
+    from powl.objects.tagged_powl.activity import Activity
+    from powl.objects.tagged_powl.partial_order import (
+        PartialOrder as RefPartialOrder,
+    )
 
     return Activity, RefPartialOrder
 
@@ -233,7 +233,11 @@ class TestReferenceModelConformance:
         evidence the comparison can fail. Mutate one label on the gymact
         side only and assert the label-set comparison genuinely diverges."""
         mutated = PartialOrder(
-            children=(Atom(label="Wrong Label"), Atom(label=FIXTURE_LABELS[1]), Atom(label=FIXTURE_LABELS[2])),
+            children=(
+                Atom(label="Wrong Label"),
+                Atom(label=FIXTURE_LABELS[1]),
+                Atom(label=FIXTURE_LABELS[2]),
+            ),
             order=frozenset(
                 {
                     OrderEdge(NodeId(0), NodeId(1)),

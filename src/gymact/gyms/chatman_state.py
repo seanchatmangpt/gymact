@@ -40,10 +40,10 @@ from pathlib import Path
 from gymact.models import CostDimension
 
 __all__ = [
-    "LocalRepoState",
     "GithubRepoState",
-    "discover_local_repos",
+    "LocalRepoState",
     "discover_github_repos",
+    "discover_local_repos",
     "estimated_effort_cost",
 ]
 
@@ -154,7 +154,9 @@ def _real_ahead_behind(repo_path: Path) -> str | None:
         return None
 
 
-def discover_github_repos(*, owner: str = "seanchatmangpt", limit: int = 25) -> tuple[GithubRepoState, ...]:
+def discover_github_repos(
+    *, owner: str = "seanchatmangpt", limit: int = 25
+) -> tuple[GithubRepoState, ...]:
     """Real `gh repo list <owner> --json name,pushedAt,primaryLanguage,
     isPrivate --limit <limit>` call, parsed into typed rows, already
     ordered by real `pushedAt` descending (the CLI's own default ordering,
@@ -212,7 +214,15 @@ def estimated_effort_cost(repo_path: Path, *, since: str = "7 days ago") -> Cost
     yields `quantity=0.0` honestly -- never a fabricated non-zero floor.
     """
     result = subprocess.run(
-        ["git", "-C", str(repo_path), "log", f"--since={since}", "--shortstat", "--pretty=format:COMMIT"],
+        [
+            "git",
+            "-C",
+            str(repo_path),
+            "log",
+            f"--since={since}",
+            "--shortstat",
+            "--pretty=format:COMMIT",
+        ],
         capture_output=True,
         text=True,
         timeout=15,
@@ -228,7 +238,9 @@ def estimated_effort_cost(repo_path: Path, *, since: str = "7 days ago") -> Cost
             token = token.strip()
             if "insertion" in token or "deletion" in token:
                 lines_changed += int(token.split()[0])
-    hours = commit_count * _HOURS_PER_COMMIT + (lines_changed / 500.0) * _HOURS_PER_500_LINES_CHANGED
+    hours = (
+        commit_count * _HOURS_PER_COMMIT + (lines_changed / 500.0) * _HOURS_PER_500_LINES_CHANGED
+    )
     return CostDimension(
         unit="engineering_hour",
         quantity=round(hours, 2),

@@ -16,9 +16,7 @@ def agreement() -> dict[str, object]:
         "product_id": "product-runtime",
         "offer_id": "offer-runtime",
         "billing_authority": "EXTERNAL_COMMERCE",
-        "pricing": [
-            {"dimension_id": "calls", "unit": "call", "unit_price_micros": 11}
-        ],
+        "pricing": [{"dimension_id": "calls", "unit": "call", "unit_price_micros": 11}],
         "effective_at": "2026-08-19T00:00:00Z",
     }
 
@@ -60,9 +58,7 @@ async def test_registered_provider_is_discoverable_and_default_runtime_refuses_d
 
 @pytest.mark.asyncio
 async def test_registered_provider_executes_with_outer_authority_and_verifies_state() -> None:
-    gym = GymAct(
-        authority_resolver=AllowListAuthorityResolver({"authority:commerce-test"})
-    )
+    gym = GymAct(authority_resolver=AllowListAuthorityResolver({"authority:commerce-test"}))
     gym.register_provider(create_builtin_provider("commerce-dfcm"))
 
     materialized = await gym.create_episode("commerce-dfcm", scenario="fortune-5-commerce")
@@ -87,9 +83,7 @@ async def test_registered_provider_executes_with_outer_authority_and_verifies_st
     assert result.effect["standing"] == "ALIVE"
     assert result.effect["evidence"]["receipt_id"]
 
-    verification = await gym.verify(
-        episode_id, {"agreement_ids": ["agreement-runtime"]}
-    )
+    verification = await gym.verify(episode_id, {"agreement_ids": ["agreement-runtime"]})
     assert verification.passed
     receipts = gym.episode_receipts(episode_id)
     assert any(receipt.verified is True for receipt in receipts)

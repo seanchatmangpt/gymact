@@ -19,8 +19,16 @@ a hand-maintained duplicate list.
 
 from __future__ import annotations
 
+import importlib.util as _importlib_util
 import inspect
 
+from gymact.standing import named_standing_skip
+
+named_standing_skip(
+    "LOCAL_EXTRA:dspy",
+    available=_importlib_util.find_spec("dspy") is not None,
+    reason="the optional 'dspy' extra is not installed -- `uv sync --extra dspy`",
+)
 import dspy
 
 from gymact.dspy_verifier import SuspicionOfMismatch
@@ -77,11 +85,7 @@ def _field_desc(field_info) -> str | None:
 
 
 def test_every_signature_has_a_real_docstring() -> None:
-    missing = [
-        sig.__name__
-        for sig in ALL_SIGNATURES
-        if not (sig.__doc__ and sig.__doc__.strip())
-    ]
+    missing = [sig.__name__ for sig in ALL_SIGNATURES if not (sig.__doc__ and sig.__doc__.strip())]
     assert missing == [], f"Signatures with no real docstring: {missing}"
 
 
@@ -114,9 +118,7 @@ def test_every_output_field_has_a_specific_desc() -> None:
 
 def test_no_signature_declares_the_same_field_as_both_input_and_output() -> None:
     conflicts = [
-        sig.__name__
-        for sig in ALL_SIGNATURES
-        if set(sig.input_fields) & set(sig.output_fields)
+        sig.__name__ for sig in ALL_SIGNATURES if set(sig.input_fields) & set(sig.output_fields)
     ]
     assert conflicts == [], f"Signatures with an input/output field name conflict: {conflicts}"
 

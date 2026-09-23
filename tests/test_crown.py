@@ -3,7 +3,12 @@ from __future__ import annotations
 import pytest
 
 from gymact.capsule import CapsuleIdentity
-from gymact.crown import CrownAdmissionError, CrownEvidence, CrownReceipt, frontier_result_from_crown
+from gymact.crown import (
+    CrownAdmissionError,
+    CrownEvidence,
+    CrownReceipt,
+    frontier_result_from_crown,
+)
 from gymact.models import Standing
 from gymact.sota import dominates
 

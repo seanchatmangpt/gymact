@@ -1,0 +1,12 @@
+{
+  "provider": "memory",
+  "config": {
+    "initial": {
+      "x": 1
+    }
+  },
+  "materialization_idempotency_key": "cli-observe-verify",
+  "expected": {
+    "x": 1
+  }
+}

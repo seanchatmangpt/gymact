@@ -154,6 +154,88 @@ target-version = "py311"
 select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 ignore = ["B008"]
 
+[tool.ruff.lint.per-file-ignores]
+# GENERATED projections (ggen renders these from pack ontologies; the owning
+# generator, not the repo's hand formatter, owns their bytes). See each file's
+# own "GENERATED / DO NOT HAND EDIT" header:
+# - admission.py: long authority/class data lines (E501), intentional
+#   prov: alias keys that repeat dict literals by design (F601), and a
+#   str,Enum mixin predating StrEnum (UP042).
+# - generated/: the rendered sregym MCP catalog (E501 long URI rows).
+# - explore_process_convergence_correspondence/__init__.py: explicit
+#   re-export surface (F401 names imported for `from x import *`-style
+#   re-export, intentionally unaliased).
+"src/gymact/semantics/admission.py" = ["E501", "F601", "UP042"]
+"src/gymact/generated/*" = ["E501"]
+"src/gymact/explore_process_convergence_correspondence/__init__.py" = ["F401"]
+
+# UP042 deliberately NOT applied: these enums are `class X(str, Enum)` mixins
+# whose `str()` output (e.g. "Standing.ALIVE") is load-bearing in rendered
+# receipts and RDF literals. Converting to `enum.StrEnum` would change
+# f-string/str() output to the bare value - a behavior change, not a lint fix.
+# Revisit only with a deliberate serialization audit.
+"src/gymact/explore_*/**" = ["UP042"]
+"src/gymact/semantics/rdf_source.py" = ["UP042"]
+
+# E501 deliberately NOT applied to long semantic data literals: capability
+# titles/claims, pack gate-description tables, embedded BPMN/JSON/SQL text,
+# registry optional-dependency commentary and digest-claim strings. Wrapping
+# would split meaningful data across concat points for zero semantic gain;
+# these lines are data, not prose.
+"src/gymact/connection.py" = ["E501"]
+"src/gymact/explore_certificate_federation/certificate.py" = ["E501"]
+"src/gymact/gdmcp_bpmn_bridge.py" = ["E501"]
+"src/gymact/gyms/chatman_state_gym.py" = ["E501"]
+"src/gymact/gyms/cloud_topology_gym.py" = ["E501"]
+"src/gymact/gyms/cloud_topology_validation.py" = ["E501"]
+"src/gymact/gyms/k8s_resource_gym.py" = ["E501"]
+"src/gymact/gyms/multicloud.py" = ["E501"]
+"src/gymact/powl/guard_executor.py" = ["E501"]
+"src/gymact/powl/validate.py" = ["E501"]
+"src/gymact/registry.py" = ["E501"]
+"src/gymact/sqlite_ledger.py" = ["E501"]
+"tests/explore/test_semantic_currentness_vector.py" = ["E501"]
+"tests/test_bpmn_runtime_admission_chicago.py" = ["E501"]
+"tests/test_composition_inventory_completeness_chicago.py" = ["E501"]
+"tests/test_multicloud.py" = ["E501"]
+"tests/test_protocol_conformance.py" = ["E501"]
+
+# E402 for standing-gated test modules: these files intentionally place their
+# real-collaborator availability gates (named_standing_skip / importlib
+# find_spec probes) BEFORE the gym/extra imports so an unavailable optional
+# collaborator degrades the whole module to a named standing skip without
+# ever importing a missing package. The imports after a gate are the point.
+"tests/gyms/test_cloud_topology_unit.py" = ["E402"]
+"tests/powl/test_canonical_bridge.py" = ["E402"]
+"tests/powl/test_reference_model_conformance.py" = ["E402"]
+"tests/test_algebra_protocols.py" = ["E402"]
+"tests/test_bpmn_runtime_chicago.py" = ["E402"]
+"tests/test_browsergym_edges.py" = ["E402"]
+"tests/test_browsergym_gym.py" = ["E402"]
+"tests/test_capability_manifest.py" = ["E402"]
+"tests/test_cloud_topology.py" = ["E402"]
+"tests/test_cloud_topology_validation.py" = ["E402"]
+"tests/test_combinatorial_ocel.py" = ["E402"]
+"tests/test_cube_container_counter.py" = ["E402"]
+"tests/test_cube_counter.py" = ["E402"]
+"tests/test_dspy_agent_chicago.py" = ["E402"]
+"tests/test_dspy_ocel_chicago.py" = ["E402"]
+"tests/test_dspy_signature_discipline.py" = ["E402"]
+"tests/test_dspy_sregym_agent_chicago.py" = ["E402"]
+"tests/test_dspy_verifier_chicago.py" = ["E402"]
+"tests/test_gdmcp_bpmn_bridge_chicago.py" = ["E402"]
+"tests/test_ggen_gym_contract.py" = ["E402"]
+"tests/test_gymnasium_env.py" = ["E402"]
+"tests/test_gymnasium_replay_restore_explore.py" = ["E402"]
+"tests/test_inspect_evals.py" = ["E402"]
+"tests/test_kubernetes_reconciliation.py" = ["E402"]
+"tests/test_mcp_client_session.py" = ["E402"]
+"tests/test_ocel.py" = ["E402"]
+"tests/test_run_sparql_gates.py" = ["E402"]
+"tests/test_swegym_live.py" = ["E402"]
+"tests/test_terraform_docker_apply.py" = ["E402"]
+"tests/test_two_gym_gate.py" = ["E402"]
+
 [tool.uv.build-backend]
 module-root = "src"
 module-name = "gymact"

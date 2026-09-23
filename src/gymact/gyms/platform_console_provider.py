@@ -144,7 +144,9 @@ class PlatformConsoleEnvironment:
 
     requires_authority = True
 
-    def __init__(self, *, base_url: str, api_key: str, timeout_s: float = _DEFAULT_TIMEOUT_S) -> None:
+    def __init__(
+        self, *, base_url: str, api_key: str, timeout_s: float = _DEFAULT_TIMEOUT_S
+    ) -> None:
         if not api_key.startswith("pk_live_"):
             raise PlatformConsoleAuthError(
                 "PLATFORM_CONSOLE_API_KEY does not match the real pk_live_ prefix "
@@ -167,7 +169,9 @@ class PlatformConsoleEnvironment:
         self._ensure_open()
         return PLATFORM_CONSOLE_CAPABILITIES
 
-    def _request(self, method: str, path: str, payload: dict[str, Any] | None = None) -> tuple[int, dict[str, Any]]:
+    def _request(
+        self, method: str, path: str, payload: dict[str, Any] | None = None
+    ) -> tuple[int, dict[str, Any]]:
         self._ensure_open()
         body = None if payload is None else json.dumps(payload).encode("utf-8")
         request = Request(
@@ -336,9 +340,7 @@ class PlatformConsoleEnvironment:
 
         async def _check() -> bool:
             nonlocal observed
-            result = await self.actuate(
-                _GET_PROJECT_STATUS_CAPABILITY, {"name": project_name}
-            )
+            result = await self.actuate(_GET_PROJECT_STATUS_CAPABILITY, {"name": project_name})
             match = result.get("project")
             observed = match if isinstance(match, dict) else {}
             if not observed:

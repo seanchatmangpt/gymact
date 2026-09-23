@@ -17,13 +17,25 @@ def select(candidates: tuple[ControlCandidate, ...], strategy: Strategy) -> Cont
     if not candidates:
         raise Refused("NO_CONTROL_CANDIDATES", strategy)
     if strategy is Strategy.MAX_DEBT_REDUCTION:
-        key = lambda item: (item.expected_debt_reduction, -item.cost, item.key)
+
+        def key(item: object) -> object:
+            return (item.expected_debt_reduction, -item.cost, item.key)
+
         return max(candidates, key=key)
     if strategy is Strategy.MIN_REGRESSION_RISK:
-        key = lambda item: (item.regression_risk, item.cost, item.key)
+
+        def key(item: object) -> object:
+            return (item.regression_risk, item.cost, item.key)
+
         return min(candidates, key=key)
     if strategy is Strategy.MAX_BLOCKER_RELIEF:
-        key = lambda item: (item.blocker_relief, -item.cost, item.key)
+
+        def key(item: object) -> object:
+            return (item.blocker_relief, -item.cost, item.key)
+
         return max(candidates, key=key)
-    key = lambda item: (item.oscillation_risk, item.regression_risk, item.cost, item.key)
-    return min(candidates, key=key)
+
+    def _default_key(item: object) -> object:
+        return (item.oscillation_risk, item.regression_risk, item.cost, item.key)
+
+    return min(candidates, key=_default_key)

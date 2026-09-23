@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from fractions import Fraction
 from enum import StrEnum
+from fractions import Fraction
 
 from .distribution import FiniteDistribution
 from .divergence import total_variation
@@ -27,5 +27,7 @@ class AmbiguitySet:
 
     def admits_tv(self, candidate: FiniteDistribution) -> bool:
         if self.kind is not AmbiguityKind.TV:
-            raise refuse("WRONG_AMBIGUITY_METRIC", "TV membership requested for a different ambiguity kind")
+            raise refuse(
+                "WRONG_AMBIGUITY_METRIC", "TV membership requested for a different ambiguity kind"
+            )
         return total_variation(self.center, candidate) <= self.radius

@@ -10,12 +10,13 @@ really instantiates `CubeCounterEnvironment`, which really wraps a real
 
 This module claims standing "LOCAL_GYM:cube-counter" -- deliberately not
 anything cloud-flavored, since `counter-cube` is CUBE's own no-Docker,
-no-network reference task and never claims otherwise. Per
-`gymact.standing.require_standing`, the real thing is the default: if the
-optional `cube` extra isn't installed, this module now FAILS unless the
-run explicitly sets `GYMACT_ALLOW_DEGRADED_STANDINGS` to include
-"LOCAL_GYM:cube-counter" (or "*") -- a skip here is something a run must
-opt into, never something it silently gets.
+no-network reference task and never claims otherwise. Per GYMACT-7 it gates
+through `gymact.standing.named_standing_skip`: if the optional `cube` extra
+isn't installed, the whole module degrades to a NAMED, VISIBLE standing
+skip carrying "LOCAL_GYM:cube-counter" and the real reason, so plain
+hermetic collections stay green while the degraded standing stays in the
+run summary. Nothing is mocked or substituted; installing the extra makes
+the real court run.
 """
 
 from __future__ import annotations
@@ -24,18 +25,18 @@ import importlib.util
 
 import pytest
 
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
-require_standing(
+named_standing_skip(
     "LOCAL_GYM:cube-counter",
     available=importlib.util.find_spec("counter_cube") is not None,
     reason="optional 'cube' extra not installed (uv sync --extra cube / --all-extras)",
 )
 
-from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent  # noqa: E402
-from gymact.gyms.cube_counter import CubeCounterProvider  # noqa: E402
-from gymact.models import ActuationIntent, Operation, Standing  # noqa: E402
-from gymact.process import ConformanceChecker  # noqa: E402
+from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent
+from gymact.gyms.cube_counter import CubeCounterProvider
+from gymact.models import ActuationIntent, Operation, Standing
+from gymact.process import ConformanceChecker
 
 INCREMENT_CAPABILITY = "urn:gymact:cube-counter:capability:increment"
 AUTHORITY = "urn:test:cube-counter-authority"

@@ -15,7 +15,7 @@ from dataclasses import dataclass
 
 from gymact.powl._canonical import sha256 as _sha256
 
-__all__ = ["ExecutionBound", "DEFAULT_BOUND"]
+__all__ = ["DEFAULT_BOUND", "ExecutionBound"]
 
 
 @dataclass(frozen=True, slots=True)

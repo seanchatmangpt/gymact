@@ -28,8 +28,7 @@ def discover(*, durable: bool = False, transactional: bool = False) -> tuple[Sto
     return tuple(
         candidate
         for candidate in CANDIDATES
-        if (not durable or candidate.durable)
-        and (not transactional or candidate.transactional)
+        if (not durable or candidate.durable) and (not transactional or candidate.transactional)
     )
 
 

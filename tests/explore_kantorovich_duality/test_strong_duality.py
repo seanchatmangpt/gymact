@@ -1,6 +1,12 @@
 from fractions import Fraction
 
-from gymact.explore_kantorovich_duality import DualPotential, FiniteMeasure, GroundMetric, TransportPlan, certify
+from gymact.explore_kantorovich_duality import (
+    DualPotential,
+    FiniteMeasure,
+    GroundMetric,
+    TransportPlan,
+    certify,
+)
 
 
 def test_exact_strong_duality_certificate() -> None:

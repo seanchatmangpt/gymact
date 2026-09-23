@@ -18,7 +18,6 @@ from gymact.evidence import digest
 from gymact.models import Capability, Consequence, FrozenModel
 from gymact.world import AffordanceKind, Move
 
-
 ACTION_CONTRACT_SCHEMA = "urn:gymact:action-contract:v1"
 ACTION_MANUFACTURE_SCHEMA = "urn:gymact:action-manufacture-projection:v1"
 
@@ -44,7 +43,7 @@ class CanonicalActionContract(FrozenModel):
     do_authority: Literal[False] = False
 
     @classmethod
-    def from_action(cls, action: ActionDefinition) -> "CanonicalActionContract":
+    def from_action(cls, action: ActionDefinition) -> CanonicalActionContract:
         return cls(action=action, contract_digest=_action_contract_digest(action))
 
     @model_validator(mode="after")

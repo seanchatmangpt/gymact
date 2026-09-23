@@ -2,7 +2,12 @@ from fractions import Fraction
 
 import pytest
 
-from gymact.explore_kantorovich_duality import DualityRefusal, FiniteMeasure, GroundMetric, TransportPlan
+from gymact.explore_kantorovich_duality import (
+    DualityRefusal,
+    FiniteMeasure,
+    GroundMetric,
+    TransportPlan,
+)
 
 
 def _metric() -> GroundMetric:

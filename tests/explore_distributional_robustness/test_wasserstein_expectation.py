@@ -1,6 +1,8 @@
-from fractions import Fraction
-
-from gymact.explore_distributional_robustness import FiniteDistribution, wasserstein_1, worst_case_expectation
+from gymact.explore_distributional_robustness import (
+    FiniteDistribution,
+    wasserstein_1,
+    worst_case_expectation,
+)
 
 
 def test_wasserstein_and_worst_case_are_explicitly_distinct() -> None:

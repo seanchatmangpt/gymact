@@ -3,9 +3,10 @@
 The court admits and explores public-ontology possibility graphs. It does not choose
 or actuate implicitly. An explicit irreversible cut is required before BRCE execution.
 """
+
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from pydantic import Field
 

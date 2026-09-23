@@ -28,7 +28,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
 
 def _docker_available() -> bool:
@@ -49,13 +49,13 @@ def _docker_available() -> bool:
 
 def _datasets_available() -> bool:
     try:
-        import datasets  # noqa: F401
+        import datasets  # noqa: F401 (availability probe: import IS the check)
     except ImportError:
         return False
     return True
 
 
-require_standing(
+named_standing_skip(
     "LOCAL_GYM:swegym",
     available=_docker_available() and _datasets_available(),
     reason=(
@@ -64,11 +64,11 @@ require_standing(
     ),
 )
 
-from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent  # noqa: E402
-from gymact.gyms.swegym import SWEGYM_EVALUATE_CAPABILITY, SWEGymProvider  # noqa: E402
-from gymact.models import ActuationIntent  # noqa: E402
-from gymact.ocel import validate_ocel_log  # noqa: E402
-from gymact.process import ConformanceChecker  # noqa: E402
+from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent
+from gymact.gyms.swegym import SWEGYM_EVALUATE_CAPABILITY, SWEGymProvider
+from gymact.models import ActuationIntent
+from gymact.ocel import validate_ocel_log
+from gymact.process import ConformanceChecker
 
 AUTHORITY = "urn:test:swegym-live-authority"
 TASK_ID = "getmoto__moto-5752"

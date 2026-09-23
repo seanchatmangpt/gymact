@@ -1,6 +1,6 @@
-from dataclasses import dataclass
 import hashlib
 import json
+from dataclasses import dataclass
 
 from .authority import ActionClass
 from .refusal import FederationRefusal
@@ -19,7 +19,12 @@ class Receipt:
             raise FederationRefusal("INVALID_RECEIPT_AUTHORITY")
 
     def body(self) -> dict[str, object]:
-        return {"subject": self.subject.identity, "evidence": sorted(self.evidence_ids), "authority": self.authority.value, "actuation_performed": False}
+        return {
+            "subject": self.subject.identity,
+            "evidence": sorted(self.evidence_ids),
+            "authority": self.authority.value,
+            "actuation_performed": False,
+        }
 
     @property
     def digest(self) -> str:

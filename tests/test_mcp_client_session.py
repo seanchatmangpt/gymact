@@ -20,23 +20,23 @@ from __future__ import annotations
 
 import importlib.util
 
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
-require_standing(
+named_standing_skip(
     "LOCAL_GYM:mcp-client-session",
     available=importlib.util.find_spec("fastmcp") is not None,
     reason="the 'fastmcp' package is not importable in this environment",
 )
 
-from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent  # noqa: E402
-from gymact.gyms.mcp_client_session import (  # noqa: E402
+from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent
+from gymact.gyms.mcp_client_session import (
     MCP_CALL_TOOL_CAPABILITY,
     MCP_LIST_TOOLS_CAPABILITY,
     McpClientSessionProvider,
 )
-from gymact.models import ActuationIntent, Operation, Standing  # noqa: E402
-from gymact.ocel import receipts_to_ocel, validate_ocel_log  # noqa: E402
-from gymact.process import ConformanceChecker  # noqa: E402
+from gymact.models import ActuationIntent, Operation, Standing
+from gymact.ocel import receipts_to_ocel, validate_ocel_log
+from gymact.process import ConformanceChecker
 
 LIST_TOOLS = MCP_LIST_TOOLS_CAPABILITY.iri
 CALL_TOOL = MCP_CALL_TOOL_CAPABILITY.iri
@@ -73,9 +73,7 @@ async def _run_real_mcp_session_episode() -> list:
         await gym.observe(episode_id)
 
         result = await gym.act(
-            ActuationIntent(
-                episode_id=episode_id, capability=CALL_TOOL, authority_ref=AUTHORITY
-            )
+            ActuationIntent(episode_id=episode_id, capability=CALL_TOOL, authority_ref=AUTHORITY)
         )
         assert result.accepted is True
         receipts.append(result.receipt)

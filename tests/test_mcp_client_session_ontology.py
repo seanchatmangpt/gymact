@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from rdflib import Graph, RDF, URIRef
+from rdflib import RDF, Graph, URIRef
 from rdflib.namespace import DCTERMS, PROV, SOSA
 
 from gymact.gyms.mcp_client_session import (

@@ -7,14 +7,15 @@ unobserved behavior remains UNKNOWN and can never be silently promoted.
 
 from __future__ import annotations
 
+import json
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 from hashlib import sha256
-import json
-from typing import Any, Iterable, Mapping
+from typing import Any
 
-from blake3 import blake3
 import httpx
+from blake3 import blake3
 from rdflib import DCTERMS, RDF, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import DCAT, SKOS
 
@@ -126,8 +127,7 @@ class GcpContractCensus:
                 for method in self.methods
             ],
             "schemas": [
-                {"id": schema.identity, "sha256": schema.digest_sha256}
-                for schema in self.schemas
+                {"id": schema.identity, "sha256": schema.digest_sha256} for schema in self.schemas
             ],
         }
         return blake3(_canonical_json(payload).encode()).hexdigest()
@@ -162,11 +162,9 @@ class GcpDifferentialEvidence:
     equivalent: bool
     mismatches: tuple[str, ...]
 
-    def coverage_record(self) -> "GcpCoverageRecord":
+    def coverage_record(self) -> GcpCoverageRecord:
         disposition = (
-            CoverageDisposition.ALIVE
-            if self.equivalent
-            else CoverageDisposition.PARTIAL_ALIVE
+            CoverageDisposition.ALIVE if self.equivalent else CoverageDisposition.PARTIAL_ALIVE
         )
         return GcpCoverageRecord(
             method_id=self.method_id,
@@ -227,7 +225,7 @@ class GcpCoverageReport:
         cls,
         census: GcpContractCensus,
         records: Iterable[GcpCoverageRecord],
-    ) -> "GcpCoverageReport":
+    ) -> GcpCoverageReport:
         records_list = list(records)
         counts_by_id: dict[str, int] = {}
         by_id: dict[str, GcpCoverageRecord] = {}
@@ -255,10 +253,7 @@ class GcpCoverageReport:
             record = by_id.get(method_id)
             if record is None:
                 disposition = CoverageDisposition.UNKNOWN
-            elif (
-                record.disposition is CoverageDisposition.ALIVE
-                and not record.has_paired_evidence
-            ):
+            elif record.disposition is CoverageDisposition.ALIVE and not record.has_paired_evidence:
                 disposition = CoverageDisposition.PARTIAL_ALIVE
             else:
                 disposition = record.disposition
@@ -462,9 +457,7 @@ def normalize_http_response(
             canonical_body = raw.hex()
         else:
             body_kind = "json"
-            canonical_body = _canonical_json(
-                _project_json(decoded, projection.ignored_json_fields)
-            )
+            canonical_body = _canonical_json(_project_json(decoded, projection.ignored_json_fields))
 
     payload = {
         "status_code": response.status_code,

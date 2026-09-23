@@ -1,4 +1,5 @@
 """Refusal-aware semantic decision cache with zero cached execution authority."""
+
 from __future__ import annotations
 
 from pydantic import Field

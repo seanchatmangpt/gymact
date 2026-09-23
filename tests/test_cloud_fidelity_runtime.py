@@ -9,7 +9,6 @@ from gymact.gyms.cloud_fidelity import compare_cloud_traces, replay_cloud_trace
 from gymact.gyms.cloudsim.capabilities import CAPABILITY_BY_BINDING
 from gymact.gyms.cloudsim.provider import CloudSimProvider
 
-
 CREATE = {
     "service": "compute",
     "operation": "CreateInstance",

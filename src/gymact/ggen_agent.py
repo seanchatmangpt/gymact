@@ -32,6 +32,7 @@ violated. Kept as-is (real, tested, no functional issue) rather than reworked
 as part of this merge; a future contributor should not have to re-derive this
 distinction from scratch.
 """
+
 from __future__ import annotations
 
 import inspect
@@ -129,9 +130,7 @@ def _load_pack_graph(pack_dir: Path) -> Graph:
 
 def _exactly_one(values: tuple[Any, ...], *, field: str, subject: Any) -> Any:
     if len(values) != 1:
-        raise ValueError(
-            f"GGEN_AGENT_{field}_CARDINALITY:{subject}:{len(values)}"
-        )
+        raise ValueError(f"GGEN_AGENT_{field}_CARDINALITY:{subject}:{len(values)}")
     return values[0]
 
 
@@ -140,10 +139,7 @@ def _objects(graph: Graph, subject: Any, predicate: Any) -> tuple[Any, ...]:
 
 
 def _has_kind(graph: Graph, subject: Any, expected: str) -> bool:
-    return any(
-        _local_name(kind) == expected
-        for kind in graph.objects(subject, DCTERMS.type)
-    )
+    return any(_local_name(kind) == expected for kind in graph.objects(subject, DCTERMS.type))
 
 
 def _relation_of_kind(graph: Graph, subject: Any, expected: str) -> Any:
@@ -243,9 +239,7 @@ def compile_ggen_agent_specs(pack_dir: Path) -> tuple[GgenAgentSpec, ...]:
 
         extent_values = _objects(graph, agent, DCTERMS.extent)
         if len(extent_values) > 1:
-            raise ValueError(
-                f"GGEN_AGENT_MAX_WIP_CARDINALITY:{agent}:{len(extent_values)}"
-            )
+            raise ValueError(f"GGEN_AGENT_MAX_WIP_CARDINALITY:{agent}:{len(extent_values)}")
         max_wip = int(extent_values[0]) if extent_values else 1
 
         specs.append(
@@ -398,11 +392,7 @@ class GymActGgenManufacturer:
     ) -> Mapping[str, Any]:
         del observation
         capabilities = self._runtime.capabilities(self._episode_id)
-        matches = tuple(
-            capability
-            for capability in capabilities
-            if capability.binding == "sync"
-        )
+        matches = tuple(capability for capability in capabilities if capability.binding == "sync")
         if len(matches) != 1:
             raise RuntimeError("GGEN_SYNC_CAPABILITY_NOT_UNAMBIGUOUS")
         result = await self._runtime.act(

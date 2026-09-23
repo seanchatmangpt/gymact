@@ -7,13 +7,14 @@ anywhere in gymact, and specifically that `verify()` must poll real
 cluster-observed state (`kubectl get pod ... -o json`'s `.status.phase`),
 not just trust `kubectl apply`'s exit code.
 
-Per `gymact.standing.require_standing`, the real thing is the default: if
-no real Kubernetes cluster is reachable via the current kubeconfig context,
-this module FAILS unless the run explicitly sets
-`GYMACT_ALLOW_DEGRADED_STANDINGS` to include
-"LOCAL_GYM:kubernetes-reconciliation" (or "*") -- a skip here is something a
-run must opt into, never something it silently gets. Matches
-`test_cube_container_counter.py`'s contract.
+Per GYMACT-7 this module gates through
+`gymact.standing.named_standing_skip`: if no real Kubernetes cluster is
+reachable via the current kubeconfig context, the whole module degrades to
+a NAMED, VISIBLE standing skip carrying
+"LOCAL_GYM:kubernetes-reconciliation" and the real reason, so plain
+hermetic collections stay green while the degraded standing stays in the
+run summary. Matches `test_cube_container_counter.py`'s contract. Nothing
+is mocked; starting a cluster makes the real court run.
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
 
 def _kubectl_available() -> bool:
@@ -44,7 +45,7 @@ def _real_cluster_reachable() -> bool:
         return False
 
 
-require_standing(
+named_standing_skip(
     "LOCAL_GYM:kubernetes-reconciliation",
     available=_real_cluster_reachable(),
     reason="no reachable Kubernetes cluster on the current kubeconfig context "
@@ -52,11 +53,11 @@ require_standing(
     "`colima start --kubernetes`)",
 )
 
-from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent  # noqa: E402
-from gymact.gyms.kubernetes_reconciliation import KubernetesReconciliationProvider  # noqa: E402
-from gymact.models import ActuationIntent, Operation, Standing  # noqa: E402
-from gymact.ocel import receipts_to_ocel, validate_ocel_log  # noqa: E402
-from gymact.process import ConformanceChecker  # noqa: E402
+from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent
+from gymact.gyms.kubernetes_reconciliation import KubernetesReconciliationProvider
+from gymact.models import ActuationIntent, Operation, Standing
+from gymact.ocel import receipts_to_ocel, validate_ocel_log
+from gymact.process import ConformanceChecker
 
 GET_STATUS = "urn:gymact:kubernetes-reconciliation:capability:get_status"
 SCALE_RESTART = "urn:gymact:kubernetes-reconciliation:capability:scale_restart"

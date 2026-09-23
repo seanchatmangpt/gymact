@@ -26,9 +26,7 @@ from gymact.semantic import ProfileAuthority
 SOSA = Namespace("http://www.w3.org/ns/sosa/")
 SKOS = Namespace("http://www.w3.org/2004/02/skos/core#")
 
-_ONTOLOGY_PATH = (
-    Path(__file__).resolve().parents[1] / "ggen" / "codebase-gym-pack" / "ontology.ttl"
-)
+_ONTOLOGY_PATH = Path(__file__).resolve().parents[1] / "ggen" / "codebase-gym-pack" / "ontology.ttl"
 
 _EXPECTED_CAPABILITIES = {
     "inspect_tree": "urn:gymact:consequence:read",

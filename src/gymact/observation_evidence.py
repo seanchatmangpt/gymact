@@ -57,7 +57,7 @@ class ObservationWitness(FrozenModel):
         source_ref: str | None = None,
         independent: bool = False,
         oracle_refs: tuple[str, ...] = (),
-    ) -> "ObservationWitness":
+    ) -> ObservationWitness:
         payload = {
             "observation": observation.model_dump(mode="json"),
             "plane": plane.value,
@@ -116,13 +116,12 @@ class ObservationWitness(FrozenModel):
 
     def admits_external_claim(self) -> bool:
         return (
-            self.plane
-            in {ObservationPlane.EXTERNAL_REOBSERVED, ObservationPlane.PHYSICAL_SENSOR}
+            self.plane in {ObservationPlane.EXTERNAL_REOBSERVED, ObservationPlane.PHYSICAL_SENSOR}
             and self.independent
             and bool(self.source_ref)
         )
 
-    def require_external_claim(self) -> "ObservationWitness":
+    def require_external_claim(self) -> ObservationWitness:
         if not self.admits_external_claim():
             raise ObservationClaimRefused(
                 f"REFUSED:EXTERNAL_OBSERVATION_REQUIRED:{self.plane.value}"

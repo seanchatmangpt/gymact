@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from gymact.models import Standing
 from gymact.provider_spi import (
     CrownProvider,
     ObservationRequest,
@@ -7,7 +8,6 @@ from gymact.provider_spi import (
     ProviderPreparation,
     ProviderRollbackResult,
 )
-from gymact.models import Standing
 
 
 class CompleteProviderShape:
@@ -34,7 +34,6 @@ class MissingActuationShape:
     def metadata(self): ...
 
     def capabilities(self, subject=None): ...
-
 
 
 def test_crown_provider_protocol_requires_full_provider_physics() -> None:

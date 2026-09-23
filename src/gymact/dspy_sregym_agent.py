@@ -196,9 +196,7 @@ class DeploymentConfigSummary(BaseModel):
     command: list[str] | None = Field(
         default=None, description="the primary container's command override, if any"
     )
-    env: list[str] = Field(
-        default_factory=list, description="sorted 'NAME=value' env var pairs"
-    )
+    env: list[str] = Field(default_factory=list, description="sorted 'NAME=value' env var pairs")
     resource_requests: dict[str, str] = Field(default_factory=dict)
     resource_limits: dict[str, str] = Field(default_factory=dict)
     replicas: int | None = Field(default=None, description="desired replica count")
@@ -258,9 +256,7 @@ def _summarize_deployment_configs(
     exported and tested against a real captured multi-item List fixture
     because the parsing logic itself (List -> per-item summary) is
     identical either way, and is the part worth unit-testing offline."""
-    return [
-        _summarize_one_deployment(item) for item in raw_kubectl_json.get("items", [])
-    ]
+    return [_summarize_one_deployment(item) for item in raw_kubectl_json.get("items", [])]
 
 
 # Real, general SRE differential-diagnosis taxonomy (standard k8s
@@ -381,7 +377,6 @@ async def _gather_category_theories(
 
     results = await asyncio.gather(*(_one(category) for category in categories))
     return list(results)
-
 
 
 # Real, mechanical derivation, not a hand-picked list: every field of
@@ -784,8 +779,7 @@ class SregymDiagnosisAgent:
             # the whole result -- at worst ONE deployment's fetch fails,
             # named explicitly below, never silently dropped.
             names_raw = await _run_kubectl_raw(
-                f"kubectl get deployments -n {namespace} -o "
-                "jsonpath={.items[*].metadata.name}"
+                f"kubectl get deployments -n {namespace} -o jsonpath={{.items[*].metadata.name}}"
             )
             names = _extract_text(names_raw).split()
             summaries: list[DeploymentConfigSummary] = []
@@ -808,9 +802,7 @@ class SregymDiagnosisAgent:
             if errors:
                 result["errors"] = errors
             steps.append(
-                SregymAgentStep(
-                    tool_name="list_deployment_configs", payload={}, result=result
-                )
+                SregymAgentStep(tool_name="list_deployment_configs", payload={}, result=result)
             )
             return result
 
@@ -826,24 +818,18 @@ class SregymDiagnosisAgent:
             raw = await _run_kubectl_raw(
                 f"kubectl get events -n {namespace} --field-selector "
                 "type=Warning --sort-by=.lastTimestamp -o "
-                "jsonpath={range .items[*]}{.reason}{\"\\t\"}{.involvedObject.kind}"
-                "/{.involvedObject.name}{\"\\t\"}{.message}{\"\\n\"}{end}"
+                'jsonpath={range .items[*]}{.reason}{"\\t"}{.involvedObject.kind}'
+                '/{.involvedObject.name}{"\\t"}{.message}{"\\n"}{end}'
             )
             text = _extract_text(raw)
             events: list[WarningEvent] = []
             for line in text.splitlines():
                 parts = line.split("\t")
                 if len(parts) == 3:
-                    events.append(
-                        WarningEvent(reason=parts[0], object=parts[1], message=parts[2])
-                    )
-            result: dict[str, Any] = {
-                "warning_events": [event.model_dump() for event in events]
-            }
+                    events.append(WarningEvent(reason=parts[0], object=parts[1], message=parts[2]))
+            result: dict[str, Any] = {"warning_events": [event.model_dump() for event in events]}
             steps.append(
-                SregymAgentStep(
-                    tool_name="list_recent_warning_events", payload={}, result=result
-                )
+                SregymAgentStep(tool_name="list_recent_warning_events", payload={}, result=result)
             )
             return result
 
@@ -1045,8 +1031,7 @@ class SregymDiagnosisAgent:
                 "the namespace"
             )
             warning_events: dict[str, Any] = dspy.InputField(
-                desc="the real, already-fetched recent Kubernetes Warning events for the "
-                "namespace"
+                desc="the real, already-fetched recent Kubernetes Warning events for the namespace"
             )
             category_theories: list[CategoryCheck] = dspy.InputField(
                 desc="each fault category's independent specialist-panel finding, to "
@@ -1079,9 +1064,7 @@ class SregymDiagnosisAgent:
             )
         normalized_facts = list(normalize_prediction.normalized_facts)
         steps.append(
-            SregymAgentStep(
-                tool_name="normalize_evidence", payload={}, result=normalized_facts
-            )
+            SregymAgentStep(tool_name="normalize_evidence", payload={}, result=normalized_facts)
         )
 
         # Increment 1 (typed evidence IDs): wrap every fact -- both the
@@ -1219,8 +1202,7 @@ class SregymDiagnosisAgent:
                 "the namespace"
             )
             warning_events: dict[str, Any] = dspy.InputField(
-                desc="the real, already-fetched recent Kubernetes Warning events for the "
-                "namespace"
+                desc="the real, already-fetched recent Kubernetes Warning events for the namespace"
             )
             facts: list[str] = dspy.InputField(
                 desc="real facts, each formatted as '<fact_id>: <value>' -- cite the "

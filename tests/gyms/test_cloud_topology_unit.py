@@ -11,8 +11,18 @@ now deleted).
 
 from __future__ import annotations
 
+import importlib.util as _importlib_util
+
 import pytest
-from pathlib import Path
+
+from gymact.standing import named_standing_skip
+
+named_standing_skip(
+    "LOCAL_EXTRA:gyms",
+    available=_importlib_util.find_spec("botocore") is not None,
+    reason="the 'gyms' extra is not installed -- botocore (bundled real AWS "
+    "endpoints.json) requires `uv sync --extra gyms`",
+)
 
 from gymact import GymAct, MaterializationIntent
 from gymact.gyms.cloud_topology_gym import CloudTopologyProvider
@@ -35,42 +45,40 @@ async def test_cloud_topology_materialize_read_teardown() -> None:
     episode_id = materialization.episode.episode_id
 
     try:
-
         result_1 = await gym.read(
             episode_id,
-            f"urn:gymact:cloud-topology:capability:list_regions",
+            "urn:gymact:cloud-topology:capability:list_regions",
             {},
         )
         assert "result" in result_1
 
         result_2 = await gym.read(
             episode_id,
-            f"urn:gymact:cloud-topology:capability:list_services",
+            "urn:gymact:cloud-topology:capability:list_services",
             {},
         )
         assert "result" in result_2
 
         result_3 = await gym.read(
             episode_id,
-            f"urn:gymact:cloud-topology:capability:services_in_region",
+            "urn:gymact:cloud-topology:capability:services_in_region",
             {"region": "us-east-1"},
         )
         assert "result" in result_3
 
         result_4 = await gym.read(
             episode_id,
-            f"urn:gymact:cloud-topology:capability:validate_topology",
+            "urn:gymact:cloud-topology:capability:validate_topology",
             {},
         )
         assert "result" in result_4
 
         result_5 = await gym.read(
             episode_id,
-            f"urn:gymact:cloud-topology:capability:estimated_managed_k8s_cost",
+            "urn:gymact:cloud-topology:capability:estimated_managed_k8s_cost",
             {},
         )
         assert "result" in result_5
-
 
         verification = await gym.verify(episode_id, {"provider": "aws", "validated": True})
         assert verification.passed, verification.observation

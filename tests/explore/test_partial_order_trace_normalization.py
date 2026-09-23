@@ -24,5 +24,17 @@ def canonical_toposort(nodes: set[str], edges: set[tuple[str, str]]) -> tuple[st
 
 def test_concurrent_events_normalize_deterministically() -> None:
     nodes = {"parse", "admit", "observe-a", "observe-b", "receipt"}
-    edges = {("parse", "admit"), ("admit", "observe-a"), ("admit", "observe-b"), ("observe-a", "receipt"), ("observe-b", "receipt")}
-    assert canonical_toposort(nodes, edges) == ("parse", "admit", "observe-a", "observe-b", "receipt")
+    edges = {
+        ("parse", "admit"),
+        ("admit", "observe-a"),
+        ("admit", "observe-b"),
+        ("observe-a", "receipt"),
+        ("observe-b", "receipt"),
+    }
+    assert canonical_toposort(nodes, edges) == (
+        "parse",
+        "admit",
+        "observe-a",
+        "observe-b",
+        "receipt",
+    )

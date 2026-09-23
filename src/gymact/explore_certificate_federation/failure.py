@@ -1,6 +1,6 @@
+import hashlib
 from dataclasses import dataclass
 from enum import StrEnum
-import hashlib
 
 
 class FailureKind(StrEnum):

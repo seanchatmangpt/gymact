@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 _EXACT = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+@[0-9a-f]{40}$")
 
@@ -15,7 +15,7 @@ class Subject:
     canonical: str
 
     @classmethod
-    def parse(cls, value: str) -> "Subject":
+    def parse(cls, value: str) -> Subject:
         if not _EXACT.fullmatch(value):
             raise Refused("REFUSED_INEXACT_SUBJECT")
         return cls(value)

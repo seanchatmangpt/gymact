@@ -17,30 +17,30 @@ import importlib.util
 
 import pytest
 
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
-require_standing(
+named_standing_skip(
     "LOCAL_EXTRA:dspy",
     available=importlib.util.find_spec("dspy") is not None,
     reason="the optional 'dspy' extra is not installed -- `uv sync --extra dspy`",
 )
 
-from gymact import (  # noqa: E402
+from gymact import (
     AllowListAuthorityResolver,
     GymAct,
     MaterializationIntent,
     MemoryProvider,
     Standing,
 )
-from gymact.dspy_agent import (  # noqa: E402
+from gymact.dspy_agent import (
     GymActReActAgent,
     UngroundedActuationRefused,
     _assert_payload_is_grounded,
     _collect_string_leaves,
 )
-from gymact.gyms.sregym import SregymVendorProvider  # noqa: E402
-from gymact.limits import RuntimeLimits  # noqa: E402
-from tests.test_sregym_provider import (  # noqa: E402
+from gymact.gyms.sregym import SregymVendorProvider
+from gymact.limits import RuntimeLimits
+from tests.test_sregym_provider import (
     _real_sregym_checkout_ready as _real_sregym_ready,
 )
 
@@ -205,7 +205,10 @@ class TestGymActReActAgentWrapsReadCapabilities:
         steps = []
         tools = {tool.name: tool for tool in agent._build_tools(steps)}
         result = await tools["portfolio_summary"].acall(payload={})
-        assert result["result"]["local_repo_count_found"] >= result["result"]["local_repo_count_returned"]
+        assert (
+            result["result"]["local_repo_count_found"]
+            >= result["result"]["local_repo_count_returned"]
+        )
         assert steps and steps[-1].tool_name == "portfolio_summary"
         await gym.teardown(episode_id)
 

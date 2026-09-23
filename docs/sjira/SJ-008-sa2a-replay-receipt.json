@@ -1,0 +1,22 @@
+{
+  "admission_receipt": "rec-a03b5d87",
+  "driver": "xaas docs/sjira/v26.9.21/sa2a_loop.exs replay (real autofde beam-bridge, sa2a_replay op; sa2a_execute never called)",
+  "manifest": "docs/sjira/SJ-008-verification-manifest.json",
+  "manifest_commit_subject": "041055d8519fe24e5fa0f6a0fd57a70579b16392",
+  "meaning": "the manifest's canonical sha256 replays identically through SA2A; it attests manifest integrity, not that the recorded pytest results are green (they are recorded as exit 1).",
+  "order": "SJ-008",
+  "replay": {
+    "expected_hash": "efdda790d346c6ff7e6559aa423f35e5180bcf288dbb3ba3856802fa5bcf37a6",
+    "result": {
+      "computed_hash": "efdda790d346c6ff7e6559aa423f35e5180bcf288dbb3ba3856802fa5bcf37a6",
+      "expected_hash": "efdda790d346c6ff7e6559aa423f35e5180bcf288dbb3ba3856802fa5bcf37a6",
+      "ok": true,
+      "verified": true
+    }
+  },
+  "wrong_hash_control": {
+    "ok": false,
+    "raw": "wrong-hash: {:error, %{\"computed_hash\" => \"efdda790d346c6ff7e6559aa423f35e5180bcf288dbb3ba3856802fa5bcf37a6\", \"expected_hash\" => \"0000000000000000000000000000000000000000000000000000000000000000\", \"ok\" => false, \"verified\" => false}}",
+    "verified": false
+  }
+}

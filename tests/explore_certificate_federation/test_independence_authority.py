@@ -1,8 +1,12 @@
 from fractions import Fraction
+
 import pytest
 
 from gymact.explore_certificate_federation.authority import ActionClass, require_authority
-from gymact.explore_certificate_federation.independence import ValidatorIdentity, require_independent
+from gymact.explore_certificate_federation.independence import (
+    ValidatorIdentity,
+    require_independent,
+)
 from gymact.explore_certificate_federation.quorum import require_effective_quorum
 from gymact.explore_certificate_federation.refusal import FederationRefusal
 

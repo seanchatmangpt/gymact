@@ -44,8 +44,15 @@ def _make_dirty_repo(tmp_path):
     repo = tmp_path / "dirty-repo"
     repo.mkdir()
     subprocess.run(["git", "init"], cwd=repo, capture_output=True, check=True)
-    subprocess.run(["git", "config", "user.email", "t@example.invalid"], cwd=repo, capture_output=True, check=True)
-    subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "t@example.invalid"],
+        cwd=repo,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test"], cwd=repo, capture_output=True, check=True
+    )
     (repo / "a.txt").write_text("v1")
     subprocess.run(["git", "add", "-A"], cwd=repo, capture_output=True, check=True)
     subprocess.run(["git", "commit", "-m", "initial"], cwd=repo, capture_output=True, check=True)
@@ -57,8 +64,15 @@ def _make_clean_repo(tmp_path):
     repo = tmp_path / "clean-repo"
     repo.mkdir()
     subprocess.run(["git", "init"], cwd=repo, capture_output=True, check=True)
-    subprocess.run(["git", "config", "user.email", "t@example.invalid"], cwd=repo, capture_output=True, check=True)
-    subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "t@example.invalid"],
+        cwd=repo,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test"], cwd=repo, capture_output=True, check=True
+    )
     (repo / "b.txt").write_text("v1")
     subprocess.run(["git", "add", "-A"], cwd=repo, capture_output=True, check=True)
     subprocess.run(["git", "commit", "-m", "initial"], cwd=repo, capture_output=True, check=True)
@@ -150,7 +164,9 @@ async def test_teardown_is_idempotent() -> None:
     await env.teardown()
 
 
-@pytest.mark.skipif(not _gh_available(), reason="gh CLI not installed/authenticated in this environment")
+@pytest.mark.skipif(
+    not _gh_available(), reason="gh CLI not installed/authenticated in this environment"
+)
 async def test_snapshot_github_state_against_a_real_small_public_repo() -> None:
     # octocat/Hello-World: GitHub's own minimal, stable demo repo -- cheap,
     # public, and long-lived, so this test doesn't depend on any of the

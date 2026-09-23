@@ -9,15 +9,18 @@ This closes the two gaps named earlier this session against `test_cube_counter.p
 variant (`count-to-3-with-decrement`) exposes a richer capability set
 (increment + decrement + get_value) than counter-cube's default.
 
-Per `gymact.standing.require_standing`, the real thing is the default: if
-either the optional `cube`/`docker` extras aren't installed or no Docker
-daemon is actually reachable, this module now FAILS unless the run
-explicitly sets `GYMACT_ALLOW_DEGRADED_STANDINGS` to include
-"LOCAL_GYM:cube-container-counter" (or "*") -- a skip here is something a
-run must opt into, never something it silently gets. Matches
-`test_cube_counter.py`'s and `test_ggen_legacy_gym.py`'s contract; this
-module previously used a plain `pytest.importorskip`/`pytest.mark.skipif`
-pair that degraded silently by default, inconsistent with its siblings.
+Per GYMACT-7 this module gates through
+`gymact.standing.named_standing_skip`: if either the optional
+`cube`/`docker` extras aren't installed or no Docker daemon is actually
+reachable, the whole module degrades to a NAMED, VISIBLE standing skip
+carrying "LOCAL_GYM:cube-container-counter" and the real reason, so plain
+hermetic collections stay green while the degraded standing stays in the
+run summary (this module previously used a plain
+`pytest.importorskip`/`pytest.mark.skipif` pair with no standing name at
+all, then a fail-loud `require_standing` gate that aborted hermetic
+collections -- the named skip keeps the visibility of both without either
+defect). Matches `test_cube_counter.py`'s contract. Nothing is mocked;
+starting the daemon and installing the extras makes the real court run.
 """
 
 from __future__ import annotations
@@ -26,7 +29,7 @@ import importlib.util
 import shutil
 import subprocess
 
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
 try:
     import docker
@@ -64,7 +67,7 @@ def _docker_daemon_reachable() -> bool:
         return False
 
 
-require_standing(
+named_standing_skip(
     "LOCAL_GYM:cube-container-counter",
     available=importlib.util.find_spec("counter_cube") is not None
     and docker is not None
@@ -73,11 +76,11 @@ require_standing(
     "(uv sync --extra cube --all-extras; start colima: `colima start`)",
 )
 
-from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent  # noqa: E402
-from gymact.gyms.cube_container_counter import CubeContainerCounterProvider  # noqa: E402
-from gymact.models import ActuationIntent, Operation, Standing  # noqa: E402
-from gymact.ocel import receipts_to_ocel, validate_ocel_log  # noqa: E402
-from gymact.process import ConformanceChecker  # noqa: E402
+from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent
+from gymact.gyms.cube_container_counter import CubeContainerCounterProvider
+from gymact.models import ActuationIntent, Operation, Standing
+from gymact.ocel import receipts_to_ocel, validate_ocel_log
+from gymact.process import ConformanceChecker
 
 INCREMENT = "urn:gymact:cube-container-counter:capability:increment"
 DECREMENT = "urn:gymact:cube-container-counter:capability:decrement"

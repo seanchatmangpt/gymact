@@ -15,7 +15,7 @@ class VerificationSubject:
     semantic: str
 
     @classmethod
-    def admit(cls, repo: str, sha: str, semantic: str) -> "VerificationSubject":
+    def admit(cls, repo: str, sha: str, semantic: str) -> VerificationSubject:
         if "/" not in repo or not _SHA.fullmatch(sha) or not semantic.strip():
             raise IndependentVerifierRefusal("INVALID_SUBJECT", f"{repo}@{sha}#{semantic}")
         return cls(repo=repo, sha=sha, semantic=semantic.strip())

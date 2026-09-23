@@ -1,5 +1,7 @@
 import unittest
-from gymact.explore_verification_topology.subject import Subject, Refusal
+
+from gymact.explore_verification_topology.subject import Refusal, Subject
+
 
 class TestSubject(unittest.TestCase):
     def test_exact(self):

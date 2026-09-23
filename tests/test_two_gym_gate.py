@@ -30,10 +30,18 @@ physics package).
 
 from __future__ import annotations
 
+import importlib.util as _importlib_util
 from typing import Any
 
 import pytest
 
+from gymact.standing import named_standing_skip
+
+named_standing_skip(
+    "LOCAL_EXTRA:gyms",
+    available=_importlib_util.find_spec("gymnasium") is not None,
+    reason="the optional 'gyms' extra is not installed -- `uv sync --extra gyms`",
+)
 from gymact.algebra import Actuator, Observer, Verifier
 from gymact.authority import AllowListAuthorityResolver
 from gymact.gyms.gymnasium_env import GymnasiumProvider

@@ -3,12 +3,12 @@ from __future__ import annotations
 import pytest
 
 from gymact.gdmcp import (
-    GdmcpRefusal,
     SREGYM_LITE_PROBLEMS,
     SREGYM_RUN_KUBECTL,
     SREGYM_SUBMIT_DIAGNOSIS,
     SREGYM_SUBMIT_MITIGATION,
     SREGYM_UPSTREAM_REVISION,
+    GdmcpRefusal,
     compile_sregym_solution,
     known_sregym_programs,
     sregym_lite_coverage,

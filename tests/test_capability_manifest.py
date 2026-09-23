@@ -20,10 +20,10 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-from capability_manifest import build_manifest, main  # noqa: E402
+from capability_manifest import build_manifest, main
 
-from gymact.gyms.sregym import SREGYM_CAPABILITIES  # noqa: E402
-from gymact.registry import _BUILTINS  # noqa: E402
+from gymact.gyms.sregym import SREGYM_CAPABILITIES
+from gymact.registry import _BUILTINS
 
 
 def test_manifest_is_json_serializable_with_the_documented_shape() -> None:

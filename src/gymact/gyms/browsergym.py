@@ -36,7 +36,7 @@ import anyio
 from gymact.models import Capability, Consequence
 
 try:
-    import browsergym.core  # noqa: F401  # registers browsergym/openended
+    import browsergym.core  # noqa: F401 (side-effect import: registers browsergym/openended)
     import gymnasium as gym
 except ImportError as exc:  # pragma: no cover - fail-real standing is exercised in tests
     raise ImportError(

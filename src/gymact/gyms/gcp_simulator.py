@@ -15,11 +15,12 @@ This module has no Google SDK, credential, or network dependency.
 
 from __future__ import annotations
 
+import json
+from collections.abc import Iterable, Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from hashlib import sha256
-import json
-from typing import Any, Iterable, Mapping
+from typing import Any
 from uuid import uuid4
 
 from blake3 import blake3
@@ -160,10 +161,12 @@ class GcpReplayFixture:
     def valid(self) -> bool:
         if not self.method_id or not self.request_digest_blake3:
             return False
-        return blake3(_canonical_json(self.payload).encode()).hexdigest() == self.receipt_digest_blake3
+        return (
+            blake3(_canonical_json(self.payload).encode()).hexdigest() == self.receipt_digest_blake3
+        )
 
     @classmethod
-    def from_mapping(cls, value: Mapping[str, Any]) -> "GcpReplayFixture":
+    def from_mapping(cls, value: Mapping[str, Any]) -> GcpReplayFixture:
         method_id = _required_string(value, "method_id")
         request_digest = _required_string(value, "request_digest_blake3")
         receipt = _required_string(value, "receipt_digest_blake3")
@@ -230,8 +233,12 @@ def _method_from_mapping(value: Mapping[str, Any]) -> DiscoveryMethod:
         name=str(value["name"]),
         http_method=str(value["http_method"]),
         path=str(value["path"]),
-        request_schema=(str(value["request_schema"]) if value.get("request_schema") is not None else None),
-        response_schema=(str(value["response_schema"]) if value.get("response_schema") is not None else None),
+        request_schema=(
+            str(value["request_schema"]) if value.get("request_schema") is not None else None
+        ),
+        response_schema=(
+            str(value["response_schema"]) if value.get("response_schema") is not None else None
+        ),
         scopes=tuple(sorted(scopes)),
         description=(str(value["description"]) if value.get("description") is not None else None),
     )
@@ -296,7 +303,9 @@ class GcpExactSimulatorEnvironment:
             raise ValueError("EMPIRICAL_BEHAVIOR_RULE_DUPLICATED")
         extra_rules = set(empirical_by_id) - set(self._methods)
         if extra_rules:
-            raise ValueError(f"EMPIRICAL_BEHAVIOR_RULE_NOT_ADMITTED:{','.join(sorted(extra_rules))}")
+            raise ValueError(
+                f"EMPIRICAL_BEHAVIOR_RULE_NOT_ADMITTED:{','.join(sorted(extra_rules))}"
+            )
 
         self._rules: dict[str, GcpBehaviorRule] = {}
         for method in method_tuple:
@@ -560,7 +569,9 @@ class GcpExactSimulatorEnvironment:
             return _google_error(404, "NOT_FOUND", f"Resource not found: {name or '<unspecified>'}")
         return _ok(self._resources[name])
 
-    def _read_many(self, method: DiscoveryMethod, payload: Mapping[str, Any]) -> GcpSimulatedResponse:
+    def _read_many(
+        self, method: DiscoveryMethod, payload: Mapping[str, Any]
+    ) -> GcpSimulatedResponse:
         path_params = _object(payload, "path_params")
         query = _object(payload, "query")
         parent = path_params.get("parent")
@@ -663,7 +674,9 @@ class GcpExactSimulatorEnvironment:
             return _google_error(400, "INVALID_ARGUMENT", "policy must be an object")
         policy = deepcopy(dict(raw_policy))
         policy.setdefault("bindings", [])
-        policy["etag"] = sha256(_canonical_json(policy.get("bindings", [])).encode()).hexdigest()[:24]
+        policy["etag"] = sha256(_canonical_json(policy.get("bindings", [])).encode()).hexdigest()[
+            :24
+        ]
         self._iam[target] = policy
         return _ok(policy)
 
@@ -716,7 +729,9 @@ class GcpExactSimulatorEnvironment:
         name = self._operation_name(payload)
         operation = self._operations.get(name or "")
         if operation is None:
-            return _google_error(404, "NOT_FOUND", f"Operation not found: {name or '<unspecified>'}")
+            return _google_error(
+                404, "NOT_FOUND", f"Operation not found: {name or '<unspecified>'}"
+            )
         return _ok(self._public_operation(operation))
 
     def _operation_list(self, payload: Mapping[str, Any]) -> GcpSimulatedResponse:
@@ -733,10 +748,16 @@ class GcpExactSimulatorEnvironment:
         name = self._operation_name(payload)
         operation = self._operations.get(name or "")
         if operation is None:
-            return _google_error(404, "NOT_FOUND", f"Operation not found: {name or '<unspecified>'}")
+            return _google_error(
+                404, "NOT_FOUND", f"Operation not found: {name or '<unspecified>'}"
+            )
         if not operation.get("done"):
             operation["done"] = True
-            operation["error"] = {"code": 1, "message": "Operation cancelled", "status": "CANCELLED"}
+            operation["error"] = {
+                "code": 1,
+                "message": "Operation cancelled",
+                "status": "CANCELLED",
+            }
             operation.pop("_pending", None)
             operation.pop("_complete_at", None)
         return _ok({})
@@ -744,7 +765,9 @@ class GcpExactSimulatorEnvironment:
     def _operation_delete(self, payload: Mapping[str, Any]) -> GcpSimulatedResponse:
         name = self._operation_name(payload)
         if not name or name not in self._operations:
-            return _google_error(404, "NOT_FOUND", f"Operation not found: {name or '<unspecified>'}")
+            return _google_error(
+                404, "NOT_FOUND", f"Operation not found: {name or '<unspecified>'}"
+            )
         del self._operations[name]
         return _ok({})
 
@@ -783,7 +806,10 @@ class GcpExactSimulatorEnvironment:
 
     def _complete_due_operations(self) -> None:
         for operation in self._operations.values():
-            if operation.get("done") or operation.get("_complete_at", self._clock + 1) > self._clock:
+            if (
+                operation.get("done")
+                or operation.get("_complete_at", self._clock + 1) > self._clock
+            ):
                 continue
             pending = operation.get("_pending")
             if not isinstance(pending, Mapping):
@@ -799,7 +825,10 @@ class GcpExactSimulatorEnvironment:
                 if isinstance(response.body, Mapping):
                     operation["error"] = deepcopy(response.body.get("error", response.body))
                 else:
-                    operation["error"] = {"code": response.status_code, "message": str(response.body)}
+                    operation["error"] = {
+                        "code": response.status_code,
+                        "message": str(response.body),
+                    }
             else:
                 operation["response"] = deepcopy(response.body)
             operation.pop("_pending", None)
@@ -853,7 +882,9 @@ class GcpExactSimulator:
 
         empirical_rules: list[GcpBehaviorRule] = []
         raw_rules = config.get("empirical_rules", [])
-        if not isinstance(raw_rules, list) or not all(isinstance(value, Mapping) for value in raw_rules):
+        if not isinstance(raw_rules, list) or not all(
+            isinstance(value, Mapping) for value in raw_rules
+        ):
             raise TypeError("config.empirical_rules must be an array of objects")
         methods_by_id = {method.identity: method for method in methods}
         for value in raw_rules:
@@ -863,7 +894,11 @@ class GcpExactSimulator:
                 raise ValueError(f"EMPIRICAL_BEHAVIOR_RULE_NOT_ADMITTED:{method_id}")
             receipt = _required_string(value, "evidence_receipt")
             raw_effect = value.get("effect")
-            effect = compile_behavior_rule(method).effect if raw_effect is None else GcpBehaviorEffect(str(raw_effect))
+            effect = (
+                compile_behavior_rule(method).effect
+                if raw_effect is None
+                else GcpBehaviorEffect(str(raw_effect))
+            )
             empirical_rules.append(
                 GcpBehaviorRule(
                     method_id=method_id,
@@ -877,7 +912,9 @@ class GcpExactSimulator:
             )
 
         raw_fixtures = config.get("replay_fixtures", [])
-        if not isinstance(raw_fixtures, list) or not all(isinstance(value, Mapping) for value in raw_fixtures):
+        if not isinstance(raw_fixtures, list) or not all(
+            isinstance(value, Mapping) for value in raw_fixtures
+        ):
             raise TypeError("config.replay_fixtures must be an array of objects")
         replay_fixtures = tuple(GcpReplayFixture.from_mapping(value) for value in raw_fixtures)
 
@@ -895,7 +932,9 @@ class GcpExactSimulator:
             quota_limits[str(key)] = value
 
         enabled_services = config.get("enabled_services", [])
-        if not isinstance(enabled_services, list) or not all(isinstance(item, str) for item in enabled_services):
+        if not isinstance(enabled_services, list) or not all(
+            isinstance(item, str) for item in enabled_services
+        ):
             raise TypeError("config.enabled_services must be an array of strings")
         enforce = config.get("enforce_service_enablement", False)
         requires_authority = config.get("requires_authority", True)

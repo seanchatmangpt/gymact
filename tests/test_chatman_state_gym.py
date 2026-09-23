@@ -18,10 +18,10 @@ import shutil
 import pytest
 
 from gymact.gyms.chatman_state_gym import (
+    _CAPABILITY_BY_BINDING,
     CHATMAN_STATE_CAPABILITIES,
     ChatmanStateEnvironment,
     ChatmanStateProvider,
-    _CAPABILITY_BY_BINDING,
 )
 
 pytestmark = pytest.mark.skipif(
@@ -63,8 +63,14 @@ def test_real_provider_materialize_observe_actuate_verify_checkpoint_restore_tea
 
         summary = _CAPABILITY_BY_BINDING["portfolio_summary"]
         result3 = await env.actuate(summary, {})
-        assert result3["result"]["local_repo_count_found"] >= result3["result"]["local_repo_count_returned"]
-        assert result3["result"]["github_repo_count_found"] >= result3["result"]["github_repo_count_returned"]
+        assert (
+            result3["result"]["local_repo_count_found"]
+            >= result3["result"]["local_repo_count_returned"]
+        )
+        assert (
+            result3["result"]["github_repo_count_found"]
+            >= result3["result"]["github_repo_count_returned"]
+        )
 
         passed, verified = await env.verify({"repo_limit": 5})
         assert passed is True
@@ -85,7 +91,7 @@ def test_estimated_effort_cost_capability_requires_repo_payload() -> None:
         provider = ChatmanStateProvider()
         env = await provider.materialize(scenario=None, config={})
         capability = _CAPABILITY_BY_BINDING["estimated_effort_cost"]
-        with pytest.raises(ValueError, match="payload.repo"):
+        with pytest.raises(ValueError, match=r"payload.repo"):
             await env.actuate(capability, {})
         await env.teardown()
 

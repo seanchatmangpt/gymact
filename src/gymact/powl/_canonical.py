@@ -19,9 +19,10 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import asdict, is_dataclass
 from enum import Enum
-from typing import Any, Mapping
+from typing import Any
 
 _ADDRESS_RE = re.compile(r"0x[0-9a-fA-F]+")
 

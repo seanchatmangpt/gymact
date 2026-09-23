@@ -1,0 +1,88 @@
+{
+  "base_sha": "4ab72e685302aa591f65fecad0ec73129ecd3589",
+  "branch": "sjira/sj-008",
+  "commit": "041055d8519fe24e5fa0f6a0fd57a70579b16392",
+  "gymact_1": {
+    "cmd": "PYTHONPATH=src python -c registry/combinatorial_ocel enumeration",
+    "dev_portfolio_in_gym_factor": true,
+    "dev_portfolio_in_registry": true,
+    "exit": 0
+  },
+  "gymact_2": {
+    "cmd": "grep -rn '\"gh\"' src/gymact/gyms/ --include=*.py",
+    "gh_call_files": [
+      "chatman_state.py",
+      "dev_portfolio.py"
+    ]
+  },
+  "gymact_3": {
+    "citations": [],
+    "cmd": "find -name STATUS.md / ecosystem-standing.md; grep CLAUDE.md .claude/rules",
+    "found": []
+  },
+  "gymact_4": {
+    "cmd": "GYMACT_ALLOW_DEGRADED_STANDINGS=* PYTHONPATH=src python -m pytest -q -rf --tb=line -p no:cacheprovider --continue-on-collection-errors --basetemp <private> --junitxml=<f>",
+    "exit": 1,
+    "runs": {
+      "run7": {
+        "errors": 1,
+        "failed": [
+          "::tests.test_cube_container_counter",
+          "tests.test_declare_conformance::test_declare_conformance_detects_a_real_out_of_order_violation",
+          "tests.test_declare_conformance::test_declare_mining_and_conformance_over_two_real_powl_sessions",
+          "tests.test_dspy_verifier_chicago.TestGepaOptimizesTheRealJudge::test_gepa_optimized_program_scores_at_least_as_well_as_the_base_program",
+          "tests.test_envharness::test_stage_cannot_bypass_fail_closed_authority",
+          "tests.test_kernel_verification::test_default_verifier_catches_a_dishonest_providers_false_success_claim",
+          "tests.test_swegym_live::test_real_empty_patch_does_not_resolve_the_real_task",
+          "tests.test_swegym_live::test_real_gold_patch_resolves_the_real_task_via_real_docker_grading",
+          "tests.test_verify_replay::test_real_episode_replays_from_captured_state_with_no_subprocess",
+          "tests.test_world_cyber::test_kernel_refuses_ambient_do_and_receipts_authorized_actuation"
+        ],
+        "failures": 9,
+        "skipped": 20,
+        "tests": 1663
+      },
+      "run8": {
+        "errors": 1,
+        "failed": [
+          "::tests.test_cube_container_counter",
+          "tests.test_declare_conformance::test_declare_conformance_detects_a_real_out_of_order_violation",
+          "tests.test_declare_conformance::test_declare_mining_and_conformance_over_two_real_powl_sessions",
+          "tests.test_dspy_verifier_chicago.TestGepaOptimizesTheRealJudge::test_gepa_optimized_program_scores_at_least_as_well_as_the_base_program",
+          "tests.test_envharness::test_stage_cannot_bypass_fail_closed_authority",
+          "tests.test_kernel_verification::test_default_verifier_catches_a_dishonest_providers_false_success_claim",
+          "tests.test_swegym_live::test_real_empty_patch_does_not_resolve_the_real_task",
+          "tests.test_swegym_live::test_real_gold_patch_resolves_the_real_task_via_real_docker_grading",
+          "tests.test_verify_replay::test_real_episode_replays_from_captured_state_with_no_subprocess",
+          "tests.test_world_cyber::test_kernel_refuses_ambient_do_and_receipts_authorized_actuation"
+        ],
+        "failures": 9,
+        "skipped": 20,
+        "tests": 1663
+      }
+    }
+  },
+  "kind": "sjira-verification-manifest",
+  "log_sha256": {
+    "sj-008.junit-run7.xml": "93634061ebce5afd0a0245d957388fde3d80b6fbb1263b24aab59d2fc44cb501",
+    "sj-008.junit-run8.xml": "5191eb17ecabb994c79c9bbac8fa69c701d5cd2e264505311e2c0b7b61fc44f0",
+    "sj-008.pytest-run1.log": "1e40646bd6f98be781ab3b26691c30ebbd8130b3522134a16c059603e6363b7b",
+    "sj-008.pytest-run2-autofde-venv.log": "a2fd3aedf3f2375de06321e17b2f5d5c95d464c172e48f340f98681dcd5ebecf",
+    "sj-008.pytest-run3-fullenv.log": "fd3d589f1da90273cd30f63891d679c5d08514dac8432edb39e4259b70254534",
+    "sj-008.pytest-run4-fullenv.log": "fd3d589f1da90273cd30f63891d679c5d08514dac8432edb39e4259b70254534",
+    "sj-008.pytest-run5-degraded.log": "c202859e1cf2d2a5c38d416dcd5a50b67a917244b2518113f7c9fe142802b6ee",
+    "sj-008.pytest-run6-degraded-continue.log": "1defe9672a5b094037007aa277a4a6b9b99efe653bc8fbe986f967a46da397ce",
+    "sj-008.pytest-run7-isolated.log": "e50c62c04042042f373e508ac6fe4099528d3dd300859c337a43779ca08a1b9c",
+    "sj-008.pytest-run8-isolated.log": "b6516779d26c798fd5174baedf4a970c5c90e5bee2afbc306225306cda6744d3",
+    "sj-008.uvsync.log": "541456666b3ef75a324f3285063432cccb204cea81fcca1400386aaa715c9829",
+    "sj-008.zcode.attempt1-argparse.log": "8a8e730d9d4ff487a65b86369ec64619959892e1a0c065bae6146946201e978a",
+    "sj-008.zcode.log": "8f4532037f7bef12e76adad794e531917c21c443a4ff3ec6efd27ebecaa8455a"
+  },
+  "order": "SJ-008",
+  "order_runnable_check_passing": false,
+  "replay_identity": "sjira-v26.9.21-sj-008",
+  "repository": "seanchatmangpt/gymact",
+  "sa2a_admission_receipt": "rec-a03b5d87",
+  "standing": "PARTIAL_ALIVE",
+  "worker": "mixed (zcode default agent: unexecuted draft of Status edits; supervising session: all executed verification)"
+}

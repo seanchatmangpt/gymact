@@ -18,23 +18,23 @@ import os
 
 import pytest
 
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
-require_standing(
+named_standing_skip(
     "LOCAL_EXTRA:dspy",
     available=importlib.util.find_spec("dspy") is not None,
     reason="the optional 'dspy' extra is not installed -- `uv sync --extra dspy`",
 )
 
-from gymact import (  # noqa: E402
+from gymact import (
     AllowListAuthorityResolver,
     GymAct,
     MaterializationIntent,
     MemoryProvider,
 )
-from gymact.dspy_verifier import DspyTrustedMonitorVerifier, suspicion_scoring_program  # noqa: E402
-from gymact.models import ActuationIntent  # noqa: E402
-from gymact.verification import PostconditionVerifier, _partial_match  # noqa: E402
+from gymact.dspy_verifier import DspyTrustedMonitorVerifier, suspicion_scoring_program
+from gymact.models import ActuationIntent
+from gymact.verification import PostconditionVerifier, _partial_match
 
 AUTHORITY = "urn:test:dspy-verifier-authority"
 
@@ -204,9 +204,7 @@ class TestGepaOptimizesTheRealJudge:
                 reflection_lm=lm,
                 track_stats=False,
             )
-            optimized_program = optimizer.compile(
-                base_program, trainset=train_set, valset=val_set
-            )
+            optimized_program = optimizer.compile(base_program, trainset=train_set, valset=val_set)
             optimized_accuracy = real_accuracy(optimized_program)
 
         assert optimized_accuracy >= base_accuracy, (

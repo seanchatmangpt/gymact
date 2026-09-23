@@ -247,9 +247,7 @@ def test_cut_refuses_selection_from_truncated_closure() -> None:
         start_ids=("observation",),
         context=AdmissionContext(execution_grant_ref="urn:grant:admitted"),
     )
-    frontier = next(
-        item for item in complete.irreversible_frontier if item.morphism_id == "do-a"
-    )
+    frontier = next(item for item in complete.irreversible_frontier if item.morphism_id == "do-a")
     truncated = complete.model_copy(
         update={"truncated": True, "truncation_reasons": ("MAX_PATHS",)}
     )

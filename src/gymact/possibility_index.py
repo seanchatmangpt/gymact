@@ -1,7 +1,8 @@
 """Receipt-backed empirical index over admitted combinatorial possibilities."""
+
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from pydantic import Field
 
@@ -23,25 +24,25 @@ class EmpiricalCombinationRecord(FrozenModel):
 
 
 def _dominates(left: EmpiricalCombinationRecord, right: EmpiricalCombinationRecord) -> bool:
-    l = left.observed
+    lhs = left.observed
     r = right.observed
     no_worse = (
-        l.monetary_cost <= r.monetary_cost
-        and l.wall_time_s <= r.wall_time_s
-        and l.compute_units <= r.compute_units
-        and l.human_interventions <= r.human_interventions
-        and l.risk_score <= r.risk_score
-        and l.verification_confidence >= r.verification_confidence
-        and l.expected_value >= r.expected_value
+        lhs.monetary_cost <= r.monetary_cost
+        and lhs.wall_time_s <= r.wall_time_s
+        and lhs.compute_units <= r.compute_units
+        and lhs.human_interventions <= r.human_interventions
+        and lhs.risk_score <= r.risk_score
+        and lhs.verification_confidence >= r.verification_confidence
+        and lhs.expected_value >= r.expected_value
     )
     better = (
-        l.monetary_cost < r.monetary_cost
-        or l.wall_time_s < r.wall_time_s
-        or l.compute_units < r.compute_units
-        or l.human_interventions < r.human_interventions
-        or l.risk_score < r.risk_score
-        or l.verification_confidence > r.verification_confidence
-        or l.expected_value > r.expected_value
+        lhs.monetary_cost < r.monetary_cost
+        or lhs.wall_time_s < r.wall_time_s
+        or lhs.compute_units < r.compute_units
+        or lhs.human_interventions < r.human_interventions
+        or lhs.risk_score < r.risk_score
+        or lhs.verification_confidence > r.verification_confidence
+        or lhs.expected_value > r.expected_value
     )
     return no_worse and better
 
@@ -80,9 +81,10 @@ class EmpiricalPossibilityIndex:
             receipts.append(record.receipt)
         if not any(receipt.standing is value.standing for receipt in receipts):
             raise ValueError("EMPIRICAL_INDEX_STANDING_NOT_WITNESSED")
-        if value.standing in {Standing.ALIVE, Standing.ADOPTED}:
-            if not any(receipt.verified is True for receipt in receipts):
-                raise ValueError("EMPIRICAL_INDEX_VERIFIED_CONSEQUENCE_REQUIRED")
+        if value.standing in {Standing.ALIVE, Standing.ADOPTED} and not any(
+            receipt.verified is True for receipt in receipts
+        ):
+            raise ValueError("EMPIRICAL_INDEX_VERIFIED_CONSEQUENCE_REQUIRED")
         if value.standing is Standing.ADOPTED:
             raise ValueError("EMPIRICAL_INDEX_CANNOT_MANUFACTURE_ADOPTED")
 

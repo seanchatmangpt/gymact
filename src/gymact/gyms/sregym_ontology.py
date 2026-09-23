@@ -6,6 +6,7 @@ manufactured from ``ggen/sregym-e2e-pack/ontology.ttl`` into the generated
 catalog.  This adapter is the registered provider so stale hand-authored
 capability metadata in the physics module cannot become runtime standing.
 """
+
 from __future__ import annotations
 
 from typing import Any

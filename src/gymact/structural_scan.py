@@ -1,4 +1,5 @@
 """Cheap structural scan for DCM before semantic interpretation or ranking."""
+
 from __future__ import annotations
 
 from collections import Counter

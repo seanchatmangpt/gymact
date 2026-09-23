@@ -14,7 +14,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-from run_sparql_gates import (  # noqa: E402
+from run_sparql_gates import (
     discover_pack_dirs,
     main,
     parse_gate_source,

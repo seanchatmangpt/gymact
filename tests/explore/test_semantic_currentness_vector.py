@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class Currentness:
     ontology_version: int
@@ -10,7 +11,9 @@ class Currentness:
 def dominates(a: Currentness, b: Currentness) -> bool:
     av = (a.ontology_version, a.profile_version, a.projection_version)
     bv = (b.ontology_version, b.profile_version, b.projection_version)
-    return all(x >= y for x, y in zip(av, bv)) and any(x > y for x, y in zip(av, bv))
+    return all(x >= y for x, y in zip(av, bv, strict=False)) and any(
+        x > y for x, y in zip(av, bv, strict=False)
+    )
 
 
 def test_currentness_is_partial_order_not_scalar_recency() -> None:

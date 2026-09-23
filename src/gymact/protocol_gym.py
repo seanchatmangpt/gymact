@@ -8,6 +8,7 @@ projection pack.
 Discovery is structural evidence only. Advertised capability != safe action,
 verified consequence, or ALIVE standing.
 """
+
 from __future__ import annotations
 
 from enum import StrEnum
@@ -55,7 +56,7 @@ class ProtocolGymSpec(FrozenModel):
     standing: Standing = Standing.STRUCTURAL
 
     @model_validator(mode="after")
-    def structurally_admitted_only(self) -> "ProtocolGymSpec":
+    def structurally_admitted_only(self) -> ProtocolGymSpec:
         if self.standing is Standing.ALIVE:
             raise ValueError("DISCOVERY_CANNOT_PREMARK_PROTOCOL_GYM_ALIVE")
         ids = [capability.semantic_id for capability in self.capabilities]

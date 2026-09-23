@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from fractions import Fraction
-
 from gymact.explore_kantorovich_duality.measure import FiniteMeasure
 from gymact.explore_kantorovich_duality.metric import GroundMetric
 from gymact.explore_kantorovich_duality.plan import TransportPlan
@@ -13,7 +11,9 @@ from .raw_marginals import verify_marginals
 from .tight_components import derive_tight_components
 
 
-def construct_dual(plan: TransportPlan, source: FiniteMeasure, target: FiniteMeasure, metric: GroundMetric) -> DualPotential:
+def construct_dual(
+    plan: TransportPlan, source: FiniteMeasure, target: FiniteMeasure, metric: GroundMetric
+) -> DualPotential:
     """Recover a deterministic feasible dual from complementary tight-edge equations.
 
     If the supplied feasible plan is not optimal, the induced difference-constraint

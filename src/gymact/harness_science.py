@@ -8,9 +8,10 @@ consequential DO remains outside this module and behind GymAct's BRCE boundary.
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from hashlib import sha256
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -65,7 +66,7 @@ class HarnessConfiguration(FrozenModel):
 
 
 class ExperimentSubject(FrozenModel):
-    """Benchmark × Harness × Environment × Agent × Model identity."""
+    """Benchmark x Harness x Environment x Agent x Model identity."""
 
     benchmark_id: str = Field(min_length=1)
     harness_digest: str = Field(min_length=1)
@@ -147,7 +148,7 @@ class HarnessBenchRun(FrozenModel):
 
     @property
     def configuration_key(self) -> str:
-        """Capability is model × harness, never model-only."""
+        """Capability is model x harness, never model-only."""
         return f"{self.subject.model_id}@{self.subject.harness_digest}"
 
 
@@ -172,7 +173,7 @@ class HarnessChangeAdmission(FrozenModel):
 
 
 def admit_harness_change(
-    hypothesis: "HarnessChangeHypothesis",
+    hypothesis: HarnessChangeHypothesis,
     *,
     task_agnostic: bool,
     proactive_feedback_refs: Sequence[str] = (),
@@ -449,11 +450,7 @@ def admit_safety_evolution(
     accepted = attack_delta < 0 and utility_delta >= 0 and held_out
     return SafetyEvolutionDecision(
         accepted=accepted,
-        reason=(
-            "ADMITTED"
-            if accepted
-            else "REFUSED[SAFETY_UTILITY_OR_GENERALIZATION_REGRESSION]"
-        ),
+        reason=("ADMITTED" if accepted else "REFUSED[SAFETY_UTILITY_OR_GENERALIZATION_REGRESSION]"),
         attack_success_delta=attack_delta,
         utility_delta=utility_delta,
         held_out=held_out,

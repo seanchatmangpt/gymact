@@ -37,8 +37,9 @@ satisfies ``OcelRecorderLike`` structurally.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
-from typing import Any, Callable, Iterable, Mapping, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 #: One `Atom.bindings`-shaped payload in, any real result out. Local
 #: replacement for the 1-line alias previously imported from
@@ -47,12 +48,12 @@ ActionBinding = Callable[[dict[str, Any]], Any]
 
 __all__ = [
     "ActionBinding",
-    "CapabilityGateLike",
-    "OcelRecorderLike",
-    "PowlPipelineSpec",
     "ActuationBindingRefused",
     "BridgeUnavailable",
+    "CapabilityGateLike",
     "GatedCapabilityBinding",
+    "OcelRecorderLike",
+    "PowlPipelineSpec",
 ]
 
 

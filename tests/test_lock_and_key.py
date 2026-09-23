@@ -247,9 +247,7 @@ async def test_do_capability_is_refused_without_admitted_authority() -> None:
     episode_id = materialization.episode.episode_id
 
     result = await gym.act(
-        ActuationIntent(
-            episode_id=episode_id, capability=PICK_KEY, payload={"key": 0}
-        )
+        ActuationIntent(episode_id=episode_id, capability=PICK_KEY, payload={"key": 0})
     )
 
     assert result.accepted is False

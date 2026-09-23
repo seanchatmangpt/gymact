@@ -1,16 +1,20 @@
 from __future__ import annotations
+
 from collections import deque
 from dataclasses import dataclass
+
 from .event import InvalidationEvent
 from .graph import DependencyGraph
 from .impact import direct_impact
 from .model import Binding, Subject
+
 
 @dataclass(frozen=True)
 class CascadeItem:
     binding: Binding
     depth: int
     reason: str
+
 
 def cascade(graph: DependencyGraph, event: InvalidationEvent) -> tuple[CascadeItem, ...]:
     queue = deque([(event.producer, 0)])

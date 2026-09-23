@@ -1,6 +1,10 @@
 from fractions import Fraction
 
-from gymact.explore_distributional_robustness import FiniteDistribution, total_variation, two_point_extremes
+from gymact.explore_distributional_robustness import (
+    FiniteDistribution,
+    total_variation,
+    two_point_extremes,
+)
 
 
 def test_two_point_adversary_preserves_center_and_radius() -> None:

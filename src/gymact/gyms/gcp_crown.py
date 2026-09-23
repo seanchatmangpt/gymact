@@ -50,10 +50,7 @@ class GcpExactnessCrown:
                 self.behavior_coverage is not None
                 and self.behavior_coverage.structurally_executable_methods > 0
             )
-            or (
-                self.validation_coverage is not None
-                and self.validation_coverage.alive_cases > 0
-            )
+            or (self.validation_coverage is not None and self.validation_coverage.alive_cases > 0)
         ):
             return "PARTIAL_ALIVE"
         return "UNKNOWN"

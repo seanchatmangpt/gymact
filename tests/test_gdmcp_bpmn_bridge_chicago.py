@@ -9,8 +9,17 @@ import check.
 
 from __future__ import annotations
 
+import importlib.util as _importlib_util
+
 import pytest
 
+from gymact.standing import named_standing_skip
+
+named_standing_skip(
+    "LOCAL_EXTRA:bpmn",
+    available=_importlib_util.find_spec("SpiffWorkflow") is not None,
+    reason="the optional 'bpmn' extra is not installed -- `uv sync --extra bpmn`",
+)
 from gymact.authority import AllowListAuthorityResolver, DenyAuthorityResolver
 from gymact.gdmcp import CompiledGdmcpProgram
 from gymact.gdmcp_bpmn_bridge import (

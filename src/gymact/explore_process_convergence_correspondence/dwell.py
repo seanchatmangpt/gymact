@@ -1,5 +1,6 @@
-from .trajectory import Trajectory
 from .obligation import State
+from .trajectory import Trajectory
+
 
 def stable_dwell(trajectory: Trajectory, target: State = State.PASS) -> int:
     count = 0

@@ -225,9 +225,7 @@ def graph_for_receipts(receipts: tuple[Receipt, ...]) -> Graph:
     return evidence_graph(records)
 
 
-def bind_counterfactual_pair(
-    allowed: CrownEpisodeRun, denied: CrownEpisodeRun
-) -> CrownPairReceipt:
+def bind_counterfactual_pair(allowed: CrownEpisodeRun, denied: CrownEpisodeRun) -> CrownPairReceipt:
     """COUNTERFACTUAL_PAIR_BINDING + STANDING_DERIVATION_DIFF: binds the two
     real runs and checks the actual invariance claim."""
     allowed_standing = derive_standing_from_verify_events(allowed.ocel_log)

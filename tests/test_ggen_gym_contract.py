@@ -15,23 +15,23 @@ from pathlib import Path
 
 import pytest
 
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
 
 def _ggen_available() -> bool:
     return shutil.which("ggen") is not None
 
 
-require_standing(
+named_standing_skip(
     "LOCAL_GYM:ggen",
     available=_ggen_available(),
     reason="no `ggen` binary found on PATH (install it, e.g. via "
     "`cargo install ggen`, or ensure ~/.cargo/bin is on PATH)",
 )
 
-from gymact.gyms.ggen import GGEN_CAPABILITIES, GgenProvider  # noqa: E402
-from gymact.models import Consequence  # noqa: E402
-from gymact.registry import builtin_provider_names  # noqa: E402
+from gymact.gyms.ggen import GGEN_CAPABILITIES, GgenProvider
+from gymact.models import Consequence
+from gymact.registry import builtin_provider_names
 
 
 def _fixture_project(source: Path) -> None:

@@ -1,4 +1,5 @@
 """Evidence replay admission. Replay validates evidence and never silently actuates."""
+
 from __future__ import annotations
 
 from enum import StrEnum

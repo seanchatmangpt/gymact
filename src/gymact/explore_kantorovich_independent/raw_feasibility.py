@@ -9,9 +9,13 @@ from gymact.explore_kantorovich_duality.potential import DualPotential
 from .refusal import IndependentVerifierRefusal
 
 
-def verify_dual_feasibility(potential: DualPotential, source: FiniteMeasure, target: FiniteMeasure, metric: GroundMetric) -> Fraction:
+def verify_dual_feasibility(
+    potential: DualPotential, source: FiniteMeasure, target: FiniteMeasure, metric: GroundMetric
+) -> Fraction:
     if set(potential.u) != set(source.support) or set(potential.v) != set(target.support):
-        raise IndependentVerifierRefusal("DUAL_SUPPORT_MISMATCH", "dual potentials must cover both supports exactly")
+        raise IndependentVerifierRefusal(
+            "DUAL_SUPPORT_MISMATCH", "dual potentials must cover both supports exactly"
+        )
     max_slack = Fraction(0)
     for x in source.support:
         for y in target.support:

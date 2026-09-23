@@ -34,7 +34,7 @@ from gymact.powl.algebra import (
 from gymact.powl.frequency import Frequency
 from gymact.powl.refusals import PowlError, PowlRefusal
 
-__all__ = ["activity_sha256", "node_id", "node_structure", "OccurrenceKey"]
+__all__ = ["OccurrenceKey", "activity_sha256", "node_id", "node_structure"]
 
 
 def activity_sha256(atom: Atom) -> str:

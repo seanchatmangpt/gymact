@@ -15,138 +15,45 @@ include "LOCAL_GYM:terraform-plan" (or "*") -- a skip here is something a run
 must opt into, never something it silently gets. Matches
 `test_cube_container_counter.py`'s and `test_kubernetes_reconciliation.py`'s
 contract.
+
+Shared environment probes, constants and the authorized-gym helper live in
+`terraform_plan_support` -- gate-free, so sibling courts can import
+`AUTHORITY` without tripping this module's standing gates (GYMACT-5: the
+gates used to sit textually above those constants, so a fired gate also
+removed them and a lazy cross-module import died with
+`ImportError: cannot import name 'AUTHORITY'`). This module still applies
+the gates itself, at module scope, exactly as before.
 """
 
 from __future__ import annotations
 
-import subprocess
 import tempfile
 from pathlib import Path
 
 import pytest
 
-from gymact.gyms.terraform_plan import resolve_binary
+from gymact import GymAct, MaterializationIntent
+from gymact.gyms.terraform_plan import TerraformPlanProvider, resolve_binary
+from gymact.models import ActuationIntent, Consequence, Operation
+from gymact.ocel import receipts_to_ocel, validate_ocel_log, write_ocel_log
+from gymact.process import ConformanceChecker
 
-_TERRAGOAT_DIR = Path.home() / "autofde-lab" / "vendor" / "gyms" / "terragoat"
-# terragoat's .tf files live under one subdirectory per cloud (aws/azure/gcp/
-# alicloud), not at the repo root -- `terraform init` at the root would find
-# zero .tf files and silently do nothing. Confirmed by real inspection this
-# session (`find .../terragoat/*.tf` -> zero matches at root;
-# `find .../terragoat/terraform/aws/*.tf` -> real files).
-_TERRAGOAT_TARGET_DIR = _TERRAGOAT_DIR / "terraform" / "alicloud"
-# `terraform/aws` was the first target tried, but it declares a real remote
-# `backend "s3" { ... }` (providers.tf) -- confirmed this session that
-# `terraform plan` refuses to run against it once `init -backend=false` was
-# used (a real, reproducible "Backend initialization required" error, not
-# stale state -- retested from a fully clean `.terraform`). Supplying real
-# S3 config would mean real Terraform state written to a real AWS bucket,
-# which this plan-only provider must never risk. `terraform/alicloud`
-# declares no backend block at all and its `.tf` files have no legacy
-# quoted-type-constraint syntax either, so `init -backend=false` and `plan`
-# both run to real completion -- `plan` surfaces a real, legitimate
-# provider-config error (`Invalid type option` on the `alicloud` provider's
-# auth type) in real stdout, exactly the "completed run, real per-resource
-# error" case this provider is designed to treat as valid evidence.
-
-
-def _terraform_binary_available() -> bool:
-    return resolve_binary() is not None
-
-
-def _terragoat_checkout_present() -> tuple[bool, str]:
-    """Environment-fixable gap: no clone, or binary missing. Gated through
-    `require_standing()`'s opt-in mechanism -- the caller can un-degrade by
-    fixing their environment (clone the submodule, install terraform/tofu)."""
-    if not _TERRAGOAT_TARGET_DIR.is_dir() or not any(_TERRAGOAT_TARGET_DIR.glob("*.tf")):
-        return False, f"{_TERRAGOAT_TARGET_DIR} does not exist or has no .tf files"
-    if resolve_binary() is None:
-        return False, "neither 'terraform' nor 'tofu' is on PATH"
-    return True, "ok"
-
-
-def _terragoat_parseable() -> tuple[bool, str]:
-    """Real, not assumed: the repo being cloned is not sufficient evidence
-    it's actually parseable by the installed terraform/tofu binary.
-
-    A prior checkout of terragoat's `terraform/aws` used pre-0.12 legacy
-    quoted type constraints (`type = "string"`), which no currently
-    installable terraform/tofu version accepts -- a genuinely structural,
-    non-environment-fixable incompatibility for that path (no local fix
-    changes it; patching the vendored files would corrupt the pinned
-    checkout). This test targets `terraform/alicloud` instead, which has no
-    such legacy syntax and no remote backend block, and is confirmed real
-    `init`-able below. If a future re-pin of the vendored checkout
-    regresses `terraform/alicloud` to a similarly unparseable state, this
-    check reports the real reason and this test is skipped unconditionally
-    (never gated behind the env var) since that would again be a structural
-    incompatibility, not a transient one.
-    """
-    present, reason = _terragoat_checkout_present()
-    if not present:
-        return False, reason
-    binary = resolve_binary()
-    assert binary is not None  # guaranteed by _terragoat_checkout_present
-    try:
-        completed = subprocess.run(
-            [binary, "init", "-backend=false", "-input=false"],
-            cwd=str(_TERRAGOAT_TARGET_DIR),
-            capture_output=True,
-            text=True,
-            timeout=90,
-            check=False,
-        )
-    except (subprocess.TimeoutExpired, OSError) as exc:
-        return False, f"real `{binary} init` attempt raised {type(exc).__name__}: {exc}"
-    if completed.returncode != 0:
-        return False, (
-            f"real `{binary} init -backend=false` against the real checked-out "
-            f"terragoat config failed (exit {completed.returncode}): "
-            f"{completed.stderr[-400:] or completed.stdout[-400:]}"
-        )
-    return True, "ok"
-
-
-from gymact.standing import require_standing  # noqa: E402
-
-_CHECKOUT_PRESENT, _CHECKOUT_REASON = _terragoat_checkout_present()
-require_standing(
-    "LOCAL_GYM:terraform-plan",
-    available=_CHECKOUT_PRESENT,
-    reason=f"real, environment-fixable gap: {_CHECKOUT_REASON} "
-    "(clone ~/autofde-lab's terragoat submodule; install terraform or tofu)",
+from .terraform_plan_support import (
+    AUTHORITY,
+    PLAN_CAPABILITY,
+    gate_real_terraform_environment,
+)
+from .terraform_plan_support import (
+    TERRAGOAT_DIR as _TERRAGOAT_DIR,
+)
+from .terraform_plan_support import (
+    TERRAGOAT_TARGET_DIR as _TERRAGOAT_TARGET_DIR,
+)
+from .terraform_plan_support import (
+    authorized_gym as _authorized_gym,
 )
 
-_PARSEABLE, _PARSEABLE_REASON = _terragoat_parseable()
-if not _PARSEABLE:
-    # NOT gated through require_standing()'s opt-in mechanism: unlike a
-    # missing checkout/binary, a real HCL parse failure against the pinned
-    # terragoat commit is not fixable by the local environment -- see
-    # `_terragoat_parseable`'s docstring. This is a real, named, visible
-    # skip (never silent), just unconditional rather than requiring every
-    # ordinary run to opt into tolerating a permanent incompatibility.
-    pytest.skip(
-        f"terragoat/alicloud structurally unparseable by the installed "
-        f"terraform/tofu (not a transient gap): {_PARSEABLE_REASON}",
-        allow_module_level=True,
-    )
-
-from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent  # noqa: E402
-from gymact.gyms.terraform_plan import TerraformPlanProvider  # noqa: E402
-from gymact.models import ActuationIntent, Consequence, Operation  # noqa: E402
-from gymact.ocel import receipts_to_ocel, validate_ocel_log, write_ocel_log  # noqa: E402
-from gymact.process import ConformanceChecker  # noqa: E402
-
-PLAN_CAPABILITY = "urn:gymact:terraform-plan:capability:plan"
-# terraform_plan.py's requires_authority now defaults to True (a real
-# terraform plan invocation must not run unauthorized) -- every act()-driving
-# test below explicitly admits AUTHORITY.
-AUTHORITY = "urn:test:terraform-plan-authority"
-
-
-def _authorized_gym() -> GymAct:
-    gym = GymAct(authority_resolver=AllowListAuthorityResolver({AUTHORITY}))
-    gym.register_provider(TerraformPlanProvider())
-    return gym
+gate_real_terraform_environment()
 
 
 async def _run_real_terraform_episode() -> list:

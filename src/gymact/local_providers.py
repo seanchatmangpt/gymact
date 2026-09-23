@@ -114,9 +114,7 @@ class FilesystemEnvironment:
 
     async def restore(self, checkpoint: dict[str, Any]) -> None:
         self._open()
-        for path in sorted(
-            (item for item in self.root.rglob("*") if item.is_file()), reverse=True
-        ):
+        for path in sorted((item for item in self.root.rglob("*") if item.is_file()), reverse=True):
             path.unlink()
         files = checkpoint.get("files", {})
         if not isinstance(files, dict):
@@ -184,8 +182,7 @@ class GitEnvironment:
             ["git", *args],
             cwd=self.root,
             text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             check=False,
         )
         if completed.returncode != 0:
@@ -265,8 +262,7 @@ class GitProvider:
             ["git", "rev-parse", "--is-inside-work-tree"],
             cwd=root,
             text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             check=False,
         )
         if completed.returncode != 0 or completed.stdout.strip() != "true":
@@ -329,9 +325,7 @@ class SQLiteEnvironment:
             raise ValueError("AMBIGUOUS_SUBJECT_REFUSED")
         with closing(sqlite3.connect(self.database)) as connection, connection:
             if capability.binding == "set":
-                encoded = json.dumps(
-                    payload.get("value"), sort_keys=True, separators=(",", ":")
-                )
+                encoded = json.dumps(payload.get("value"), sort_keys=True, separators=(",", ":"))
                 connection.execute(
                     "INSERT INTO gymact_state(key, value_json) VALUES(?, ?) "
                     "ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json",

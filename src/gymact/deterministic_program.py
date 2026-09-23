@@ -63,6 +63,7 @@ class ProgramNotFound(RuntimeError):
 def _render(template: dict[str, Any], bindings: dict[str, str]) -> dict[str, Any]:
     def render_value(value: Any) -> Any:
         if isinstance(value, str):
+
             def substitute(match: re.Match[str]) -> str:
                 key = match.group(1)
                 if key not in bindings:
@@ -128,7 +129,6 @@ def compile_program(
     spec = catalog.get((provider_name, problem_id))
     if spec is None:
         raise ProgramNotFound(
-            f"PROGRAM_REFUSED:UNKNOWN_PROGRAM:provider={provider_name!r} "
-            f"problem_id={problem_id!r}"
+            f"PROGRAM_REFUSED:UNKNOWN_PROGRAM:provider={provider_name!r} problem_id={problem_id!r}"
         )
     return spec

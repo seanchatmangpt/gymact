@@ -45,9 +45,7 @@ def verdict(agent: str, item: str, rnd: int, rule_id: str, status, **kwargs):
 
 def test_surface_admission_is_fail_closed():
     item = rule("r1")
-    assert hif.place_constraint(
-        item, hif.Surface.PROJECT_FILE
-    ).rendered_text == "rendered r1"
+    assert hif.place_constraint(item, hif.Surface.PROJECT_FILE).rendered_text == "rendered r1"
     with pytest.raises(ValueError, match="INADMISSIBLE_SURFACE"):
         hif.place_constraint(item, hif.Surface.TOOL_DESCRIPTION)
     with pytest.raises(ValueError, match="HD_IS_FIXED"):
@@ -84,9 +82,7 @@ def test_three_vote_majority_matches_paper_protocol():
     )
     assert assessment.status == hif.VerdictStatus.PASS
     with pytest.raises(ValueError, match="THREE_VOTES"):
-        hif.majority_vote(
-            [hif.JudgeVote(judge_id="j1", status=hif.VerdictStatus.PASS)]
-        )
+        hif.majority_vote([hif.JudgeVote(judge_id="j1", status=hif.VerdictStatus.PASS)])
 
 
 def test_acc_facc_apacc_and_dwacc_are_recomputed_from_binary_verdicts():
@@ -149,12 +145,8 @@ def test_cascade_dedup_retains_highest_severity_failure():
         "should": rule("should", severity=hif.Severity.SHOULD),
     }
     rows = [
-        verdict(
-            "a", "i", 0, "must", hif.VerdictStatus.FAIL, cascade_id="artifact-x"
-        ),
-        verdict(
-            "a", "i", 0, "should", hif.VerdictStatus.FAIL, cascade_id="artifact-x"
-        ),
+        verdict("a", "i", 0, "must", hif.VerdictStatus.FAIL, cascade_id="artifact-x"),
+        verdict("a", "i", 0, "should", hif.VerdictStatus.FAIL, cascade_id="artifact-x"),
     ]
     deduped = hif.deduplicate_cascades(rows, library)
     assert deduped[0].status == hif.VerdictStatus.FAIL
@@ -168,11 +160,7 @@ def test_cascade_fairness_excludes_design_gap_at_half_of_five_agents():
             "i",
             0,
             "r1",
-            (
-                hif.VerdictStatus.NO_OPPORTUNITY
-                if i < 3
-                else hif.VerdictStatus.PASS
-            ),
+            (hif.VerdictStatus.NO_OPPORTUNITY if i < 3 else hif.VerdictStatus.PASS),
             missing_artifact_ref="artifact-x" if i < 3 else None,
         )
         for i in range(5)
@@ -191,9 +179,7 @@ def test_failure_decomposition_comes_from_modality_not_reason_text():
         verdict("a", "i", 0, "forbid", hif.VerdictStatus.FAIL, reason="same"),
         verdict("a", "i", 0, "prefer", hif.VerdictStatus.PASS, reason="same"),
     ]
-    by_class = {
-        row.failure_class: row for row in hif.decompose_failures(rows, library)
-    }
+    by_class = {row.failure_class: row for row in hif.decompose_failures(rows, library)}
     assert by_class[hif.FailureClass.SHORTFALL].failures == 1
     assert by_class[hif.FailureClass.OVERSTEP].failures == 1
     assert by_class[hif.FailureClass.PREFERENCE].failures == 0
@@ -222,10 +208,7 @@ def test_panel_item_cardinality_and_surface_fit_are_admitted_explicitly():
         scenario=scenario,
         user_turns=("fix it",),
         placements=tuple(
-            hif.place_constraint(
-                library[f"r{i}"], hif.Surface.PROJECT_FILE
-            )
-            for i in range(25)
+            hif.place_constraint(library[f"r{i}"], hif.Surface.PROJECT_FILE) for i in range(25)
         ),
     )
     admission = hif.admit_panel_item(item, library)
@@ -269,11 +252,7 @@ def test_bradley_terry_recovers_surface_precedence_from_conflicts():
     for model in ("m1", "m2"):
         for pair_no, left in enumerate(surfaces):
             for right in surfaces[pair_no + 1 :]:
-                winner = (
-                    left
-                    if strength[left] >= strength[right]
-                    else right
-                )
+                winner = left if strength[left] >= strength[right] else right
                 rows.append(
                     hif.ConflictRun(
                         model_id=model,
@@ -290,11 +269,14 @@ def test_bradley_terry_recovers_surface_precedence_from_conflicts():
         fit.log_strengths[hif.Surface.TOOL_DESCRIPTION]
         > fit.log_strengths[hif.Surface.SKILL_DESCRIPTION]
     )
-    assert min(
-        fit.log_strengths[surface]
-        for surface in (
-            hif.Surface.SYSTEM_PROMPT,
-            hif.Surface.PROJECT_FILE,
-            hif.Surface.USER_INSTRUCTION,
+    assert (
+        min(
+            fit.log_strengths[surface]
+            for surface in (
+                hif.Surface.SYSTEM_PROMPT,
+                hif.Surface.PROJECT_FILE,
+                hif.Surface.USER_INSTRUCTION,
+            )
         )
-    ) > fit.log_strengths[hif.Surface.TOOL_DESCRIPTION]
+        > fit.log_strengths[hif.Surface.TOOL_DESCRIPTION]
+    )

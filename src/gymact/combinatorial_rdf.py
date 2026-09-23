@@ -5,6 +5,7 @@ a lossless RDF representation using only public predicates/classes plus GymAct A
 resource identities. GymAct URNs used for kinds/phases/reversal are explicit SKOS
 concept individuals, never GymAct-owned RDF/OWL predicates or classes.
 """
+
 from __future__ import annotations
 
 import json

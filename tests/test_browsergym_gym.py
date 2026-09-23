@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
 PINNED_BROWSERGYM_VERSION = "0.14.3"
 STANDING = "LOCAL_GYM:browsergym-openended"
@@ -38,7 +38,7 @@ def _real_browsergym_available() -> bool:
         return False
 
 
-require_standing(
+named_standing_skip(
     STANDING,
     available=_real_browsergym_available(),
     reason=(
@@ -48,7 +48,7 @@ require_standing(
     ),
 )
 
-from gymact import (  # noqa: E402
+from gymact import (
     AllowListAuthorityResolver,
     AuthorityDecision,
     AuthorityRequest,
@@ -56,9 +56,9 @@ from gymact import (  # noqa: E402
     GymAct,
     MaterializationIntent,
 )
-from gymact.gyms.browsergym import BROWSERGYM_CAPABILITIES, BrowserGymProvider  # noqa: E402
-from gymact.models import ActuationIntent, Operation, Standing  # noqa: E402
-from gymact.semantic import ProfileAuthority  # noqa: E402
+from gymact.gyms.browsergym import BROWSERGYM_CAPABILITIES, BrowserGymProvider
+from gymact.models import ActuationIntent, Operation, Standing
+from gymact.semantic import ProfileAuthority
 
 GOTO_CAPABILITY = "urn:gymact:browsergym:capability:goto"
 GO_BACK_CAPABILITY = "urn:gymact:browsergym:capability:go-back"

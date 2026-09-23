@@ -6,7 +6,9 @@ from .potential import DualPotential
 from .refusal import DualityRefusal
 
 
-def admit_complementary_slackness(plan: TransportPlan, potential: DualPotential, metric: GroundMetric) -> None:
+def admit_complementary_slackness(
+    plan: TransportPlan, potential: DualPotential, metric: GroundMetric
+) -> None:
     for edge, mass in plan.flow.items():
         if mass > 0:
             x, y = edge

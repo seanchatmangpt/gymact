@@ -5,6 +5,7 @@ from fractions import Fraction
 
 from .refusal import Refused
 
+
 @dataclass
 class Edge:
     to: int
@@ -13,11 +14,13 @@ class Edge:
     cost: Fraction
     initial: Fraction
 
+
 @dataclass(frozen=True)
 class FlowResult:
     cost: Fraction
     flow: Fraction
     edge_flows: tuple[tuple[int, int, Fraction], ...]
+
 
 class MinCostFlow:
     """Exact rational successive shortest augmenting paths with residual rerouting."""

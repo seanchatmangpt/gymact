@@ -161,9 +161,7 @@ def _validate_selection(space: CombinationSpace, plan: CommerceSelectedPlan) -> 
     assignments = plan.model_dump(mode="python")
     if not any(item.assignments == assignments for item in space.combinations):
         if space.truncated:
-            raise ValueError(
-                "SELECTED_COMMERCE_PLAN_NOT_MATERIALIZED_WITHIN_DFCM_BOUNDS"
-            )
+            raise ValueError("SELECTED_COMMERCE_PLAN_NOT_MATERIALIZED_WITHIN_DFCM_BOUNDS")
         raise ValueError("SELECTED_COMMERCE_PLAN_NOT_IN_DFCM_SPACE")
     return digest(assignments)
 
@@ -204,17 +202,13 @@ def _manufacture_action(
 
 
 def _agent_for(binding: str) -> str:
-    if binding.startswith(
-        ("agreement.", "billing-authority", "credit.", "refund.")
-    ):
+    if binding.startswith(("agreement.", "billing-authority", "credit.", "refund.")):
         return "commerce-commercial"
     if binding.startswith("identity."):
         return "commerce-identity"
     if binding.startswith(("entitlement.", "support.")):
         return "commerce-entitlement"
-    if binding.startswith(
-        ("usage.", "pricing.", "meter.", "provider.", "settlement.")
-    ):
+    if binding.startswith(("usage.", "pricing.", "meter.", "provider.", "settlement.")):
         return "commerce-metering"
     if binding.startswith(("packaging.", "supply-chain.", "artifact.")):
         return "commerce-supply-chain"
@@ -274,15 +268,9 @@ def _grant(subject: str, operation: str) -> dict[str, str]:
 
 
 def _capability(runtime: GymAct, episode_id: str, binding: str):
-    matches = tuple(
-        item
-        for item in runtime.capabilities(episode_id)
-        if item.binding == binding
-    )
+    matches = tuple(item for item in runtime.capabilities(episode_id) if item.binding == binding)
     if len(matches) != 1:
-        raise RuntimeError(
-            f"COMMERCE_CAPABILITY_NOT_UNAMBIGUOUS:{binding}:{len(matches)}"
-        )
+        raise RuntimeError(f"COMMERCE_CAPABILITY_NOT_UNAMBIGUOUS:{binding}:{len(matches)}")
     return matches[0]
 
 
@@ -359,9 +347,7 @@ async def _execute_alive(
         )
     )
     if not result.accepted:
-        raise RuntimeError(
-            f"COMMERCE_OUTER_REFUSED:{binding}:{result.receipt.reason}"
-        )
+        raise RuntimeError(f"COMMERCE_OUTER_REFUSED:{binding}:{result.receipt.reason}")
     if result.effect is None or result.effect.get("standing") != "ALIVE":
         raise RuntimeError(f"COMMERCE_INNER_NOT_ALIVE:{binding}:{result.effect}")
     return binding, manufactured.manufacture_receipt
@@ -405,9 +391,7 @@ async def _execute_expected_refusal(
     if not result.accepted or result.effect is None:
         raise RuntimeError(f"COMMERCE_REFUSAL_COURT_DID_NOT_EXECUTE:{binding}")
     if result.effect.get("standing") != "REFUSED":
-        raise RuntimeError(
-            f"COMMERCE_EXPECTED_REFUSAL_MISSING:{binding}:{result.effect}"
-        )
+        raise RuntimeError(f"COMMERCE_EXPECTED_REFUSAL_MISSING:{binding}:{result.effect}")
     refusal = result.effect.get("refusal")
     if not isinstance(refusal, dict) or refusal.get("code") != expected_code:
         raise RuntimeError(f"COMMERCE_WRONG_REFUSAL:{binding}:{refusal}")
@@ -433,9 +417,7 @@ def _base_agreement(
         "pricing": pricing,
         "effective_at": "2026-08-19T00:00:00Z",
         "expires_at": "2027-08-19T00:00:00Z",
-        "negotiated_terms_ref": (
-            f"urn:gymact:commerce-dfcm:selection:{selection_digest}"
-        ),
+        "negotiated_terms_ref": (f"urn:gymact:commerce-dfcm:selection:{selection_digest}"),
     }
 
 
@@ -482,14 +464,10 @@ async def execute_commerce_dfcm(plan: CommerceSelectedPlan) -> CommerceDfcmExecu
     selection_digest = _validate_selection(design_space, plan)
     agent_space = commerce_agent_space()
     specs = _agent_specs()
-    manufacturer = CallableGgenManufacturer(
-        {spec.agent_id: _manufacture_action for spec in specs}
-    )
+    manufacturer = CallableGgenManufacturer({spec.agent_id: _manufacture_action for spec in specs})
     agents = GgenAgentRuntime(specs, manufacturer)
 
-    runtime = GymAct(
-        authority_resolver=AllowListAuthorityResolver({INTERNAL_AUTHORITY})
-    )
+    runtime = GymAct(authority_resolver=AllowListAuthorityResolver({INTERNAL_AUTHORITY}))
     runtime.register_provider(CommerceDfcmProvider())
     materialized = await runtime.create_episode(
         "commerce-dfcm",
@@ -498,9 +476,7 @@ async def execute_commerce_dfcm(plan: CommerceSelectedPlan) -> CommerceDfcmExecu
         idempotency_key=f"commerce:{selection_digest}:materialize",
     )
     if not materialized.accepted or materialized.episode is None:
-        raise RuntimeError(
-            materialized.receipt.reason or "COMMERCE_MATERIALIZATION_REFUSED"
-        )
+        raise RuntimeError(materialized.receipt.reason or "COMMERCE_MATERIALIZATION_REFUSED")
     episode_id = materialized.episode.episode_id
 
     pricing, usage_dimension = _pricing(plan)
@@ -740,18 +716,12 @@ async def execute_commerce_dfcm(plan: CommerceSelectedPlan) -> CommerceDfcmExecu
         },
     )
 
-    semantic_ids = {
-        item.binding for item in COMMERCE_DFCM_SEMANTIC_CAPABILITIES
-    }
+    semantic_ids = {item.binding for item in COMMERCE_DFCM_SEMANTIC_CAPABILITIES}
     exercised = set(alive) | set(refused)
-    external = tuple(
-        sorted(item.binding for item in COMMERCE_DFCM_EXTERNAL_FRONTIER)
-    )
+    external = tuple(sorted(item.binding for item in COMMERCE_DFCM_EXTERNAL_FRONTIER))
     if exercised | set(external) != semantic_ids:
         missing = sorted(semantic_ids - exercised - set(external))
-        raise RuntimeError(
-            f"COMMERCE_CAPABILITY_CLOSURE_NOT_EXERCISED:{missing}"
-        )
+        raise RuntimeError(f"COMMERCE_CAPABILITY_CLOSURE_NOT_EXERCISED:{missing}")
     if exercised & set(external):
         raise RuntimeError("EXTERNAL_COMMERCE_DO_ENTERED_EXECUTABLE_EPISODE")
     if set(possibility.external_do_bindings) != set(external):
@@ -772,8 +742,7 @@ async def execute_commerce_dfcm(plan: CommerceSelectedPlan) -> CommerceDfcmExecu
         raise RuntimeError("COMMERCE_FINAL_VERIFICATION_FAILED")
 
     all_runtime_receipts = tuple(
-        receipt.receipt_id
-        for receipt in runtime.episode_receipts(episode_id)
+        receipt.receipt_id for receipt in runtime.episode_receipts(episode_id)
     )
     await runtime.teardown(episode_id, authority_ref=INTERNAL_AUTHORITY)
 

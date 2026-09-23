@@ -1,4 +1,5 @@
 """Typer CLI for GymAct."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -44,6 +45,23 @@ from gymact.surfaces.fastapi import create_app
 from gymact.transport import TransportKind, normalize_candidate
 
 app = typer.Typer(no_args_is_help=True, help="GymAct lawful executable-world runtime")
+
+SELF_MATERIALIZED_SUBJECT = "$SELF_MATERIALIZED_ENVIRONMENT_ID"
+"""Sentinel for `execute`'s request `subject.provider_ref`.
+
+`execute()` always materializes a *fresh* environment inside the same CLI
+invocation (see `_materialize_request`), and every builtin provider assigns
+that environment's id from a random `uuid4()` at materialization time -- a
+request file written *before* the call structurally cannot know it. A request
+that genuinely wants "execute against whatever this exact invocation just
+materialized" (the common single-shot case: materialize-then-act in one
+process, no cross-process episode persistence) opts in explicitly by setting
+`subject.provider_ref` to this sentinel. `execute()` then substitutes the
+real, just-materialized `episode.environment_id` before the identity check.
+A request naming any other, real, pre-known `provider_ref` is unaffected --
+the identity check still runs and still refuses on a genuine mismatch, same
+as before this sentinel existed.
+"""
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -228,6 +246,17 @@ def execute(
         grant = ExecutionGrant.model_validate(data["grant"])
         current_observation = materialized.observation
         episode = materialized.episode
+
+        if subject.provider_ref == SELF_MATERIALIZED_SUBJECT:
+            subject = subject.model_copy(update={"provider_ref": episode.environment_id})
+        if grant.subject.provider_ref == SELF_MATERIALIZED_SUBJECT:
+            grant = grant.model_copy(
+                update={
+                    "subject": grant.subject.model_copy(
+                        update={"provider_ref": episode.environment_id}
+                    )
+                }
+            )
 
         if subject.provider_ref != episode.environment_id:
             return {

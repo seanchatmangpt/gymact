@@ -158,7 +158,7 @@ class _FakeFlakyClient:
         self.should_succeed = should_succeed
         self.entered = False
 
-    async def __aenter__(self) -> "_FakeFlakyClient":
+    async def __aenter__(self) -> _FakeFlakyClient:
         if not self.should_succeed:
             raise RuntimeError("real simulated failure for this fresh instance")
         self.entered = True
@@ -362,11 +362,10 @@ class ActuateStatusResilienceTests(unittest.TestCase):
         env = object.__new__(SregymEnvironment)
         env._closed = False
         env._api_base = f"http://127.0.0.1:{self._real_closed_port()}"
-        with self.assertRaises(Exception):
+        with self.assertRaises(Exception):  # noqa: B017
             env._status()
 
 
-@pytest.mark.filterwarnings("ignore::pytest.PytestUnraisableExceptionWarning")
 class ConcurrentMcpDispatchTests(unittest.TestCase):
     """Real proof of the concurrency MECHANISM the user asked for directly:
     'concurrently send MCP commands to evaluate, I don't care if the
@@ -388,24 +387,25 @@ class ConcurrentMcpDispatchTests(unittest.TestCase):
     real OS threads with real overlapping wall-clock windows, not
     serialized one-after-another.
 
-    The class-level `filterwarnings` mark above is real, scoped, and
-    load-bearing, not incidental: a real connection attempt against a real
-    closed port leaves real `anyio` `MemoryObjectReceiveStream`s that are
-    not torn down by any real, public cleanup call available on
-    `fastmcp.Client` -- confirmed live via two independent real fix
-    attempts (removing an `asyncio.wait_for` wrapper around `__aenter__`,
-    and unconditionally calling `client.close()` in a `finally` on every
-    code path) neither of which stopped the real `ResourceWarning` at a
-    later, unrelated GC pass. This repo's own `filterwarnings = ["error",
-    ...]` policy (pyproject.toml) would otherwise fail an arbitrary,
-    unrelated later test when that GC pass happens to land during it --
-    real evidence of exactly that observed live before this mark was
-    added (`ConcurrentMcpDispatchTests` passing while
-    `SregymProviderLiveEpisodeTests::test_real_materialize_...` failed on
-    an unrelated GC-timed warning). This is a real, upstream
-    resource-cleanup gap in a third-party library under a genuinely
-    exercised failure path (a connection that never completes its
-    handshake), not a defect in the code under test here."""
+    Resource lifecycle (GYMACT-6): this class carries NO
+    `filterwarnings` suppression. A real failed handshake used to leave
+    real `fastmcp.Client`/anyio streams, event loops and asyncio self-pipe
+    AF_UNIX sockets that no single public cleanup call tore down, and a
+    class-level `PytestUnraisableExceptionWarning` ignore mark papered
+    over their late GC finalization. The current per-attempt shape --
+    `await client.__aenter__()` uncancellable against a fail-fast closed
+    port, `await client.close()` best-effort in `finally`, one
+    `asyncio.run()` event loop per attempt (created, run, and closed
+    deterministically by `asyncio.run` itself, self-pipe included) -- plus
+    the owning-boundary finalizers in `tests/conftest.py`
+    (`pytest_runtest_call`'s bounded 5-pass GC sweep exactly at this
+    class's items, and `pytest_sessionfinish`'s scoped final sweep) close
+    those resources deterministically inside their own scope. Verified
+    live four consecutive runs with the old mark removed and
+    `-W error::pytest.PytestUnraisableExceptionWarning`: zero unraisable
+    warnings. If a future fastmcp/anyio change reintroduces a leak, it
+    now fails REAL here under the repo's warnings-as-errors policy
+    instead of being invisible."""
 
     def _real_closed_port(self) -> int:
         import socket as _socket
@@ -416,9 +416,7 @@ class ConcurrentMcpDispatchTests(unittest.TestCase):
         probe.close()
         return port
 
-    def _dispatch_one_real_mcp_connection_attempt(
-        self, url: str
-    ) -> tuple[int, float, float]:
+    def _dispatch_one_real_mcp_connection_attempt(self, url: str) -> tuple[int, float, float]:
         """Runs on a worker thread. Returns (real thread ident, real
         monotonic start, real monotonic end) -- never raises, since
         whether the real connection succeeds is not the point."""
@@ -497,10 +495,7 @@ class ConcurrentMcpDispatchTests(unittest.TestCase):
         url = f"http://127.0.0.1:{port}/kubectl/sse"
         n = 5
 
-        results = [
-            self._dispatch_one_real_mcp_connection_attempt(url)
-            for _ in range(n)
-        ]
+        results = [self._dispatch_one_real_mcp_connection_attempt(url) for _ in range(n)]
 
         intervals = [(start, end) for _ident, start, end in results]
         overlapping_pairs = [
@@ -559,7 +554,9 @@ class TeardownKillsProcessGroupTests(unittest.TestCase):
             self.addCleanup(proc.stderr.close)
 
         self.assertTrue(self._pid_is_alive(proc.pid), "parent should be alive before teardown")
-        self.assertTrue(self._pid_is_alive(grandchild_pid), "real grandchild should be alive before teardown")
+        self.assertTrue(
+            self._pid_is_alive(grandchild_pid), "real grandchild should be alive before teardown"
+        )
 
         env = object.__new__(SregymEnvironment)
         env._closed = False
@@ -686,9 +683,7 @@ class SregymResolveMaterializeConfigTests(unittest.TestCase):
 
     def test_invalid_agent_name_type_is_rejected(self):
         with self.assertRaises(TypeError):
-            _resolve_materialize_argv_and_env(
-                scenario=None, config={"agent_name": 123}
-            )
+            _resolve_materialize_argv_and_env(scenario=None, config={"agent_name": 123})
 
 
 class SregymProviderAdmissionTests(unittest.TestCase):
@@ -700,9 +695,7 @@ class SregymProviderAdmissionTests(unittest.TestCase):
             ["git", "-C", str(root), "config", "user.email", "gymact@example.invalid"],
             check=True,
         )
-        subprocess.run(
-            ["git", "-C", str(root), "config", "user.name", "GymAct Test"], check=True
-        )
+        subprocess.run(["git", "-C", str(root), "config", "user.name", "GymAct Test"], check=True)
         marker = root / "main.py"
         marker.write_text("print('not the real sregym')\n", encoding="utf-8")
         subprocess.run(["git", "-C", str(root), "add", "main.py"], check=True)
@@ -759,9 +752,7 @@ class SregymProviderAdmissionTests(unittest.TestCase):
 
             provider = SregymVendorProvider()
             with self.assertRaises(VendorAdmissionError) as ctx:
-                asyncio.run(
-                    provider.materialize(scenario=None, config={"root": str(root)})
-                )
+                asyncio.run(provider.materialize(scenario=None, config={"root": str(root)}))
             self.assertEqual(ctx.exception.code, "REFUSED:VENDOR_REVISION_MISMATCH")
         finally:
             tmp.cleanup()
@@ -770,9 +761,7 @@ class SregymProviderAdmissionTests(unittest.TestCase):
         provider = SregymVendorProvider()
         missing_root = Path(tempfile.mkdtemp()) / "does-not-exist"
         with self.assertRaises(VendorAdmissionError) as ctx:
-            asyncio.run(
-                provider.materialize(scenario=None, config={"root": str(missing_root)})
-            )
+            asyncio.run(provider.materialize(scenario=None, config={"root": str(missing_root)}))
         self.assertEqual(ctx.exception.code, "BLOCKED:VENDOR_CHECKOUT_MISSING")
 
 
@@ -820,9 +809,7 @@ class SregymProviderLiveEpisodeTests(unittest.TestCase):
                 if capability.binding == "run_kubectl"
             )
             result = asyncio.run(
-                environment.actuate(
-                    run_kubectl, {"command": "kubectl get namespaces"}
-                )
+                environment.actuate(run_kubectl, {"command": "kubectl get namespaces"})
             )
             self.assertIn("result_text", result)
             self.assertTrue(len(result["result_text"]) > 0)
@@ -832,8 +819,8 @@ class SregymProviderLiveEpisodeTests(unittest.TestCase):
             # memory-object streams left by the real `fastmcp.Client`
             # session above to actually finalize (and their
             # `ResourceWarning` to fire) HERE, inside this test's own real
-            # scope -- so the class-level `filterwarnings` mark above
-            # actually catches it. Without this, Python's real GC can
+            # scope -- so this test's own method-level `filterwarnings`
+            # mark above actually catches it. Without this, Python's real GC can
             # (and, confirmed live, does) defer collection past this
             # test's return, surfacing the same real warning at pytest's
             # session-level `unconfigure` instead, where no per-test mark

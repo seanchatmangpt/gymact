@@ -61,9 +61,7 @@ if _dspy is not None:
         expected: dict[str, Any] = _dspy.InputField(
             desc="real expected state subset the actor claims is satisfied"
         )
-        observed: dict[str, Any] = _dspy.InputField(
-            desc="real, independently-read current state"
-        )
+        observed: dict[str, Any] = _dspy.InputField(desc="real, independently-read current state")
         # Real ge/le constraints (not just prose in `desc`), matching
         # dspy.ai's own GEPA trusted-monitor tutorial's suspicion_score
         # field exactly -- DSPy surfaces a clear validation warning if the

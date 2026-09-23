@@ -23,9 +23,9 @@ SCORES = {
 def dominates(left: Score, right: Score) -> bool:
     left_vector = (left.safety, left.reuse, -left.requalification_cost)
     right_vector = (right.safety, right.reuse, -right.requalification_cost)
-    return all(
-        lhs >= rhs for lhs, rhs in zip(left_vector, right_vector, strict=True)
-    ) and any(lhs > rhs for lhs, rhs in zip(left_vector, right_vector, strict=True))
+    return all(lhs >= rhs for lhs, rhs in zip(left_vector, right_vector, strict=True)) and any(
+        lhs > rhs for lhs, rhs in zip(left_vector, right_vector, strict=True)
+    )
 
 
 def pareto(scores: tuple[Score, ...] = tuple(SCORES.values())) -> tuple[Score, ...]:

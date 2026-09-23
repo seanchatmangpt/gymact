@@ -9,8 +9,16 @@ really calls the real env's `step()`.
 
 from __future__ import annotations
 
+import importlib.util as _importlib_util
 from pathlib import Path
 
+from gymact.standing import named_standing_skip
+
+named_standing_skip(
+    "LOCAL_EXTRA:gyms",
+    available=_importlib_util.find_spec("gymnasium") is not None,
+    reason="the optional 'gyms' extra is not installed -- `uv sync --extra gyms`",
+)
 from gymact import AllowListAuthorityResolver, GymAct, MaterializationIntent
 from gymact.gyms.gymnasium_env import GymnasiumProvider
 from gymact.models import ActuationIntent, Operation, Standing

@@ -7,7 +7,12 @@ from .epoch import InvalidationEpoch
 from .identity import Subject
 from .witness import Witness, WitnessKind
 
-_ORDER = {WitnessKind.DELIVERED: 1, WitnessKind.ACKNOWLEDGED: 2, WitnessKind.DISCHARGED: 3, WitnessKind.RECOVERED: 4}
+_ORDER = {
+    WitnessKind.DELIVERED: 1,
+    WitnessKind.ACKNOWLEDGED: 2,
+    WitnessKind.DISCHARGED: 3,
+    WitnessKind.RECOVERED: 4,
+}
 
 
 @dataclass(frozen=True)
@@ -16,7 +21,9 @@ class Admission:
     pending: tuple[str, ...]
 
 
-def admit(epoch: InvalidationEpoch, consumers: tuple[Subject, ...], witnesses: tuple[Witness, ...]) -> Admission:
+def admit(
+    epoch: InvalidationEpoch, consumers: tuple[Subject, ...], witnesses: tuple[Witness, ...]
+) -> Admission:
     expected = {c.key for c in consumers}
     grouped: dict[str, list[Witness]] = defaultdict(list)
     for witness in witnesses:

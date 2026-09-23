@@ -13,7 +13,6 @@ from gymact.mna import (
 )
 from gymact.models import Standing
 
-
 SELECTED = MnaSelectedPlan(
     transaction_form="stock_purchase",
     consideration="mixed",
@@ -78,10 +77,7 @@ async def test_fortune5_mna_executes_with_zero_llms_and_receipted_close() -> Non
     assert len(result.manufactured_agent_receipts) == 14
     assert result.standard_close_refusal_receipt_id in result.receipt_ids
     assert result.simulated_close_receipt_id in result.receipt_ids
-    assert (
-        result.standard_close_refusal_receipt_id
-        != result.simulated_close_receipt_id
-    )
+    assert result.standard_close_refusal_receipt_id != result.simulated_close_receipt_id
     assert result.external_transaction_attempted is False
     assert result.external_transaction_reason == "NO_EXTERNAL_TRANSACTION_PORT"
 
@@ -114,9 +110,7 @@ async def test_mna_observed_state_replanning_across_two_chained_episodes() -> No
         "observed output, not assumed"
     )
 
-    episode_2_plan = episode_1_plan.model_copy(
-        update={"integration_topology": "platform"}
-    )
+    episode_2_plan = episode_1_plan.model_copy(update={"integration_topology": "platform"})
     episode_2 = await execute_fortune5_mna_simulation(episode_2_plan)
 
     assert episode_1.episode_id != episode_2.episode_id

@@ -27,7 +27,6 @@ from pydantic import Field
 from gymact.action_contract import ActionDefinition, IdempotencyClass, ReversalClass
 from gymact.models import FrozenModel
 
-
 CONSTRUCT8_SCHEMA = "urn:gymact:construct8:v1"
 
 _IDEMPOTENCY_MASK = 0b00000011

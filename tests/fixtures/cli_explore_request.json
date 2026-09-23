@@ -1,0 +1,255 @@
+{
+  "bounds": {
+    "max_combinations": 10000,
+    "max_compute_units": null,
+    "max_depth": 16,
+    "max_human_interventions": null,
+    "max_monetary_cost": null,
+    "max_paths": 4096,
+    "max_risk_score": null,
+    "max_wall_time_s": null
+  },
+  "context": {
+    "capability_refs": [
+      "urn:capability:set"
+    ],
+    "current_revision": "rev-1",
+    "evidence_refs": [],
+    "execution_grant_ref": "urn:grant:admitted",
+    "policy_refs": [
+      "urn:policy:auto"
+    ]
+  },
+  "graph": {
+    "morphisms": [
+      {
+        "attributes": {},
+        "evidence_refs": [],
+        "kind": "enable",
+        "morphism_id": "urn:gymact:morphism:2ffd1bf1cf861500f817723151f3195a557d99e4d5294c2d9b31abd45fcf0316",
+        "objectives": {
+          "compute_units": 0.0,
+          "expected_value": 0.0,
+          "human_interventions": 0.0,
+          "monetary_cost": 0.0,
+          "risk_score": 0.0,
+          "verification_confidence": 4,
+          "wall_time_s": 0.0
+        },
+        "phase": "SELECT",
+        "requirements": {
+          "capability_refs": [],
+          "evidence_refs": [],
+          "execution_grant_required": false,
+          "policy_refs": [],
+          "required_revision": null
+        },
+        "reversal": "REVERSIBLE",
+        "source_id": "subject:158968b746726e79a690eaf687043277fd8da22399fa7b53890764a16ba7f70a",
+        "standing": "CANDIDATE",
+        "target_id": "provider:00d31fb04cc952b0eb6233d358b60f517bc4abdce46e335b75ed93d3a2c3f2f8"
+      },
+      {
+        "attributes": {},
+        "evidence_refs": [],
+        "kind": "enable",
+        "morphism_id": "urn:gymact:morphism:97219ffbf6ee06f8dcbe1fc0078171ca5cb7b2b30fd5a53dbe92776e805d675f",
+        "objectives": {
+          "compute_units": 0.0,
+          "expected_value": 0.0,
+          "human_interventions": 0.0,
+          "monetary_cost": 0.0,
+          "risk_score": 0.0,
+          "verification_confidence": 4,
+          "wall_time_s": 0.0
+        },
+        "phase": "SELECT",
+        "requirements": {
+          "capability_refs": [],
+          "evidence_refs": [],
+          "execution_grant_required": false,
+          "policy_refs": [],
+          "required_revision": null
+        },
+        "reversal": "REVERSIBLE",
+        "source_id": "provider:00d31fb04cc952b0eb6233d358b60f517bc4abdce46e335b75ed93d3a2c3f2f8",
+        "standing": "CANDIDATE",
+        "target_id": "capability:5857d1460c4c4cdce69f50400faf1d1da962b6246b4a5862e09f6b260591b044"
+      },
+      {
+        "attributes": {},
+        "evidence_refs": [],
+        "kind": "realize",
+        "morphism_id": "urn:gymact:morphism:4e490e6112567889b71917ac88dbbedd6c7da509940fc3b66f62c3555a0fbd42",
+        "objectives": {
+          "compute_units": 0.0,
+          "expected_value": 0.0,
+          "human_interventions": 0.0,
+          "monetary_cost": 0.0,
+          "risk_score": 0.0,
+          "verification_confidence": 4,
+          "wall_time_s": 0.0
+        },
+        "phase": "CONSTRUCT",
+        "requirements": {
+          "capability_refs": [],
+          "evidence_refs": [],
+          "execution_grant_required": false,
+          "policy_refs": [],
+          "required_revision": null
+        },
+        "reversal": "REVERSIBLE",
+        "source_id": "capability:5857d1460c4c4cdce69f50400faf1d1da962b6246b4a5862e09f6b260591b044",
+        "standing": "CANDIDATE",
+        "target_id": "action:6f73ab7f1c7f3c6f0a4b6ec249d453d7036d60eb8fc9b2273e0950cbf64889f0"
+      },
+      {
+        "attributes": {},
+        "evidence_refs": [],
+        "kind": "verify",
+        "morphism_id": "urn:gymact:morphism:3ee8f7183bfd9796ffe768d130a9b9998d4348c72488fd12b42ded59e365be17",
+        "objectives": {
+          "compute_units": 0.0,
+          "expected_value": 0.0,
+          "human_interventions": 0.0,
+          "monetary_cost": 0.0,
+          "risk_score": 0.0,
+          "verification_confidence": 4,
+          "wall_time_s": 0.0
+        },
+        "phase": "CONSTRUCT",
+        "requirements": {
+          "capability_refs": [],
+          "evidence_refs": [],
+          "execution_grant_required": false,
+          "policy_refs": [],
+          "required_revision": null
+        },
+        "reversal": "REVERSIBLE",
+        "source_id": "action:6f73ab7f1c7f3c6f0a4b6ec249d453d7036d60eb8fc9b2273e0950cbf64889f0",
+        "standing": "CANDIDATE",
+        "target_id": "verifier:b9da8317e84950101fdbe020d5f76e7a95a01f7c138640917248796d2399069e"
+      },
+      {
+        "attributes": {
+          "consequence_binding": {
+            "action_ref": "urn:action:set",
+            "capability_ref": "urn:capability:set",
+            "expected_effect_digest": "08442d6d3060b8158ab8261ccb00d1741ff81efddd1b30f544eff8c1722dd646",
+            "subject_ref": "urn:subject:1",
+            "verifier_ref": "urn:verifier:memory"
+          }
+        },
+        "evidence_refs": [],
+        "kind": "actuate",
+        "morphism_id": "urn:gymact:morphism:606fd0a69cbc2358fbe8bafbb3321f54674e9171e42ed9205b16a3330a448ed4",
+        "objectives": {
+          "compute_units": 0.0,
+          "expected_value": 0.0,
+          "human_interventions": 0.0,
+          "monetary_cost": 0.0,
+          "risk_score": 0.0,
+          "verification_confidence": 1,
+          "wall_time_s": 0.0
+        },
+        "phase": "DO",
+        "requirements": {
+          "capability_refs": [
+            "urn:capability:set"
+          ],
+          "evidence_refs": [],
+          "execution_grant_required": true,
+          "policy_refs": [
+            "urn:policy:auto"
+          ],
+          "required_revision": "rev-1"
+        },
+        "reversal": "REVERSIBLE",
+        "source_id": "verifier:b9da8317e84950101fdbe020d5f76e7a95a01f7c138640917248796d2399069e",
+        "standing": "UNKNOWN",
+        "target_id": "effect:c3b823dc457b24a1ce66fa226147adb165acffeade036ce954bdd475648de576"
+      }
+    ],
+    "objects": [
+      {
+        "attributes": {
+          "provider_ref": "provider-subject"
+        },
+        "evidence_refs": [],
+        "kind": "subject",
+        "object_id": "subject:158968b746726e79a690eaf687043277fd8da22399fa7b53890764a16ba7f70a",
+        "ontology_refs": [],
+        "revision": "rev-1",
+        "semantic_ref": "urn:subject:1",
+        "standing": "UNKNOWN"
+      },
+      {
+        "attributes": {},
+        "evidence_refs": [],
+        "kind": "provider",
+        "object_id": "provider:00d31fb04cc952b0eb6233d358b60f517bc4abdce46e335b75ed93d3a2c3f2f8",
+        "ontology_refs": [],
+        "revision": null,
+        "semantic_ref": "urn:provider:memory",
+        "standing": "UNKNOWN"
+      },
+      {
+        "attributes": {},
+        "evidence_refs": [],
+        "kind": "capability",
+        "object_id": "capability:5857d1460c4c4cdce69f50400faf1d1da962b6246b4a5862e09f6b260591b044",
+        "ontology_refs": [],
+        "revision": null,
+        "semantic_ref": "urn:capability:set",
+        "standing": "UNKNOWN"
+      },
+      {
+        "attributes": {
+          "input_schema": {
+            "type": "object"
+          },
+          "locality": {
+            "estimated_effect_latency_s": null,
+            "estimated_hops": null,
+            "estimated_observation_latency_s": null,
+            "execution_site": "unspecified",
+            "observer_site": "unspecified"
+          },
+          "output_schema": {},
+          "preconditions": [],
+          "subject_type": "schema:Thing"
+        },
+        "evidence_refs": [],
+        "kind": "action",
+        "object_id": "action:6f73ab7f1c7f3c6f0a4b6ec249d453d7036d60eb8fc9b2273e0950cbf64889f0",
+        "ontology_refs": [],
+        "revision": null,
+        "semantic_ref": "urn:action:set",
+        "standing": "UNKNOWN"
+      },
+      {
+        "attributes": {},
+        "evidence_refs": [],
+        "kind": "verifier",
+        "object_id": "verifier:b9da8317e84950101fdbe020d5f76e7a95a01f7c138640917248796d2399069e",
+        "ontology_refs": [],
+        "revision": null,
+        "semantic_ref": "urn:verifier:memory",
+        "standing": "UNKNOWN"
+      },
+      {
+        "attributes": {},
+        "evidence_refs": [],
+        "kind": "receipt",
+        "object_id": "effect:c3b823dc457b24a1ce66fa226147adb165acffeade036ce954bdd475648de576",
+        "ontology_refs": [],
+        "revision": null,
+        "semantic_ref": "urn:gymact:expected-effect:08442d6d3060b8158ab8261ccb00d1741ff81efddd1b30f544eff8c1722dd646",
+        "standing": "UNKNOWN"
+      }
+    ]
+  },
+  "start_ids": [
+    "subject:158968b746726e79a690eaf687043277fd8da22399fa7b53890764a16ba7f70a"
+  ]
+}

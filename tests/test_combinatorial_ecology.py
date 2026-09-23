@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from gymact.consequence_binding import ConsequenceBinding
 from gymact.combinatorial import (
     AdmissionContext,
     DecisionPhase,
@@ -8,6 +7,7 @@ from gymact.combinatorial import (
     PossibilityObject,
     PossibilityObjectKind,
 )
+from gymact.consequence_binding import ConsequenceBinding
 from gymact.ecology import (
     EcologyAlternative,
     EcologyDimension,

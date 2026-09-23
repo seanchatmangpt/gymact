@@ -12,17 +12,17 @@ import importlib.util
 
 import pytest
 
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
-require_standing(
+named_standing_skip(
     "LOCAL_EXTRA:dspy",
     available=importlib.util.find_spec("dspy") is not None,
     reason="the optional 'dspy' extra is not installed -- `uv sync --extra dspy`",
 )
 
-import dspy  # noqa: E402
+import dspy
 
-from gymact.dspy_ocel import DspyOcelCallback, build_and_validate_dspy_ocel_log  # noqa: E402
+from gymact.dspy_ocel import DspyOcelCallback, build_and_validate_dspy_ocel_log
 
 
 def _groq_key_available() -> bool:

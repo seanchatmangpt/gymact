@@ -22,10 +22,21 @@ class DifferentialResult:
     independent_dual: Fraction
 
 
-def compare(plan: TransportPlan, potential: DualPotential, source: FiniteMeasure, target: FiniteMeasure, metric: GroundMetric) -> DifferentialResult:
+def compare(
+    plan: TransportPlan,
+    potential: DualPotential,
+    source: FiniteMeasure,
+    target: FiniteMeasure,
+    metric: GroundMetric,
+) -> DifferentialResult:
     admit_independent(INDEPENDENT_ENGINE, MANUFACTURER_ENGINE)
     manufactured = certify(plan, potential, source, target, metric)
     independent = verify(plan, potential, source, target, metric)
     if (manufactured.primal, manufactured.dual) != (independent.primal, independent.dual):
-        raise IndependentVerifierRefusal("VERIFIER_DIVERGENCE", f"manufacturer={manufactured.primal}/{manufactured.dual},independent={independent.primal}/{independent.dual}")
-    return DifferentialResult(manufactured.primal, manufactured.dual, independent.primal, independent.dual)
+        raise IndependentVerifierRefusal(
+            "VERIFIER_DIVERGENCE",
+            f"manufacturer={manufactured.primal}/{manufactured.dual},independent={independent.primal}/{independent.dual}",
+        )
+    return DifferentialResult(
+        manufactured.primal, manufactured.dual, independent.primal, independent.dual
+    )

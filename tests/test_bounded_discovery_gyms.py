@@ -170,9 +170,7 @@ async def test_switchboard_checkpoint_restore_round_trips_real_state() -> None:
 
 
 async def test_resource_flow_reaches_target_through_the_full_chain() -> None:
-    gym, ep = await _start(
-        ResourceFlowProvider(), {"seed": 3, "capacity": 8, "target": 3}
-    )
+    gym, ep = await _start(ResourceFlowProvider(), {"seed": 3, "capacity": 8, "target": 3})
 
     start = await gym.observe(ep)
     assert start.state["raw"] == 0
@@ -196,9 +194,7 @@ async def test_resource_flow_reaches_target_through_the_full_chain() -> None:
 
 
 async def test_resource_flow_burning_the_catalyst_is_an_irreversible_dead_end() -> None:
-    gym, ep = await _start(
-        ResourceFlowProvider(), {"seed": 3, "capacity": 8, "target": 3}
-    )
+    gym, ep = await _start(ResourceFlowProvider(), {"seed": 3, "capacity": 8, "target": 3})
 
     burn = await _act(gym, ep, RF + "burn_catalyst")
     assert burn.accepted is True
@@ -224,9 +220,7 @@ async def test_resource_flow_burning_the_catalyst_is_an_irreversible_dead_end() 
 
 
 async def test_resource_flow_pools_are_really_capped_at_capacity() -> None:
-    gym, ep = await _start(
-        ResourceFlowProvider(), {"seed": 5, "capacity": 4, "target": 2}
-    )
+    gym, ep = await _start(ResourceFlowProvider(), {"seed": 5, "capacity": 4, "target": 2})
 
     for _ in range(20):
         await _act(gym, ep, RF + "mine")
@@ -239,9 +233,7 @@ async def test_resource_flow_pools_are_really_capped_at_capacity() -> None:
 
 
 async def test_resource_flow_refine_before_mining_changes_nothing() -> None:
-    gym, ep = await _start(
-        ResourceFlowProvider(), {"seed": 5, "capacity": 4, "target": 2}
-    )
+    gym, ep = await _start(ResourceFlowProvider(), {"seed": 5, "capacity": 4, "target": 2})
 
     before = await gym.observe(ep)
     result = await _act(gym, ep, RF + "refine")
@@ -256,9 +248,7 @@ async def test_resource_flow_refine_before_mining_changes_nothing() -> None:
 async def test_resource_flow_is_seed_deterministic_and_seed_sensitive() -> None:
     rates = {}
     for seed in (1, 1, 2, 3, 4, 5):
-        gym, ep = await _start(
-            ResourceFlowProvider(), {"seed": seed, "capacity": 6, "target": 2}
-        )
+        gym, ep = await _start(ResourceFlowProvider(), {"seed": seed, "capacity": 6, "target": 2})
         rates.setdefault(seed, []).append(gym._state(ep).environment.mine_rate)
         await gym.teardown(ep)
 
@@ -449,9 +439,7 @@ async def test_episode_is_receipted_and_conformant(
         (LockAndKeyProvider, {"seed": 9, "depth": 4}),
     ],
 )
-async def test_provider_requires_no_authority_by_default(
-    provider_factory, config: dict
-) -> None:
+async def test_provider_requires_no_authority_by_default(provider_factory, config: dict) -> None:
     provider = provider_factory()
     assert provider.materialization_requires_authority is False
 

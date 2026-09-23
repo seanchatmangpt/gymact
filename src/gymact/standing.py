@@ -33,7 +33,9 @@ def _allowed_standings() -> frozenset[str]:
     return frozenset(item.strip() for item in raw.split(",") if item.strip())
 
 
-def require_standing(standing: str, *, available: bool, reason: str) -> None:
+def require_standing(
+    standing: str, *, available: bool, reason: str, skip_module_level: bool = True
+) -> None:
     """Real is the default. Degrading to a skip must be explicitly allowed.
 
     If `available` is True, this does nothing -- the real thing is present.
@@ -51,6 +53,13 @@ def require_standing(standing: str, *, available: bool, reason: str) -> None:
     allow-listed-but-unavailable standing there is the caller's problem to
     handle (raise, log, or otherwise surface -- require_standing only
     decides whether degrading is *permitted*, not what "degraded" means).
+
+    `skip_module_level` scopes the consented skip without changing the
+    consent rule: the default True reproduces the original whole-module
+    skip. False downgrades it to a per-test skip, for callers inside a test
+    body whose siblings stay meaningful without the real collaborator (the
+    decision of *whether* degrading is permitted -- the consented env var,
+    the failure without it -- is identical in both modes).
     """
     if available:
         return
@@ -74,9 +83,59 @@ def require_standing(standing: str, *, available: bool, reason: str) -> None:
         raise RuntimeError(message)
 
     if pytest is not None:
-        pytest.skip(reason, allow_module_level=True)
+        pytest.skip(reason, allow_module_level=skip_module_level)
         return
     raise RuntimeError(
         f"standing {standing!r} is allow-listed as degradable but there is "
         f"no pytest skip mechanism outside a test run: {reason}"
+    )
+
+
+def named_standing_skip(
+    standing: str, *, available: bool, reason: str, module_level: bool = True
+) -> None:
+    """Hermetic-collection variant (GYMACT-7): an unavailable standing
+    degrades to a NAMED, VISIBLE module-level skip by default.
+
+    `require_standing` keeps the fail-loud consent contract: an unavailable,
+    undeclared standing is a hard failure unless the run explicitly opted
+    into degrading via GYMACT_ALLOW_DEGRADED_STANDINGS. That is the right
+    posture at runtime boundaries where a real collaborator is about to be
+    exercised, but as a whole-module COLLECTION gate it made plain
+    `pytest --co` / `pytest` runs abort on machines that merely lack an
+    optional real collaborator (browsergym, dockerized cube gyms, a
+    Kubernetes cluster), which contradicted the v26.9.22 hermeticity order:
+    the suite must collect and run to a green summary everywhere, with every
+    degraded standing visible.
+
+    This variant is that visibility, not silent degradation: the skip
+    message always carries the exact standing string and the real reason, so
+    the run summary shows exactly which standings degraded and why. Nothing
+    is mocked, substituted, or promoted -- a missing real collaborator is
+    still a missing real collaborator, just named in the summary instead of
+    failing the collection.
+
+    `module_level=True` (the default) skips the whole module -- the
+    collection-gate posture for a module whose every test needs the
+    collaborator. `module_level=False` skips only the calling test, for
+    in-test-body gates in modules whose siblings stay meaningful without
+    the collaborator.
+
+    Outside pytest (no skip mechanism), an unavailable standing still raises
+    RuntimeError, mirroring `require_standing`'s non-pytest behavior.
+    """
+    if available:
+        return
+
+    try:
+        import pytest
+    except ImportError:
+        pytest = None  # type: ignore[assignment]
+
+    if pytest is not None:
+        pytest.skip(f"{standing}: {reason}", allow_module_level=module_level)
+        return
+    raise RuntimeError(
+        f"standing {standing!r} is not available and there is no pytest skip "
+        f"mechanism outside a test run: {reason}"
     )

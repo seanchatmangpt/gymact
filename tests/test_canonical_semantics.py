@@ -6,10 +6,10 @@ from gymact.semantics.canonical_graph import ingest
 from gymact.semantics.capability_contract import SemanticContract, executable_terms, verify_contract
 from gymact.semantics.rdf_source import RDFFormat, RDFSource
 
-TTL = b'''@prefix dct: <http://purl.org/dc/terms/> .
+TTL = b"""@prefix dct: <http://purl.org/dc/terms/> .
 @prefix pplan: <http://purl.org/net/p-plan#> .
 <urn:sony:media:release> a pplan:Plan ; dct:identifier "media.10.release" .
-'''
+"""
 
 
 def _source(content: bytes, format_: RDFFormat, name: str) -> RDFSource:

@@ -30,12 +30,12 @@ from gymact.powl.algebra import Atom, OrderEdge, PartialOrder
 from gymact.powl.declare_conformance import (
     WASM4PM_ROOT,
     check_declare_conformance,
+    declare_mining_available,
     mine_declare_constraints,
-    wasm4pm_available,
 )
 from gymact.powl.runner import run_pipeline
 from gymact.powl.spec import PowlPipelineSpec
-from gymact.standing import require_standing
+from gymact.standing import named_standing_skip
 
 _SPEC = PowlPipelineSpec(
     readonly_labels=frozenset({"step_a", "step_b", "step_c"}),
@@ -66,10 +66,11 @@ def _run_real_session(session_id: str) -> dict:
 
 
 def test_declare_mining_and_conformance_over_two_real_powl_sessions(tmp_path: Path) -> None:
-    require_standing(
+    named_standing_skip(
         "LOCAL_CHECKOUT:wasm4pm",
-        available=wasm4pm_available(),
+        available=declare_mining_available(),
         reason=f"no wasm4pm checkout with cargo available at {WASM4PM_ROOT}",
+        module_level=False,
     )
 
     # Two independent real sessions, both driven through the same
@@ -106,10 +107,11 @@ def test_declare_mining_and_conformance_over_two_real_powl_sessions(tmp_path: Pa
 
 
 def test_declare_conformance_detects_a_real_out_of_order_violation(tmp_path: Path) -> None:
-    require_standing(
+    named_standing_skip(
         "LOCAL_CHECKOUT:wasm4pm",
-        available=wasm4pm_available(),
+        available=declare_mining_available(),
         reason=f"no wasm4pm checkout with cargo available at {WASM4PM_ROOT}",
+        module_level=False,
     )
 
     mining_corpus_log = _run_real_session("declare-mining-corpus-2")

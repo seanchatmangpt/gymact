@@ -13,7 +13,9 @@ from gymact.explore_kantorovich_independent.receipt import issue_receipt, replay
 
 def test_end_to_end_independent_certificate_and_replay_preserve_engine_separation() -> None:
     points = {"a": 0, "b": 10, "c": 1, "d": 11}
-    metric = GroundMetric.admit(set(points), {(x, y): abs(points[x] - points[y]) for x in points for y in points})
+    metric = GroundMetric.admit(
+        set(points), {(x, y): abs(points[x] - points[y]) for x in points for y in points}
+    )
     source = FiniteMeasure.normalize({"a": 1, "b": 1})
     target = FiniteMeasure.normalize({"c": 1, "d": 1})
     plan = TransportPlan({("a", "c"): Fraction(1, 2), ("b", "d"): Fraction(1, 2)})
@@ -29,8 +31,21 @@ def test_end_to_end_independent_certificate_and_replay_preserve_engine_separatio
 
 def test_independent_equation_engine_has_no_certificate_or_checker_dependency() -> None:
     root = Path(__file__).parents[2] / "src" / "gymact" / "explore_kantorovich_independent"
-    engine_files = ["raw_marginals.py", "raw_primal.py", "raw_dual.py", "raw_feasibility.py", "raw_reduced_cost.py", "raw_complementarity.py", "raw_verifier.py"]
-    forbidden = ("explore_kantorovich_duality.certificate", "explore_kantorovich_duality.checker", "from .certificate", "from .checker")
+    engine_files = [
+        "raw_marginals.py",
+        "raw_primal.py",
+        "raw_dual.py",
+        "raw_feasibility.py",
+        "raw_reduced_cost.py",
+        "raw_complementarity.py",
+        "raw_verifier.py",
+    ]
+    forbidden = (
+        "explore_kantorovich_duality.certificate",
+        "explore_kantorovich_duality.checker",
+        "from .certificate",
+        "from .checker",
+    )
     for name in engine_files:
         text = (root / name).read_text()
         assert not any(token in text for token in forbidden), name

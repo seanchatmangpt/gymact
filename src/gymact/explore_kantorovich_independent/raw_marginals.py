@@ -14,7 +14,10 @@ def verify_marginals(plan: TransportPlan, source: FiniteMeasure, target: FiniteM
     unknown_sources = {x for x, _ in plan.flow} - set(source.support)
     unknown_targets = {y for _, y in plan.flow} - set(target.support)
     if unknown_sources or unknown_targets:
-        raise IndependentVerifierRefusal("FLOW_SUPPORT_MISMATCH", f"source={sorted(unknown_sources)},target={sorted(unknown_targets)}")
+        raise IndependentVerifierRefusal(
+            "FLOW_SUPPORT_MISMATCH",
+            f"source={sorted(unknown_sources)},target={sorted(unknown_targets)}",
+        )
     for x, mass in source.mass.items():
         observed = sum((value for (i, _), value in plan.flow.items() if i == x), Fraction(0))
         if observed != mass:
