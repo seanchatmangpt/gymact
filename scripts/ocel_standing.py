@@ -32,6 +32,7 @@ from jsonschema.exceptions import ValidationError  # noqa: E402
 from gymact.models import Operation  # noqa: E402
 from gymact.ocel import validate_ocel_log  # noqa: E402
 from gymact.process import ConformanceChecker  # noqa: E402
+from gymact.registry import _OUTCOME_PREDICATES  # noqa: E402
 
 
 def _derive_one(log_path: Path) -> dict:
@@ -87,7 +88,27 @@ def _derive_one(log_path: Path) -> dict:
     # driver (gymact/discover_and_actuate.py) from the actual observed
     # subprocess result -- that, not receipt.standing alone, is what
     # GYMACT_ACTUATED requires here.
-    act_solved = any("solved=True" in _reason_of(e) for e in act_events)
+    #
+    # Opt-in structured path: a provider MAY declare an
+    # rg:outcomePredicateModule / rg:outcomePredicateExpr pair in
+    # ggen/gymact-registry-pack/ontology.ttl, projected by ggen into
+    # gymact.registry._OUTCOME_PREDICATES[registryKey]. `subject` here is the
+    # OCEL directory name, which is the provider's registryKey (see
+    # tests/test_ocel_standing.py's _ACT_REASON_KERNEL_GAP_SUBJECTS, keyed
+    # the same way). When a structured predicate is registered for this
+    # subject, it replaces the free-text substring check for THIS subject
+    # only; every provider that has not opted in keeps the exact same
+    # solved=True substring fallback as before -- this must never change
+    # standing for an existing, non-opted-in provider.
+    subject = log_path.parent.name
+    outcome_predicate = _OUTCOME_PREDICATES.get(subject)
+    if outcome_predicate is not None:
+        act_solved = any(
+            outcome_predicate(_reason_of(e), {a["name"]: a["value"] for a in e["attributes"]})
+            for e in act_events
+        )
+    else:
+        act_solved = any("solved=True" in _reason_of(e) for e in act_events)
 
     if not act_events:
         standing = "BOOTSTRAPS"
