@@ -50,11 +50,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-gyms = ["gymnasium>=1.3.0,<2", "pettingzoo>=1.27.0,<2", "inspect-ai>=0.3.260,<1", "datasets>=5.0.1,<6", "botocore>=1.40,<2"]
+gyms = ["gymnasium>=1.3.0,<2", "pettingzoo>=1.27.0,<2", "inspect-ai>=0.3.260,<1", "datasets>=5.0.1,<6", "botocore>=1.40,<2", "terminal-bench==0.2.18; python_version >= '3.12'"]
 # botocore: real, official AWS package -- used only for its bundled
 # endpoints.json (gymact.gyms.cloud_topology.load_aws_topology), never for
 # a live AWS API call. No credentials, no network. Declared explicitly
 # here since it was previously only an undeclared transitive dependency.
+# terminal-bench (from agent/terminal-bench-gym triage merge): pinned real
+# benchmark harness for the terminal-bench provider, python >=3.12 only.
 # The first real gym bridge target: CUBE's own no-Docker reference benchmark
 # (examples/counter-cube), pinned to the same exact cube-standard revision as
 # the benchmark lock. Optional because cube-standard requires Python >=3.12
