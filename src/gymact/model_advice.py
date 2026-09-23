@@ -5,6 +5,7 @@ rule engine, planner, or any other producer. Advice can only reorder the
 formally admitted candidate set. It cannot enlarge applicability, prune
 admitted siblings, carry authority, or cross BRCE.
 """
+
 from __future__ import annotations
 
 import math

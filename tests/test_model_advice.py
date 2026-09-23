@@ -95,9 +95,7 @@ def test_model_can_reorder_only_independently_admitted_dcm_edges() -> None:
 
 def test_model_advice_is_bound_to_exact_possibility_graph_identity() -> None:
     graph = _graph()
-    stale = _advice(graph).model_copy(
-        update={"possibility_graph_digest": "sha256:stale"}
-    )
+    stale = _advice(graph).model_copy(update={"possibility_graph_digest": "sha256:stale"})
 
     with pytest.raises(ValueError, match="MODEL_ADVICE_GRAPH_IDENTITY_MISMATCH"):
         apply_model_advice(
