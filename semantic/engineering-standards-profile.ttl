@@ -1,0 +1,14 @@
+@prefix es: <https://w3id.org/chatman/engineering-standards#> .
+@prefix prof: <http://www.w3.org/ns/dx/prof/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix project: <https://w3id.org/chatman/project/seanchatmangpt-gymact#> .
+
+project:Profile a prof:Profile ;
+  dcterms:title "seanchatmangpt/gymact engineering-standards adoption" ;
+  dcterms:description "world/experiment simulation gym and Vision 2030 scenario substrate" ;
+  prof:isProfileOf <https://w3id.org/chatman/engineering-standards> ;
+  dcterms:source <https://github.com/seanchatmangpt/engineering-standards/commit/5a3bb6446aeaee2255a7523d4d8cebf6042960c3> .
+
+project:Repository a es:RepositorySubject ;
+  es:repository "seanchatmangpt/gymact" ;
+  es:baseSha "e75344d45d5694e15e73652eb1b4b796de29b0a9" .
