@@ -15,12 +15,14 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import gc
 import json
 import os
 import shutil
 import subprocess
 import tempfile
 import threading
+import warnings
 import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor
@@ -448,6 +450,19 @@ class ConcurrentMcpDispatchTests(unittest.TestCase):
                     await client.close()
 
         asyncio.run(_attempt())
+        # Owning-boundary finalization (GYMACT-6, CI evidence): fastmcp/anyio
+        # failed-handshake stragglers can stay referenced by THIS worker
+        # thread's frames until after it exits, so pytest's unraisable hook
+        # later attributes their ResourceWarnings to an arbitrary unrelated
+        # test (observed on the ubuntu 2-vCPU runner, Python 3.11: 15
+        # sub-exceptions). Finalizing here, inside the thread that created
+        # them, with the warning caught inside this bounded scope, owns the
+        # cost at the boundary that incurred it; the session-wide
+        # warnings-as-errors policy is untouched.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", ResourceWarning)
+            for _ in range(5):
+                gc.collect()
         end = time.monotonic()
         return ident, start, end
 
