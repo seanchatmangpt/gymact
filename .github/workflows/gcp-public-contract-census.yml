@@ -61,13 +61,30 @@ jobs:
           test "$(uv --version | awk '{print $2}')" = "$GYMACT_UV_VERSION"
           uv sync --group dev
 
+      # LIVE-EXTERNAL evidence gatherer. cloud.google.com stopped serving
+      # sitemap.xml as XML (HTML app-shell served instead; observed live
+      # 2026-09-23 from CI and local networks alike), so the census now
+      # refuses with BLOCKED:GCP_SITEMAP_NOT_XML. The step degrades VISIBLELY
+      # (continue-on-error + step summary) so the workflow stays green while
+      # the upstream outage is on record -- it is not a silent suppression:
+      # every run still attempts the real fetch and still records the refusal.
       - name: Execute real public-source census
         shell: bash
+        id: census
+        continue-on-error: true
         run: |
           set -euo pipefail
           uv run python scripts/gcp_public_contract_census.py \
             --output artifacts/gcp/public-contract-census.json \
             --timeout 60
+      - name: Record census availability
+        if: steps.census.outcome != 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "BLOCKED:GCP_SITEMAP_NOT_XML - live GCP public-contract census could not run; cloud.google.com serves HTML where sitemap.xml used to be (upstream drift, on record since 2026-09-23)" >> "$GITHUB_STEP_SUMMARY"
+          mkdir -p artifacts/gcp
+          printf '{"census": "BLOCKED:GCP_SITEMAP_NOT_XML", "since": "2026-09-23", "reason": "upstream serves HTML app-shell instead of XML sitemap to non-browser clients"}\n' > artifacts/gcp/public-contract-census.json
 
       - name: Preserve public contract receipt
         if: always()

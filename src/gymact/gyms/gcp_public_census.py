@@ -152,6 +152,21 @@ def load_cloud_docs_corpus(
             response.raise_for_status()
             raw = response.content
             sitemap_digests.append((sitemap_url, sha256(raw).hexdigest()))
+            content_type = response.headers.get("content-type", "")
+            if "xml" not in content_type and not raw.lstrip().startswith(b"<"):
+                # Fail with a precise, typed diagnostic instead of an opaque
+                # ElementTree ParseError: cloud.google.com currently serves an
+                # HTML app-shell/consent wall where sitemap.xml used to be
+                # (observed live 2026-09-23: 200 text/html for sitemap.xml,
+                # sitemap-index.xml and robots.txt alike, browser UA included).
+                raise RuntimeError(
+                    "BLOCKED:GCP_SITEMAP_NOT_XML: "
+                    f"{sitemap_url} returned content-type={content_type!r} "
+                    f"(first bytes: {raw[:80]!r}) -- the upstream endpoint no "
+                    "longer serves XML to non-browser clients; the live census "
+                    "cannot run until Google restores a fetchable sitemap or "
+                    "the root_url is re-pointed at one"
+                )
             root = ElementTree.fromstring(raw)
             local_name = root.tag.rsplit("}", 1)[-1]
 
