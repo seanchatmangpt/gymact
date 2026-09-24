@@ -101,3 +101,6 @@ playground.py
 .act-artifacts/
 .act-events/
 .inspect_logs/
+# ggen receipt-signing private keys are per-checkout credentials: never commit them (security, 2026-09-24)
+.ggen/keys/signing.key
+**/.ggen/keys/signing.key
