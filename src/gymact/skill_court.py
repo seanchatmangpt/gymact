@@ -20,6 +20,7 @@ _CONTENT_DIGEST = r"^(?:sha256|blake3):[0-9a-f]{64}$"
 _GIT_SHA = r"^[0-9a-f]{40}$"
 EXPECTED_SCHEMA = "collective-skill-court.v1"
 EXPECTED_AUTHORITY_CEILING = "OBSERVE|SELECT|CONSTRUCT"
+EXPECTED_ADMISSION = "oracle_pass && noop_fail && mutation_rejection && !grants_do_authority"
 EXPECTED_PROJECTIONS = {
     "sjira_work_order": "urn:seanchatmangpt:sjira:v1#WorkOrder",
     "sa2a_candidate": "https://spec.autofde.org/sa2a#Candidate",
@@ -69,6 +70,8 @@ class SkillCourtContract(FrozenModel):
             raise ValueError("COLLECTIVE_SKILL_REQUIREMENT_SET_MISMATCH")
         if not all(self.requires.values()):
             raise ValueError("COLLECTIVE_SKILL_REQUIREMENT_WEAKENED")
+        if self.admission != EXPECTED_ADMISSION:
+            raise ValueError("COLLECTIVE_SKILL_ADMISSION_EXPRESSION_MISMATCH")
         return self
 
 
