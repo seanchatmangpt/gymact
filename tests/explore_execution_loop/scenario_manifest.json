@@ -1,0 +1,733 @@
+{
+  "episode_id": "ALOOP-ZCODE-DOGFOOD-001",
+  "lane": 7,
+  "purpose": "Fault scenario corpus attacking the autonomous execution loop. Legal terminal outcomes are exactly Recover|Replan|Substitute|Refuse|TypedBlock. The illegal outcome WaitForHumanToNotice is asserted unreachable for EVERY scenario: a scenario whose only path forward is a human noticing means the loop failed.",
+  "harness": "pytest (repo-native); every provider/verifier/registry/probe is an in-process fake; execution_class=simulated-in-process unless marked real-dogfood-replay. Deterministic given seed; randomized mode sweeps seeds.",
+  "contract": {
+    "ExecutionRequest": [
+      "work_order",
+      "capability_requirements",
+      "subject",
+      "authority",
+      "evidence_requirements",
+      "resource_constraints"
+    ],
+    "ExecutionProvider": [
+      "capabilities",
+      "transport",
+      "availability",
+      "cost",
+      "concurrency",
+      "authority_ceiling",
+      "receipt_protocol"
+    ],
+    "ExecutionReceipt": [
+      "work_order_id",
+      "origin_authority",
+      "provider",
+      "provider_execution_id",
+      "subject_before",
+      "subject_after",
+      "commands",
+      "consequences",
+      "evidence",
+      "exit_status",
+      "timestamps",
+      "replay_binding"
+    ],
+    "receipt_ext_namespaces": [
+      "aloup.outcome",
+      "aloup.fault",
+      "aloup.ocel_digest",
+      "aloup.seed",
+      "aloup.execution_class"
+    ],
+    "ocel_object_types": [
+      "subject",
+      "originAuthority",
+      "provider",
+      "worker",
+      "receipt"
+    ],
+    "standings": [
+      "AUTONOMOUS",
+      "ASSISTED",
+      "BLOCKED_AUTHORITY",
+      "BLOCKED_INFORMATION",
+      "FAILED",
+      "ALIVE",
+      "PARTIAL_ALIVE",
+      "BLOCKED",
+      "REFUSED",
+      "UNSUPPORTED",
+      "UNKNOWN"
+    ],
+    "illegal_transitions": [
+      "ASSISTED -> AUTONOMOUS"
+    ]
+  },
+  "repos": {
+    "gymact": {
+      "status": "PRESENT",
+      "role": "short/high-intensity perturbation worlds; owns this corpus"
+    },
+    "lifegym": {
+      "status": "BLOCKED_INFORMATION:lifegym checkout absent",
+      "role": "long-horizon multi-stage episodes with silent state changes; scenarios L7-F31 run as simulated-in-process fakes inside the gymact harness; lifegym-native real-world versions remain unmanufactured"
+    }
+  },
+  "scenarios": [
+    {
+      "id": "L7-F01-worker-sigkill-before-actuation",
+      "family": "worker_sigkill",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "provider.execute raises WorkerCrashed(applied_before=False) before any actuation",
+      "expected_legal_outcomes": [
+        "Recover"
+      ],
+      "expected_standing": "ALIVE",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "execution.crash",
+        "failure.detect",
+        "reconcile.retry"
+      ],
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F02-worker-sigkill-after-actuation-journal-present",
+      "family": "crash_after_actuation_before_receipt",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "provider.execute actuates, writes durable journal fragment, then raises WorkerCrashed(applied_before=True) BEFORE receipt",
+      "expected_legal_outcomes": [
+        "Recover"
+      ],
+      "expected_standing": "ALIVE",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "execution.crash",
+        "failure.detect"
+      ],
+      "exactly_once": "actuation_count==1 and provider execute called exactly once (reconciled from journal, never re-actuated)",
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F03-worker-sigkill-after-actuation-journal-lost",
+      "family": "crash_after_actuation_receipt_lost",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "WorkerCrashed(applied_before=True) and the provider journal is lost (fetch_receipt -> None)",
+      "expected_legal_outcomes": [
+        "TypedBlock"
+      ],
+      "expected_standing": "BLOCKED",
+      "expected_broken_term": "R_missing_consequence",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "execution.crash",
+        "typed.block"
+      ],
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F04-provider-disappears-mid-claim",
+      "family": "provider_disappearance",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "primary provider raises TransportFault('provider_unavailable') on 4 consecutive claims; backup provider healthy",
+      "expected_legal_outcomes": [
+        "Recover"
+      ],
+      "expected_standing": "ALIVE",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "failure.detect",
+        "provider.replace"
+      ],
+      "substitution": "receipt names the backup transport",
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F05-provider-disappears-mid-execution",
+      "family": "provider_disappearance",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "primary provider claims, then raises TransportFault('provider_unavailable') on 4 consecutive execute calls; backup healthy",
+      "expected_legal_outcomes": [
+        "Recover"
+      ],
+      "expected_standing": "ALIVE",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "failure.detect",
+        "provider.replace"
+      ],
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F06-network-partition-transient",
+      "family": "network_partition",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "TransportFault('network_partition') on first claim, clear afterwards",
+      "expected_legal_outcomes": [
+        "Recover"
+      ],
+      "expected_standing": "ALIVE",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "failure.detect",
+        "reconcile.retry"
+      ],
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F07-network-partition-persistent",
+      "family": "network_partition",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "TransportFault('network_partition') on every claim of every provider",
+      "expected_legal_outcomes": [
+        "TypedBlock"
+      ],
+      "expected_standing": "BLOCKED",
+      "expected_broken_term": "provider_unavailable",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "failure.detect",
+        "typed.block"
+      ],
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F08-delayed-response-within-deadline",
+      "family": "delayed_response",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "TransportFault('delayed', retry_after=5 ticks) on first claim; deadline 200 ticks",
+      "expected_legal_outcomes": [
+        "Recover"
+      ],
+      "expected_standing": "ALIVE",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "failure.detect",
+        "reconcile.retry"
+      ],
+      "timing": "virtual clock advanced by the backoff",
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F09-delayed-response-beyond-deadline",
+      "family": "delayed_response",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "TransportFault('delayed', retry_after=5 ticks) with deadline_ticks=3",
+      "expected_legal_outcomes": [
+        "TypedBlock"
+      ],
+      "expected_standing": "BLOCKED",
+      "expected_broken_term": "provider_unavailable",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "failure.detect",
+        "typed.block"
+      ],
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F10-duplicate-work-order",
+      "family": "duplicate_work_order",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "the same idempotency_key is submitted twice to the same loop instance",
+      "expected_legal_outcomes": [
+        "Recover"
+      ],
+      "expected_standing": "ALIVE",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "reconcile.retry"
+      ],
+      "exactly_once": "second run returns the FIRST receipt with actuation_count==0 and zero additional provider execute calls",
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F11-lost-ack-durable-receipt",
+      "family": "lost_ack",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "provider.ack raises TransportFault('lost_ack'); journal fragment durable",
+      "expected_legal_outcomes": [
+        "Recover"
+      ],
+      "expected_standing": "ALIVE",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "reconcile.retry"
+      ],
+      "exactly_once": "actuation_count==1; recovered via replay binding, no re-execution",
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F12-lost-ack-no-durable-receipt",
+      "family": "lost_ack",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "provider.ack raises TransportFault('lost_ack'); journal lost",
+      "expected_legal_outcomes": [
+        "Recover"
+      ],
+      "expected_standing": "ALIVE",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "reconcile.retry"
+      ],
+      "note": "receipt retained loop-side via replay binding; honestly weaker than F11",
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F13-stale-subject-sha",
+      "family": "stale_subject",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "request.subject.sha is behind the world: resolve_subject returns a newer SHA at execution.start",
+      "expected_legal_outcomes": [
+        "Recover"
+      ],
+      "expected_standing": "ALIVE",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "reconcile.replan"
+      ],
+      "note": "replan is an internal transition; terminal remains Recover on the fresh subject",
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F14-moving-subject-single-move",
+      "family": "moving_subject",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "world SHA moves after the first execute; claim pin compares observed vs pinned",
+      "expected_legal_outcomes": [
+        "Recover"
+      ],
+      "expected_standing": "ALIVE",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "reconcile.replan"
+      ],
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F15-moving-subject-beyond-budget",
+      "family": "moving_subject",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "world SHA moves on every execute; max_subject_moves=1",
+      "expected_legal_outcomes": [
+        "TypedBlock"
+      ],
+      "expected_standing": "BLOCKED",
+      "expected_broken_term": "subject_unstable",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "reconcile.replan",
+        "typed.block"
+      ],
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F16-concurrent-conflicting-changes",
+      "family": "concurrent_conflict",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "a concurrent writer moves the subject during execution of BOTH attempts (simulated by world SHA advancing per execute), max_subject_moves=1",
+      "expected_legal_outcomes": [
+        "TypedBlock"
+      ],
+      "expected_standing": "BLOCKED",
+      "expected_broken_term": "subject_unstable",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "reconcile.replan",
+        "typed.block"
+      ],
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F17-verifier-failing-hard",
+      "family": "failing_verifier",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "verifier rejects the effect on every attempt with a typed why",
+      "expected_legal_outcomes": [
+        "TypedBlock"
+      ],
+      "expected_standing": "BLOCKED",
+      "expected_broken_term": "verification_failed",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "failure.detect",
+        "typed.block"
+      ],
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F18-verifier-flaky-recovers",
+      "family": "flaky_verifier",
+      "repo_home": "gymact",
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "fault_injection_point": "verifier rejects the first k attempts (k drawn deterministically from the seed, 1<=k<=max_retries) then accepts",
+      "expected_legal_outcomes": [
+        "Recover"
+      ],
+      "expected_standing": "ALIVE",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "failure.detect"
+      ],
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F19-invalid-authority",
+      "family": "invalid_authority",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "authority registry refuses the grant before any gate that could actuate",
+      "expected_legal_outcomes": [
+        "Refuse"
+      ],
+      "expected_standing": "REFUSED",
+      "expected_broken_term": "R_missing_authority",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "refuse"
+      ],
+      "zero_actuation": "no execution.start, no claim, no actuation",
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F20-expired-credential",
+      "family": "expired_credential",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "authority.expires_at_tick <= current virtual tick",
+      "expected_legal_outcomes": [
+        "Refuse"
+      ],
+      "expected_standing": "REFUSED",
+      "expected_broken_term": "R_missing_authority",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "refuse"
+      ],
+      "zero_actuation": true,
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F21-generator-drift",
+      "family": "generator_drift",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "provider returns an effect whose digest diverges from the ontology-rendered expectation; verifier catches the drift",
+      "expected_legal_outcomes": [
+        "TypedBlock"
+      ],
+      "expected_standing": "BLOCKED",
+      "expected_broken_term": "verification_failed",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "failure.detect",
+        "typed.block"
+      ],
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F22-disk-pressure",
+      "family": "resource_pressure",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "resource probe reports disk below disk_budget_mb before any actuation",
+      "expected_legal_outcomes": [
+        "TypedBlock"
+      ],
+      "expected_standing": "BLOCKED",
+      "expected_broken_term": "resource_exhausted",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "typed.block"
+      ],
+      "zero_actuation": true,
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F23-cpu-pressure",
+      "family": "resource_pressure",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "resource probe reports CPU cores below cpu_budget_cores before any actuation",
+      "expected_legal_outcomes": [
+        "TypedBlock"
+      ],
+      "expected_standing": "BLOCKED",
+      "expected_broken_term": "resource_exhausted",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "typed.block"
+      ],
+      "zero_actuation": true,
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F24-rate-limit-429-1302",
+      "family": "rate_limit",
+      "repo_home": "gymact",
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "fault_injection_point": "TransportFault('rate_limit', retry_after drawn deterministically from the seed) twice on claim, then clear; [1302]/429 shape",
+      "expected_legal_outcomes": [
+        "Recover"
+      ],
+      "expected_standing": "ALIVE",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "failure.detect",
+        "reconcile.retry"
+      ],
+      "timing": "exponential backoff advances the virtual clock",
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F25-dependency-outage-all-providers",
+      "family": "dependency_outage",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "every provider reports availability=False",
+      "expected_legal_outcomes": [
+        "TypedBlock"
+      ],
+      "expected_standing": "BLOCKED",
+      "expected_broken_term": "dependency_outage",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "typed.block"
+      ],
+      "zero_actuation": true,
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F26-impossible-objective",
+      "family": "impossible_objective",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "capability requirement 'time_travel' that no provider holds",
+      "expected_legal_outcomes": [
+        "Refuse"
+      ],
+      "expected_standing": "REFUSED",
+      "expected_broken_term": "impossible_objective",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "refuse"
+      ],
+      "zero_actuation": true,
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F27-silent-external-state-mutation",
+      "family": "silent_external_mutation",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "the verifier itself performs the external mutation: subject SHA changes AFTER the moving-subject check but BEFORE the post-verify mutation check (one-shot)",
+      "expected_legal_outcomes": [
+        "Recover"
+      ],
+      "expected_standing": "ALIVE",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "reconcile.replan"
+      ],
+      "note": "post-verify mutation detector fires (silent-mutation reason); loop replans and completes",
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F28-silent-external-mutation-persistent",
+      "family": "silent_external_mutation",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "external mutator fires on every verify; max_subject_moves=1",
+      "expected_legal_outcomes": [
+        "TypedBlock"
+      ],
+      "expected_standing": "BLOCKED",
+      "expected_broken_term": "subject_stale",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "reconcile.replan",
+        "typed.block"
+      ],
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F29-illegal-standing-transition-guard",
+      "family": "standing_law",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "EpisodeStanding.transition(ASSISTED, AUTONOMOUS) \u2014 the forbidden transition is attempted directly",
+      "expected_legal_outcomes": [
+        "TypedBlock"
+      ],
+      "expected_standing": "BLOCKED",
+      "illegal_outcome_assertion": "the guard raises LoopBudgetExceeded (a REFUSED-class guard outcome), never silence",
+      "required_ocel_events": [],
+      "note": "guard scenario: anti-vacuity = the legal transition (AUTONOMOUS->ASSISTED) must NOT raise; never ASSISTED->AUTONOMOUS",
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F30-unnamespaced-receipt-ext-guard",
+      "family": "receipt_law",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "ExecutionReceipt built with ext key lacking a namespace dot",
+      "expected_legal_outcomes": [
+        "TypedBlock"
+      ],
+      "expected_standing": "BLOCKED",
+      "illegal_outcome_assertion": "construction raises (typed guard), never a smuggled receipt",
+      "required_ocel_events": [],
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F31-lifegym-long-horizon-silent-stage-mutation",
+      "family": "long_horizon_multistage",
+      "repo_home": "lifegym (ABSENT -> simulated in gymact harness; BLOCKED_INFORMATION recorded in lane manifest)",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "3-stage episode; entering stage 2 silently mutates stage state (subject digest moves without any event from the outside); loop must notice via the claim pin",
+      "expected_legal_outcomes": [
+        "Recover"
+      ],
+      "expected_standing": "ALIVE",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "reconcile.replan"
+      ],
+      "long_horizon": "at least 3 provider claims across distinct stages; final verifier checks stage==3",
+      "execution_class": "simulated-in-process"
+    }
+  ],
+  "dogfood_fixtures": [
+    {
+      "file": "fixtures/lane1_record.json",
+      "origin": "~/.zcode/workspace/default/aloop-dogfood-001/lane-1/record.json",
+      "class": "real-dogfood-replay",
+      "note": "real sibling-lane receipt; standing ASSISTED with pre-epoch human causal edges declared"
+    },
+    {
+      "file": "fixtures/lane7_prior_manifest.json",
+      "origin": "~/.zcode/workspace/default/aloop-dogfood-001/lane-7/lane-7.manifest.json",
+      "class": "real-dogfood-replay",
+      "note": "this lane's own PRIOR incarnation, which crashed before first execution"
+    },
+    {
+      "file": "fixtures/lane7_prior_typeerror_witness.txt",
+      "origin": "preserved command/exit/diagnostic of the prior incarnation's first run",
+      "class": "real-dogfood-replay",
+      "note": "witnesses the crash-before-receipt fault of the prior lane-7 worker"
+    },
+    {
+      "file": "fixtures/lane7_prior_smoke_script.py",
+      "origin": "the smoke script the prior incarnation never successfully ran",
+      "class": "real-dogfood-replay"
+    },
+    {
+      "file": "fixtures/lane8_validator_antivacuity.py",
+      "origin": "~/.zcode/workspace/default/aloop-dogfood-001/lane-8/validator_antivacuity.py",
+      "class": "real-dogfood-replay",
+      "note": "cross-lane seam (L8 owns the receipt-normalizer schema); attacked structurally here"
+    },
+    {
+      "file": "fixtures/lane10_run.ndjson",
+      "origin": "~/.zcode/workspace/default/aloop-dogfood-001/lane-10/run.ndjson",
+      "class": "real-dogfood-replay",
+      "note": "real sibling-lane event log"
+    },
+    {
+      "file": "fixtures/lane10_verdict.json",
+      "origin": "~/.zcode/workspace/default/aloop-dogfood-001/lane-10/verdict.json",
+      "class": "real-dogfood-replay",
+      "note": "claims real_lane_manifests.files_scanned==0 while the episode root holds consumable lane manifests; attacked as a stale-observation claim"
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "schema_version": "1.0.0",
+  "episode": "ALOOP-ZCODE-DOGFOOD-001",
+  "lane": "lane-1",
+  "author": "lane-1",
+  "objective": "Manufacture RFC-0005 Autonomous Loop Qualification (normative + machine-addressable registry), the ALOOP-CROWN-001 executable crown consumer, and the honest dogfood classification of this bootstrap episode",
+  "standing": "ASSISTED",
+  "repos": [
+    {
+      "repo": "engineering-standards",
+      "branch": "rfc/aloop-0005-autonomous-loop",
+      "start_sha": "0a5acd1fb3d9b5aeed26e87719cf8187429dfc69",
+      "final_sha": "d04c9ac782b1aeb6a3a8e0b94264f3bade22bd58",
+      "commits": ["d04c9ac782b1aeb6a3a8e0b94264f3bade22bd58"]
+    },
+    {
+      "repo": "chatman-ecosystem",
+      "branch": "feat/aloop-crown-001",
+      "start_sha": "205753940613ea1abb1997c862ae973edee8ce0d",
+      "final_sha": "fcd645da6df615040cac1bddc6cd82afc25844ee",
+      "commits": ["fcd645da6df615040cac1bddc6cd82afc25844ee"]
+    }
+  ],
+  "commands": [
+    {"cmd": "git remote -v && git branch --show-current && git rev-parse HEAD (both repos, orientation)", "exit": 0},
+    {"cmd": "python3 -m unittest discover -s tests -p 'test_aloop_crown.py' -v", "exit": 0},
+    {"cmd": "python3 scripts/aloop_crown.py --root ~/.zcode/workspace/default/aloop-dogfood-001 --episode ALOOP-ZCODE-DOGFOOD-001", "exit": 1},
+    {"cmd": "git add <lane-1 paths only> && git commit (engineering-standards)", "exit": 0},
+    {"cmd": "git add <lane-1 paths only> && git commit (chatman-ecosystem, local only, never pushed)", "exit": 0}
+  ],
+  "tests": [
+    {"cmd": "python3 -m unittest discover -s tests -p 'test_aloop_crown.py'", "exit": 0}
+  ],
+  "falsifiers": [
+    {"id": "R026-F", "result": "PASS"},
+    {"id": "R027-F", "result": "PASS"},
+    {"id": "R022-F", "result": "PASS"},
+    {"id": "R005-F", "result": "NOT_RUN"},
+    {"id": "R009-F", "result": "NOT_RUN"},
+    {"id": "R011-F", "result": "NOT_RUN"}
+  ],
+  "receipts": [
+    {
+      "work_order_id": "WO-LANE1-RFC-0005",
+      "provider": "zcode",
+      "provider_execution_id": "ALOOP-ZCODE-DOGFOOD-001/lane-1/rfc-0005",
+      "origin_authority": "operator dispatch: ALOOP-ZCODE-DOGFOOD-001 lane contract",
+      "exit_status": "success",
+      "replay_binding": "verifier:git-show-d04c9ac782b1aeb6a3a8e0b94264f3bade22bd58",
+      "consequence": "docs/engineering/rfc/0005-autonomous-loop-qualification.md + 0005-autonomous-loop-requirements.json on rfc/aloop-0005-autonomous-loop (local)"
+    },
+    {
+      "work_order_id": "WO-LANE1-CROWN-001",
+      "provider": "zcode",
+      "provider_execution_id": "ALOOP-ZCODE-DOGFOOD-001/lane-1/crown-001",
+      "origin_authority": "operator dispatch: ALOOP-ZCODE-DOGFOOD-001 lane contract",
+      "exit_status": "success",
+      "replay_binding": "verifier:tests/test_aloop_crown.py",
+      "consequence": "scripts/aloop_crown.py + tests/test_aloop_crown.py on feat/aloop-crown-001 (local, never pushed)"
+    }
+  ],
+  "provider_replace_admitted": false,
+  "human_causal_edges": [
+    {
+      "ts": "2026-09-25T18:15:00Z",
+      "phase": "pre-epoch",
+      "description": "launcher enumerated 10 lanes, assigned repo-sets, and prescribed the identical lane contract before episode.start; all lane-1 work executed inside that envelope"
+    }
+  ],
+  "recurrence": {
+    "demonstrated": false,
+    "chain": [],
+    "iterations": 0
+  },
+  "recovery": [],
+  "stress": {"kind": "benchmark", "result": "NOT_RUN"},
+  "ocel_summary": {
+    "object_types": ["Episode", "Objective", "Requirement", "WorkOrder", "Authority", "Repository", "Subject", "Provider", "Worker", "WorkerRun", "Consequence", "Evidence", "Receipt"],
+    "event_classes": ["episode.start", "observe", "gap.detect", "candidate.construct", "plan.select", "workorder.issue", "provider.select", "worker.claim", "execution.start", "tool.admit", "actuate", "checkpoint", "receipt.persist", "verify", "falsifier.run", "failure.detect", "commit", "episode.terminal"],
+    "event_count": 17
+  },
+  "blockers": [],
+  "authority": {
+    "origin": "ALOOP-ZCODE-DOGFOOD-001 lane contract (operator dispatch, pre-epoch)",
+    "ceiling": "local atomic commits on purpose branches in owned repos only; no push, deploy, publish, rename, secret rotation, or permanent deletion; other repos read-only",
+    "violations": []
+  },
+  "ts": "2026-09-25T18:40:00Z"
+}
