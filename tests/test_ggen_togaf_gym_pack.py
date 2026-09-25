@@ -223,6 +223,16 @@ def test_ggen_templates_are_projection_only() -> None:
     assert len(targets) == len(set(targets))
     assert all("generated" not in target.lower() for target in targets)
     assert all(not (CONSUMER / target).exists() for target in targets)
+    # FM-WRITE-008 guard: ggen's discover_templates loads every pack template
+    # that exists on disk in addition to the consumer's own [templates] dir,
+    # so a consumer-side alias (symlink) of togaf-gym-pack/templates renders
+    # each `to:` output twice and refuses the whole sync ("2 rendered
+    # templates resolve to the same admitted output"). The pack is the single
+    # source of truth: the consumer dir must exist (FM-CONFIG-004 refuses a
+    # missing [templates].dir) but stay empty of .tmpl files.
+    consumer_templates = CONSUMER / "templates"
+    assert consumer_templates.is_dir() and not consumer_templates.is_symlink()
+    assert list(consumer_templates.glob("**/*.tmpl")) == []
     manifest = (CONSUMER / "ggen.toml").read_text()
     assert 'source = "ontology.ttl"' in manifest
     assert 'togaf-gym-pack = { path = "togaf-gym-pack" }' in manifest
