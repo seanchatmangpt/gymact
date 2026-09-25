@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 from gymact.dcm_runtime import DCMDecisionCourt, DecisionCourtRecord, DecisionCourtRequest
 from gymact.evidence import digest
@@ -47,9 +47,18 @@ class MarketplaceContractBinding(FrozenModel):
 
 
 class SkillCourtContract(FrozenModel):
-    """Runtime projection of the marketplace-owned collective-skill contract."""
+    """Runtime projection of the marketplace-owned collective-skill contract.
 
-    schema: str
+    The marketplace key ``schema`` shadows ``BaseModel.schema``; it is carried as
+    ``contract_schema`` under the ``schema`` alias and serialized by alias, so the canonical
+    JSON (and therefore the contract digest) keeps the marketplace key.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid", frozen=True, validate_by_name=True, validate_by_alias=True
+    )
+
+    contract_schema: str = Field(alias="schema")
     authority_ceiling: str
     grants_do_authority: bool
     projections: dict[str, str]
@@ -58,7 +67,7 @@ class SkillCourtContract(FrozenModel):
 
     @model_validator(mode="after")
     def enforce_marketplace_contract(self) -> Self:
-        if self.schema != EXPECTED_SCHEMA:
+        if self.contract_schema != EXPECTED_SCHEMA:
             raise ValueError("COLLECTIVE_SKILL_SCHEMA_MISMATCH")
         if self.authority_ceiling != EXPECTED_AUTHORITY_CEILING:
             raise ValueError("COLLECTIVE_SKILL_AUTHORITY_CEILING_MISMATCH")
@@ -107,8 +116,8 @@ class CollectiveSkillCourtBundle(FrozenModel):
 
     @model_validator(mode="after")
     def validate_bundle_identity(self) -> Self:
-        expected_contract_digest = (
-            "blake3:" + digest(self.contract.model_dump(mode="json"))
+        expected_contract_digest = "blake3:" + digest(
+            self.contract.model_dump(mode="json", by_alias=True)
         )
         if self.marketplace.contract_digest != expected_contract_digest:
             raise ValueError("COLLECTIVE_SKILL_CONTRACT_DIGEST_MISMATCH")
@@ -131,7 +140,7 @@ class CollectiveSkillCourtBundle(FrozenModel):
 
     @property
     def bundle_digest(self) -> str:
-        return "blake3:" + digest(self.model_dump(mode="json"))
+        return "blake3:" + digest(self.model_dump(mode="json", by_alias=True))
 
 
 class SkillCourtQualification(FrozenModel):

@@ -25,7 +25,7 @@ from gymact.skill_court import (
     SkillCourtProbe,
 )
 
-MARKETPLACE_SHA = "02c13c468892c040c8abfd5023db4c1a19fa4820"
+MARKETPLACE_SHA = "5eb71f7ed947f705a8d6b145cb9b0be82855d793"
 AUTOFDE_BASE_SHA = "29ffb8f9749b0b693579bc68c7f61ac15b16841f"
 DIGEST_A = "sha256:" + "a" * 64
 DIGEST_B = "sha256:" + "b" * 64
@@ -53,10 +53,7 @@ def contract() -> SkillCourtContract:
             "noop_fail": True,
             "mutation_rejection": True,
         },
-        admission=(
-            "oracle_pass && noop_fail && mutation_rejection && "
-            "!grants_do_authority"
-        ),
+        admission=("oracle_pass && noop_fail && mutation_rejection && !grants_do_authority"),
     )
 
 
@@ -68,7 +65,7 @@ def bundle(
     contract_digest_override: str | None = None,
 ) -> CollectiveSkillCourtBundle:
     projected = contract()
-    contract_digest = "blake3:" + digest(projected.model_dump(mode="json"))
+    contract_digest = "blake3:" + digest(projected.model_dump(mode="json", by_alias=True))
     return CollectiveSkillCourtBundle(
         bundle_id="court:chicago-domain-solver:repair-01",
         marketplace=MarketplaceContractBinding(
@@ -131,11 +128,7 @@ def decision_request() -> DecisionCourtRequest:
         reversal=ReversalClass.REVERSIBLE,
     )
     graph = action_possibility_fragment(action, subject)
-    start = next(
-        item
-        for item in graph.objects
-        if item.kind is PossibilityObjectKind.SUBJECT
-    )
+    start = next(item for item in graph.objects if item.kind is PossibilityObjectKind.SUBJECT)
     return DecisionCourtRequest(
         graph=graph,
         start_ids=(start.object_id,),
