@@ -1,1 +1,0 @@
-{"id":"delete-producer-head","delete":["producer_head"],"expected":"REFUSED[MALFORMED_PRODUCER_HEAD]"}

@@ -1,1 +1,0 @@
-{"id":"authority-do","set":{"authority":"OBSERVE|VERIFY|DO"},"expected":"REFUSED[AUTHORITY_FENCE]"}

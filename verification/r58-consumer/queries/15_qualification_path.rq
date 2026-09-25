@@ -1,2 +1,0 @@
-PREFIX esf: <https://ggen.dev/ontology/epistemic-sensor-factory#>
-ASK { <urn:gymact:r58-consumer> esf:qualificationPath <https://github.com/seanchatmangpt/gymact/actions> . }

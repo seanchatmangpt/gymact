@@ -1,1 +1,0 @@
-{"id":"foreign-producer","set":{"producer_repo":"example/other"},"expected":"REFUSED[FOREIGN_PRODUCER]"}

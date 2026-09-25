@@ -1,4 +1,0 @@
-[pack]
-name = "sregym-e2e-pack"
-version = "0.2.0"
-description = "Ontology-first SREGym MCP manufacturing pack. The admitted ABox pins SREGym/SREGym@ba07faf1a322f9b6d4a279643bb796aa2f36f64b, all 14 GymAct capabilities over the five vendor MCP SSE routes plus conductor status, the ontology-correct 11 READ / 3 DO consequence partition, the exact 21-subject SREGym-Lite corpus, and the two currently admitted deterministic gdmcp solution programs. ggen projects that graph into the Python runtime catalog, a powerless Rust structural verifier, WIT ABI, and cross-projection proof. The pack's check performs real ggen generation, signed-receipt verification, rustc execution, idempotency replay, and semantic-sabotage refusal. Structural admission is explicitly not runtime ALIVE: real SREGym execution, independent GymAct verification, OCEL/replay evidence, capability scope, AuthorityResolver and BRCE remain outside this pack and are required for execution standing."
