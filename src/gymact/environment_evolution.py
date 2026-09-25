@@ -253,8 +253,9 @@ class EnvironmentEvolutionCourt:
         if len(event_ids) != len(set(event_ids)):
             reasons.append("DUPLICATE_EVOLUTION_EVENT_ID")
 
+        first_sequence = seed.last_event_sequence + 1
         expected_sequences = list(
-            range(seed.last_event_sequence + 1, seed.last_event_sequence + 1 + len(candidate.events))
+            range(first_sequence, first_sequence + len(candidate.events))
         )
         actual_sequences = [event.sequence for event in candidate.events]
         if actual_sequences != expected_sequences:
