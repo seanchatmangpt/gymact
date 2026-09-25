@@ -1,0 +1,62 @@
+name: Environment evolution exact head
+
+on:
+  pull_request:
+    paths:
+      - "src/gymact/environment_evolution.py"
+      - "src/gymact/dcm.py"
+      - "tests/test_environment_evolution.py"
+      - ".github/workflows/environment-evolution.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  environment-evolution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Admit exact subject
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="${{ github.event.pull_request.head.sha || github.sha }}"
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$expected"
+          printf "environment_evolution_exact_head=%s\n" "$actual"
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.11.32"
+
+      - name: Resolve admitted dependency closure
+        run: uv sync --group dev
+
+      - name: Compile evolution surface
+        run: >-
+          uv run python -m compileall -q
+          src/gymact/environment_evolution.py
+          tests/test_environment_evolution.py
+
+      - name: Execute evolution court
+        run: uv run pytest -q tests/test_environment_evolution.py
+
+      - name: Static contract
+        run: >-
+          uv run ruff check
+          src/gymact/environment_evolution.py
+          src/gymact/dcm.py
+          tests/test_environment_evolution.py
+
+      - name: Format contract
+        run: >-
+          uv run ruff format --check
+          src/gymact/environment_evolution.py
+          src/gymact/dcm.py
+          tests/test_environment_evolution.py
