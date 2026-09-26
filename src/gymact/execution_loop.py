@@ -48,19 +48,27 @@ the effect's declared ``subject_after_sha`` (the actuation's own commit); any
 other SHA is an external move and triggers a bounded replan. The same check
 runs on the journal-reconstruction path.
 
+Exactly-once across redelivery: a run that actuated but terminated without an
+admitted receipt (typed block or refusal after actuation) is remembered by
+idempotency key. Redelivering the same request typed-blocks with
+``TYPED_BLOCK_PRIOR_ACTUATION_UNRECONCILED`` (``R_missing_consequence``) and
+zero new actuations instead of executing the work order again.
+
 All execution in the accompanying court is simulated-in-process (fakes
 implementing :class:`ExecutionProvider`); nothing here actuates production.
 """
 
 from __future__ import annotations
 
+import copy
 import random
+import unicodedata
 from collections.abc import Callable, Iterable, Sequence
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Annotated, Any, Protocol, runtime_checkable
 
-from pydantic import Field
+from pydantic import AfterValidator, Field
 
 from gymact.evidence import digest
 from gymact.models import FrozenModel, Standing
@@ -176,9 +184,25 @@ class WorkerCrashed(TransportFault):
 # --------------------------------------------------------------------------- #
 
 
-# At least one non-whitespace character: a blank or whitespace-only work
-# order / capability / repo carries no identity and is refused at construction.
-NonEmptyStr = Annotated[str, Field(min_length=1, pattern=r"\S")]
+# Unicode categories that render nothing and so carry no identity: separators
+# (Zs/Zl/Zp), controls (Cc) and format characters (Cf: U+200B ZERO WIDTH SPACE,
+# U+FEFF, U+200D ...). ``str.isspace`` alone misses Cf, which is how a
+# zero-width work order used to pass a ``\S`` pattern.
+_INVISIBLE_CATEGORIES = frozenset({"Zs", "Zl", "Zp", "Cc", "Cf"})
+
+
+def _require_visible(value: str) -> str:
+    if not any(
+        not ch.isspace() and unicodedata.category(ch) not in _INVISIBLE_CATEGORIES for ch in value
+    ):
+        raise ValueError("identity field has no visible character")
+    return value
+
+
+# At least one visible character: a blank, whitespace-only or zero-width work
+# order / capability / repo / evidence requirement carries no identity and is
+# refused at construction.
+NonEmptyStr = Annotated[str, Field(min_length=1), AfterValidator(_require_visible)]
 # Lowercase hex, 7..64 chars: abbreviated or full git SHA-1/SHA-256 and the
 # 64-hex BLAKE3 content digests used for simulated worlds. Anything else is a
 # malformed subject identity and is refused at construction (R_missing_identity).
@@ -223,7 +247,7 @@ class ExecutionRequest(FrozenModel):
     capability_requirements: Annotated[list[NonEmptyStr], Field(min_length=1)]
     subject: SubjectRef
     authority: AuthorityGrant
-    evidence_requirements: list[str]
+    evidence_requirements: Annotated[list[NonEmptyStr], Field(min_length=1)]
     resource_constraints: ResourceConstraints = Field(default_factory=ResourceConstraints)
     idempotency_key: str = ""  # defaults to work_order
 
@@ -474,6 +498,11 @@ class AutonomousLoop:
         self.events: list[OcelEvent] = []
         # per-run actuation ledger (reset at the top of run())
         self._actuations: list[dict[str, Any]] = []
+        # idempotency key -> (request digest, typed reason, broken term, ledger)
+        # for runs that ACTUATED but terminated without an admitted receipt
+        # (typed block or refusal after actuation). A redelivery of the same
+        # request must not actuate again: its prior effects are unreconciled.
+        self._unreconciled: dict[str, tuple[str, str, str, list[dict[str, Any]]]] = {}
 
     # -- event plumbing ----------------------------------------------------- #
 
@@ -530,7 +559,7 @@ class AutonomousLoop:
                 typed_reason="REFUSED_NO_AUTHORITY",
                 broken_term=BrokenTerm.R_MISSING_AUTHORITY,
                 actuation_count=len(self._actuations),
-                actuations=list(self._actuations),
+                actuations=self._ledger_snapshot(),
                 events=list(self.events),
             )
         return self._expiry_gate(request)
@@ -555,7 +584,7 @@ class AutonomousLoop:
                 typed_reason="REFUSED_CREDENTIAL_EXPIRED",
                 broken_term=BrokenTerm.R_MISSING_AUTHORITY,
                 actuation_count=len(self._actuations),
-                actuations=list(self._actuations),
+                actuations=self._ledger_snapshot(),
                 events=list(self.events),
             )
         return None
@@ -581,7 +610,7 @@ class AutonomousLoop:
             typed_reason="REFUSED_IMPOSSIBLE_OBJECTIVE",
             broken_term=BrokenTerm.IMPOSSIBLE_OBJECTIVE,
             actuation_count=len(self._actuations),
-            actuations=list(self._actuations),
+            actuations=self._ledger_snapshot(),
             events=list(self.events),
         )
 
@@ -613,7 +642,7 @@ class AutonomousLoop:
             typed_reason=reason,
             broken_term=broken,
             actuation_count=len(self._actuations),
-            actuations=list(self._actuations),
+            actuations=self._ledger_snapshot(),
             events=list(self.events),
         )
 
@@ -622,7 +651,7 @@ class AutonomousLoop:
     def _dedupe_gate(self, request: ExecutionRequest) -> LoopResult | None:
         entry = self._completed.get(request.idempotency_key)
         if entry is None:
-            return None
+            return self._unreconciled_gate(request)
         completed_digest, existing = entry
         if completed_digest != _request_digest(request):
             # same idempotency key, different request content: answering with
@@ -643,7 +672,7 @@ class AutonomousLoop:
                 typed_reason="REFUSED_IDEMPOTENCY_KEY_CONFLICT",
                 broken_term=BrokenTerm.MU_ON_O,
                 actuation_count=len(self._actuations),
-                actuations=list(self._actuations),
+                actuations=self._ledger_snapshot(),
                 events=list(self.events),
             )
         self._emit(
@@ -662,13 +691,80 @@ class AutonomousLoop:
             typed_reason=None,
             broken_term=None,
             actuation_count=len(self._actuations),  # a duplicate performs NO actuation
-            actuations=list(self._actuations),
+            actuations=self._ledger_snapshot(),
+            events=list(self.events),
+        )
+
+    def _unreconciled_gate(self, request: ExecutionRequest) -> LoopResult | None:
+        prior = self._unreconciled.get(request.idempotency_key)
+        if prior is None:
+            return None
+        prior_digest, prior_reason, prior_term, prior_ledger = prior
+        if prior_digest != _request_digest(request):
+            self._emit(
+                "refuse",
+                request,
+                reason="REFUSED_IDEMPOTENCY_KEY_CONFLICT",
+                outcome=LegalOutcome.REFUSE.value,
+                standing=Standing.REFUSED.value,
+                extra={"prior_actuation_count": len(prior_ledger)},
+            )
+            return LoopResult(
+                outcome=LegalOutcome.REFUSE.value,
+                standing=Standing.REFUSED,
+                episode_standing=EpisodeStanding.FAILED,
+                typed_reason="REFUSED_IDEMPOTENCY_KEY_CONFLICT",
+                broken_term=BrokenTerm.MU_ON_O,
+                actuation_count=0,
+                actuations=[],
+                events=list(self.events),
+            )
+        # Same request, prior run actuated without an admitted receipt: a
+        # redelivery that re-executes would be a duplicate actuation of one
+        # work order. Typed-block with ZERO new actuations and name the prior
+        # unreconciled consequence (R_missing_consequence).
+        self._emit(
+            "typed.block",
+            request,
+            reason="TYPED_BLOCK_PRIOR_ACTUATION_UNRECONCILED",
+            outcome=LegalOutcome.TYPED_BLOCK.value,
+            standing=Standing.BLOCKED.value,
+            extra={
+                "prior_reason": prior_reason,
+                "prior_broken_term": prior_term,
+                "prior_actuation_count": len(prior_ledger),
+                "prior_provider_execution_ids": [
+                    entry["provider_execution_id"] for entry in prior_ledger
+                ],
+            },
+        )
+        return LoopResult(
+            outcome=LegalOutcome.TYPED_BLOCK.value,
+            standing=Standing.BLOCKED,
+            episode_standing=EpisodeStanding.BLOCKED_INFORMATION,
+            typed_reason="TYPED_BLOCK_PRIOR_ACTUATION_UNRECONCILED",
+            broken_term=BrokenTerm.R_MISSING_CONSEQUENCE,
+            actuation_count=0,
+            actuations=[],
             events=list(self.events),
         )
 
     # -- main ---------------------------------------------------------------- #
 
     def run(self, request: ExecutionRequest) -> LoopResult:
+        result = self._run(request)
+        if result.receipt is None and result.actuation_count > 0:
+            # Actuated but not admitted: remember it so a redelivery cannot
+            # actuate the same work order again.
+            self._unreconciled[request.idempotency_key] = (
+                _request_digest(request),
+                result.typed_reason or "",
+                result.broken_term.value if result.broken_term else "",
+                copy.deepcopy(result.actuations),
+            )
+        return result
+
+    def _run(self, request: ExecutionRequest) -> LoopResult:
         self.events = []
         self._actuations = []
         for gate in (
@@ -838,7 +934,7 @@ class AutonomousLoop:
                         episode_standing=EpisodeStanding.AUTONOMOUS,
                         receipt=receipt,
                         actuation_count=len(self._actuations),
-                        actuations=list(self._actuations),
+                        actuations=self._ledger_snapshot(),
                         events=list(self.events),
                     )
                 # crash BEFORE actuation: safe to retry in place.
@@ -1021,11 +1117,17 @@ class AutonomousLoop:
                 episode_standing=EpisodeStanding.AUTONOMOUS,
                 receipt=receipt,
                 actuation_count=len(self._actuations),
-                actuations=list(self._actuations),
+                actuations=self._ledger_snapshot(),
                 events=list(self.events),
             )
 
     # -- helpers ------------------------------------------------------------- #
+
+    def _ledger_snapshot(self) -> list[dict[str, Any]]:
+        """Deep copy of the run ledger: result views and receipts never alias
+        the kernel's entries (or each other), so mutating one cannot rewrite
+        receipt evidence."""
+        return copy.deepcopy(self._actuations)
 
     def _record_actuation(
         self,
@@ -1046,7 +1148,7 @@ class AutonomousLoop:
             "pinned_subject_sha": pin.pinned_subject_sha,
             "declared_subject_after_sha": str(effect.get("subject_after_sha", "")),
             "effect_digest": str(effect.get("effect_digest", "")),
-            "consequence": dict(effect.get("consequence", {})),
+            "consequence": copy.deepcopy(dict(effect.get("consequence", {}))),
             "witness": witness,
         }
         self._actuations.append(entry)
@@ -1180,7 +1282,7 @@ class AutonomousLoop:
             typed_reason=reason,
             broken_term=broken,
             actuation_count=len(self._actuations),
-            actuations=list(self._actuations),
+            actuations=self._ledger_snapshot(),
             events=list(self.events),
         )
 
@@ -1200,7 +1302,7 @@ class AutonomousLoop:
         subject_after = SubjectRef(repo=request.subject.repo, sha=observed_after_sha)
         ledger = [
             {
-                **entry,
+                **copy.deepcopy(entry),
                 "disposition": (
                     "admitted"
                     if entry["provider_execution_id"] == pin.provider_execution_id
@@ -1235,7 +1337,7 @@ class AutonomousLoop:
                 f"as {entry['provider_execution_id']} [{entry['disposition']}]"
                 for entry in ledger
             ],
-            consequences=[dict(entry["consequence"]) for entry in ledger],
+            consequences=[copy.deepcopy(entry["consequence"]) for entry in ledger],
             evidence=[
                 {
                     "kind": "verifier",

@@ -169,6 +169,13 @@ pin or to the effect's declared `subject_after_sha` is the actuation's own
 consequence; any other SHA is an external move, on the live and the
 journal-reconstruction path alike.
 
+Exactly-once holds across redelivery: a run that actuated but ended without an
+admitted receipt is remembered by idempotency key, and redelivering the same
+request typed-blocks with `TYPED_BLOCK_PRIOR_ACTUATION_UNRECONCILED`
+(`R_missing_consequence`) and zero new actuations instead of executing again.
+Identity fields (work order, capabilities, repo, evidence requirements) must
+contain a visible character; zero-width and format characters do not count.
+
 ::: gymact.execution_loop.AuthorityGrant
 
 ::: gymact.execution_loop.AutonomousLoop
