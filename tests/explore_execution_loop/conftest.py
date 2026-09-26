@@ -376,6 +376,70 @@ def _b_provider_disappears_mid_execution(seed: int, inject: bool) -> Built:
     )
 
 
+def _b_substituted_fresh_budget(seed: int, inject: bool, *, at: str, scenario_id: str) -> Built:
+    """Substitution whose success REQUIRES a fully fresh retry budget.
+
+    The primary disappears (4 consecutive ``provider_unavailable`` faults, one
+    more than ``max_retries``); the backup then faults transiently on exactly
+    ``max_retries`` consecutive calls before succeeding. With the default
+    budget the backup therefore needs ``max_retries + 1`` attempts: any kernel
+    that hands the substituted provider less than a full fresh budget (no
+    reset, reset to the exhausted value, a decrement, an off-by-one reset)
+    typed-blocks with TYPED_BLOCK_BUDGET_EXHAUSTED instead of recovering.
+    """
+    retries = make_constraints().max_retries
+    primary_faults = [("provider_unavailable", 1)] * (retries + 1) if inject else []
+    if at == "claim":
+        backup_claim: list[Any] = [("network_partition", 1)] * retries if inject else []
+        backup_execute: list[Any] = []
+    else:
+        backup_claim = []
+        backup_execute = [("transport", "network_partition", 1)] * retries if inject else []
+    primary = ScriptedProvider(
+        transport="fake:primary",
+        claim_faults=primary_faults if at == "claim" else [],
+        execute_faults=primary_faults if at == "execute" else [],
+        effect=ok_effect(),
+    )
+    backup = ScriptedProvider(
+        transport="fake:backup",
+        claim_faults=backup_claim,
+        execute_faults=backup_execute,
+        effect=ok_effect(),
+    )
+    loop, clock = make_loop([primary, backup])
+    request = make_request()
+
+    def post(results: list[Any]) -> None:
+        receipt = results[0].receipt
+        assert receipt is not None, (
+            f"substituted provider was denied a fresh retry budget: {results[0].typed_reason}"
+        )
+        assert receipt.provider["transport"] == "fake:backup"
+        calls = backup.claim_calls if at == "claim" else backup.execute_calls
+        assert calls == retries + 1, (
+            f"backup consumed {calls} {at} calls; a fresh budget is exactly {retries + 1}"
+        )
+        assert not backup.claim_faults and not backup.execute_faults
+
+    return Built(scenario_id, loop, [request], clock, [primary, backup], post=post)
+
+
+def _b_substituted_fresh_budget_claim(seed: int, inject: bool) -> Built:
+    return _b_substituted_fresh_budget(
+        seed, inject, at="claim", scenario_id="L7-F32-substituted-provider-fresh-budget-claim"
+    )
+
+
+def _b_substituted_fresh_budget_execution(seed: int, inject: bool) -> Built:
+    return _b_substituted_fresh_budget(
+        seed,
+        inject,
+        at="execute",
+        scenario_id="L7-F33-substituted-provider-fresh-budget-execution",
+    )
+
+
 def _b_partition_transient(seed: int, inject: bool) -> Built:
     primary = ScriptedProvider(
         claim_faults=[("network_partition", 2)] if inject else [],
@@ -776,6 +840,8 @@ BUILDERS: dict[str, Callable[[int, bool], Built]] = {
     "L7-F27-silent-external-state-mutation": _b_silent_once,
     "L7-F28-silent-external-mutation-persistent": _b_silent_persistent,
     "L7-F31-lifegym-long-horizon-silent-stage-mutation": _b_lifegym_multistage,
+    "L7-F32-substituted-provider-fresh-budget-claim": _b_substituted_fresh_budget_claim,
+    "L7-F33-substituted-provider-fresh-budget-execution": _b_substituted_fresh_budget_execution,
 }
 
 # Guard scenarios (standing law / receipt law) raise instead of returning a

@@ -685,6 +685,48 @@
       ],
       "long_horizon": "at least 3 provider claims across distinct stages; final verifier checks stage==3",
       "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F32-substituted-provider-fresh-budget-claim",
+      "family": "provider_disappearance",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "primary raises TransportFault('provider_unavailable') on 4 consecutive claims; the backup then faults transiently (network_partition) on max_retries consecutive claims before succeeding",
+      "expected_legal_outcomes": [
+        "Recover"
+      ],
+      "expected_standing": "ALIVE",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "failure.detect",
+        "provider.replace",
+        "reconcile.retry"
+      ],
+      "substitution": "receipt names the backup transport; the backup consumed exactly max_retries+1 claim calls, so passing requires a fully fresh retry budget after provider.replace",
+      "execution_class": "simulated-in-process"
+    },
+    {
+      "id": "L7-F33-substituted-provider-fresh-budget-execution",
+      "family": "provider_disappearance",
+      "repo_home": "gymact",
+      "seeds": [
+        7
+      ],
+      "fault_injection_point": "primary claims, then raises TransportFault('provider_unavailable') on 4 consecutive execute calls; the backup then faults transiently (network_partition) on max_retries consecutive execute calls before succeeding",
+      "expected_legal_outcomes": [
+        "Recover"
+      ],
+      "expected_standing": "ALIVE",
+      "illegal_outcome_assertion": "WaitForHumanToNotice unreachable",
+      "required_ocel_events": [
+        "failure.detect",
+        "provider.replace",
+        "reconcile.retry"
+      ],
+      "substitution": "receipt names the backup transport; the backup consumed exactly max_retries+1 execute calls, so passing requires a fully fresh retry budget after provider.replace",
+      "execution_class": "simulated-in-process"
     }
   ],
   "dogfood_fixtures": [
