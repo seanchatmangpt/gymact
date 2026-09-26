@@ -200,3 +200,36 @@ def test_adaptive_reaction_norm_is_not_erased_by_homogeneous_baseline() -> None:
     )
     assert population.kind.value == "adaptive"
     assert population.reaction_norm is not None
+
+
+def test_odd_bimodal_population_preserves_target_mean() -> None:
+    design = TemperamentDesignPlan(
+        mission_id="m:bimodal",
+        topology=ControlTopology.CENTRALIZED,
+        mode=DesignMode.ONLINE_PLANNER_OUTPUT,
+        criteria=(
+            MissionCriterion(
+                criterion_id="c",
+                axis_weights=(("initiative", 1.0),),
+            ),
+        ),
+        targets=(
+            AxisTarget(
+                axis_id="initiative",
+                mean=0.5,
+                spread=0.25,
+                shape=DistributionShape.BIMODAL,
+            ),
+        ),
+    )
+    population = manufacture_population(
+        design,
+        policy_ref="planner:Astar",
+        member_count=5,
+    )
+    values = [
+        member.phenotype.condition.as_dict()["initiative"]
+        for member in population.members
+    ]
+    assert values == [0.25, 0.25, 0.5, 0.75, 0.75]
+    assert sum(values) / len(values) == pytest.approx(0.5)
