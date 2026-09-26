@@ -4,15 +4,19 @@ Runs ``scripts/bench_policy_ecology.py`` as a real child process and pins:
 
 * determinism: two runs over the seeded populations emit the same result digest
   and metrics (timings excluded);
-* a throughput ceiling for ``population_diversity`` (ns per member pair) and
-  ``condition_population`` (us per member).
+* a throughput ceiling for ``population_diversity`` (ns per member pair),
+  ``condition_population`` (us per member), and the RDF projection /
+  whole-graph-bound reconstruction (us per member).
 
 Recorded on PR #145 (arm64, CPython 3.13, min of 5): the pre-hardening per-pair
 set/dict implementation measured ~2100-2300 ns/pair; the precomputed-vector +
 ``math.dist`` implementation measures ~110-140 ns/pair at 64-512 members, and
 conditioning ~12-18 us/member (pre-hardening ~10-15). The ceilings below sit
 well above the hardened numbers (slow CI runners) but below the old diversity
-path, so reintroducing per-pair axis-union construction trips the bound. Receipt:
+path, so reintroducing per-pair axis-union construction trips the bound. RDF
+projection recomputed the population digest per member (O(n^2)): ~14-30 ms/member
+at 64-512 members on upstream 39f13ac vs ~0.3-0.8 ms/member after; its ceiling
+trips on the quadratic path. Receipt:
 ``receipts/v26.9.26/policy-ecology-bench.json``.
 """
 
@@ -29,6 +33,8 @@ SCRIPT = ROOT / "scripts" / "bench_policy_ecology.py"
 
 DIVERSITY_NS_PER_PAIR_CEILING = 1000.0
 CONDITION_US_PER_MEMBER_CEILING = 250.0
+RDF_PROJECT_US_PER_MEMBER_CEILING = 5000.0
+RDF_RECONSTRUCT_US_PER_MEMBER_CEILING = 15000.0
 
 
 def _run_bench(*args: str) -> dict:
@@ -62,6 +68,10 @@ def test_bench_is_deterministic_and_within_regression_bound() -> None:
     for row in first["rows"]:
         assert row["diversity_ns_per_pair"] < DIVERSITY_NS_PER_PAIR_CEILING, row
         assert row["condition_us_per_member"] < CONDITION_US_PER_MEMBER_CEILING, row
+        assert row["rdf_project_us_per_member"] < RDF_PROJECT_US_PER_MEMBER_CEILING, row
+        assert row["rdf_reconstruct_us_per_member"] < RDF_RECONSTRUCT_US_PER_MEMBER_CEILING, row
+        # root 5 + per member (6 + subject/extent per axis) + 2 per axis concept
+        assert row["rdf_triples"] == 5 + row["members"] * (6 + 2 * 9) + 2 * 9
         # inverse-Simpson complexity is bounded by the member count
         assert 1.0 <= row["complexity"] <= row["members"]
         # nine unit axes: every pairwise distance is at most sqrt(9) = 3

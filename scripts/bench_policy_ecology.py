@@ -6,6 +6,8 @@ populations over the nine default temperament axes:
 
 * ``population_diversity`` -- O(n^2) weighted pairwise disparity
 * ``condition_population`` -- O(n * axes) adaptive reaction-norm conditioning
+* ``policy_population_to_rdf`` / ``rdf_to_policy_population`` -- public-ontology
+  projection and whole-graph-bound reconstruction (O(n * axes) triples)
 
 Inputs are generated from a fixed seed, so the computed metrics (not the
 timings) are byte-identical across runs; the JSON carries a result digest so
@@ -36,6 +38,7 @@ from gymact.policy_ecology import (
     condition_population,
     population_diversity,
 )
+from gymact.policy_ecology_rdf import policy_population_to_rdf, rdf_to_policy_population
 
 SEED = 2609_29423
 
@@ -85,6 +88,11 @@ def run(sizes: list[int], repeat: int) -> dict:
         pairs = size * (size - 1) // 2
         diversity_s = _best_seconds(lambda p=population: population_diversity(p), repeat)
         condition_s = _best_seconds(lambda p=population: condition_population(p, cue=0.5), repeat)
+        graph = policy_population_to_rdf(population)
+        if rdf_to_policy_population(graph) != population:
+            raise SystemExit("REFUSED:BENCH_RDF_ROUND_TRIP_NOT_LOSSLESS")
+        project_s = _best_seconds(lambda p=population: policy_population_to_rdf(p), repeat)
+        reconstruct_s = _best_seconds(lambda g=graph: rdf_to_policy_population(g), repeat)
         rows.append(
             {
                 "members": size,
@@ -95,6 +103,9 @@ def run(sizes: list[int], repeat: int) -> dict:
                 "diversity_ns_per_pair": (diversity_s * 1e9 / pairs) if pairs else None,
                 "condition_seconds": condition_s,
                 "condition_us_per_member": condition_s * 1e6 / size,
+                "rdf_triples": len(graph),
+                "rdf_project_us_per_member": project_s * 1e6 / size,
+                "rdf_reconstruct_us_per_member": reconstruct_s * 1e6 / size,
             }
         )
     return {

@@ -1,102 +1,131 @@
 {
   "after": {
-    "module": "src/gymact/policy_ecology.py @ this commit",
     "result_digest": "126696f45c8428b2bbb18c3c7de2d9b2d9314ae2433fdccf5150513e0815e103",
     "rows": [
       {
         "complexity": 11.642273338992,
-        "condition_us_per_member": 14.796874893363565,
+        "condition_us_per_member": 14.369747077580541,
         "disparity": 1.24290123903,
-        "diversity_ns_per_pair": 333.67444605877,
+        "diversity_ns_per_pair": 326.3916975508134,
         "members": 16,
-        "pairs": 120
+        "pairs": 120,
+        "rdf_project_us_per_member": 334.91406065877527,
+        "rdf_reconstruct_us_per_member": 471.46875294856727,
+        "rdf_triples": 407
       },
       {
         "complexity": 49.409944212393,
-        "condition_us_per_member": 14.665374692413025,
+        "condition_us_per_member": 14.017577996128239,
         "disparity": 1.226034518854,
-        "diversity_ns_per_pair": 159.32984376651427,
+        "diversity_ns_per_pair": 156.06397822026221,
         "members": 64,
-        "pairs": 2016
+        "pairs": 2016,
+        "rdf_project_us_per_member": 364.4492189778248,
+        "rdf_reconstruct_us_per_member": 559.2923116637394,
+        "rdf_triples": 1559
       },
       {
         "complexity": 195.938040476909,
-        "condition_us_per_member": 15.44531232866575,
+        "condition_us_per_member": 25.270831883972278,
         "disparity": 1.215150641207,
-        "diversity_ns_per_pair": 124.85447323164337,
+        "diversity_ns_per_pair": 123.42346713458205,
         "members": 256,
-        "pairs": 32640
+        "pairs": 32640,
+        "rdf_project_us_per_member": 803.3566055019037,
+        "rdf_reconstruct_us_per_member": 991.5620116771606,
+        "rdf_triples": 6167
       },
       {
         "complexity": 390.445199223401,
-        "condition_us_per_member": 15.24023446108913,
+        "condition_us_per_member": 13.758544810116291,
         "disparity": 1.191383914061,
-        "diversity_ns_per_pair": 123.21919384632312,
+        "diversity_ns_per_pair": 125.21786273837795,
         "members": 512,
-        "pairs": 130816
+        "pairs": 130816,
+        "rdf_project_us_per_member": 741.2639160975232,
+        "rdf_reconstruct_us_per_member": 567.6814764683513,
+        "rdf_triples": 12311
       }
     ]
   },
   "authority": "NONE (SELECT/CONSTRUCT benchmark; no actuation)",
   "before": {
-    "module": "src/gymact/policy_ecology.py @ d33e4dc",
     "result_digest": "2074c5a2b7daf717a98a6f238888ed1a5ce6c0ebcb0b0edc7d11a2be04c3f668",
     "rows": [
       {
         "complexity": 11.642273338992,
-        "condition_us_per_member": 14.752622519154102,
+        "condition_us_per_member": 11.757809261325747,
         "disparity": 1.24290123903,
-        "diversity_ns_per_pair": 2319.450140930712,
+        "diversity_ns_per_pair": 2314.5839804783463,
         "members": 16,
-        "pairs": 120
+        "pairs": 120,
+        "rdf_project_us_per_member": 897.3750009317882,
+        "rdf_reconstruct_us_per_member": 69.84893843764439,
+        "rdf_triples": 407
       },
       {
         "complexity": 49.409944212393,
-        "condition_us_per_member": 10.005858712247573,
+        "condition_us_per_member": 13.123702956363559,
         "disparity": 1.226034518854,
-        "diversity_ns_per_pair": 2187.83085103265,
+        "diversity_ns_per_pair": 3157.924116489344,
         "members": 64,
-        "pairs": 2016
+        "pairs": 2016,
+        "rdf_project_us_per_member": 14393.690109500312,
+        "rdf_reconstruct_us_per_member": 65.19531416415703,
+        "rdf_triples": 1559
       },
       {
         "complexity": 195.938040476909,
-        "condition_us_per_member": 10.986492270603776,
+        "condition_us_per_member": 56.76350792782614,
         "disparity": 1.215150641207,
-        "diversity_ns_per_pair": 1995.3010112159045,
+        "diversity_ns_per_pair": 10857.854623977533,
         "members": 256,
-        "pairs": 32640
+        "pairs": 32640,
+        "rdf_project_us_per_member": 30370.18457052909,
+        "rdf_reconstruct_us_per_member": 68.11881621615612,
+        "rdf_triples": 6167
       },
       {
         "complexity": 390.445199223401,
-        "condition_us_per_member": 11.128662208648166,
+        "condition_us_per_member": 13.132812455296516,
         "disparity": 1.191383914061,
-        "diversity_ns_per_pair": 2240.8452870143938,
+        "diversity_ns_per_pair": 8454.20826908505,
         "members": 512,
-        "pairs": 130816
+        "pairs": 130816,
+        "rdf_project_us_per_member": 30849.641681697904,
+        "rdf_reconstruct_us_per_member": 74.23795500471897,
+        "rdf_triples": 12311
       }
     ]
   },
-  "command": "PYTHONPATH=src python scripts/bench_policy_ecology.py --sizes 16,64,256,512 --repeat 5",
-  "consequence": "population_diversity precomputes canonical axis vectors once and uses math.dist; per-pair cost falls ~15x; conditioning pays the hardened fence (finite/range/duplicate checks) at near parity",
+  "command": "PYTHONPATH=src python scripts/bench_policy_ecology.py --sizes 16,64,256,512 --repeat N",
+  "consequence": [
+    "population_diversity: canonical axis vectors built once + math.dist; ~2000-11000 -> ~120-320 ns/pair; disparity/complexity equal to 12 decimals (digest differs only by last-ULP float repr)",
+    "condition_population: hardened fence (finite/range/duplicate checks, lru_cached normalization) at near parity",
+    "policy_population_to_rdf: population digest computed once instead of per member (was O(n^2)); ~14-30 ms/member -> ~0.5-0.7 ms/member at 64-512 members",
+    "rdf_to_policy_population: now re-projects and requires exact triple-set equality (whole-graph binding); reconstruction cost rises from ~70 us/member (root-only check) to ~0.5-2.5 ms/member -- the price of refusing member-level tamper"
+  ],
   "environment": {
     "machine": "arm64",
     "python": "3.13.9",
-    "timing": "min of 5 perf_counter runs"
+    "timing": "min over N perf_counter runs (before N=1: quadratic RDF path; after N=5)"
   },
   "identity": {
-    "parent_head": "d33e4dc0652ecc3b48759875d5e9724c51314215",
+    "after_subject": "the commit that adds this file",
+    "before_subject": "39f13ac07336aea8364fd758bf726d751fbdda6b (upstream PR head; policy_ecology identical to d33e4dc)",
     "pr": 145,
-    "repo": "seanchatmangpt/gymact",
-    "subject": "this commit (child of parent_head)"
+    "repo": "seanchatmangpt/gymact"
   },
   "receipt": "policy-ecology-bench",
   "regression_bound": {
-    "anti_vacuity": "bound fails against the d33e4dc module (diversity ~2000-2300 ns/pair)",
+    "anti_vacuity": "diversity and RDF-projection bounds fail against the pre-hardening modules",
     "condition_us_per_member_lt": 250.0,
     "diversity_ns_per_pair_lt": 1000.0,
+    "rdf_project_us_per_member_lt": 5000.0,
+    "rdf_reconstruct_us_per_member_lt": 15000.0,
     "test": "tests/test_policy_ecology_bench.py"
   },
   "release": "v26.9.26",
-  "replay": "rerun the command; result_digest must equal after.result_digest (timings vary)",
+  "replay": "rerun the command on the after subject; result_digest must equal after.result_digest (timings vary)",
   "standing": "PARTIAL_ALIVE (local arm64 CPython 3.13 measurement; CI matrix 3.11/3.12 not locally measured)"
 }

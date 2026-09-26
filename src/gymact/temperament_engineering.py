@@ -15,7 +15,7 @@ execution authority.
 from __future__ import annotations
 
 from enum import StrEnum
-from math import sqrt
+from math import isfinite, sqrt
 from typing import Self
 
 from pydantic import Field, model_validator
@@ -30,8 +30,26 @@ from gymact.policy_ecology import (
     ReactionNorm,
     StrategicCondition,
     WeightedPhenotype,
+    _encodes_authority,
+    _normalized_axis_id,
     population_diversity,
 )
+
+
+def _refuse_axis_pairs(
+    pairs: tuple[tuple[str, float], ...],
+    *,
+    duplicate: str,
+    non_finite: str,
+) -> None:
+    normalized = [_normalized_axis_id(axis) for axis, _ in pairs]
+    if len(normalized) != len(set(normalized)):
+        raise ValueError(f"REFUSED:{duplicate}")
+    for axis, value in pairs:
+        if _encodes_authority(axis):
+            raise ValueError(f"REFUSED:TEMPERAMENT_CANNOT_ENCODE_AUTHORITY:{axis}")
+        if not isfinite(value):
+            raise ValueError(f"REFUSED:{non_finite}:{axis}")
 
 
 class ControlTopology(StrEnum):
@@ -57,9 +75,11 @@ class MissionCriterion(FrozenModel):
 
     @model_validator(mode="after")
     def criterion_contract(self) -> Self:
-        keys = [axis for axis, _ in self.axis_weights]
-        if len(keys) != len(set(keys)):
-            raise ValueError("REFUSED:DUPLICATE_CRITERION_AXIS")
+        _refuse_axis_pairs(
+            self.axis_weights,
+            duplicate="DUPLICATE_CRITERION_AXIS",
+            non_finite="NON_FINITE_AXIS_RELEVANCE",
+        )
         if any(weight < 0.0 for _, weight in self.axis_weights):
             raise ValueError("REFUSED:NEGATIVE_AXIS_RELEVANCE")
         if not any(weight > 0.0 for _, weight in self.axis_weights):
@@ -72,7 +92,7 @@ class AxisTarget(FrozenModel):
     mean: float = Field(ge=0.0, le=1.0)
     spread: float = Field(default=0.0, ge=0.0, le=0.5)
     shape: DistributionShape = DistributionShape.POINT
-    cue_slope: float = 0.0
+    cue_slope: float = Field(default=0.0, allow_inf_nan=False)
     evidence_refs: tuple[str, ...] = ()
 
     @model_validator(mode="after")
@@ -84,15 +104,17 @@ class AxisTarget(FrozenModel):
 
 class PlatformTrait(FrozenModel):
     trait_id: str = Field(min_length=1)
-    value: float
+    value: float = Field(allow_inf_nan=False)
     axis_couplings: tuple[tuple[str, float], ...] = ()
     evidence_refs: tuple[str, ...] = ()
 
     @model_validator(mode="after")
     def trait_contract(self) -> Self:
-        keys = [axis for axis, _ in self.axis_couplings]
-        if len(keys) != len(set(keys)):
-            raise ValueError("REFUSED:DUPLICATE_PLATFORM_AXIS_COUPLING")
+        _refuse_axis_pairs(
+            self.axis_couplings,
+            duplicate="DUPLICATE_PLATFORM_AXIS_COUPLING",
+            non_finite="NON_FINITE_PLATFORM_AXIS_COUPLING",
+        )
         return self
 
 
@@ -109,7 +131,7 @@ class TemperamentDesignPlan(FrozenModel):
     @model_validator(mode="after")
     def design_contract(self) -> Self:
         target_ids = [target.axis_id for target in self.targets]
-        if len(target_ids) != len(set(target_ids)):
+        if len({_normalized_axis_id(axis) for axis in target_ids}) != len(target_ids):
             raise ValueError("REFUSED:DUPLICATE_TEMPERAMENT_TARGET")
         if (
             self.topology is ControlTopology.DECENTRALIZED
@@ -120,7 +142,8 @@ class TemperamentDesignPlan(FrozenModel):
             ConditionAxis(axis_id=target.axis_id)
         target_set = set(target_ids)
         unknown_reaction_axes = {
-            axis for axis, _ in (self.reaction_norm.slopes if self.reaction_norm else ())
+            axis
+            for axis, _ in (self.reaction_norm.slopes if self.reaction_norm else ())
             if axis not in target_set
         }
         if unknown_reaction_axes:
@@ -203,17 +226,12 @@ def manufacture_population(
     """Manufacture the planned behavioral distribution as powerless candidates."""
     if not policy_ref.strip():
         raise ValueError("REFUSED:POLICY_REF_REQUIRED")
-    samples = {
-        target.axis_id: _axis_samples(target, member_count)
-        for target in plan.targets
-    }
+    samples = {target.axis_id: _axis_samples(target, member_count) for target in plan.targets}
 
     members: list[WeightedPhenotype] = []
     for index in range(member_count):
         condition = StrategicCondition(
-            values=tuple(
-                sorted((axis_id, values[index]) for axis_id, values in samples.items())
-            )
+            values=tuple(sorted((axis_id, values[index]) for axis_id, values in samples.items()))
         )
         members.append(
             WeightedPhenotype(
@@ -226,13 +244,16 @@ def manufacture_population(
             )
         )
 
-    kind = (
-        PopulationKind.ADAPTIVE
-        if plan.reaction_norm is not None
-        else PopulationKind.HOMOGENEOUS
-        if member_count == 1 or all(target.spread == 0.0 for target in plan.targets)
-        else PopulationKind.ENGINEERED
-    )
+    if plan.reaction_norm is not None:
+        kind = PopulationKind.ADAPTIVE
+    elif member_count == 1 or all(target.spread == 0.0 for target in plan.targets):
+        # Every member is the same phenotype: a homogeneous population is one
+        # phenotype carrying the whole mass, not N indistinguishable copies
+        # (which PolicyPopulation refuses and which would inflate complexity).
+        kind = PopulationKind.HOMOGENEOUS
+        members = [WeightedPhenotype(phenotype=members[0].phenotype, weight=float(member_count))]
+    else:
+        kind = PopulationKind.ENGINEERED
     return PolicyPopulation(
         kind=kind,
         members=tuple(members),
@@ -269,7 +290,11 @@ def apply_platform_heterogeneity(
                         dict.fromkeys(
                             (
                                 *member.phenotype.evidence_refs,
-                                *(ref for trait in plan.platform_traits for ref in trait.evidence_refs),
+                                *(
+                                    ref
+                                    for trait in plan.platform_traits
+                                    for ref in trait.evidence_refs
+                                ),
                             )
                         )
                     ),
