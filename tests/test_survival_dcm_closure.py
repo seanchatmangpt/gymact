@@ -21,6 +21,7 @@ def test_dcm_exports_complete_survival_campaign_surface() -> None:
         "SurvivalCampaign",
         "SurvivalCampaignCase",
         "SurvivalCampaignObservationClosure",
+        "SurvivalCampaignReplay",
         "SurvivalCampaignSpec",
         "SurvivalObservationClosure",
         "SurvivalTraceTemplate",
@@ -34,6 +35,7 @@ def test_dcm_exports_complete_survival_campaign_surface() -> None:
         "qualify_observation_closure",
         "render_survival_campaign_jsonl",
         "render_survival_manifest",
+        "replay_survival_campaign",
         "write_survival_campaign_jsonl",
         "write_survival_manifest",
     }
