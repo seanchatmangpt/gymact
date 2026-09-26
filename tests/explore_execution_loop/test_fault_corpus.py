@@ -17,8 +17,6 @@ Every scenario in scenario_manifest.json is executed against the real kernel
 
 from __future__ import annotations
 
-import pytest
-
 from gymact.execution_loop import IllegalOutcome, LegalOutcome, loop_log
 from gymact.ocel import validate_ocel_log
 
@@ -47,8 +45,7 @@ def test_scenario_runner(manifest, scenario, seed, court):
     expected_standing = scenario.get("expected_standing")
     if expected_standing is not None:
         assert results[-1].standing.value == expected_standing, (
-            f"{scenario['id']}: standing {results[-1].standing.value!r} != "
-            f"{expected_standing!r}"
+            f"{scenario['id']}: standing {results[-1].standing.value!r} != {expected_standing!r}"
         )
 
     expected_broken = scenario.get("expected_broken_term")
@@ -95,8 +92,7 @@ def test_every_corpus_scenario_has_a_builder(manifest, court):
     missing = [
         s["id"]
         for s in manifest["scenarios"]
-        if s["id"] not in court.BUILDERS
-        and s["id"] not in court.GUARD_SCENARIO_IDS
+        if s["id"] not in court.BUILDERS and s["id"] not in court.GUARD_SCENARIO_IDS
     ]
     assert not missing, f"manifest scenarios without builders: {missing}"
 

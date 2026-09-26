@@ -12,18 +12,12 @@ the same blocker (scenario L7-F31, repo_home field).
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
-
 
 def test_manifest_records_lifegym_blocker_honestly(court):
     manifest = court.load_manifest()
     lifegym = manifest["repos"]["lifegym"]
     assert lifegym["status"].startswith("BLOCKED_INFORMATION")
-    scenario = next(
-        s for s in manifest["scenarios"] if s["id"].startswith("L7-F31")
-    )
+    scenario = next(s for s in manifest["scenarios"] if s["id"].startswith("L7-F31"))
     assert "ABSENT" in scenario["repo_home"]
     assert scenario["execution_class"] == "simulated-in-process"
 
@@ -37,12 +31,7 @@ def test_long_horizon_silent_mutation_is_recovered_without_humans(court):
     assert terminal.episode_standing.value == "AUTONOMOUS"
     # the silent stage mutation WAS noticed by machinery, not by a human
     court.assert_required_events(results, ["reconcile.replan", "receipt.emit"])
-    replans = [
-        e
-        for r in results
-        for e in r.events
-        if e.event_type == "reconcile.replan"
-    ]
+    replans = [e for r in results for e in r.events if e.event_type == "reconcile.replan"]
     assert replans, "silent stage mutation was never detected"
     built.post(results)
 

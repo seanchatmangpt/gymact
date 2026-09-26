@@ -16,9 +16,10 @@ from __future__ import annotations
 import json
 import random
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, ClassVar
 
 import pytest
 
@@ -127,7 +128,7 @@ class ScriptedProvider:
         execute_faults: list[Any] | None = None,
         ack_faults: list[Any] | None = None,
         journal_lost: bool = False,
-        on_execute: Callable[["ScriptedProvider"], None] | None = None,
+        on_execute: Callable[[ScriptedProvider], None] | None = None,
         effect: dict[str, Any] | None = None,
     ):
         self.transport = transport
@@ -314,12 +315,12 @@ def _b_crash_after_journal(seed: int, inject: bool) -> Built:
         clock,
         [primary],
         post=lambda results: (
-            results[0].actuation_count == 1 and primary.execute_calls == 1
-        )
-        or (_ for _ in ()).throw(
-            AssertionError(
-                f"exactly-once violated: actuation_count={results[0].actuation_count} "
-                f"execute_calls={primary.execute_calls}"
+            (results[0].actuation_count == 1 and primary.execute_calls == 1)
+            or (_ for _ in ()).throw(
+                AssertionError(
+                    f"exactly-once violated: actuation_count={results[0].actuation_count} "
+                    f"execute_calls={primary.execute_calls}"
+                )
             )
         ),
     )
@@ -356,9 +357,9 @@ def _b_provider_disappears(seed: int, inject: bool, *, at: str, scenario_id: str
     def post(results: list[Any]) -> None:
         receipt = results[0].receipt
         assert receipt is not None
-        assert (
-            receipt.provider["transport"] == "fake:backup"
-        ), f"expected substitution to backup, got {receipt.provider['transport']}"
+        assert receipt.provider["transport"] == "fake:backup", (
+            f"expected substitution to backup, got {receipt.provider['transport']}"
+        )
 
     return Built(scenario_id, loop, [request], clock, [primary, backup], post=post)
 
@@ -381,9 +382,7 @@ def _b_partition_transient(seed: int, inject: bool) -> Built:
         effect=ok_effect(),
     )
     loop, clock = make_loop([primary])
-    return Built(
-        "L7-F06-network-partition-transient", loop, [make_request()], clock, [primary]
-    )
+    return Built("L7-F06-network-partition-transient", loop, [make_request()], clock, [primary])
 
 
 def _b_partition_persistent(seed: int, inject: bool) -> Built:
@@ -392,9 +391,7 @@ def _b_partition_persistent(seed: int, inject: bool) -> Built:
         effect=ok_effect(),
     )
     loop, clock = make_loop([primary])
-    return Built(
-        "L7-F07-network-partition-persistent", loop, [make_request()], clock, [primary]
-    )
+    return Built("L7-F07-network-partition-persistent", loop, [make_request()], clock, [primary])
 
 
 def _b_delayed_within(seed: int, inject: bool) -> Built:
@@ -409,8 +406,10 @@ def _b_delayed_within(seed: int, inject: bool) -> Built:
         [make_request()],
         clock,
         [primary],
-        post=lambda results: (clock.tick >= 5)
-        or (_ for _ in ()).throw(AssertionError(f"backoff did not advance clock: {clock.tick}")),
+        post=lambda results: (
+            (clock.tick >= 5)
+            or (_ for _ in ()).throw(AssertionError(f"backoff did not advance clock: {clock.tick}"))
+        ),
     )
 
 
@@ -421,9 +420,7 @@ def _b_delayed_beyond(seed: int, inject: bool) -> Built:
     )
     loop, clock = make_loop([primary])
     request = make_request(resource_constraints=make_constraints(deadline_ticks=3))
-    return Built(
-        "L7-F09-delayed-response-beyond-deadline", loop, [request], clock, [primary]
-    )
+    return Built("L7-F09-delayed-response-beyond-deadline", loop, [request], clock, [primary])
 
 
 def _b_duplicate(seed: int, inject: bool) -> Built:
@@ -445,9 +442,7 @@ def _b_lost_ack(seed: int, inject: bool, *, durable: bool, scenario_id: str) -> 
 
 
 def _b_lost_ack_durable(seed: int, inject: bool) -> Built:
-    return _b_lost_ack(
-        seed, inject, durable=True, scenario_id="L7-F11-lost-ack-durable-receipt"
-    )
+    return _b_lost_ack(seed, inject, durable=True, scenario_id="L7-F11-lost-ack-durable-receipt")
 
 
 def _b_lost_ack_no_durable(seed: int, inject: bool) -> Built:
@@ -457,7 +452,9 @@ def _b_lost_ack_no_durable(seed: int, inject: bool) -> Built:
 
 
 def _b_stale_sha(seed: int, inject: bool) -> Built:
-    primary = ScriptedProvider(world={"gymact": SHA_B if inject else SHA_A}, effect=ok_effect(SHA_B if inject else SHA_A))
+    primary = ScriptedProvider(
+        world={"gymact": SHA_B if inject else SHA_A}, effect=ok_effect(SHA_B if inject else SHA_A)
+    )
     loop, clock = make_loop([primary])
     request = make_request(subject=SubjectRef(repo="gymact", sha=SHA_A))
     return Built("L7-F13-stale-subject-sha", loop, [request], clock, [primary])
@@ -478,13 +475,21 @@ def _moving_provider(*, every_execute: bool, once: bool) -> ScriptedProvider:
 
 
 def _b_moving_once(seed: int, inject: bool) -> Built:
-    primary = _moving_provider(once=True, every_execute=False) if inject else ScriptedProvider(effect=ok_effect())
+    primary = (
+        _moving_provider(once=True, every_execute=False)
+        if inject
+        else ScriptedProvider(effect=ok_effect())
+    )
     loop, clock = make_loop([primary])
     return Built("L7-F14-moving-subject-single-move", loop, [make_request()], clock, [primary])
 
 
 def _b_moving_beyond(seed: int, inject: bool) -> Built:
-    primary = _moving_provider(every_execute=True, once=False) if inject else ScriptedProvider(effect=ok_effect())
+    primary = (
+        _moving_provider(every_execute=True, once=False)
+        if inject
+        else ScriptedProvider(effect=ok_effect())
+    )
     loop, clock = make_loop([primary])
     request = make_request(resource_constraints=make_constraints(max_subject_moves=1))
     return Built("L7-F15-moving-subject-beyond-budget", loop, [request], clock, [primary])
@@ -492,7 +497,11 @@ def _b_moving_beyond(seed: int, inject: bool) -> Built:
 
 def _b_concurrent_conflict(seed: int, inject: bool) -> Built:
     # a concurrent writer advances the world during BOTH attempts
-    primary = _moving_provider(every_execute=True, once=False) if inject else ScriptedProvider(effect=ok_effect())
+    primary = (
+        _moving_provider(every_execute=True, once=False)
+        if inject
+        else ScriptedProvider(effect=ok_effect())
+    )
     loop, clock = make_loop([primary])
     request = make_request(resource_constraints=make_constraints(max_subject_moves=1))
     return Built("L7-F16-concurrent-conflicting-changes", loop, [request], clock, [primary])
@@ -588,8 +597,10 @@ def _b_rate_limit(seed: int, inject: bool) -> Built:
         [make_request()],
         clock,
         [primary],
-        post=lambda results: (clock.tick > 0)
-        or (_ for _ in ()).throw(AssertionError("rate-limit backoff did not advance clock")),
+        post=lambda results: (
+            (clock.tick > 0)
+            or (_ for _ in ()).throw(AssertionError("rate-limit backoff did not advance clock"))
+        ),
     )
 
 
@@ -602,9 +613,7 @@ def _b_dependency_outage(seed: int, inject: bool) -> Built:
 def _b_impossible(seed: int, inject: bool) -> Built:
     primary = ScriptedProvider(effect=ok_effect())
     loop, clock = make_loop([primary])
-    request = make_request(
-        capability_requirements=["exec", "time_travel"] if inject else ["exec"]
-    )
+    request = make_request(capability_requirements=["exec", "time_travel"] if inject else ["exec"])
     return Built("L7-F26-impossible-objective", loop, [request], clock, [primary])
 
 
@@ -615,9 +624,7 @@ def _b_silent_mutation(seed: int, inject: bool, *, persistent: bool, scenario_id
     def on_verify() -> None:
         if inject and (persistent or fired["count"] == 0):
             fired["count"] += 1
-            provider.world["gymact"] = (
-                SHA_B if provider.world["gymact"] == SHA_A else SHA_C
-            )
+            provider.world["gymact"] = SHA_B if provider.world["gymact"] == SHA_A else SHA_C
 
     verifier = FakeVerifier(on_verify=on_verify)
     loop, clock = make_loop([provider], verifier=verifier)
@@ -648,7 +655,7 @@ class StageWorldProvider:
     runs inside the gymact harness."""
 
     transport = "fake:lifegym-sim"
-    capabilities = ["exec", "long_horizon"]
+    capabilities: ClassVar[list[str]] = ["exec", "long_horizon"]
     authority_ceiling = "DO"
     availability = True
     cost = 0.0
@@ -729,7 +736,14 @@ def _b_lifegym_multistage(seed: int, inject: bool) -> Built:
         assert world.stage_executions >= 3, f"long horizon violated: {world.stage_executions}"
         assert world.claim_calls >= 2, f"multi-claim violated: {world.claim_calls}"
 
-    return Built("L7-F31-lifegym-long-horizon-silent-stage-mutation", loop, [request], clock, [world], post=post)  # type: ignore[list-item]
+    return Built(
+        "L7-F31-lifegym-long-horizon-silent-stage-mutation",
+        loop,
+        [request],
+        clock,
+        [world],
+        post=post,
+    )  # type: ignore[list-item]
 
 
 BUILDERS: dict[str, Callable[[int, bool], Built]] = {
@@ -766,7 +780,10 @@ BUILDERS: dict[str, Callable[[int, bool], Built]] = {
 
 # Guard scenarios (standing law / receipt law) raise instead of returning a
 # LoopResult; they are exercised in test_illegal_outcomes.py, not here.
-GUARD_SCENARIO_IDS = {"L7-F29-illegal-standing-transition-guard", "L7-F30-unnamespaced-receipt-ext-guard"}
+GUARD_SCENARIO_IDS = {
+    "L7-F29-illegal-standing-transition-guard",
+    "L7-F30-unnamespaced-receipt-ext-guard",
+}
 
 
 # --------------------------------------------------------------------------- #
@@ -788,7 +805,9 @@ def assert_no_illegal_outcome(results: list[Any]) -> None:
 def assert_required_events(results: list[Any], required: list[str]) -> None:
     observed = event_types(results)
     missing = set(required) - observed
-    assert not missing, f"required fault-marker events missing: {sorted(missing)}; observed={sorted(observed)}"
+    assert not missing, (
+        f"required fault-marker events missing: {sorted(missing)}; observed={sorted(observed)}"
+    )
 
 
 def results_digest(results: list[Any]) -> str:
@@ -801,7 +820,7 @@ def results_digest(results: list[Any]) -> str:
 
 
 @pytest.fixture(scope="session")
-def court() -> type["Court"]:
+def court() -> type[Court]:
     """Shared court helpers, exposed as a fixture because --import-mode=importlib
     makes sibling ``import conftest`` from test modules impossible."""
     return Court

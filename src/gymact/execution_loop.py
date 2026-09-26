@@ -50,6 +50,8 @@ from gymact.evidence import digest
 from gymact.models import FrozenModel, Standing
 
 __all__ = [
+    "LOOP_OCEL_EVENT_TYPES",
+    "LOOP_OCEL_OBJECT_TYPES",
     "AuthorityGrant",
     "AutonomousLoop",
     "BrokenTerm",
@@ -61,8 +63,6 @@ __all__ = [
     "LegalOutcome",
     "LoopBudgetExceeded",
     "LoopResult",
-    "LOOP_OCEL_EVENT_TYPES",
-    "LOOP_OCEL_OBJECT_TYPES",
     "OcelEvent",
     "ResourceConstraints",
     "SubjectRef",
@@ -106,7 +106,7 @@ class EpisodeStanding(StrEnum):
     FAILED = "FAILED"
 
     @staticmethod
-    def transition(before: "EpisodeStanding", after: "EpisodeStanding") -> "EpisodeStanding":
+    def transition(before: EpisodeStanding, after: EpisodeStanding) -> EpisodeStanding:
         if before is EpisodeStanding.ASSISTED and after is EpisodeStanding.AUTONOMOUS:
             raise LoopBudgetExceeded(
                 "illegal standing transition ASSISTED -> AUTONOMOUS is forbidden"
@@ -151,9 +151,7 @@ class WorkerCrashed(TransportFault):
     """Simulated SIGKILL of a worker mid-claim or mid-execution."""
 
     def __init__(self, applied_before: bool, injection_point: str):
-        super().__init__(
-            kind="worker_sigkill", retry_after_ticks=1, applied_before=applied_before
-        )
+        super().__init__(kind="worker_sigkill", retry_after_ticks=1, applied_before=applied_before)
         self.injection_point = injection_point
 
 
@@ -365,9 +363,9 @@ def loop_log(results: Iterable[LoopResult], *, seed: int = 0) -> dict[str, Any]:
                 {
                     "id": event_id,
                     "type": event.event_type,
-                    "time": (base + timedelta(seconds=event.tick)).isoformat().replace(
-                        "+00:00", "Z"
-                    ),
+                    "time": (base + timedelta(seconds=event.tick))
+                    .isoformat()
+                    .replace("+00:00", "Z"),
                     "attributes": [
                         {"name": name, "value": str(value)}
                         for name, value in sorted(event.attributes.items())
@@ -395,7 +393,10 @@ def loop_log(results: Iterable[LoopResult], *, seed: int = 0) -> dict[str, Any]:
     ]
     return {
         "eventTypes": event_types,
-        "objectTypes": [{"name": object_type, "attributes": []} for object_type in sorted(obj[1] for obj in objects)],
+        "objectTypes": [
+            {"name": object_type, "attributes": []}
+            for object_type in sorted(obj[1] for obj in objects)
+        ],
         "events": events,
         "objects": sorted(objects.values(), key=lambda o: (o["type"], o["id"])),
     }
@@ -605,9 +606,7 @@ class AutonomousLoop:
             if blocked is not None:
                 return blocked
 
-        self._emit(
-            "execution.start", request, reason="", standing=Standing.UNKNOWN.value
-        )
+        self._emit("execution.start", request, reason="", standing=Standing.UNKNOWN.value)
         limits = request.resource_constraints
         current_subject = self._resolve_fresh(request)
         if isinstance(current_subject, LoopResult):
@@ -672,8 +671,7 @@ class AutonomousLoop:
                 "execution.claim",
                 request,
                 reason=(
-                    f"claimed {pin.provider_execution_id} pinned sha="
-                    f"{pin.pinned_subject_sha[:12]}"
+                    f"claimed {pin.provider_execution_id} pinned sha={pin.pinned_subject_sha[:12]}"
                 ),
                 provider=provider.transport,
             )
@@ -789,9 +787,7 @@ class AutonomousLoop:
                 self._emit(
                     "reconcile.replan",
                     request,
-                    reason=(
-                        f"subject moved {pin.pinned_subject_sha[:12]}->{observed_sha[:12]}"
-                    ),
+                    reason=(f"subject moved {pin.pinned_subject_sha[:12]}->{observed_sha[:12]}"),
                     outcome=LegalOutcome.REPLAN.value,
                     provider=provider.transport,
                 )
@@ -921,9 +917,7 @@ class AutonomousLoop:
             provider=provider,
         )
 
-    def _resolve_fresh(
-        self, request: ExecutionRequest
-    ) -> SubjectRef | LoopResult:
+    def _resolve_fresh(self, request: ExecutionRequest) -> SubjectRef | LoopResult:
         """Stale-subject-SHA handling: re-resolve the subject; on failure,
         typed-block on INFORMATION (never a silent guess, never a human)."""
         provider = self._providers[0]

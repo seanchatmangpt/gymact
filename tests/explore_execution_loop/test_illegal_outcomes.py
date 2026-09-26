@@ -21,12 +21,10 @@ import pytest
 from gymact.execution_loop import (
     EpisodeStanding,
     ExecutionReceipt,
-    IllegalOutcome,
     LoopBudgetExceeded,
     loop_log,
 )
 from gymact.ocel import validate_ocel_log
-
 
 KERNEL = Path(__file__).parents[2] / "src" / "gymact" / "execution_loop.py"
 
@@ -66,11 +64,11 @@ def test_wait_for_human_to_notice_is_structurally_unreachable():
     # IllegalOutcome enum body or the asserted_illegal_outcome property.
     sanctioned: list[tuple[int, int]] = []
     for node in ast.walk(tree):
-        if isinstance(node, (ast.ClassDef, ast.FunctionDef)):
-            if node.name == "IllegalOutcome" or (
-                isinstance(node, ast.FunctionDef) and node.name == "asserted_illegal_outcome"
-            ):
-                sanctioned.append((node.lineno, node.end_lineno or node.lineno))
+        if isinstance(node, (ast.ClassDef, ast.FunctionDef)) and (
+            node.name == "IllegalOutcome"
+            or (isinstance(node, ast.FunctionDef) and node.name == "asserted_illegal_outcome")
+        ):
+            sanctioned.append((node.lineno, node.end_lineno or node.lineno))
     assert sanctioned, "sanctioning scopes not found"
     for lineno, line in enumerate(source.splitlines(), start=1):
         if "WAIT_FOR_HUMAN_TO_NOTICE" in line and "outcome=" not in line:
@@ -117,7 +115,7 @@ def test_guard_unnamespaced_receipt_ext_raises():
 def test_guard_scenarios_manifest_entries_exist(court):
     manifest = court.load_manifest()
     ids = {s["id"] for s in manifest["scenarios"]}
-    assert court.GUARD_SCENARIO_IDS <= ids
+    assert ids >= court.GUARD_SCENARIO_IDS
 
 
 def test_every_loop_receipt_satisfies_the_contract(manifest, scenario, seed, court):

@@ -26,8 +26,6 @@ import ast
 import json
 from pathlib import Path
 
-import pytest
-
 FIXTURES = Path(__file__).parent / "fixtures"
 
 EPISODE_STANDINGS = {
@@ -220,7 +218,10 @@ def test_prior_lane7_kernel_had_never_executed():
     this court exists."""
     witness = _fixture("lane7_prior_typeerror_witness.txt").read_text()
     assert "exit: 3" in witness
-    assert "TypeError: AutonomousLoop._resolve_fresh() takes 2 positional arguments but 3 were given" in witness
+    assert (
+        "TypeError: AutonomousLoop._resolve_fresh() takes 2 positional arguments but 3 were given"
+        in witness
+    )
     assert "_resolve_fresh" in witness
 
 
@@ -239,10 +240,7 @@ def test_prior_lane7_manifest_claims_are_now_satisfied():
     # the prior manifest's contract must match this court's manifest contract
     current = json.loads((court_dir / "scenario_manifest.json").read_text())
     assert current["contract"]["ExecutionReceipt"] == prior["contract"]["ExecutionReceipt"]
-    assert (
-        current["repos"]["lifegym"]["status"]
-        .startswith(prior["repos"]["lifegym"]["status"])
-    )
+    assert current["repos"]["lifegym"]["status"].startswith(prior["repos"]["lifegym"]["status"])
 
 
 def test_prior_lane7_kernel_is_now_alive_where_it_crashed(court):

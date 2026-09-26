@@ -15,8 +15,6 @@ test_illegal_outcomes.py.
 
 from __future__ import annotations
 
-import pytest
-
 
 def test_fault_markers_vanish_without_the_fault(manifest, scenario, seed, court):
     builder = court.BUILDERS[scenario["id"]]
@@ -56,9 +54,13 @@ def test_exactly_once_invariant_holds_under_crash_after_actuation(court):
     where the journal is lost: the loop cannot prove the actuation happened,
     so actuation_count would be 0 with a TypedBlock -- demonstrating the
     post-condition is load-bearing, not decorative."""
-    crashed_with_journal = court.BUILDERS["L7-F02-worker-sigkill-after-actuation-journal-present"](7, True).run()[0]
+    crashed_with_journal = court.BUILDERS["L7-F02-worker-sigkill-after-actuation-journal-present"](
+        7, True
+    ).run()[0]
     assert crashed_with_journal.actuation_count == 1
-    journal_lost = court.BUILDERS["L7-F03-worker-sigkill-after-actuation-journal-lost"](7, True).run()[0]
+    journal_lost = court.BUILDERS["L7-F03-worker-sigkill-after-actuation-journal-lost"](
+        7, True
+    ).run()[0]
     assert journal_lost.outcome == "TypedBlock"
     assert journal_lost.broken_term is not None
     assert journal_lost.broken_term.value == "R_missing_consequence"
