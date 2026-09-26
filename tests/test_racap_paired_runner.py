@@ -6,8 +6,8 @@ from gymact.racap_paired_world import (
     PairedExecutionOrder,
     PairedWorldCourt,
     PairedWorldIdentity,
-    PairedWorldRunner,
     PairedWorldRun,
+    PairedWorldRunner,
 )
 
 

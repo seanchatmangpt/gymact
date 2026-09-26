@@ -141,10 +141,7 @@ class EvolutionCandidate(FrozenModel):
         if self.task_request_digest != task_request_digest(self.task_request):
             raise ValueError("EVOLUTION_CANDIDATE_TASK_DIGEST_MISMATCH")
         for feedback_digest in self.failure_feedback_digests:
-            if not (
-                feedback_digest.startswith("sha256:")
-                or feedback_digest.startswith("blake3:")
-            ):
+            if not (feedback_digest.startswith("sha256:") or feedback_digest.startswith("blake3:")):
                 raise ValueError("EVOLUTION_FAILURE_FEEDBACK_DIGEST_INVALID")
             if len(feedback_digest.split(":", 1)[1]) != 64:
                 raise ValueError("EVOLUTION_FAILURE_FEEDBACK_DIGEST_INVALID")
@@ -254,9 +251,7 @@ class EnvironmentEvolutionCourt:
             reasons.append("DUPLICATE_EVOLUTION_EVENT_ID")
 
         first_sequence = seed.last_event_sequence + 1
-        expected_sequences = list(
-            range(first_sequence, first_sequence + len(candidate.events))
-        )
+        expected_sequences = list(range(first_sequence, first_sequence + len(candidate.events)))
         actual_sequences = [event.sequence for event in candidate.events]
         if actual_sequences != expected_sequences:
             reasons.append("EVOLUTION_EVENT_SEQUENCE_GAP")
