@@ -178,6 +178,19 @@ from gymact.oracle import (
     differential_verify,
     observe_oracle,
 )
+from gymact.policy_ecology_ocel import (
+    PolicyEcologyEvent,
+    PolicyEcologyEventType,
+    policy_ecology_events_to_ocel,
+    policy_ecology_ocel_digest,
+)
+from gymact.policy_ecology_store import (
+    PopulationRecord,
+    PopulationTransitionRecord,
+    SQLitePolicyEcologyStore,
+    population_record,
+    transition_digest,
+)
 from gymact.policy_ecology_rdf import (
     PolicyEcologyRDFValidation,
     policy_population_to_rdf,
@@ -302,6 +315,15 @@ __all__ = [
     "population_digest",
     "rdf_to_policy_population",
     "validate_policy_ecology_rdf",
+    "PolicyEcologyEvent",
+    "PolicyEcologyEventType",
+    "policy_ecology_events_to_ocel",
+    "policy_ecology_ocel_digest",
+    "PopulationRecord",
+    "PopulationTransitionRecord",
+    "SQLitePolicyEcologyStore",
+    "population_record",
+    "transition_digest",
     "ActionDefinition",
     "ActionProjection",
     "ActuationIntent",
