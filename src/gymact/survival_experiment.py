@@ -62,9 +62,7 @@ class SurvivalPolicy(FrozenModel):
     machinery: Machinery
     information_topology: InformationTopology = InformationTopology.ISOLATED
     tool_policy: ToolPolicy = ToolPolicy.OPTIONAL
-    authority_ceiling: Literal["OBSERVE|SELECT|CONSTRUCT"] = (
-        "OBSERVE|SELECT|CONSTRUCT"
-    )
+    authority_ceiling: Literal["OBSERVE|SELECT|CONSTRUCT"] = "OBSERVE|SELECT|CONSTRUCT"
     grants_do_authority: Literal[False] = False
 
 
@@ -113,9 +111,7 @@ class SurvivalRunCase(FrozenModel):
 
     @property
     def factor_digest(self) -> str:
-        return digest(
-            [assignment.model_dump(mode="json") for assignment in self.assignments]
-        )
+        return digest([assignment.model_dump(mode="json") for assignment in self.assignments])
 
     @property
     def analysis_policy_id(self) -> str:
@@ -127,9 +123,7 @@ class SurvivalRunCase(FrozenModel):
     def case_id(self) -> str:
         identity = {
             "cell_id": self.cell.cell_id,
-            "assignments": [
-                assignment.model_dump(mode="json") for assignment in self.assignments
-            ],
+            "assignments": [assignment.model_dump(mode="json") for assignment in self.assignments],
             "repetition": self.repetition,
             "seed": self.seed,
         }
@@ -179,9 +173,7 @@ class SurvivalEpisode(FrozenModel):
             "subject": scenario.subject,
             "workload_id": scenario.workload_id,
             "policy_id": (
-                self.run_case.analysis_policy_id
-                if self.run_case is not None
-                else policy.policy_id
+                self.run_case.analysis_policy_id if self.run_case is not None else policy.policy_id
             ),
             "episode_id": self.episode_id,
             "horizon": scenario.horizon,
@@ -201,10 +193,7 @@ class SurvivalEpisode(FrozenModel):
                 "repetition": self.run_case.repetition if self.run_case else None,
                 "seed": self.run_case.seed if self.run_case else None,
                 "factor_assignments": (
-                    [
-                        assignment.model_dump(mode="json")
-                        for assignment in self.run_case.assignments
-                    ]
+                    [assignment.model_dump(mode="json") for assignment in self.run_case.assignments]
                     if self.run_case
                     else []
                 ),
@@ -237,20 +226,13 @@ class SurvivalExperiment(FrozenModel):
         if len(factor_names) != len(set(factor_names)):
             raise ValueError("SURVIVAL_FACTOR_NAME_DUPLICATE")
         if self.case_count > self.max_cases:
-            raise ValueError(
-                f"SURVIVAL_MAX_CASES_EXCEEDED:{self.case_count}>{self.max_cases}"
-            )
+            raise ValueError(f"SURVIVAL_MAX_CASES_EXCEEDED:{self.case_count}>{self.max_cases}")
         return self
 
     @property
     def case_count(self) -> int:
         factor_width = prod(len(factor.levels) for factor in self.factors)
-        return (
-            len(self.scenarios)
-            * len(self.policies)
-            * factor_width
-            * self.repetitions
-        )
+        return len(self.scenarios) * len(self.policies) * factor_width * self.repetitions
 
     def matrix(self) -> tuple[SurvivalCell, ...]:
         return tuple(
@@ -263,9 +245,7 @@ class SurvivalExperiment(FrozenModel):
         """Expand scenario x policy x perturbations x repetitions deterministically."""
 
         level_matrix = (
-            tuple(product(*(factor.levels for factor in self.factors)))
-            if self.factors
-            else ((),)
+            tuple(product(*(factor.levels for factor in self.factors))) if self.factors else ((),)
         )
         cases: list[SurvivalRunCase] = []
         ordinal = 0
