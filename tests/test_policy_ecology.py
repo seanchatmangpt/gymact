@@ -3,6 +3,8 @@ from __future__ import annotations
 import pytest
 
 from gymact.policy_ecology import (
+    DEFAULT_TEMPERAMENT_AXES,
+    TEMPERAMENT_ENGINEERING_PROVENANCE,
     ConditionAxis,
     PolicyPhenotype,
     PolicyPopulation,
@@ -87,7 +89,15 @@ def test_reaction_norm_changes_behavior_but_preserves_policy_identity_and_weight
 
 @pytest.mark.parametrize(
     "axis_id",
-    ["authority", "permission", "execution_grant", "execution_authority", "do"],
+    [
+        "authority",
+        "permission",
+        "execution_grant",
+        "execution_authority",
+        "do",
+        " Authority ",
+        "EXECUTION_GRANT",
+    ],
 )
 def test_temperament_cannot_encode_authority(axis_id: str) -> None:
     with pytest.raises(ValueError, match="REFUSED:TEMPERAMENT_CANNOT_ENCODE_AUTHORITY"):
@@ -100,3 +110,13 @@ def test_adaptive_population_requires_reaction_norm() -> None:
             kind=PopulationKind.ADAPTIVE,
             members=(WeightedPhenotype(phenotype=phenotype("policy:a"), weight=1.0),),
         )
+
+
+def test_default_temperament_axes_are_bound_to_source_provenance() -> None:
+    assert TEMPERAMENT_ENGINEERING_PROVENANCE == (
+        "https://arxiv.org/abs/2609.29423",
+    )
+    assert all(
+        axis.provenance_refs == TEMPERAMENT_ENGINEERING_PROVENANCE
+        for axis in DEFAULT_TEMPERAMENT_AXES
+    )
