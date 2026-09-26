@@ -1,4 +1,4 @@
-"""Scenario × policy cross-product for premature-actuation survival experiments.
+"""Scenario x policy cross-product for premature-actuation survival experiments.
 
 GymAct owns the bounded experiment design. autofde-lab owns survival analysis and
 standing. This module manufactures exact scenario/policy cells and exports observed
@@ -69,13 +69,13 @@ class SurvivalPolicy(FrozenModel):
 
 
 class SurvivalFactor(FrozenModel):
-    """One reversible perturbation dimension layered over scenario × policy."""
+    """One reversible perturbation dimension layered over scenario x policy."""
 
     name: str = Field(min_length=1, pattern=r"^[a-z][a-z0-9_\\-]*$")
     levels: tuple[str, ...]
 
     @model_validator(mode="after")
-    def require_distinct_levels(self) -> "SurvivalFactor":
+    def require_distinct_levels(self) -> SurvivalFactor:
         if not self.levels:
             raise ValueError("SURVIVAL_FACTOR_LEVEL_REQUIRED")
         if any(not level.strip() or level != level.strip() for level in self.levels):
@@ -91,7 +91,7 @@ class SurvivalFactorAssignment(FrozenModel):
 
 
 class SurvivalCell(FrozenModel):
-    """One exact scenario × policy experiment cell."""
+    """One exact scenario x policy experiment cell."""
 
     scenario: SurvivalScenario
     policy: SurvivalPolicy
@@ -161,7 +161,7 @@ class SurvivalEpisode(FrozenModel):
     run_case: SurvivalRunCase | None = None
 
     @model_validator(mode="after")
-    def bind_steps_to_horizon(self) -> "SurvivalEpisode":
+    def bind_steps_to_horizon(self) -> SurvivalEpisode:
         values = [step.step for step in self.steps]
         if len(values) != len(set(values)):
             raise ValueError("SURVIVAL_STEP_DUPLICATE")
@@ -213,7 +213,7 @@ class SurvivalEpisode(FrozenModel):
 
 
 class SurvivalExperiment(FrozenModel):
-    """Manufacture a deterministic scenario × policy matrix."""
+    """Manufacture a deterministic scenario x policy matrix."""
 
     experiment_id: str = Field(min_length=1)
     scenarios: tuple[SurvivalScenario, ...]
@@ -224,7 +224,7 @@ class SurvivalExperiment(FrozenModel):
     max_cases: int = Field(ge=1, le=1_000_000, default=100_000)
 
     @model_validator(mode="after")
-    def require_closed_unique_factors(self) -> "SurvivalExperiment":
+    def require_closed_unique_factors(self) -> SurvivalExperiment:
         scenario_ids = [scenario.scenario_id for scenario in self.scenarios]
         policy_ids = [policy.policy_id for policy in self.policies]
         if not scenario_ids or not policy_ids:
@@ -260,7 +260,7 @@ class SurvivalExperiment(FrozenModel):
         )
 
     def cases(self) -> tuple[SurvivalRunCase, ...]:
-        """Expand scenario × policy × perturbations × repetitions deterministically."""
+        """Expand scenario x policy x perturbations x repetitions deterministically."""
 
         level_matrix = (
             tuple(product(*(factor.levels for factor in self.factors)))
