@@ -1,0 +1,85 @@
+{
+  "authority": "NONE",
+  "ceiling_us_per_episode": 10000,
+  "environment": {
+    "implementation": "CPython",
+    "machine": "arm64",
+    "python": "3.13.9",
+    "system": "Darwin"
+  },
+  "evidence_ceiling": "LOCAL_WALLCLOCK_SIMULATED_IN_PROCESS",
+  "max_ratio_to_healthy": 6.0,
+  "schema": "gymact/execution-loop-bench/1",
+  "structural_digest": "3c0a9de6a5db9aca8a073598c4ee6f334714433c4943e0e040de0d6a51ea33d2",
+  "structural_profile": {
+    "crash_journal": {
+      "actuations": 1,
+      "claims": 1,
+      "events": 6,
+      "outcome": "Recover",
+      "result_actuation_count": 1,
+      "standing": "ALIVE",
+      "virtual_ticks": 1
+    },
+    "dedupe": {
+      "actuations": 1,
+      "claims": 1,
+      "events": 1,
+      "outcome": "Recover",
+      "result_actuation_count": 0,
+      "standing": "ALIVE",
+      "virtual_ticks": 1
+    },
+    "healthy": {
+      "actuations": 1,
+      "claims": 1,
+      "events": 4,
+      "outcome": "Recover",
+      "result_actuation_count": 1,
+      "standing": "ALIVE",
+      "virtual_ticks": 1
+    },
+    "substitute": {
+      "actuations": 1,
+      "claims": 5,
+      "events": 12,
+      "outcome": "Recover",
+      "result_actuation_count": 1,
+      "standing": "ALIVE",
+      "virtual_ticks": 4
+    }
+  },
+  "subject": "gymact.execution_loop.AutonomousLoop",
+  "timings": {
+    "crash_journal": {
+      "episodes": 2000,
+      "episodes_per_s": 6042.3,
+      "median_ns": 165500.0,
+      "min_ns": 146291.0,
+      "p95_ns": 241709.0
+    },
+    "dedupe": {
+      "episodes": 2000,
+      "episodes_per_s": 5953.9,
+      "median_ns": 167958.0,
+      "min_ns": 149000.0,
+      "p95_ns": 292417.0
+    },
+    "healthy": {
+      "episodes": 2000,
+      "episodes_per_s": 7734.5,
+      "median_ns": 129291.0,
+      "min_ns": 114042.0,
+      "p95_ns": 184625.0
+    },
+    "substitute": {
+      "episodes": 2000,
+      "episodes_per_s": 3588.0,
+      "median_ns": 278708.0,
+      "min_ns": 246209.0,
+      "p95_ns": 474792.0
+    }
+  },
+  "violations": {},
+  "within_ceiling": true
+}

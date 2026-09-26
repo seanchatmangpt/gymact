@@ -1,5 +1,37 @@
 # Changelog
 
+## Unreleased - 2026-09-25
+
+### Added
+- `gymact.execution_loop` module (`42f8191`): ExecutionRequest/ExecutionProvider/ExecutionReceipt autonomous loop kernel, exactly-five `LegalOutcome` with `WaitForHumanToNotice` provably unreachable as `IllegalOutcome`, and the OCEL 2.0 loop event vocabulary; lane-7 fault-scenario corpus (31 scenarios) under `tests/explore_execution_loop/` with anti-vacuity and illegal-outcome courts (`1b92cce`).
+
+### Fixed
+- `gymact.__version__` synced 26.9.22 → 26.9.24 in `src/gymact/__init__.py` (`eeb0c2b`), matching `pyproject.toml`.
+
+## 26.9.24 - 2026-09-24
+
+### Added
+- Collective skill court surface: `gymact/skill_court.py` binds provenance-qualified marketplace skill courts to the existing DCM decision court — `EXPECTED_SCHEMA` `collective-skill-court.v1`, authority ceiling `OBSERVE|SELECT|CONSTRUCT`, marketplace contract binding `seanchatmangpt/ggen-marketplace` + `collective-skill-court-pack`; types `SkillCourtQualification`, `SkillCourtProbe`, `SkillCourtContract`, `SkillBoundDecisionCourtRecord`, `MarketplaceContractBinding`, `CollectiveSkillCourtEvaluator`, `CollectiveSkillCourtBundle` re-exported via `gymact.dcm.__all__` (the README-declared canonical public API). A qualified bundle enters the DCM graph court for bounded exploration only; irreversible selection/execution remain separate APIs (`ab5b91b`, `9547529`).
+
+### Changed
+- Version bump 26.9.23 → 26.9.24 in `pyproject.toml` (`44361f6`).
+
+## 26.9.23 - 2026-09-23
+
+### Security
+- Signing-key rotation: removed tracked `.ggen/keys/signing.key` material and rotated to runtime-generated local keys; procedure recorded in `docs/security/ggen-signing-keys-v26.9.23.md` (`a4dc965`).
+
+## 26.9.22 - 2026-09-22
+
+### Added
+- New real gym providers: `tau2_bench.Tau2BenchProvider` (real PyPI `tau2` package — Sierra tau2-bench, optional extra `gymact[tau2-bench]`, `afcfd7f`) and `terminal_bench.TerminalBenchProvider` (real PyPI `terminal-bench==0.2.18` against a real Docker container, optional extra, `67ab82b`); `kubernetes_goat` corrected provider; `vendor_benchmarks.VendorBenchmarkProvider` (52 exact-pinned vendor checkouts).
+- GCP exact-conformance census: typed BLOCKED refusal when the source sitemap is not reachable (`b509d29`).
+
+### Changed
+- Registry narrowing: the ggen composition registry excludes standing-gated courts (`14bff86`).
+- Hermetic test suite + ruff gate (`04bac87`, `a3c87bf`); named-standing skip markers instead of silent skips (`2ef8038`).
+- Version constants synced (`gymact.__version__` / `harness_science` — `f024de3`; `pyproject.toml` 26.8.23 → 26.9.22, `7b2f60e`).
+
 ## 26.8.23 - 2026-08-23
 
 ### Added

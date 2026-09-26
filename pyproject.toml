@@ -163,6 +163,10 @@ filterwarnings = ["error", "ignore::DeprecationWarning"]
 line-length = 100
 src = ["src", "tests"]
 target-version = "py311"
+# Byte-for-byte copies of real episode artifacts (provenance in the directory's
+# README.md). Linting/formatting would rewrite witnessed bytes, so ruff owns
+# neither their style nor their content.
+extend-exclude = ["tests/explore_execution_loop/fixtures"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]

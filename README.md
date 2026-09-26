@@ -26,7 +26,7 @@ The design invariant is **zero unreceipted actuation**. Planner output, model ou
 
 ## Design for Combinatorial Maximum
 
-The canonical public API is `gymact.dcm`. The possibility graph is the decision authority; Python objects are runtime projections of public RDF semantics.
+The canonical public API is `gymact.dcm`. The possibility graph is the decision authority; Python objects are runtime projections of public RDF semantics. The autonomous execution-loop surface lives in `gymact.execution_loop` (ExecutionRequest -> ExecutionProvider -> ExecutionReceipt); it is simulated in-process and nothing there actuates production.
 
 DCM preserves alternatives across planners, providers, parameterizations, effectors, verifiers, policies and controllers. A failed edge is recorded as topology and does not invalidate siblings. Only edges mechanically proven `REVERSIBLE` enter reversible closure:
 
@@ -132,6 +132,8 @@ gymact execute <request.json> --authority-file <operator-authority.json>
 ```
 
 `gymact execute` is DCM-first. The hidden `execute-admitted` command is compatibility only.
+
+Because `execute` always materializes a fresh environment inside the same invocation, its environment id (a random `uuid4()`) cannot be known when the request file is written. The request sentinel `subject.provider_ref` (and `grant.subject.provider_ref`) may therefore be the literal `$SELF_MATERIALIZED_ENVIRONMENT_ID`: it is substituted with the environment id this invocation just materialized, before the identity check. A request naming any real, pre-known `provider_ref` is unaffected — it is still identity-checked and still refused with `SUBJECT_PROVIDER_IDENTITY_MISMATCH` on a genuine mismatch.
 
 Run the HTTP surface:
 
@@ -260,6 +262,16 @@ external collaborator -- no mocks anywhere in `src/` or `tests/`:
 - `terraform_docker_apply.TerraformDockerApplyProvider` -- a real `terraform`/`tofu` binary
   running `apply`/`destroy` against a hand-authored, checked-in local-only Docker config
   (`gyms/fixtures/terraform_docker`), against colima's real local Docker daemon.
+- `tau2_bench.Tau2BenchProvider` -- the real, PyPI-installed `tau2` package (Sierra's
+  tau2-bench / tau^3-bench; `vendor-tau2-bench` pin in autofde-lab's
+  `docs/papers/gym-lock.ttl`): a simulated customer-service agent operating real domain
+  tools (retail, airline) against tau2's own deterministic in-process domain database,
+  driven through `tau2.registry`'s real `get_environment`/`get_tasks` factories — never a
+  re-derived shadow. Optional extra: `pip install gymact[tau2-bench]`.
+- `terminal_bench.TerminalBenchProvider` -- the real PyPI `terminal-bench==0.2.18` package
+  driving a real Docker container (the lab's vendored submodule pin is an uninitialized
+  directory, so the documented fallback to the PyPI package is used). Optional extra:
+  `pip install gymact[gyms]`.
 - `vendor_benchmarks.VendorBenchmarkProvider` -- one exact-pinned provider per vendor
   benchmark in AutoFDE Lab's `docs/papers/gym-lock.ttl` (52 vendors: AgentBench,
   SWE-bench, Cybench, Terminal-Bench, WebArena, and 47 others); each provider only
