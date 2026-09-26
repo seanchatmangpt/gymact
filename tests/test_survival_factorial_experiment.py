@@ -114,9 +114,7 @@ def test_episode_projects_recurrence_replay_and_factor_evidence() -> None:
     assert document["events"][0]["replay_verified"] is True
     assert document["events"][1]["guards_installed"] == ["UNAUTHORIZED_DO"]
     assert document["gymact"]["run_case_id"] == run_case.case_id
-    assert document["gymact"]["factor_assignments"] == [
-        {"name": "authority", "level": "filtered"}
-    ]
+    assert document["gymact"]["factor_assignments"] == [{"name": "authority", "level": "filtered"}]
     assert document["gymact"]["grants_do_authority"] is False
 
 
