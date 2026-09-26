@@ -79,6 +79,12 @@ from gymact.possibility_index import (
     EmpiricalPossibilityIndex,
     empirical_pareto,
 )
+from gymact.racap_survival import (
+    SurvivalPairedCase,
+    SurvivalPairedDesign,
+    SurvivalPairedResult,
+    SurvivalPairedRunner,
+)
 from gymact.skill_court import (
     CollectiveSkillCourtBundle,
     CollectiveSkillCourtEvaluator,
@@ -177,6 +183,10 @@ __all__ = [
     "SkillCourtQualification",
     "StructuralSignature",
     "SurvivalCell",
+    "SurvivalPairedCase",
+    "SurvivalPairedDesign",
+    "SurvivalPairedResult",
+    "SurvivalPairedRunner",
     "SurvivalEpisode",
     "SurvivalExperiment",
     "SurvivalExperimentManifest",
