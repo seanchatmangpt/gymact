@@ -4,15 +4,17 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - "src/gymact/survival_experiment.py"
       - "src/gymact/survival_cli.py"
+      - "src/gymact/survival_experiment.py"
+      - "src/gymact/survival_faults.py"
       - "src/gymact/survival_manifest.py"
       - "src/gymact/survival_observation.py"
       - "src/gymact/survival_suite.py"
       - "src/gymact/dcm.py"
-      - "tests/test_survival_experiment.py"
       - "tests/test_survival_cli.py"
+      - "tests/test_survival_experiment.py"
       - "tests/test_survival_factorial_experiment.py"
+      - "tests/test_survival_faults.py"
       - "tests/test_survival_manifest.py"
       - "tests/test_survival_observation.py"
       - ".github/workflows/survival-experiment.yml"
@@ -50,48 +52,60 @@ jobs:
       - name: Compile survival surface
         run: |
           uv run python -m compileall -q \
-            src/gymact/survival_experiment.py \
-          src/gymact/survival_cli.py \
-            src/gymact/survival_manifest.py \
-            src/gymact/survival_observation.py \
-            src/gymact/survival_suite.py \
-            src/gymact/dcm.py \
-            tests/test_survival_experiment.py \
-          tests/test_survival_cli.py \
-            tests/test_survival_factorial_experiment.py \
-            tests/test_survival_manifest.py \
+            src/gymact/survival_cli.py \\
+            src/gymact/survival_experiment.py \\
+            src/gymact/survival_faults.py \\
+            src/gymact/survival_manifest.py \\
+            src/gymact/survival_observation.py \\
+            src/gymact/survival_suite.py \\
+            src/gymact/dcm.py \\
+            tests/test_survival_cli.py \\
+            tests/test_survival_experiment.py \\
+            tests/test_survival_factorial_experiment.py \\
+            tests/test_survival_faults.py \\
+            tests/test_survival_manifest.py \\
             tests/test_survival_observation.py
 
       - name: Execute survival courts
         run: |
           uv run pytest -q \
-            tests/test_survival_experiment.py \
-            tests/test_survival_factorial_experiment.py \
-            tests/test_survival_manifest.py \
+            tests/test_survival_cli.py \\
+            tests/test_survival_experiment.py \\
+            tests/test_survival_factorial_experiment.py \\
+            tests/test_survival_faults.py \\
+            tests/test_survival_manifest.py \\
             tests/test_survival_observation.py
 
       - name: Static contract
         run: |
           uv run ruff check \
-            src/gymact/survival_experiment.py \
-            src/gymact/survival_manifest.py \
-            src/gymact/survival_observation.py \
-            src/gymact/survival_suite.py \
-            src/gymact/dcm.py \
-            tests/test_survival_experiment.py \
-            tests/test_survival_factorial_experiment.py \
-            tests/test_survival_manifest.py \
+            src/gymact/survival_cli.py \\
+            src/gymact/survival_experiment.py \\
+            src/gymact/survival_faults.py \\
+            src/gymact/survival_manifest.py \\
+            src/gymact/survival_observation.py \\
+            src/gymact/survival_suite.py \\
+            src/gymact/dcm.py \\
+            tests/test_survival_cli.py \\
+            tests/test_survival_experiment.py \\
+            tests/test_survival_factorial_experiment.py \\
+            tests/test_survival_faults.py \\
+            tests/test_survival_manifest.py \\
             tests/test_survival_observation.py
 
       - name: Format contract
         run: |
           uv run ruff format --check \
-            src/gymact/survival_experiment.py \
-            src/gymact/survival_manifest.py \
-            src/gymact/survival_observation.py \
-            src/gymact/survival_suite.py \
-            src/gymact/dcm.py \
-            tests/test_survival_experiment.py \
-            tests/test_survival_factorial_experiment.py \
-            tests/test_survival_manifest.py \
+            src/gymact/survival_cli.py \\
+            src/gymact/survival_experiment.py \\
+            src/gymact/survival_faults.py \\
+            src/gymact/survival_manifest.py \\
+            src/gymact/survival_observation.py \\
+            src/gymact/survival_suite.py \\
+            src/gymact/dcm.py \\
+            tests/test_survival_cli.py \\
+            tests/test_survival_experiment.py \\
+            tests/test_survival_factorial_experiment.py \\
+            tests/test_survival_faults.py \\
+            tests/test_survival_manifest.py \\
             tests/test_survival_observation.py
