@@ -7,6 +7,7 @@ from gymact.survival_campaign import (
     SurvivalCampaignSpec,
     SurvivalTraceTemplate,
     manufacture_survival_campaign,
+    replay_survival_campaign,
 )
 from gymact.survival_experiment import (
     Machinery,
@@ -169,3 +170,49 @@ def test_campaign_refuses_duplicate_fault_kinds_or_case_explosion() -> None:
             ),
             max_campaign_cases=2,
         )
+
+
+def test_campaign_replay_matches_exact_spec_and_variant_graph() -> None:
+    spec = SurvivalCampaignSpec(
+        campaign_id="campaign:exact-replay",
+        experiment=experiment(),
+        template=template(),
+        fault_kinds=(
+            SurvivalFaultKind.AUTHORITY_DROP,
+            SurvivalFaultKind.RECEIPT_DROP,
+        ),
+    )
+    expected = manufacture_survival_campaign(spec)
+
+    replay = replay_survival_campaign(spec, expected)
+
+    assert replay.matched is True
+    assert replay.mismatches == ()
+    assert replay.expected_campaign_digest == replay.replay_campaign_digest
+
+
+def test_campaign_replay_detects_spec_and_case_graph_drift() -> None:
+    original_spec = SurvivalCampaignSpec(
+        campaign_id="campaign:drift",
+        experiment=experiment(),
+        template=template(),
+        fault_kinds=(SurvivalFaultKind.AUTHORITY_DROP,),
+    )
+    expected = manufacture_survival_campaign(original_spec)
+    changed_spec = SurvivalCampaignSpec(
+        campaign_id="campaign:drift",
+        experiment=experiment(),
+        template=template(),
+        fault_kinds=(
+            SurvivalFaultKind.AUTHORITY_DROP,
+            SurvivalFaultKind.RECEIPT_DROP,
+        ),
+    )
+
+    replay = replay_survival_campaign(changed_spec, expected)
+
+    assert replay.matched is False
+    assert "CAMPAIGN_SPEC_DIGEST_MISMATCH" in replay.mismatches
+    assert "CAMPAIGN_CASE_COUNT_MISMATCH" in replay.mismatches
+    assert any(item.startswith("CAMPAIGN_CASE_EXTRA:") for item in replay.mismatches)
+    assert replay.expected_campaign_digest != replay.replay_campaign_digest
