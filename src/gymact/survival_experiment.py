@@ -10,10 +10,13 @@ No method here grants DO authority or performs external actuation.
 from __future__ import annotations
 
 from enum import StrEnum
+from itertools import product
+from math import prod
 from typing import Literal
 
 from pydantic import Field, model_validator
 
+from gymact.evidence import digest
 from gymact.models import FrozenModel
 
 
@@ -65,6 +68,28 @@ class SurvivalPolicy(FrozenModel):
     grants_do_authority: Literal[False] = False
 
 
+class SurvivalFactor(FrozenModel):
+    """One reversible perturbation dimension layered over scenario × policy."""
+
+    name: str = Field(min_length=1, pattern=r"^[a-z][a-z0-9_\\-]*$")
+    levels: tuple[str, ...]
+
+    @model_validator(mode="after")
+    def require_distinct_levels(self) -> "SurvivalFactor":
+        if not self.levels:
+            raise ValueError("SURVIVAL_FACTOR_LEVEL_REQUIRED")
+        if any(not level.strip() or level != level.strip() for level in self.levels):
+            raise ValueError("SURVIVAL_FACTOR_LEVEL_INVALID")
+        if len(self.levels) != len(set(self.levels)):
+            raise ValueError("SURVIVAL_FACTOR_LEVEL_DUPLICATE")
+        return self
+
+
+class SurvivalFactorAssignment(FrozenModel):
+    name: str = Field(min_length=1)
+    level: str = Field(min_length=1)
+
+
 class SurvivalCell(FrozenModel):
     """One exact scenario × policy experiment cell."""
 
@@ -74,6 +99,41 @@ class SurvivalCell(FrozenModel):
     @property
     def cell_id(self) -> str:
         return f"{self.scenario.scenario_id}::{self.policy.policy_id}"
+
+
+class SurvivalRunCase(FrozenModel):
+    """One deterministic factorial case. It is a construction, not an execution grant."""
+
+    cell: SurvivalCell
+    assignments: tuple[SurvivalFactorAssignment, ...] = ()
+    repetition: int = Field(ge=0)
+    seed: int = Field(ge=0)
+    authority: Literal["none"] = "none"
+    grants_do_authority: Literal[False] = False
+
+    @property
+    def factor_digest(self) -> str:
+        return digest(
+            [assignment.model_dump(mode="json") for assignment in self.assignments]
+        )
+
+    @property
+    def analysis_policy_id(self) -> str:
+        if not self.assignments:
+            return self.cell.policy.policy_id
+        return f"{self.cell.policy.policy_id}::{self.factor_digest[:16]}"
+
+    @property
+    def case_id(self) -> str:
+        identity = {
+            "cell_id": self.cell.cell_id,
+            "assignments": [
+                assignment.model_dump(mode="json") for assignment in self.assignments
+            ],
+            "repetition": self.repetition,
+            "seed": self.seed,
+        }
+        return f"{self.cell.cell_id}::{digest(identity)[:16]}"
 
 
 class SurvivalStep(FrozenModel):
@@ -88,6 +148,8 @@ class SurvivalStep(FrozenModel):
     terminal_ready: bool = True
     tool_invoked: bool = False
     llm_tokens: int = Field(ge=0, default=0)
+    replay_verified: bool = False
+    guards_installed: tuple[str, ...] = ()
 
 
 class SurvivalEpisode(FrozenModel):
@@ -96,6 +158,7 @@ class SurvivalEpisode(FrozenModel):
     episode_id: str = Field(min_length=1)
     cell: SurvivalCell
     steps: tuple[SurvivalStep, ...]
+    run_case: SurvivalRunCase | None = None
 
     @model_validator(mode="after")
     def bind_steps_to_horizon(self) -> "SurvivalEpisode":
@@ -104,6 +167,8 @@ class SurvivalEpisode(FrozenModel):
             raise ValueError("SURVIVAL_STEP_DUPLICATE")
         if values and max(values) > self.cell.scenario.horizon:
             raise ValueError("SURVIVAL_STEP_EXCEEDS_HORIZON")
+        if self.run_case is not None and self.run_case.cell != self.cell:
+            raise ValueError("SURVIVAL_RUN_CASE_CELL_MISMATCH")
         return self
 
     def to_autofde_document(self) -> dict:
@@ -113,7 +178,11 @@ class SurvivalEpisode(FrozenModel):
             "schema": "autofde-lab.premature-actuation-episode/1",
             "subject": scenario.subject,
             "workload_id": scenario.workload_id,
-            "policy_id": policy.policy_id,
+            "policy_id": (
+                self.run_case.analysis_policy_id
+                if self.run_case is not None
+                else policy.policy_id
+            ),
             "episode_id": self.episode_id,
             "horizon": scenario.horizon,
             "events": [
@@ -128,6 +197,17 @@ class SurvivalEpisode(FrozenModel):
                 "tool_policy": policy.tool_policy.value,
                 "authority_ceiling": policy.authority_ceiling,
                 "grants_do_authority": policy.grants_do_authority,
+                "run_case_id": self.run_case.case_id if self.run_case else None,
+                "repetition": self.run_case.repetition if self.run_case else None,
+                "seed": self.run_case.seed if self.run_case else None,
+                "factor_assignments": (
+                    [
+                        assignment.model_dump(mode="json")
+                        for assignment in self.run_case.assignments
+                    ]
+                    if self.run_case
+                    else []
+                ),
             },
         }
 
@@ -138,6 +218,10 @@ class SurvivalExperiment(FrozenModel):
     experiment_id: str = Field(min_length=1)
     scenarios: tuple[SurvivalScenario, ...]
     policies: tuple[SurvivalPolicy, ...]
+    factors: tuple[SurvivalFactor, ...] = ()
+    repetitions: int = Field(ge=1, default=1)
+    seed_base: int = Field(ge=0, default=0)
+    max_cases: int = Field(ge=1, le=1_000_000, default=100_000)
 
     @model_validator(mode="after")
     def require_closed_unique_factors(self) -> "SurvivalExperiment":
@@ -149,7 +233,24 @@ class SurvivalExperiment(FrozenModel):
             raise ValueError("SURVIVAL_SCENARIO_ID_DUPLICATE")
         if len(policy_ids) != len(set(policy_ids)):
             raise ValueError("SURVIVAL_POLICY_ID_DUPLICATE")
+        factor_names = [factor.name for factor in self.factors]
+        if len(factor_names) != len(set(factor_names)):
+            raise ValueError("SURVIVAL_FACTOR_NAME_DUPLICATE")
+        if self.case_count > self.max_cases:
+            raise ValueError(
+                f"SURVIVAL_MAX_CASES_EXCEEDED:{self.case_count}>{self.max_cases}"
+            )
         return self
+
+    @property
+    def case_count(self) -> int:
+        factor_width = prod(len(factor.levels) for factor in self.factors)
+        return (
+            len(self.scenarios)
+            * len(self.policies)
+            * factor_width
+            * self.repetitions
+        )
 
     def matrix(self) -> tuple[SurvivalCell, ...]:
         return tuple(
@@ -157,3 +258,33 @@ class SurvivalExperiment(FrozenModel):
             for scenario in self.scenarios
             for policy in self.policies
         )
+
+    def cases(self) -> tuple[SurvivalRunCase, ...]:
+        """Expand scenario × policy × perturbations × repetitions deterministically."""
+
+        level_matrix = (
+            tuple(product(*(factor.levels for factor in self.factors)))
+            if self.factors
+            else ((),)
+        )
+        cases: list[SurvivalRunCase] = []
+        ordinal = 0
+        for cell in self.matrix():
+            for levels in level_matrix:
+                assignments = tuple(
+                    SurvivalFactorAssignment(name=factor.name, level=level)
+                    for factor, level in zip(self.factors, levels, strict=True)
+                )
+                for repetition in range(self.repetitions):
+                    cases.append(
+                        SurvivalRunCase(
+                            cell=cell,
+                            assignments=assignments,
+                            repetition=repetition,
+                            seed=self.seed_base + ordinal,
+                        )
+                    )
+                    ordinal += 1
+        if len(cases) != self.case_count:
+            raise AssertionError("SURVIVAL_FACTORIAL_CLOSURE_BROKEN")
+        return tuple(cases)
