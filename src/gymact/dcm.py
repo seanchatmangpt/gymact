@@ -104,6 +104,10 @@ from gymact.survival_campaign import (
     SurvivalTraceTemplate,
     manufacture_survival_campaign,
 )
+from gymact.survival_campaign_observation import (
+    SurvivalCampaignObservationClosure,
+    qualify_campaign_observation_closure,
+)
 from gymact.survival_experiment import (
     InformationTopology,
     Machinery,
@@ -204,6 +208,7 @@ __all__ = [
     "SurvivalArtifactReceipt",
     "SurvivalCampaign",
     "SurvivalCampaignCase",
+    "SurvivalCampaignObservationClosure",
     "SurvivalCampaignSpec",
     "SurvivalCell",
     "SurvivalEpisode",
@@ -246,6 +251,7 @@ __all__ = [
     "manufacture_single_fault_plans",
     "pareto_paths",
     "possibility_shapes",
+    "qualify_campaign_observation_closure",
     "qualify_observation_closure",
     "query_do_frontier",
     "rdf_to_graph",
