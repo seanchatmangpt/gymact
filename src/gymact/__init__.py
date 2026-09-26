@@ -180,6 +180,7 @@ from gymact.oracle import (
 )
 from gymact.policy_ecology import (
     DEFAULT_TEMPERAMENT_AXES,
+    TEMPERAMENT_ENGINEERING_PROVENANCE,
     ConditionAxis,
     PolicyPhenotype,
     PolicyPopulation,
@@ -252,6 +253,7 @@ __all__ = [
     "PopulationDiversity",
     "PopulationKind",
     "ReactionNorm",
+    "TEMPERAMENT_ENGINEERING_PROVENANCE",
     "StrategicCondition",
     "WeightedPhenotype",
     "condition_population",
