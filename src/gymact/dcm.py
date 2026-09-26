@@ -88,6 +88,17 @@ from gymact.skill_court import (
     SkillCourtProbe,
     SkillCourtQualification,
 )
+from gymact.survival_experiment import (
+    InformationTopology,
+    Machinery,
+    SurvivalCell,
+    SurvivalEpisode,
+    SurvivalExperiment,
+    SurvivalPolicy,
+    SurvivalScenario,
+    SurvivalStep,
+    ToolPolicy,
+)
 from gymact.structural_scan import StructuralSignature, structural_scan
 
 __all__ = [
