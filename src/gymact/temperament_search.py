@@ -234,7 +234,7 @@ def manufacture_design_portfolio(
         )
         candidate_id = "urn:gymact:temperament-design:" + digest(
             {
-                "mission_id": mission_id,
+                "plan": plan.model_dump(mode="json"),
                 "options": option_ids,
             }
         )
