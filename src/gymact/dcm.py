@@ -59,6 +59,20 @@ from gymact.ecology import (
     ManufacturedEcology,
     manufacture_ecology,
 )
+from gymact.environment_evolution import (
+    EnvironmentEvolutionCourt,
+    EvolutionAdmission,
+    EvolutionCandidate,
+    EvolutionDecisionKind,
+    EvolutionDecisionPoint,
+    EvolutionEcosystemBinding,
+    EvolutionEvent,
+    EvolutionEventOperation,
+    EvolutionSeed,
+    EvolutionTransition,
+    EvolutionValidation,
+    task_request_digest,
+)
 from gymact.maximal import explore_combinatorial_maximum
 from gymact.possibility_index import (
     EmpiricalCombinationRecord,
@@ -94,6 +108,17 @@ __all__ = [
     "EcologyDimension",
     "EmpiricalCombinationRecord",
     "EmpiricalPossibilityIndex",
+    "EnvironmentEvolutionCourt",
+    "EvolutionAdmission",
+    "EvolutionCandidate",
+    "EvolutionDecisionKind",
+    "EvolutionDecisionPoint",
+    "EvolutionEcosystemBinding",
+    "EvolutionEvent",
+    "EvolutionEventOperation",
+    "EvolutionSeed",
+    "EvolutionTransition",
+    "EvolutionValidation",
     "ExplorationBounds",
     "ExplorationResult",
     "Factor",
@@ -136,6 +161,7 @@ __all__ = [
     "rdf_to_graph",
     "select_irreversible_cut",
     "structural_scan",
+    "task_request_digest",
     "validate_possibility_rdf",
     "zero_objectives",
 ]
