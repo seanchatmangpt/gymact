@@ -100,9 +100,11 @@ from gymact.survival_artifacts import (
 from gymact.survival_campaign import (
     SurvivalCampaign,
     SurvivalCampaignCase,
+    SurvivalCampaignReplay,
     SurvivalCampaignSpec,
     SurvivalTraceTemplate,
     manufacture_survival_campaign,
+    replay_survival_campaign,
 )
 from gymact.survival_campaign_observation import (
     SurvivalCampaignObservationClosure,
@@ -209,6 +211,7 @@ __all__ = [
     "SurvivalCampaign",
     "SurvivalCampaignCase",
     "SurvivalCampaignObservationClosure",
+    "SurvivalCampaignReplay",
     "SurvivalCampaignSpec",
     "SurvivalCell",
     "SurvivalEpisode",
@@ -257,6 +260,7 @@ __all__ = [
     "rdf_to_graph",
     "render_survival_campaign_jsonl",
     "render_survival_manifest",
+    "replay_survival_campaign",
     "replay_survival_manifest",
     "select_irreversible_cut",
     "survival_experiment_digest",
