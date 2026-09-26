@@ -6,6 +6,11 @@ on:
     paths:
       - "src/gymact/survival_experiment.py"
       - "src/gymact/dcm.py"
+      - "tests/test_survival_observation.py"
+      - "tests/test_survival_manifest.py"
+      - "src/gymact/survival_suite.py"
+      - "src/gymact/survival_observation.py"
+      - "src/gymact/survival_manifest.py"
       - "tests/test_survival_experiment.py"
       - "tests/test_survival_factorial_experiment.py"
       - ".github/workflows/survival-experiment.yml"
