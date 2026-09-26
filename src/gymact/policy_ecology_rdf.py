@@ -102,7 +102,7 @@ def _shape_graph() -> Graph:
     shape = Graph()
     root_shape = URIRef("urn:gymact:shape:policy-population")
     shape.add((root_shape, RDF.type, SH.NodeShape))
-    shape.add((root_shape, SH.targetObjectsOf, DCTERMS.conformsTo))
+    shape.add((root_shape, SH.targetSubjectsOf, DCTERMS.conformsTo))
 
     for predicate, minimum, maximum in (
         (DCTERMS.identifier, 1, 1),
