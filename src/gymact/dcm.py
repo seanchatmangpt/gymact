@@ -89,6 +89,21 @@ from gymact.skill_court import (
     SkillCourtQualification,
 )
 from gymact.structural_scan import StructuralSignature, structural_scan
+from gymact.survival_artifacts import (
+    SurvivalArtifactReceipt,
+    artifact_receipt,
+    render_survival_campaign_jsonl,
+    render_survival_manifest,
+    write_survival_campaign_jsonl,
+    write_survival_manifest,
+)
+from gymact.survival_campaign import (
+    SurvivalCampaign,
+    SurvivalCampaignCase,
+    SurvivalCampaignSpec,
+    SurvivalTraceTemplate,
+    manufacture_survival_campaign,
+)
 from gymact.survival_experiment import (
     InformationTopology,
     Machinery,
@@ -118,6 +133,16 @@ from gymact.survival_manifest import (
     build_survival_manifest,
     experiment_digest as survival_experiment_digest,
     replay_survival_manifest,
+)
+from gymact.survival_observation import (
+    SurvivalObservationClosure,
+    qualify_observation_closure,
+)
+from gymact.survival_suite import (
+    canonical_fault_kinds,
+    canonical_fault_suite,
+    canonical_policy_suite,
+    canonical_trace_template,
 )
 
 __all__ = [
@@ -176,6 +201,10 @@ __all__ = [
     "SkillCourtProbe",
     "SkillCourtQualification",
     "StructuralSignature",
+    "SurvivalArtifactReceipt",
+    "SurvivalCampaign",
+    "SurvivalCampaignCase",
+    "SurvivalCampaignSpec",
     "SurvivalCell",
     "SurvivalEpisode",
     "SurvivalExperiment",
@@ -188,14 +217,21 @@ __all__ = [
     "SurvivalFaultPlan",
     "SurvivalManifestCase",
     "SurvivalManifestReplay",
+    "SurvivalObservationClosure",
     "SurvivalPolicy",
     "SurvivalRunCase",
     "SurvivalScenario",
     "SurvivalStep",
+    "SurvivalTraceTemplate",
     "ToolPolicy",
     "action_possibility_fragment",
+    "artifact_receipt",
     "apply_survival_fault_plan",
     "build_survival_manifest",
+    "canonical_fault_kinds",
+    "canonical_fault_suite",
+    "canonical_policy_suite",
+    "canonical_trace_template",
     "admit_graph_recipe",
     "compile_graph_recipe",
     "compose_paths",
@@ -206,16 +242,22 @@ __all__ = [
     "manufacture_broker_request",
     "manufacture_combination_space",
     "manufacture_ecology",
+    "manufacture_survival_campaign",
     "manufacture_single_fault_plans",
     "pareto_paths",
     "possibility_shapes",
+    "qualify_observation_closure",
     "query_do_frontier",
     "rdf_to_graph",
+    "render_survival_campaign_jsonl",
+    "render_survival_manifest",
     "replay_survival_manifest",
     "select_irreversible_cut",
     "survival_experiment_digest",
     "structural_scan",
     "task_request_digest",
     "validate_possibility_rdf",
+    "write_survival_campaign_jsonl",
+    "write_survival_manifest",
     "zero_objectives",
 ]
