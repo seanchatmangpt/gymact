@@ -1,0 +1,71 @@
+name: Survival experiment exact head
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/gymact/survival_experiment.py"
+      - "src/gymact/dcm.py"
+      - "tests/test_survival_experiment.py"
+      - "tests/test_survival_factorial_experiment.py"
+      - ".github/workflows/survival-experiment.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  survival-experiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Admit exact subject
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="${{ github.event.pull_request.head.sha || github.sha }}"
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$expected"
+          printf "survival_experiment_exact_head=%s\n" "$actual"
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.11.32"
+
+      - name: Resolve admitted dependency closure
+        run: uv sync --group dev
+
+      - name: Compile survival surface
+        run: >-
+          uv run python -m compileall -q
+          src/gymact/survival_experiment.py
+          src/gymact/dcm.py
+          tests/test_survival_experiment.py
+          tests/test_survival_factorial_experiment.py
+
+      - name: Execute survival courts
+        run: >-
+          uv run pytest -q
+          tests/test_survival_experiment.py
+          tests/test_survival_factorial_experiment.py
+
+      - name: Static contract
+        run: >-
+          uv run ruff check
+          src/gymact/survival_experiment.py
+          src/gymact/dcm.py
+          tests/test_survival_experiment.py
+          tests/test_survival_factorial_experiment.py
+
+      - name: Format contract
+        run: >-
+          uv run ruff format --check
+          src/gymact/survival_experiment.py
+          src/gymact/dcm.py
+          tests/test_survival_experiment.py
+          tests/test_survival_factorial_experiment.py
