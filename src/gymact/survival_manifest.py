@@ -114,14 +114,14 @@ def replay_survival_manifest(
         if by_id[case_id] != current_by_id[case_id]:
             mismatches.append(f"CASE_DRIFT:{case_id}")
 
-    replay_payload = {
-        "experiment_id": experiment.experiment_id,
-        "experiment_digest": current_experiment_digest,
-        "cases": [case.model_dump(mode="json") for case in current_cases],
-    }
+    current_manifest = SurvivalExperimentManifest(
+        experiment_id=experiment.experiment_id,
+        experiment_digest=current_experiment_digest,
+        cases=current_cases,
+    )
     return SurvivalManifestReplay(
         manifest_digest=manifest.manifest_digest,
-        replay_digest=digest(replay_payload),
+        replay_digest=current_manifest.manifest_digest,
         matched=not mismatches,
         mismatches=tuple(mismatches),
     )
