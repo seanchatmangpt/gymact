@@ -8,15 +8,15 @@ objects grant no authority and do not perform production DO.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from enum import StrEnum
 from math import isfinite
-from typing import Callable, Literal, Self
+from typing import Literal, Self
 
 from blake3 import blake3
-from pydantic import Field, model_validator
-
 from gymact.evidence import digest
 from gymact.models import FrozenModel
+from pydantic import Field, model_validator
 
 _CONTENT_DIGEST = r"^(?:sha256|blake3):[0-9a-f]{64}$"
 
@@ -107,9 +107,7 @@ class PairedWorldCourt:
             "champion": run.champion.model_dump(mode="json"),
             "candidate": run.candidate.model_dump(mode="json"),
         }
-        evidence_digest = "blake3:" + blake3(
-            digest(payload).encode("ascii")
-        ).hexdigest()
+        evidence_digest = "blake3:" + blake3(digest(payload).encode("ascii")).hexdigest()
         return PairedWorldEvidence(
             identity_digest=run.identity.identity_digest,
             pair_digest=run.pair_digest,
@@ -150,7 +148,6 @@ class PairedWorldCourt:
             evidence=evidence,
             cohort_digest="blake3:" + digest(cohort_payload),
         )
-
 
 
 class PairedExecutionOrder(StrEnum):

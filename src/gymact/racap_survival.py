@@ -1,6 +1,6 @@
 """Counterbalanced RACaP pairing over the GymAct survival factorial design.
 
-The survival experiment owns scenario × policy × perturbation × repetition.
+The survival experiment owns scenario x policy x perturbation x repetition.
 The RACaP paired-world contract owns champion/candidate evidence. This module
 takes their product without granting promotion or production DO authority.
 """
@@ -9,10 +9,11 @@ from __future__ import annotations
 
 from typing import Literal, Self
 
-from pydantic import Field, model_validator
-
 from gymact.evidence import digest
 from gymact.models import FrozenModel
+from gymact.survival_experiment import SurvivalExperiment, SurvivalRunCase
+from pydantic import Field, model_validator
+
 from gymact.racap_paired_world import (
     ObservationExecutor,
     PairedCohortReplay,
@@ -22,7 +23,6 @@ from gymact.racap_paired_world import (
     PairedWorldIdentity,
     PairedWorldRunner,
 )
-from gymact.survival_experiment import SurvivalExperiment, SurvivalRunCase
 
 _CONTENT_DIGEST = r"^(?:sha256|blake3):[0-9a-f]{64}$"
 
@@ -111,8 +111,7 @@ class SurvivalPairedDesign(FrozenModel):
             {
                 "scenario": scenario.model_dump(mode="json"),
                 "factor_assignments": [
-                    assignment.model_dump(mode="json")
-                    for assignment in run_case.assignments
+                    assignment.model_dump(mode="json") for assignment in run_case.assignments
                 ],
             }
         )
@@ -158,7 +157,7 @@ class SurvivalPairedResult(FrozenModel):
 
 
 class SurvivalPairedRunner:
-    """Execute the full counterbalanced survival × RACaP design."""
+    """Execute the full counterbalanced survival x RACaP design."""
 
     def __init__(self, executor: ObservationExecutor) -> None:
         self.runner = PairedWorldRunner(executor)
@@ -174,17 +173,13 @@ class SurvivalPairedRunner:
             )
             for case in paired_cases
         )
-        cohort = self.runner.court.observe_cohort(
-            tuple(record.run for record in records)
-        )
+        cohort = self.runner.court.observe_cohort(tuple(record.run for record in records))
         replay = PairedCohortReplay.from_cohort(cohort)
         result_digest = _digest(
             {
                 "design_digest": design.design_digest,
                 "case_digests": [case.case_digest for case in paired_cases],
-                "execution_digests": [
-                    record.execution_digest for record in records
-                ],
+                "execution_digests": [record.execution_digest for record in records],
                 "cohort_digest": cohort.cohort_digest,
                 "replay_manifest_digest": replay.manifest_digest,
             }
