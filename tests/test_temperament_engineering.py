@@ -125,7 +125,7 @@ def test_platform_heterogeneity_is_declared_coupling_not_hidden_randomness() -> 
             PlatformTrait(
                 trait_id="battery_margin",
                 value=-0.25,
-                axis_couplings=(("activity", 0.0), ("exploration", 0.5)),
+                axis_couplings=(("exploration", 0.5),),
                 evidence_refs=("urn:evidence:battery-telemetry",),
             ),
         )
@@ -161,3 +161,42 @@ def test_design_evaluation_distinguishes_distribution_fit_from_diversity() -> No
     exploration = next(fit for fit in evaluation.axis_fit if fit.axis_id == "exploration")
     assert exploration.observed_mean == pytest.approx(0.5)
     assert exploration.mean_error == pytest.approx(0.0)
+
+
+def test_design_target_cannot_smuggle_authority_axis() -> None:
+    with pytest.raises(ValueError, match="REFUSED:TEMPERAMENT_CANNOT_ENCODE_AUTHORITY"):
+        TemperamentDesignPlan(
+            mission_id="m",
+            topology=ControlTopology.CENTRALIZED,
+            mode=DesignMode.ONLINE_PLANNER_OUTPUT,
+            criteria=(
+                MissionCriterion(
+                    criterion_id="c",
+                    axis_weights=(("authority", 1.0),),
+                ),
+            ),
+            targets=(AxisTarget(axis_id=" Authority ", mean=0.5),),
+        )
+
+
+def test_adaptive_reaction_norm_is_not_erased_by_homogeneous_baseline() -> None:
+    design = TemperamentDesignPlan(
+        mission_id="m",
+        topology=ControlTopology.CENTRALIZED,
+        mode=DesignMode.ONLINE_PLANNER_OUTPUT,
+        criteria=(
+            MissionCriterion(
+                criterion_id="c",
+                axis_weights=(("exploration", 1.0),),
+            ),
+        ),
+        targets=(AxisTarget(axis_id="exploration", mean=0.5),),
+        reaction_norm=ReactionNorm(slopes=(("exploration", 0.25),)),
+    )
+    population = manufacture_population(
+        design,
+        policy_ref="planner:Astar",
+        member_count=3,
+    )
+    assert population.kind.value == "adaptive"
+    assert population.reaction_norm is not None
