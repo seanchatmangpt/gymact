@@ -56,6 +56,16 @@ def test_repeated_verified_cognition_becomes_compilation_candidate() -> None:
     assert candidate.reason == "REPEATED_VERIFIED_COGNITION"
 
 
+def test_duplicate_receipt_does_not_manufacture_recurrence() -> None:
+    repeated = episode("same-receipt")
+    candidate = detect_compilation_candidate((repeated, repeated))
+
+    assert candidate.candidate is False
+    assert candidate.repetitions == 1
+    assert candidate.model_tokens == 100
+    assert candidate.receipt_refs == ("same-receipt",)
+
+
 def test_compile_out_requires_zero_tokens_and_preserved_law() -> None:
     observed = CompileOutObservation(
         cold_model_tokens=1000,
