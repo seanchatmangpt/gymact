@@ -53,6 +53,15 @@ work around it silently.
   `.claude/rules/ocel-standing.md` — never by a hardcoded expected value or
   a summarizing script's packaged verdict. Source: `CLAUDE.md`, "Evidence
   and standing" section.
+- **2026-09-25** — `rust/togaf_gym/templates` must exist as a real
+  directory (never a symlink) and must contain zero `.tmpl` files: the ggen
+  pack is the single source of truth for templates, and the `20c7d3f`
+  symlink convention is superseded. A consumer-side alias makes ggen's
+  `discover_templates` render each `to:` output twice and `ggen sync run`
+  refuses the whole sync with "2 rendered templates resolve to the same
+  admitted output" (the FM-WRITE-008 duplicate-admission guard). Verify:
+  `tests/test_ggen_togaf_gym_pack.py:226`
+  (`test_ggen_templates_are_projection_only`).
 
 ## How to use this file
 
