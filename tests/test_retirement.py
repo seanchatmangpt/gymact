@@ -5,12 +5,14 @@ from gymact.compileout import (
     admit_compiled_recipe,
     compile_recipe,
 )
-from gymact.intelligence import CompileOutObservation
+from gymact.intelligence import CognitionEpisode, CompileOutObservation
 from gymact.models import Standing
 from gymact.retirement import (
     ResidualWorkProfile,
     RetirementDisposition,
+    evaluate_recurring_class,
     evaluate_retirement,
+    retirement_portfolio,
     retirement_receipt,
 )
 
@@ -244,3 +246,137 @@ def test_retirement_threshold_and_minimum_receipts_are_explicit() -> None:
             max_residual_work_ratio=0.10,
             minimum_source_receipts=1,
         )
+
+
+def cognition(receipt: str, *, verified: bool = True, tokens: int = 100) -> CognitionEpisode:
+    return CognitionEpisode(
+        problem_identity="problem-1",
+        environment_identity="environment-1",
+        authority_class="bounded-write",
+        model_tokens=tokens,
+        monetary_cost=1.0,
+        wall_time_s=2.0,
+        verified=verified,
+        receipt_ref=receipt,
+    )
+
+
+def test_recurring_class_pipeline_manufactures_recipe_decision_and_receipt() -> None:
+    evaluation = evaluate_recurring_class(
+        (cognition("r1"), cognition("r2")),
+        identity(),
+        identity(),
+        candidate_ref="candidate:deterministic-v1",
+        observation=compiled_observation(),
+        residual_work=low_residual(),
+        information_sufficient=True,
+        max_residual_work_ratio=0.10,
+    )
+
+    assert evaluation.compilation_candidate.candidate is True
+    assert evaluation.compilation_candidate.receipt_refs == ("r1", "r2")
+    assert evaluation.recipe is not None
+    assert evaluation.admission is not None
+    assert evaluation.receipt is not None
+    assert evaluation.decision.disposition is RetirementDisposition.RETIRE_GENERAL_LLM
+    assert evaluation.receipt.decision == evaluation.decision
+
+
+def test_nonrecurring_class_retains_model_without_manufacturing_recipe() -> None:
+    evaluation = evaluate_recurring_class(
+        (cognition("r1"),),
+        identity(),
+        identity(),
+        candidate_ref="candidate:deterministic-v1",
+        observation=compiled_observation(),
+        residual_work=low_residual(),
+        information_sufficient=True,
+        max_residual_work_ratio=0.10,
+    )
+
+    assert evaluation.compilation_candidate.candidate is False
+    assert evaluation.recipe is None
+    assert evaluation.admission is None
+    assert evaluation.receipt is None
+    assert evaluation.decision.disposition is RetirementDisposition.RETAIN_GENERAL_LLM
+    assert evaluation.decision.general_llm_required is True
+    assert evaluation.decision.standing is Standing.UNKNOWN
+
+
+def test_recurring_class_pipeline_refuses_identity_cross_binding() -> None:
+    import pytest
+
+    wrong = identity().model_copy(update={"problem_identity": "another-problem"})
+
+    with pytest.raises(ValueError, match="COMPILATION_CANDIDATE_IDENTITY_MISMATCH"):
+        evaluate_recurring_class(
+            (cognition("r1"), cognition("r2")),
+            wrong,
+            wrong,
+            candidate_ref="candidate:deterministic-v1",
+            observation=compiled_observation(),
+            residual_work=low_residual(),
+            information_sufficient=True,
+            max_residual_work_ratio=0.10,
+        )
+
+
+def test_retirement_portfolio_counts_states_without_claiming_future_savings() -> None:
+    retired = evaluate_recurring_class(
+        (cognition("r1", tokens=100), cognition("r2", tokens=200)),
+        identity(),
+        identity(),
+        candidate_ref="candidate:deterministic-v1",
+        observation=compiled_observation(),
+        residual_work=low_residual(),
+        information_sufficient=True,
+        max_residual_work_ratio=0.10,
+    )
+    retained = evaluate_recurring_class(
+        (cognition("r3", tokens=50),),
+        identity(),
+        identity(),
+        candidate_ref="candidate:deterministic-v1",
+        observation=compiled_observation(),
+        residual_work=low_residual(),
+        information_sufficient=True,
+        max_residual_work_ratio=0.10,
+    )
+    shadow = evaluate_recurring_class(
+        (cognition("r4"), cognition("r5")),
+        identity(),
+        identity(),
+        candidate_ref="candidate:deterministic-v1",
+        observation=compiled_observation(),
+        residual_work=ResidualWorkProfile(
+            exception_share=0.30,
+            exception_effort_multiplier=1.0,
+            ordinary_review_multiplier=0.20,
+            rework=0.10,
+            automation_support=0.05,
+            baseline_overhead=0.0,
+        ),
+        information_sufficient=True,
+        max_residual_work_ratio=0.10,
+    )
+
+    portfolio = retirement_portfolio((retired, retained, shadow))
+
+    assert portfolio.class_count == 3
+    assert portfolio.retired_class_count == 1
+    assert portfolio.retained_class_count == 1
+    assert portfolio.shadow_class_count == 1
+    assert portfolio.historical_model_tokens_observed == 550
+    assert portfolio.retired_history_model_tokens_observed == 300
+    assert len(portfolio.portfolio_receipt_digest) > 0
+
+    payload = portfolio.model_dump(mode="json")
+    assert "future_token_savings" not in payload
+    assert "future_cost_savings" not in payload
+
+
+def test_retirement_portfolio_requires_observed_evaluations() -> None:
+    import pytest
+
+    with pytest.raises(ValueError, match="RETIREMENT_PORTFOLIO_REQUIRES_EVALUATIONS"):
+        retirement_portfolio(())
