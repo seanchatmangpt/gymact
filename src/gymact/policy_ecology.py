@@ -16,6 +16,8 @@ from pydantic import Field, model_validator
 
 from gymact.models import FrozenModel
 
+TEMPERAMENT_ENGINEERING_PROVENANCE = ("https://arxiv.org/abs/2609.29423",)
+
 _FORBIDDEN_AUTHORITY_AXES = frozenset(
     {
         "authority",
@@ -25,6 +27,10 @@ _FORBIDDEN_AUTHORITY_AXES = frozenset(
         "do",
     }
 )
+
+
+def _normalized_axis_id(axis_id: str) -> str:
+    return axis_id.strip().lower()
 
 
 class PopulationKind(StrEnum):
@@ -42,7 +48,7 @@ class ConditionAxis(FrozenModel):
 
     @model_validator(mode="after")
     def valid_axis(self) -> Self:
-        if self.axis_id in _FORBIDDEN_AUTHORITY_AXES:
+        if _normalized_axis_id(self.axis_id) in _FORBIDDEN_AUTHORITY_AXES:
             raise ValueError(f"REFUSED:TEMPERAMENT_CANNOT_ENCODE_AUTHORITY:{self.axis_id}")
         if self.lower >= self.upper:
             raise ValueError("REFUSED:CONDITION_AXIS_REQUIRES_NONEMPTY_RANGE")
@@ -64,10 +70,13 @@ class StrategicCondition(FrozenModel):
         keys = [key for key, _ in self.values]
         if len(keys) != len(set(keys)):
             raise ValueError("REFUSED:DUPLICATE_CONDITION_AXIS")
-        forbidden = _FORBIDDEN_AUTHORITY_AXES.intersection(keys)
+        forbidden = [
+            key for key in keys if _normalized_axis_id(key) in _FORBIDDEN_AUTHORITY_AXES
+        ]
         if forbidden:
-            axis = sorted(forbidden)[0]
-            raise ValueError(f"REFUSED:TEMPERAMENT_CANNOT_ENCODE_AUTHORITY:{axis}")
+            raise ValueError(
+                f"REFUSED:TEMPERAMENT_CANNOT_ENCODE_AUTHORITY:{sorted(forbidden)[0]}"
+            )
         return self
 
     def as_dict(self) -> dict[str, float]:
@@ -89,10 +98,13 @@ class ReactionNorm(FrozenModel):
         keys = [key for key, _ in self.slopes]
         if len(keys) != len(set(keys)):
             raise ValueError("REFUSED:DUPLICATE_REACTION_NORM_AXIS")
-        forbidden = _FORBIDDEN_AUTHORITY_AXES.intersection(keys)
+        forbidden = [
+            key for key in keys if _normalized_axis_id(key) in _FORBIDDEN_AUTHORITY_AXES
+        ]
         if forbidden:
-            axis = sorted(forbidden)[0]
-            raise ValueError(f"REFUSED:TEMPERAMENT_CANNOT_ENCODE_AUTHORITY:{axis}")
+            raise ValueError(
+                f"REFUSED:TEMPERAMENT_CANNOT_ENCODE_AUTHORITY:{sorted(forbidden)[0]}"
+            )
         return self
 
     def apply(
@@ -150,7 +162,10 @@ class PopulationDiversity(FrozenModel):
 
 
 DEFAULT_TEMPERAMENT_AXES: tuple[ConditionAxis, ...] = tuple(
-    ConditionAxis(axis_id=axis_id)
+    ConditionAxis(
+        axis_id=axis_id,
+        provenance_refs=TEMPERAMENT_ENGINEERING_PROVENANCE,
+    )
     for axis_id in (
         "boldness",
         "exploration",
