@@ -25,6 +25,7 @@ D = "blake3:" + "d" * 64
 E = "blake3:" + "e" * 64
 F = "blake3:" + "f" * 64
 G = "blake3:" + "0" * 64
+H = "blake3:" + "9" * 64
 MARKETPLACE_SHA = "22f83777d950d1022b5a028793b3e2aa477d2047"
 SJIRA_BASE_SHA = "9085c45a3d28df48635656ad9e2aa76dcaac06d4"
 TASK = "Reconcile the approved budget for the reporting date."
@@ -105,6 +106,11 @@ def candidate(
         task_request_digest=task_request_digest(task),
         direction="increase temporal/version ambiguity while preserving resolvability",
         generator_ref="urn:autofde:planner:environment-evolution",
+        generator_digest=A,
+        parent_candidate_digest=None,
+        parent_lineage_digest=None,
+        mutation_operator_digest=C,
+        mutation_seed=26925,
         ecosystem=ecosystem(),
         new_environment_digest=E,
         reference_outcome_digest=F,
@@ -116,12 +122,20 @@ def candidate(
 
 
 def validation(**updates) -> EvolutionValidation:
+    current = seed()
+    proposal = candidate()
     values = {
         "observer_ref": "urn:gymact:verifier:evolution",
+        "observer_producer_digest": H,
         "evidence_digest": G,
+        "observed_seed_digest": current.seed_digest,
+        "observed_candidate_digest": proposal.candidate_digest,
         "observed_parent_environment_digest": A,
         "observed_task_request_digest": task_request_digest(TASK),
         "observed_environment_digest": E,
+        "observed_history_digest": proposal.event_history_digest,
+        "evaluator_digest": proposal.evaluator_digest,
+        "recurring_failure_digests": (),
         "structural_checks_passed": True,
         "history_checks_passed": True,
         "material_placement_checks_passed": True,
@@ -154,6 +168,10 @@ def test_admitted_variant_advances_seed_without_granting_do_authority() -> None:
     assert transition.next_seed.evaluator_digest == proposal.evaluator_digest
     assert transition.next_seed.history_event_ids == ("event-0", "event-1")
     assert transition.next_seed.source_candidate_digest == proposal.candidate_digest
+    assert transition.next_seed.lineage_digest == proposal.mutation_lineage_digest
+    assert transition.replay_receipt.lineage_digest == proposal.mutation_lineage_digest
+    assert transition.replay_receipt.next_seed_digest == transition.next_seed.seed_digest
+    assert transition.replay_receipt.authority == "none"
     assert "EnvironmentEvolutionCourt" in dcm.__all__
 
 
@@ -230,3 +248,53 @@ def test_candidate_cannot_claim_do_authority() -> None:
 
     with pytest.raises(ValidationError):
         EvolutionCandidate(**kwargs)
+
+
+
+def test_evolution_replay_receipt_is_deterministic() -> None:
+    court = EnvironmentEvolutionCourt()
+    current = seed()
+    proposal = candidate()
+    observed = validation()
+
+    left = court.advance(current, proposal, observed)
+    right = court.advance(current, proposal, observed)
+
+    assert left.replay_receipt == right.replay_receipt
+    assert left.next_seed.seed_digest == right.next_seed.seed_digest
+    assert left.admission.admission_digest == right.admission.admission_digest
+
+
+def test_validator_must_be_independent_from_generator() -> None:
+    proposal = candidate()
+    admission = EnvironmentEvolutionCourt().qualify(
+        seed(),
+        proposal,
+        validation(observer_producer_digest=proposal.generator_digest),
+    )
+    assert not admission.admitted
+    assert "VALIDATOR_NOT_INDEPENDENT_FROM_GENERATOR" in admission.reasons
+
+
+def test_recurring_failure_is_a_typed_falsifier() -> None:
+    admission = EnvironmentEvolutionCourt().qualify(
+        seed(),
+        candidate(),
+        validation(recurring_failure_digests=(B,)),
+    )
+    assert not admission.admitted
+    assert f"FAILURE_RECURRED:{B}" in admission.reasons
+
+
+def test_parent_lineage_is_bound_to_seed() -> None:
+    proposal = candidate()
+    values = proposal.model_dump(mode="python")
+    values["parent_lineage_digest"] = H
+    drifted = EvolutionCandidate(**values)
+    admission = EnvironmentEvolutionCourt().qualify(
+        seed(),
+        drifted,
+        validation(),
+    )
+    assert not admission.admitted
+    assert "PARENT_LINEAGE_MISMATCH" in admission.reasons
