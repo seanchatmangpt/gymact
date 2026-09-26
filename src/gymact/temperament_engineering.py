@@ -185,8 +185,10 @@ def _axis_samples(target: AxisTarget, member_count: int) -> tuple[float, ...]:
     if target.shape is DistributionShape.BIMODAL:
         if member_count == 1:
             return (target.mean,)
-        split = member_count // 2
-        return tuple(low if index < split else high for index in range(member_count))
+        pairs = member_count // 2
+        if member_count % 2 == 1:
+            return (*((low,) * pairs), target.mean, *((high,) * pairs))
+        return (*((low,) * pairs), *((high,) * pairs))
 
     if member_count == 1:
         return (target.mean,)
