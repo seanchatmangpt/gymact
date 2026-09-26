@@ -9,11 +9,10 @@ from __future__ import annotations
 
 from typing import Literal, Self
 
-from gymact.evidence import digest
-from gymact.models import FrozenModel
-from gymact.survival_experiment import SurvivalExperiment, SurvivalRunCase
 from pydantic import Field, model_validator
 
+from gymact.evidence import digest
+from gymact.models import FrozenModel
 from gymact.racap_paired_world import (
     ObservationExecutor,
     PairedCohortReplay,
@@ -23,6 +22,7 @@ from gymact.racap_paired_world import (
     PairedWorldIdentity,
     PairedWorldRunner,
 )
+from gymact.survival_experiment import SurvivalExperiment, SurvivalRunCase
 
 _CONTENT_DIGEST = r"^(?:sha256|blake3):[0-9a-f]{64}$"
 

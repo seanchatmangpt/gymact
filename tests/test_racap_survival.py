@@ -79,24 +79,16 @@ def test_design_lifts_full_survival_factorial_without_losing_cases() -> None:
 def test_counterbalancing_is_deterministic_and_even() -> None:
     cases = _design().cases()
 
-    assert sum(
-        case.order is PairedExecutionOrder.CHAMPION_FIRST for case in cases
-    ) == 8
-    assert sum(
-        case.order is PairedExecutionOrder.CANDIDATE_FIRST for case in cases
-    ) == 8
+    assert sum(case.order is PairedExecutionOrder.CHAMPION_FIRST for case in cases) == 8
+    assert sum(case.order is PairedExecutionOrder.CANDIDATE_FIRST for case in cases) == 8
 
     replay = _design().cases()
-    assert [case.case_digest for case in cases] == [
-        case.case_digest for case in replay
-    ]
+    assert [case.case_digest for case in cases] == [case.case_digest for case in replay]
 
 
 def test_non_counterbalanced_design_is_explicit() -> None:
     cases = _design(counterbalance=False).cases()
-    assert all(
-        case.order is PairedExecutionOrder.CHAMPION_FIRST for case in cases
-    )
+    assert all(case.order is PairedExecutionOrder.CHAMPION_FIRST for case in cases)
 
 
 def test_identical_capability_pair_is_refused() -> None:

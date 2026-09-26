@@ -14,9 +14,10 @@ from math import isfinite
 from typing import Literal, Self
 
 from blake3 import blake3
+from pydantic import Field, model_validator
+
 from gymact.evidence import digest
 from gymact.models import FrozenModel
-from pydantic import Field, model_validator
 
 _CONTENT_DIGEST = r"^(?:sha256|blake3):[0-9a-f]{64}$"
 
