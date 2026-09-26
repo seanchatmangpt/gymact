@@ -116,6 +116,8 @@ class TemperamentDesignPlan(FrozenModel):
             and self.mode is DesignMode.ONLINE_PLANNER_OUTPUT
         ):
             raise ValueError("REFUSED:DECENTRALIZED_SWARM_REQUIRES_ANTICIPATORY_DESIGN")
+        for target in self.targets:
+            ConditionAxis(axis_id=target.axis_id)
         target_set = set(target_ids)
         unknown_reaction_axes = {
             axis for axis, _ in (self.reaction_norm.slopes if self.reaction_norm else ())
@@ -225,10 +227,10 @@ def manufacture_population(
         )
 
     kind = (
-        PopulationKind.HOMOGENEOUS
-        if member_count == 1 or all(target.spread == 0.0 for target in plan.targets)
-        else PopulationKind.ADAPTIVE
+        PopulationKind.ADAPTIVE
         if plan.reaction_norm is not None
+        else PopulationKind.HOMOGENEOUS
+        if member_count == 1 or all(target.spread == 0.0 for target in plan.targets)
         else PopulationKind.ENGINEERED
     )
     return PolicyPopulation(
