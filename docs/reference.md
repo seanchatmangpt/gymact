@@ -158,6 +158,17 @@ proven unreachable by court. Every transition emits a real OCEL 2.0 event
 `verification`, `receipt.emit`, `refuse`, `typed.block`). All execution in the
 accompanying court is simulated in-process; nothing here actuates production.
 
+Actuation accounting is kernel-owned: each witnessed actuation (an effect
+returned by `execute`, or a journal fragment recovered after a post-actuation
+crash) appends one ledger entry and one `actuation` event, and
+`LoopResult.actuation_count` is the ledger length on every terminal, never a
+provider-reported number. A replan that re-executes is receipted as a second
+actuation (`commands`/`consequences` list every entry; `ext["aloup.actuations"]`
+marks each `superseded` or `admitted`). A post-actuation SHA equal to the claim
+pin or to the effect's declared `subject_after_sha` is the actuation's own
+consequence; any other SHA is an external move, on the live and the
+journal-reconstruction path alike.
+
 ::: gymact.execution_loop.AuthorityGrant
 
 ::: gymact.execution_loop.AutonomousLoop

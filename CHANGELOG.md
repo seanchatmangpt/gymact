@@ -6,6 +6,7 @@
 - `gymact.execution_loop` module (`42f8191`): ExecutionRequest/ExecutionProvider/ExecutionReceipt autonomous loop kernel, exactly-five `LegalOutcome` with `WaitForHumanToNotice` provably unreachable as `IllegalOutcome`, and the OCEL 2.0 loop event vocabulary; lane-7 fault-scenario corpus (31 scenarios) under `tests/explore_execution_loop/` with anti-vacuity and illegal-outcome courts (`1b92cce`).
 
 ### Fixed
+- `gymact.execution_loop` actuation accounting (PR #148 repair): `actuation_count` is derived from a kernel-owned actuation ledger instead of the provider's effect report; every witnessed actuation emits the `actuation` OCEL event and is listed in the receipt's `commands`/`consequences` (replans no longer hide a first actuation); an actuation's own declared commit (`subject_after_sha`) is no longer mistaken for a moving subject; the journal-reconstruction path runs the same moving-subject check; the receipt's `subject_after` is the kernel-observed SHA; blank work orders, blank capabilities and empty capability lists are refused at construction. New court `tests/explore_execution_loop/test_actuation_ledger.py` and a corpus-wide actuation-conservation test.
 - `gymact.__version__` synced 26.9.22 → 26.9.24 in `src/gymact/__init__.py` (`eeb0c2b`), matching `pyproject.toml`.
 
 ## 26.9.24 - 2026-09-24

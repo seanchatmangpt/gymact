@@ -32,6 +32,22 @@ Every loop transition appends a real OCEL 2.0 event (``execution.start``,
 episode's object vocabulary (subject, originAuthority, provider, worker,
 receipt). ``loop_log(result)`` assembles the validated log.
 
+Actuation accounting is kernel-owned: every witnessed actuation (an effect
+returned by ``provider.execute``, or a durable journal fragment recovered after
+a post-actuation crash) appends one entry to the run's actuation ledger and one
+``actuation`` OCEL event. ``LoopResult.actuation_count`` is the ledger length
+on EVERY terminal (success, typed block, refusal), and the success receipt
+lists every ledger entry in ``commands``/``consequences`` with its disposition
+(``superseded`` by a replan, or ``admitted``) in ``ext["aloup.actuations"]``.
+A replan that re-executes is therefore visible as a second actuation, never
+hidden behind a count of one.
+
+Moving-subject attribution: after an actuation the observed subject SHA is
+the actuation's own consequence when it equals the claim pin (no change) or
+the effect's declared ``subject_after_sha`` (the actuation's own commit); any
+other SHA is an external move and triggers a bounded replan. The same check
+runs on the journal-reconstruction path.
+
 All execution in the accompanying court is simulated-in-process (fakes
 implementing :class:`ExecutionProvider`); nothing here actuates production.
 """
@@ -160,7 +176,9 @@ class WorkerCrashed(TransportFault):
 # --------------------------------------------------------------------------- #
 
 
-NonEmptyStr = Annotated[str, Field(min_length=1)]
+# At least one non-whitespace character: a blank or whitespace-only work
+# order / capability / repo carries no identity and is refused at construction.
+NonEmptyStr = Annotated[str, Field(min_length=1, pattern=r"\S")]
 # Lowercase hex, 7..64 chars: abbreviated or full git SHA-1/SHA-256 and the
 # 64-hex BLAKE3 content digests used for simulated worlds. Anything else is a
 # malformed subject identity and is refused at construction (R_missing_identity).
@@ -202,7 +220,7 @@ class ResourceConstraints(FrozenModel):
 
 class ExecutionRequest(FrozenModel):
     work_order: NonEmptyStr
-    capability_requirements: list[NonEmptyStr]
+    capability_requirements: Annotated[list[NonEmptyStr], Field(min_length=1)]
     subject: SubjectRef
     authority: AuthorityGrant
     evidence_requirements: list[str]
@@ -337,7 +355,10 @@ class LoopResult(FrozenModel):
     receipt: ExecutionReceipt | None = None
     typed_reason: str | None = None
     broken_term: BrokenTerm | None = None
+    # Derived by the kernel from its own actuation ledger (one entry per
+    # witnessed provider.execute effect), never copied from a provider report.
     actuation_count: int = 0
+    actuations: list[dict[str, Any]] = Field(default_factory=list)
     events: list[OcelEvent] = Field(default_factory=list)
 
     @property
@@ -451,6 +472,8 @@ class AutonomousLoop:
         # idempotency key -> (digest of the request that completed, receipt)
         self._completed: dict[str, tuple[str, ExecutionReceipt]] = {}
         self.events: list[OcelEvent] = []
+        # per-run actuation ledger (reset at the top of run())
+        self._actuations: list[dict[str, Any]] = []
 
     # -- event plumbing ----------------------------------------------------- #
 
@@ -506,7 +529,8 @@ class AutonomousLoop:
                 episode_standing=EpisodeStanding.BLOCKED_AUTHORITY,
                 typed_reason="REFUSED_NO_AUTHORITY",
                 broken_term=BrokenTerm.R_MISSING_AUTHORITY,
-                actuation_count=0,
+                actuation_count=len(self._actuations),
+                actuations=list(self._actuations),
                 events=list(self.events),
             )
         return self._expiry_gate(request)
@@ -530,7 +554,8 @@ class AutonomousLoop:
                 episode_standing=EpisodeStanding.BLOCKED_AUTHORITY,
                 typed_reason="REFUSED_CREDENTIAL_EXPIRED",
                 broken_term=BrokenTerm.R_MISSING_AUTHORITY,
-                actuation_count=0,
+                actuation_count=len(self._actuations),
+                actuations=list(self._actuations),
                 events=list(self.events),
             )
         return None
@@ -555,7 +580,8 @@ class AutonomousLoop:
             episode_standing=EpisodeStanding.FAILED,
             typed_reason="REFUSED_IMPOSSIBLE_OBJECTIVE",
             broken_term=BrokenTerm.IMPOSSIBLE_OBJECTIVE,
-            actuation_count=0,
+            actuation_count=len(self._actuations),
+            actuations=list(self._actuations),
             events=list(self.events),
         )
 
@@ -586,7 +612,8 @@ class AutonomousLoop:
             episode_standing=EpisodeStanding.BLOCKED_INFORMATION,
             typed_reason=reason,
             broken_term=broken,
-            actuation_count=0,
+            actuation_count=len(self._actuations),
+            actuations=list(self._actuations),
             events=list(self.events),
         )
 
@@ -615,7 +642,8 @@ class AutonomousLoop:
                 episode_standing=EpisodeStanding.FAILED,
                 typed_reason="REFUSED_IDEMPOTENCY_KEY_CONFLICT",
                 broken_term=BrokenTerm.MU_ON_O,
-                actuation_count=0,
+                actuation_count=len(self._actuations),
+                actuations=list(self._actuations),
                 events=list(self.events),
             )
         self._emit(
@@ -633,7 +661,8 @@ class AutonomousLoop:
             receipt=existing,
             typed_reason=None,
             broken_term=None,
-            actuation_count=0,  # a duplicate performs NO additional actuation
+            actuation_count=len(self._actuations),  # a duplicate performs NO actuation
+            actuations=list(self._actuations),
             events=list(self.events),
         )
 
@@ -641,6 +670,7 @@ class AutonomousLoop:
 
     def run(self, request: ExecutionRequest) -> LoopResult:
         self.events = []
+        self._actuations = []
         for gate in (
             self._authority_gate,
             self._feasibility_gate,
@@ -751,6 +781,32 @@ class AutonomousLoop:
                             "TYPED_BLOCK_RECEIPT_LOST",
                             BrokenTerm.R_MISSING_CONSEQUENCE,
                         )
+                    self._record_actuation(
+                        request, provider, pin, fragment, witness="provider journal"
+                    )
+                    # same moving-subject law as the live path: the journal
+                    # fragment is admitted only against the subject it claims.
+                    journal_sha = provider.current_subject_sha(request.subject.repo)
+                    if not self._subject_attributable(journal_sha, pin, fragment):
+                        moves += 1
+                        if moves > limits.max_subject_moves:
+                            return self._typed_block(
+                                request, "TYPED_BLOCK_MOVING_SUBJECT", BrokenTerm.SUBJECT_UNSTABLE
+                            )
+                        self._emit(
+                            "reconcile.replan",
+                            request,
+                            reason=(
+                                f"subject moved after journaled actuation "
+                                f"{pin.pinned_subject_sha[:12]}->{journal_sha[:12]}"
+                            ),
+                            outcome=LegalOutcome.REPLAN.value,
+                            provider=provider.transport,
+                        )
+                        current_subject = self._resolve_fresh(request)
+                        if isinstance(current_subject, LoopResult):
+                            return current_subject
+                        continue
                     unverified = self._verify_effect(request, provider, fragment)
                     if unverified is not None:
                         return unverified
@@ -762,6 +818,7 @@ class AutonomousLoop:
                         subject_before,
                         fragment,
                         outcome=LegalOutcome.RECOVER.value,
+                        observed_after_sha=journal_sha,
                     )
                     self._completed[request.idempotency_key] = (
                         _request_digest(request),
@@ -780,7 +837,8 @@ class AutonomousLoop:
                         standing=Standing.ALIVE,
                         episode_standing=EpisodeStanding.AUTONOMOUS,
                         receipt=receipt,
-                        actuation_count=1,  # exactly once, despite the crash
+                        actuation_count=len(self._actuations),
+                        actuations=list(self._actuations),
                         events=list(self.events),
                     )
                 # crash BEFORE actuation: safe to retry in place.
@@ -833,9 +891,12 @@ class AutonomousLoop:
                 self._advance(fault.retry_after_ticks)
                 continue
 
-            # moving-subject check: subject must not have moved under us.
+            self._record_actuation(request, provider, pin, effect, witness="execute")
+
+            # moving-subject check: subject must not have moved under us. The
+            # actuation's own declared commit is its consequence, not a move.
             observed_sha = provider.current_subject_sha(request.subject.repo)
-            if observed_sha != pin.pinned_subject_sha:
+            if not self._subject_attributable(observed_sha, pin, effect):
                 moves += 1
                 if moves > limits.max_subject_moves:
                     return self._typed_block(
@@ -922,6 +983,7 @@ class AutonomousLoop:
                 subject_before,
                 effect,
                 outcome=LegalOutcome.RECOVER.value,
+                observed_after_sha=post_sha,
             )
             try:
                 provider.ack(receipt)
@@ -958,11 +1020,56 @@ class AutonomousLoop:
                 standing=Standing.ALIVE,
                 episode_standing=EpisodeStanding.AUTONOMOUS,
                 receipt=receipt,
-                actuation_count=int(effect.get("actuation_count", 1)),
+                actuation_count=len(self._actuations),
+                actuations=list(self._actuations),
                 events=list(self.events),
             )
 
     # -- helpers ------------------------------------------------------------- #
+
+    def _record_actuation(
+        self,
+        request: ExecutionRequest,
+        provider: ExecutionProvider,
+        pin: ClaimPin,
+        effect: dict[str, Any],
+        *,
+        witness: str,
+    ) -> None:
+        """Append one witnessed actuation to the kernel-owned ledger and emit
+        the ``actuation`` OCEL event. Earlier entries are superseded when a
+        later actuation is admitted."""
+        entry = {
+            "sequence": len(self._actuations) + 1,
+            "provider": provider.transport,
+            "provider_execution_id": pin.provider_execution_id,
+            "pinned_subject_sha": pin.pinned_subject_sha,
+            "declared_subject_after_sha": str(effect.get("subject_after_sha", "")),
+            "effect_digest": str(effect.get("effect_digest", "")),
+            "consequence": dict(effect.get("consequence", {})),
+            "witness": witness,
+        }
+        self._actuations.append(entry)
+        self._emit(
+            "actuation",
+            request,
+            reason=f"actuation {entry['sequence']} witnessed via {witness}",
+            provider=provider.transport,
+            extra={
+                "provider_execution_id": pin.provider_execution_id,
+                "sequence": entry["sequence"],
+            },
+        )
+
+    @staticmethod
+    def _subject_attributable(observed_sha: str, pin: ClaimPin, effect: dict[str, Any]) -> bool:
+        """The observed post-actuation SHA is the actuation's own consequence
+        iff it equals the claim pin (no change) or the effect's declared
+        ``subject_after_sha`` (the actuation's own commit)."""
+        declared = effect.get("subject_after_sha")
+        return observed_sha == pin.pinned_subject_sha or (
+            declared is not None and observed_sha == str(declared)
+        )
 
     def _verify_effect(
         self,
@@ -1072,7 +1179,8 @@ class AutonomousLoop:
             episode_standing=EpisodeStanding.BLOCKED_INFORMATION,
             typed_reason=reason,
             broken_term=broken,
-            actuation_count=0,
+            actuation_count=len(self._actuations),
+            actuations=list(self._actuations),
             events=list(self.events),
         )
 
@@ -1085,15 +1193,29 @@ class AutonomousLoop:
         effect: dict[str, Any],
         *,
         outcome: str,
+        observed_after_sha: str,
     ) -> ExecutionReceipt:
-        subject_after = SubjectRef(
-            repo=request.subject.repo,
-            sha=str(effect.get("subject_after_sha", subject_before.sha)),
-        )
+        # subject_after is the kernel-OBSERVED SHA (witnessed), not the
+        # provider's declaration; the declaration stays in the ledger entry.
+        subject_after = SubjectRef(repo=request.subject.repo, sha=observed_after_sha)
+        ledger = [
+            {
+                **entry,
+                "disposition": (
+                    "admitted"
+                    if entry["provider_execution_id"] == pin.provider_execution_id
+                    and index == len(self._actuations) - 1
+                    else "superseded"
+                ),
+            }
+            for index, entry in enumerate(self._actuations)
+        ]
         ext: dict[str, Any] = {
             "aloup.outcome": outcome,
             "aloup.execution_class": "simulated-in-process",
             "aloup.ocel_digest": digest([event.model_dump() for event in self.events]),
+            "aloup.actuation_count": len(ledger),
+            "aloup.actuations": ledger,
         }
         return ExecutionReceipt(
             work_order_id=request.work_order,
@@ -1108,8 +1230,12 @@ class AutonomousLoop:
             exit_status="success" if outcome == LegalOutcome.RECOVER.value else outcome,
             subject_before=dict(subject_before.model_dump()),
             subject_after=dict(subject_after.model_dump()),
-            commands=[f"execute({request.work_order}) via {provider.transport}"],
-            consequences=[dict(effect.get("consequence", {}))],
+            commands=[
+                f"execute({request.work_order}) via {entry['provider']} "
+                f"as {entry['provider_execution_id']} [{entry['disposition']}]"
+                for entry in ledger
+            ],
+            consequences=[dict(entry["consequence"]) for entry in ledger],
             evidence=[
                 {
                     "kind": "verifier",
