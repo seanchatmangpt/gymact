@@ -210,10 +210,62 @@ def manufacture_survival_campaign(spec: SurvivalCampaignSpec) -> SurvivalCampaig
     )
 
 
+
+
+class SurvivalCampaignReplay(FrozenModel):
+    expected_campaign_digest: str = Field(min_length=64, max_length=64)
+    replay_campaign_digest: str = Field(min_length=64, max_length=64)
+    matched: bool
+    mismatches: tuple[str, ...]
+    authority: Literal["none"] = "none"
+    actuation_performed: Literal[False] = False
+
+
+def replay_survival_campaign(
+    spec: SurvivalCampaignSpec,
+    expected: SurvivalCampaign,
+) -> SurvivalCampaignReplay:
+    """Re-manufacture a campaign and compare exact variant identities/content."""
+
+    replay = manufacture_survival_campaign(spec)
+    mismatches: list[str] = []
+    if expected.campaign_id != spec.campaign_id:
+        mismatches.append("CAMPAIGN_ID_MISMATCH")
+    if expected.spec_digest != spec.spec_digest:
+        mismatches.append("CAMPAIGN_SPEC_DIGEST_MISMATCH")
+    if len(expected.cases) != len(replay.cases):
+        mismatches.append("CAMPAIGN_CASE_COUNT_MISMATCH")
+
+    expected_by_id = {case.campaign_case_id: case for case in expected.cases}
+    replay_by_id = {case.campaign_case_id: case for case in replay.cases}
+    if len(expected_by_id) != len(expected.cases):
+        mismatches.append("EXPECTED_CAMPAIGN_CASE_ID_DUPLICATE")
+    if len(replay_by_id) != len(replay.cases):
+        mismatches.append("REPLAY_CAMPAIGN_CASE_ID_DUPLICATE")
+
+    missing = sorted(set(expected_by_id) - set(replay_by_id))
+    extra = sorted(set(replay_by_id) - set(expected_by_id))
+    mismatches.extend(f"CAMPAIGN_CASE_MISSING:{case_id}" for case_id in missing)
+    mismatches.extend(f"CAMPAIGN_CASE_EXTRA:{case_id}" for case_id in extra)
+
+    for case_id in sorted(set(expected_by_id) & set(replay_by_id)):
+        if expected_by_id[case_id] != replay_by_id[case_id]:
+            mismatches.append(f"CAMPAIGN_CASE_DRIFT:{case_id}")
+
+    return SurvivalCampaignReplay(
+        expected_campaign_digest=expected.campaign_digest,
+        replay_campaign_digest=replay.campaign_digest,
+        matched=not mismatches,
+        mismatches=tuple(mismatches),
+    )
+
+
 __all__ = [
     "SurvivalCampaign",
     "SurvivalCampaignCase",
     "SurvivalCampaignSpec",
+    "SurvivalCampaignReplay",
     "SurvivalTraceTemplate",
     "manufacture_survival_campaign",
+    "replay_survival_campaign",
 ]
