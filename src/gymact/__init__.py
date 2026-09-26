@@ -178,6 +178,13 @@ from gymact.oracle import (
     differential_verify,
     observe_oracle,
 )
+from gymact.policy_ecology_rdf import (
+    PolicyEcologyRDFValidation,
+    policy_population_to_rdf,
+    population_digest,
+    rdf_to_policy_population,
+    validate_policy_ecology_rdf,
+)
 from gymact.policy_ecology import (
     DEFAULT_TEMPERAMENT_AXES,
     TEMPERAMENT_ENGINEERING_PROVENANCE,
@@ -290,6 +297,11 @@ __all__ = [
     "design_axes",
     "evaluate_design",
     "manufacture_population",
+    "PolicyEcologyRDFValidation",
+    "policy_population_to_rdf",
+    "population_digest",
+    "rdf_to_policy_population",
+    "validate_policy_ecology_rdf",
     "ActionDefinition",
     "ActionProjection",
     "ActuationIntent",
