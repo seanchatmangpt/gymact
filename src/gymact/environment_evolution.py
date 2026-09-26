@@ -101,6 +101,7 @@ class EvolutionSeed(FrozenModel):
     last_event_sequence: int = Field(ge=-1)
     min_evidence_chain_length: int = Field(ge=1, default=1)
     source_candidate_digest: str | None = Field(default=None, pattern=_CONTENT_DIGEST)
+    lineage_digest: str | None = Field(default=None, pattern=_CONTENT_DIGEST)
 
     @model_validator(mode="after")
     def bind_task_bytes(self) -> Self:
@@ -126,6 +127,11 @@ class EvolutionCandidate(FrozenModel):
     task_request_digest: str = Field(pattern=_CONTENT_DIGEST)
     direction: str = Field(min_length=1)
     generator_ref: str = Field(min_length=1)
+    generator_digest: str = Field(pattern=_CONTENT_DIGEST)
+    parent_candidate_digest: str | None = Field(default=None, pattern=_CONTENT_DIGEST)
+    parent_lineage_digest: str | None = Field(default=None, pattern=_CONTENT_DIGEST)
+    mutation_operator_digest: str = Field(pattern=_CONTENT_DIGEST)
+    mutation_seed: int = Field(ge=0)
     ecosystem: EvolutionEcosystemBinding
     new_environment_digest: str = Field(pattern=_CONTENT_DIGEST)
     reference_outcome_digest: str = Field(pattern=_CONTENT_DIGEST)
@@ -146,9 +152,30 @@ class EvolutionCandidate(FrozenModel):
                 or feedback_digest.startswith("blake3:")
             ):
                 raise ValueError("EVOLUTION_FAILURE_FEEDBACK_DIGEST_INVALID")
-            if len(feedback_digest.split(":", 1)[1]) != 64:
+            payload = feedback_digest.split(":", 1)[1]
+            if len(payload) != 64 or any(
+                ch not in "0123456789abcdef" for ch in payload.lower()
+            ):
                 raise ValueError("EVOLUTION_FAILURE_FEEDBACK_DIGEST_INVALID")
+        if len(self.failure_feedback_digests) != len(set(self.failure_feedback_digests)):
+            raise ValueError("EVOLUTION_FAILURE_FEEDBACK_DUPLICATE")
         return self
+
+    @property
+    def mutation_lineage_digest(self) -> str:
+        return "blake3:" + digest(
+            {
+                "generation": self.generation,
+                "parent_environment_digest": self.parent_environment_digest,
+                "parent_history_digest": self.parent_history_digest,
+                "parent_candidate_digest": self.parent_candidate_digest,
+                "parent_lineage_digest": self.parent_lineage_digest,
+                "generator_digest": self.generator_digest,
+                "mutation_operator_digest": self.mutation_operator_digest,
+                "mutation_seed": self.mutation_seed,
+                "failure_feedback_digests": sorted(self.failure_feedback_digests),
+            }
+        )
 
     @property
     def candidate_digest(self) -> str:
@@ -168,10 +195,16 @@ class EvolutionValidation(FrozenModel):
     """Independent observations over a materialized candidate environment."""
 
     observer_ref: str = Field(min_length=1)
+    observer_producer_digest: str = Field(pattern=_CONTENT_DIGEST)
     evidence_digest: str = Field(pattern=_CONTENT_DIGEST)
+    observed_seed_digest: str = Field(pattern=_CONTENT_DIGEST)
+    observed_candidate_digest: str = Field(pattern=_CONTENT_DIGEST)
     observed_parent_environment_digest: str = Field(pattern=_CONTENT_DIGEST)
     observed_task_request_digest: str = Field(pattern=_CONTENT_DIGEST)
     observed_environment_digest: str = Field(pattern=_CONTENT_DIGEST)
+    observed_history_digest: str = Field(pattern=_CONTENT_DIGEST)
+    evaluator_digest: str = Field(pattern=_CONTENT_DIGEST)
+    recurring_failure_digests: tuple[str, ...] = ()
     structural_checks_passed: bool
     history_checks_passed: bool
     material_placement_checks_passed: bool
@@ -187,10 +220,28 @@ class EvolutionAdmission(FrozenModel):
 
     seed_digest: str = Field(pattern=_CONTENT_DIGEST)
     candidate_digest: str = Field(pattern=_CONTENT_DIGEST)
+    lineage_digest: str = Field(pattern=_CONTENT_DIGEST)
     validation_evidence_digest: str = Field(pattern=_CONTENT_DIGEST)
     admitted: bool
     standing: Standing
     reasons: tuple[str, ...]
+    authority: Literal["none"] = "none"
+
+    @property
+    def admission_digest(self) -> str:
+        return "blake3:" + digest(self.model_dump(mode="json"))
+
+
+class EvolutionReplayReceipt(FrozenModel):
+    """Deterministic replay identity for one admitted evolution transition."""
+
+    previous_seed_digest: str = Field(pattern=_CONTENT_DIGEST)
+    candidate_digest: str = Field(pattern=_CONTENT_DIGEST)
+    lineage_digest: str = Field(pattern=_CONTENT_DIGEST)
+    validation_evidence_digest: str = Field(pattern=_CONTENT_DIGEST)
+    admission_digest: str = Field(pattern=_CONTENT_DIGEST)
+    next_seed_digest: str = Field(pattern=_CONTENT_DIGEST)
+    deterministic_replay: Literal[True] = True
     authority: Literal["none"] = "none"
 
 
@@ -201,6 +252,7 @@ class EvolutionTransition(FrozenModel):
     previous_seed_digest: str = Field(pattern=_CONTENT_DIGEST)
     candidate_digest: str = Field(pattern=_CONTENT_DIGEST)
     next_seed: EvolutionSeed
+    replay_receipt: EvolutionReplayReceipt
     authority: Literal["none"] = "none"
 
 
@@ -221,6 +273,10 @@ class EnvironmentEvolutionCourt:
             reasons.append("PARENT_ENVIRONMENT_MISMATCH")
         if candidate.parent_history_digest != seed.history_digest:
             reasons.append("PARENT_HISTORY_MISMATCH")
+        if candidate.parent_candidate_digest != seed.source_candidate_digest:
+            reasons.append("PARENT_CANDIDATE_MISMATCH")
+        if candidate.parent_lineage_digest != seed.lineage_digest:
+            reasons.append("PARENT_LINEAGE_MISMATCH")
         if candidate.task_request != seed.task_request:
             reasons.append("TASK_REQUEST_CHANGED")
         if candidate.task_request_digest != seed.task_request_digest:
@@ -234,6 +290,8 @@ class EnvironmentEvolutionCourt:
 
         if len(candidate.decision_points) < 3:
             reasons.append("INSUFFICIENT_DECISION_POINTS")
+        if len({point.kind for point in candidate.decision_points}) < 3:
+            reasons.append("INSUFFICIENT_DECISION_KIND_DIVERSITY")
         decision_ids = [point.decision_id for point in candidate.decision_points]
         if len(decision_ids) != len(set(decision_ids)):
             reasons.append("DUPLICATE_DECISION_POINT_ID")
@@ -268,12 +326,24 @@ class EnvironmentEvolutionCourt:
                 reasons.append(f"CAUSAL_DEPENDENCY_MISSING:{event.event_id}")
             available_events.add(event.event_id)
 
+        if validation.observer_producer_digest == candidate.generator_digest:
+            reasons.append("VALIDATOR_NOT_INDEPENDENT_FROM_GENERATOR")
+        if validation.observed_seed_digest != seed.seed_digest:
+            reasons.append("OBSERVED_SEED_MISMATCH")
+        if validation.observed_candidate_digest != candidate.candidate_digest:
+            reasons.append("OBSERVED_CANDIDATE_MISMATCH")
         if validation.observed_parent_environment_digest != seed.environment_digest:
             reasons.append("OBSERVED_PARENT_ENVIRONMENT_MISMATCH")
         if validation.observed_task_request_digest != seed.task_request_digest:
             reasons.append("OBSERVED_TASK_REQUEST_MISMATCH")
         if validation.observed_environment_digest != candidate.new_environment_digest:
             reasons.append("OBSERVED_ENVIRONMENT_MISMATCH")
+        if validation.observed_history_digest != candidate.event_history_digest:
+            reasons.append("OBSERVED_HISTORY_MISMATCH")
+        if validation.evaluator_digest != candidate.evaluator_digest:
+            reasons.append("EVALUATOR_IDENTITY_MISMATCH")
+        for failure_digest in validation.recurring_failure_digests:
+            reasons.append(f"FAILURE_RECURRED:{failure_digest}")
         if not validation.structural_checks_passed:
             reasons.append("STRUCTURAL_VALIDATION_FAILED")
         if not validation.history_checks_passed:
@@ -295,6 +365,7 @@ class EnvironmentEvolutionCourt:
         return EvolutionAdmission(
             seed_digest=seed.seed_digest,
             candidate_digest=candidate.candidate_digest,
+            lineage_digest=candidate.mutation_lineage_digest,
             validation_evidence_digest=validation.evidence_digest,
             admitted=admitted,
             standing=Standing.STRUCTURAL if admitted else Standing.REFUSED,
@@ -336,10 +407,20 @@ class EnvironmentEvolutionCourt:
             last_event_sequence=candidate.events[-1].sequence,
             min_evidence_chain_length=max(seed.min_evidence_chain_length, chain_floor),
             source_candidate_digest=candidate.candidate_digest,
+            lineage_digest=candidate.mutation_lineage_digest,
+        )
+        replay_receipt = EvolutionReplayReceipt(
+            previous_seed_digest=seed.seed_digest,
+            candidate_digest=candidate.candidate_digest,
+            lineage_digest=candidate.mutation_lineage_digest,
+            validation_evidence_digest=validation.evidence_digest,
+            admission_digest=admission.admission_digest,
+            next_seed_digest=next_seed.seed_digest,
         )
         return EvolutionTransition(
             admission=admission,
             previous_seed_digest=seed.seed_digest,
             candidate_digest=candidate.candidate_digest,
             next_seed=next_seed,
+            replay_receipt=replay_receipt,
         )
