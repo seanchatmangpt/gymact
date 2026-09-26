@@ -37,7 +37,7 @@ EXPECTED_PROFILE = {
     "healthy": {
         "outcome": "Recover",
         "standing": "ALIVE",
-        "events": 4,
+        "events": 5,  # includes the kernel-emitted actuation event
         "claims": 1,
         "actuations": 1,
         "result_actuation_count": 1,
@@ -46,7 +46,7 @@ EXPECTED_PROFILE = {
     "substitute": {
         "outcome": "Recover",
         "standing": "ALIVE",
-        "events": 12,
+        "events": 13,  # includes the kernel-emitted actuation event
         "claims": 5,
         "actuations": 1,
         "result_actuation_count": 1,
@@ -55,7 +55,7 @@ EXPECTED_PROFILE = {
     "crash_journal": {
         "outcome": "Recover",
         "standing": "ALIVE",
-        "events": 6,  # includes the journal-fragment verification event
+        "events": 7,  # journal-fragment verification + journal-witnessed actuation
         "claims": 1,
         "actuations": 1,
         "result_actuation_count": 1,

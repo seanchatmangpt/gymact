@@ -735,6 +735,7 @@ class StageWorldProvider:
         self.execute_calls = 0
         self.stage_executions = 0
         self.journal: dict[str, dict[str, Any]] = {}
+        self.believed_sha = digest({"hidden": "clean"})
 
     def _sha(self) -> str:
         return digest({"hidden": self.hidden_state})
@@ -747,9 +748,10 @@ class StageWorldProvider:
 
     def claim(self, request: ExecutionRequest) -> ClaimPin:
         self.claim_calls += 1
+        self.believed_sha = self._sha()
         return ClaimPin(
             provider_execution_id=f"lifegym-sim/{request.work_order}/{self.claim_calls}",
-            pinned_subject_sha=self._sha(),
+            pinned_subject_sha=self.believed_sha,
         )
 
     def execute(self, request: ExecutionRequest, provider_execution_id: str) -> dict[str, Any]:
@@ -761,7 +763,10 @@ class StageWorldProvider:
                 self.hidden_state = "silently-mutated"  # no event, no notice
         fragment = {
             "effect_digest": digest({"stage": self.stage, "hidden": self.hidden_state}),
-            "subject_after_sha": self._sha(),
+            # the mutation is SILENT: the provider's own declaration is the
+            # subject it believes it worked on (stage work is not a subject
+            # move), so only the kernel's observation can catch it.
+            "subject_after_sha": self.believed_sha,
             "actuation_count": 1,
             "consequence": {"stages_completed": self.stage, "world": "lifegym-sim"},
         }
@@ -901,6 +906,20 @@ class Court:
     assert_no_illegal_outcome = staticmethod(assert_no_illegal_outcome)
     event_types = staticmethod(event_types)
     results_digest = staticmethod(results_digest)
+    # real in-process collaborators, exposed for courts outside the corpus
+    ScriptedProvider = ScriptedProvider
+    VirtualClock = VirtualClock
+    FakeVerifier = FakeVerifier
+    FakeRegistry = FakeRegistry
+    FakeProbe = FakeProbe
+    make_loop = staticmethod(make_loop)
+    make_request = staticmethod(make_request)
+    make_authority = staticmethod(make_authority)
+    make_constraints = staticmethod(make_constraints)
+    ok_effect = staticmethod(ok_effect)
+    SHA_A = SHA_A
+    SHA_B = SHA_B
+    SHA_C = SHA_C
 
 
 @pytest.fixture(scope="session")
