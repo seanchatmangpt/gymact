@@ -178,6 +178,27 @@ from gymact.oracle import (
     differential_verify,
     observe_oracle,
 )
+from gymact.policy_ecology_rdf import (
+    PolicyEcologyRDFValidation,
+    policy_population_to_rdf,
+    population_digest,
+    rdf_to_policy_population,
+    validate_policy_ecology_rdf,
+)
+from gymact.policy_ecology import (
+    DEFAULT_TEMPERAMENT_AXES,
+    TEMPERAMENT_ENGINEERING_PROVENANCE,
+    ConditionAxis,
+    PolicyPhenotype,
+    PolicyPopulation,
+    PopulationDiversity,
+    PopulationKind,
+    ReactionNorm,
+    StrategicCondition,
+    WeightedPhenotype,
+    condition_population,
+    population_diversity,
+)
 from gymact.physical import (
     ControllerMode,
     EdgeControllerArtifact,
@@ -223,6 +244,23 @@ from gymact.runtime import BoundaryBlocked, GymAct, ProductionGymAct
 from gymact.scoring import BinaryVerificationScorer, Scorer, score_verification
 from gymact.semantic import ProfileAuthority, SemanticValidation
 from gymact.sqlite_ledger import SQLiteReceiptLedger
+from gymact.temperament_engineering import (
+    AxisFit,
+    AxisRelevance,
+    AxisTarget,
+    ControlTopology,
+    DesignEvaluation,
+    DesignMode,
+    DistributionShape,
+    MissionCriterion,
+    PlatformTrait,
+    TemperamentDesignPlan,
+    apply_platform_heterogeneity,
+    axis_relevance,
+    design_axes,
+    evaluate_design,
+    manufacture_population,
+)
 from gymact.transport import (
     CandidateIntentEnvelope,
     TransportKind,
@@ -232,6 +270,38 @@ from gymact.transport import (
 from gymact.verification import DictSubsetVerifier, PostconditionVerifier
 
 __all__ = [
+    "DEFAULT_TEMPERAMENT_AXES",
+    "ConditionAxis",
+    "PolicyPhenotype",
+    "PolicyPopulation",
+    "PopulationDiversity",
+    "PopulationKind",
+    "ReactionNorm",
+    "TEMPERAMENT_ENGINEERING_PROVENANCE",
+    "StrategicCondition",
+    "WeightedPhenotype",
+    "condition_population",
+    "population_diversity",
+    "AxisFit",
+    "AxisRelevance",
+    "AxisTarget",
+    "ControlTopology",
+    "DesignEvaluation",
+    "DesignMode",
+    "DistributionShape",
+    "MissionCriterion",
+    "PlatformTrait",
+    "TemperamentDesignPlan",
+    "apply_platform_heterogeneity",
+    "axis_relevance",
+    "design_axes",
+    "evaluate_design",
+    "manufacture_population",
+    "PolicyEcologyRDFValidation",
+    "policy_population_to_rdf",
+    "population_digest",
+    "rdf_to_policy_population",
+    "validate_policy_ecology_rdf",
     "ActionDefinition",
     "ActionProjection",
     "ActuationIntent",
