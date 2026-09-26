@@ -42,7 +42,7 @@ import random
 from collections.abc import Callable, Iterable, Sequence
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from typing import Any, Protocol, runtime_checkable
+from typing import Annotated, Any, Protocol, runtime_checkable
 
 from pydantic import Field
 
@@ -160,9 +160,16 @@ class WorkerCrashed(TransportFault):
 # --------------------------------------------------------------------------- #
 
 
+NonEmptyStr = Annotated[str, Field(min_length=1)]
+# Lowercase hex, 7..64 chars: abbreviated or full git SHA-1/SHA-256 and the
+# 64-hex BLAKE3 content digests used for simulated worlds. Anything else is a
+# malformed subject identity and is refused at construction (R_missing_identity).
+SubjectSha = Annotated[str, Field(pattern=r"^[0-9a-f]{7,64}$")]
+
+
 class SubjectRef(FrozenModel):
-    repo: str
-    sha: str
+    repo: NonEmptyStr
+    sha: SubjectSha
 
 
 class ClaimPin(FrozenModel):
@@ -182,17 +189,20 @@ class AuthorityGrant(FrozenModel):
 
 
 class ResourceConstraints(FrozenModel):
-    deadline_ticks: int = 200
-    max_retries: int = 3
-    max_provider_switches: int = 2
-    max_subject_moves: int = 2
-    disk_budget_mb: int = 512
-    cpu_budget_cores: float = 2.0
+    """Budgets are non-negative; a zero budget is legal and typed-blocks,
+    a negative one is malformed input and is refused at construction."""
+
+    deadline_ticks: int = Field(default=200, ge=0)
+    max_retries: int = Field(default=3, ge=0)
+    max_provider_switches: int = Field(default=2, ge=0)
+    max_subject_moves: int = Field(default=2, ge=0)
+    disk_budget_mb: int = Field(default=512, ge=0)
+    cpu_budget_cores: float = Field(default=2.0, ge=0.0)
 
 
 class ExecutionRequest(FrozenModel):
-    work_order: str
-    capability_requirements: list[str]
+    work_order: NonEmptyStr
+    capability_requirements: list[NonEmptyStr]
     subject: SubjectRef
     authority: AuthorityGrant
     evidence_requirements: list[str]
@@ -339,6 +349,12 @@ class LoopResult(FrozenModel):
         return None
 
 
+def _request_digest(request: ExecutionRequest) -> str:
+    """Content identity of a request for idempotency: two deliveries dedupe
+    only when this digest is equal."""
+    return digest(request.model_dump(mode="json"))
+
+
 def loop_log(results: Iterable[LoopResult], *, seed: int = 0) -> dict[str, Any]:
     """Assemble real OCEL 2.0 logs from loop events, shaped exactly like
     ``gymact.ocel.receipts_to_ocel`` (validated against the vendored official
@@ -432,7 +448,8 @@ class AutonomousLoop:
         self._now = clock or (lambda: 0)
         self._advance = advance or (lambda ticks: None)
         self._rng = rng or random.Random(0)
-        self._completed: dict[str, ExecutionReceipt] = {}
+        # idempotency key -> (digest of the request that completed, receipt)
+        self._completed: dict[str, tuple[str, ExecutionReceipt]] = {}
         self.events: list[OcelEvent] = []
 
     # -- event plumbing ----------------------------------------------------- #
@@ -492,6 +509,12 @@ class AutonomousLoop:
                 actuation_count=0,
                 events=list(self.events),
             )
+        return self._expiry_gate(request)
+
+    def _expiry_gate(self, request: ExecutionRequest) -> LoopResult | None:
+        """Authority is re-checked at every actuation boundary, not only at
+        start: backoff advances the clock, and a grant that expires while the
+        loop waits must not authorize the actuation that follows."""
         expires = request.authority.expires_at_tick
         if expires is not None and expires <= self._now():
             self._emit(
@@ -570,9 +593,31 @@ class AutonomousLoop:
     # -- dedupe -------------------------------------------------------------- #
 
     def _dedupe_gate(self, request: ExecutionRequest) -> LoopResult | None:
-        existing = self._completed.get(request.idempotency_key)
-        if existing is None:
+        entry = self._completed.get(request.idempotency_key)
+        if entry is None:
             return None
+        completed_digest, existing = entry
+        if completed_digest != _request_digest(request):
+            # same idempotency key, different request content: answering with
+            # the other request's receipt would manufacture standing from an
+            # unadmitted input (mu_on_O). Refuse with zero actuation.
+            self._emit(
+                "refuse",
+                request,
+                reason="REFUSED_IDEMPOTENCY_KEY_CONFLICT",
+                outcome=LegalOutcome.REFUSE.value,
+                standing=Standing.REFUSED.value,
+                extra={"provider_execution_id": existing.provider_execution_id},
+            )
+            return LoopResult(
+                outcome=LegalOutcome.REFUSE.value,
+                standing=Standing.REFUSED,
+                episode_standing=EpisodeStanding.FAILED,
+                typed_reason="REFUSED_IDEMPOTENCY_KEY_CONFLICT",
+                broken_term=BrokenTerm.MU_ON_O,
+                actuation_count=0,
+                events=list(self.events),
+            )
         self._emit(
             "reconcile.retry",
             request,
@@ -629,6 +674,9 @@ class AutonomousLoop:
                 return self._typed_block(
                     request, "TYPED_BLOCK_BUDGET_EXHAUSTED", BrokenTerm.PROVIDER_UNAVAILABLE
                 )
+            expired = self._expiry_gate(request)
+            if expired is not None:
+                return expired
             attempts += 1
             provider = self._providers[provider_index]
             try:
@@ -675,6 +723,9 @@ class AutonomousLoop:
                 ),
                 provider=provider.transport,
             )
+            expired = self._expiry_gate(request)
+            if expired is not None:
+                return expired
             try:
                 effect = provider.execute(request, pin.provider_execution_id)
             except WorkerCrashed as crash:
@@ -700,6 +751,9 @@ class AutonomousLoop:
                             "TYPED_BLOCK_RECEIPT_LOST",
                             BrokenTerm.R_MISSING_CONSEQUENCE,
                         )
+                    unverified = self._verify_effect(request, provider, fragment)
+                    if unverified is not None:
+                        return unverified
                     self._advance(1)
                     receipt = self._build_receipt(
                         request,
@@ -709,7 +763,10 @@ class AutonomousLoop:
                         fragment,
                         outcome=LegalOutcome.RECOVER.value,
                     )
-                    self._completed[request.idempotency_key] = receipt
+                    self._completed[request.idempotency_key] = (
+                        _request_digest(request),
+                        receipt,
+                    )
                     self._emit(
                         "receipt.emit",
                         request,
@@ -797,6 +854,14 @@ class AutonomousLoop:
                     return current_subject
                 continue
 
+            # an effect without a digest carries no checkable consequence
+            if not effect.get("effect_digest"):
+                return self._typed_block(
+                    request,
+                    "TYPED_BLOCK_EFFECT_DIGEST_MISSING",
+                    BrokenTerm.R_MISSING_CONSEQUENCE,
+                )
+
             # verification
             verified, why = self._verifier.verify(
                 SubjectRef(repo=request.subject.repo, sha=observed_sha),
@@ -876,7 +941,10 @@ class AutonomousLoop:
                     outcome=LegalOutcome.RECOVER.value,
                     provider=provider.transport,
                 )
-            self._completed[request.idempotency_key] = receipt
+            self._completed[request.idempotency_key] = (
+                _request_digest(request),
+                receipt,
+            )
             self._emit(
                 "receipt.emit",
                 request,
@@ -895,6 +963,41 @@ class AutonomousLoop:
             )
 
     # -- helpers ------------------------------------------------------------- #
+
+    def _verify_effect(
+        self,
+        request: ExecutionRequest,
+        provider: ExecutionProvider,
+        effect: dict[str, Any],
+    ) -> LoopResult | None:
+        """Admission of a journal-reconstructed effect: it must carry a digest
+        and pass the same verifier as a live effect before any ALIVE receipt
+        is built from it. Returns a typed block, or None when admitted."""
+        effect_digest = effect.get("effect_digest")
+        if not effect_digest:
+            return self._typed_block(
+                request, "TYPED_BLOCK_EFFECT_DIGEST_MISSING", BrokenTerm.R_MISSING_CONSEQUENCE
+            )
+        observed_sha = provider.current_subject_sha(request.subject.repo)
+        verified, why = self._verifier.verify(
+            SubjectRef(repo=request.subject.repo, sha=observed_sha),
+            str(effect_digest),
+            request,
+        )
+        self._emit(
+            "verification",
+            request,
+            reason=f"journal fragment: {why}",
+            standing=Standing.ALIVE.value if verified else Standing.BLOCKED.value,
+            provider=provider.transport,
+        )
+        if not verified:
+            return self._typed_block(
+                request,
+                f"TYPED_BLOCK_VERIFICATION_FAILED {why}",
+                BrokenTerm.VERIFICATION_FAILED,
+            )
+        return None
 
     def _on_transport_fault(
         self,
