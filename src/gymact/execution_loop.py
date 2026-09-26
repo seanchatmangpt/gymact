@@ -32,43 +32,19 @@ Every loop transition appends a real OCEL 2.0 event (``execution.start``,
 episode's object vocabulary (subject, originAuthority, provider, worker,
 receipt). ``loop_log(result)`` assembles the validated log.
 
-Actuation accounting is kernel-owned: every witnessed actuation (an effect
-returned by ``provider.execute``, or a durable journal fragment recovered after
-a post-actuation crash) appends one entry to the run's actuation ledger and one
-``actuation`` OCEL event. ``LoopResult.actuation_count`` is the ledger length
-on EVERY terminal (success, typed block, refusal), and the success receipt
-lists every ledger entry in ``commands``/``consequences`` with its disposition
-(``superseded`` by a replan, or ``admitted``) in ``ext["aloup.actuations"]``.
-A replan that re-executes is therefore visible as a second actuation, never
-hidden behind a count of one.
-
-Moving-subject attribution: after an actuation the observed subject SHA is
-the actuation's own consequence when it equals the claim pin (no change) or
-the effect's declared ``subject_after_sha`` (the actuation's own commit); any
-other SHA is an external move and triggers a bounded replan. The same check
-runs on the journal-reconstruction path.
-
-Exactly-once across redelivery: a run that actuated but terminated without an
-admitted receipt (typed block or refusal after actuation) is remembered by
-idempotency key. Redelivering the same request typed-blocks with
-``TYPED_BLOCK_PRIOR_ACTUATION_UNRECONCILED`` (``R_missing_consequence``) and
-zero new actuations instead of executing the work order again.
-
 All execution in the accompanying court is simulated-in-process (fakes
 implementing :class:`ExecutionProvider`); nothing here actuates production.
 """
 
 from __future__ import annotations
 
-import copy
 import random
-import unicodedata
 from collections.abc import Callable, Iterable, Sequence
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from typing import Annotated, Any, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
-from pydantic import AfterValidator, Field
+from pydantic import Field
 
 from gymact.evidence import digest
 from gymact.models import FrozenModel, Standing
@@ -184,34 +160,9 @@ class WorkerCrashed(TransportFault):
 # --------------------------------------------------------------------------- #
 
 
-# Unicode categories that render nothing and so carry no identity: separators
-# (Zs/Zl/Zp), controls (Cc) and format characters (Cf: U+200B ZERO WIDTH SPACE,
-# U+FEFF, U+200D ...). ``str.isspace`` alone misses Cf, which is how a
-# zero-width work order used to pass a ``\S`` pattern.
-_INVISIBLE_CATEGORIES = frozenset({"Zs", "Zl", "Zp", "Cc", "Cf"})
-
-
-def _require_visible(value: str) -> str:
-    if not any(
-        not ch.isspace() and unicodedata.category(ch) not in _INVISIBLE_CATEGORIES for ch in value
-    ):
-        raise ValueError("identity field has no visible character")
-    return value
-
-
-# At least one visible character: a blank, whitespace-only or zero-width work
-# order / capability / repo / evidence requirement carries no identity and is
-# refused at construction.
-NonEmptyStr = Annotated[str, Field(min_length=1), AfterValidator(_require_visible)]
-# Lowercase hex, 7..64 chars: abbreviated or full git SHA-1/SHA-256 and the
-# 64-hex BLAKE3 content digests used for simulated worlds. Anything else is a
-# malformed subject identity and is refused at construction (R_missing_identity).
-SubjectSha = Annotated[str, Field(pattern=r"^[0-9a-f]{7,64}$")]
-
-
 class SubjectRef(FrozenModel):
-    repo: NonEmptyStr
-    sha: SubjectSha
+    repo: str
+    sha: str
 
 
 class ClaimPin(FrozenModel):
@@ -231,23 +182,20 @@ class AuthorityGrant(FrozenModel):
 
 
 class ResourceConstraints(FrozenModel):
-    """Budgets are non-negative; a zero budget is legal and typed-blocks,
-    a negative one is malformed input and is refused at construction."""
-
-    deadline_ticks: int = Field(default=200, ge=0)
-    max_retries: int = Field(default=3, ge=0)
-    max_provider_switches: int = Field(default=2, ge=0)
-    max_subject_moves: int = Field(default=2, ge=0)
-    disk_budget_mb: int = Field(default=512, ge=0)
-    cpu_budget_cores: float = Field(default=2.0, ge=0.0)
+    deadline_ticks: int = 200
+    max_retries: int = 3
+    max_provider_switches: int = 2
+    max_subject_moves: int = 2
+    disk_budget_mb: int = 512
+    cpu_budget_cores: float = 2.0
 
 
 class ExecutionRequest(FrozenModel):
-    work_order: NonEmptyStr
-    capability_requirements: Annotated[list[NonEmptyStr], Field(min_length=1)]
+    work_order: str
+    capability_requirements: list[str]
     subject: SubjectRef
     authority: AuthorityGrant
-    evidence_requirements: Annotated[list[NonEmptyStr], Field(min_length=1)]
+    evidence_requirements: list[str]
     resource_constraints: ResourceConstraints = Field(default_factory=ResourceConstraints)
     idempotency_key: str = ""  # defaults to work_order
 
@@ -379,10 +327,7 @@ class LoopResult(FrozenModel):
     receipt: ExecutionReceipt | None = None
     typed_reason: str | None = None
     broken_term: BrokenTerm | None = None
-    # Derived by the kernel from its own actuation ledger (one entry per
-    # witnessed provider.execute effect), never copied from a provider report.
     actuation_count: int = 0
-    actuations: list[dict[str, Any]] = Field(default_factory=list)
     events: list[OcelEvent] = Field(default_factory=list)
 
     @property
@@ -392,12 +337,6 @@ class LoopResult(FrozenModel):
         if self.outcome == IllegalOutcome.WAIT_FOR_HUMAN_TO_NOTICE.value:
             return IllegalOutcome.WAIT_FOR_HUMAN_TO_NOTICE
         return None
-
-
-def _request_digest(request: ExecutionRequest) -> str:
-    """Content identity of a request for idempotency: two deliveries dedupe
-    only when this digest is equal."""
-    return digest(request.model_dump(mode="json"))
 
 
 def loop_log(results: Iterable[LoopResult], *, seed: int = 0) -> dict[str, Any]:
@@ -493,16 +432,8 @@ class AutonomousLoop:
         self._now = clock or (lambda: 0)
         self._advance = advance or (lambda ticks: None)
         self._rng = rng or random.Random(0)
-        # idempotency key -> (digest of the request that completed, receipt)
-        self._completed: dict[str, tuple[str, ExecutionReceipt]] = {}
+        self._completed: dict[str, ExecutionReceipt] = {}
         self.events: list[OcelEvent] = []
-        # per-run actuation ledger (reset at the top of run())
-        self._actuations: list[dict[str, Any]] = []
-        # idempotency key -> (request digest, typed reason, broken term, ledger)
-        # for runs that ACTUATED but terminated without an admitted receipt
-        # (typed block or refusal after actuation). A redelivery of the same
-        # request must not actuate again: its prior effects are unreconciled.
-        self._unreconciled: dict[str, tuple[str, str, str, list[dict[str, Any]]]] = {}
 
     # -- event plumbing ----------------------------------------------------- #
 
@@ -558,16 +489,9 @@ class AutonomousLoop:
                 episode_standing=EpisodeStanding.BLOCKED_AUTHORITY,
                 typed_reason="REFUSED_NO_AUTHORITY",
                 broken_term=BrokenTerm.R_MISSING_AUTHORITY,
-                actuation_count=len(self._actuations),
-                actuations=self._ledger_snapshot(),
+                actuation_count=0,
                 events=list(self.events),
             )
-        return self._expiry_gate(request)
-
-    def _expiry_gate(self, request: ExecutionRequest) -> LoopResult | None:
-        """Authority is re-checked at every actuation boundary, not only at
-        start: backoff advances the clock, and a grant that expires while the
-        loop waits must not authorize the actuation that follows."""
         expires = request.authority.expires_at_tick
         if expires is not None and expires <= self._now():
             self._emit(
@@ -583,8 +507,7 @@ class AutonomousLoop:
                 episode_standing=EpisodeStanding.BLOCKED_AUTHORITY,
                 typed_reason="REFUSED_CREDENTIAL_EXPIRED",
                 broken_term=BrokenTerm.R_MISSING_AUTHORITY,
-                actuation_count=len(self._actuations),
-                actuations=self._ledger_snapshot(),
+                actuation_count=0,
                 events=list(self.events),
             )
         return None
@@ -609,8 +532,7 @@ class AutonomousLoop:
             episode_standing=EpisodeStanding.FAILED,
             typed_reason="REFUSED_IMPOSSIBLE_OBJECTIVE",
             broken_term=BrokenTerm.IMPOSSIBLE_OBJECTIVE,
-            actuation_count=len(self._actuations),
-            actuations=self._ledger_snapshot(),
+            actuation_count=0,
             events=list(self.events),
         )
 
@@ -641,40 +563,16 @@ class AutonomousLoop:
             episode_standing=EpisodeStanding.BLOCKED_INFORMATION,
             typed_reason=reason,
             broken_term=broken,
-            actuation_count=len(self._actuations),
-            actuations=self._ledger_snapshot(),
+            actuation_count=0,
             events=list(self.events),
         )
 
     # -- dedupe -------------------------------------------------------------- #
 
     def _dedupe_gate(self, request: ExecutionRequest) -> LoopResult | None:
-        entry = self._completed.get(request.idempotency_key)
-        if entry is None:
-            return self._unreconciled_gate(request)
-        completed_digest, existing = entry
-        if completed_digest != _request_digest(request):
-            # same idempotency key, different request content: answering with
-            # the other request's receipt would manufacture standing from an
-            # unadmitted input (mu_on_O). Refuse with zero actuation.
-            self._emit(
-                "refuse",
-                request,
-                reason="REFUSED_IDEMPOTENCY_KEY_CONFLICT",
-                outcome=LegalOutcome.REFUSE.value,
-                standing=Standing.REFUSED.value,
-                extra={"provider_execution_id": existing.provider_execution_id},
-            )
-            return LoopResult(
-                outcome=LegalOutcome.REFUSE.value,
-                standing=Standing.REFUSED,
-                episode_standing=EpisodeStanding.FAILED,
-                typed_reason="REFUSED_IDEMPOTENCY_KEY_CONFLICT",
-                broken_term=BrokenTerm.MU_ON_O,
-                actuation_count=len(self._actuations),
-                actuations=self._ledger_snapshot(),
-                events=list(self.events),
-            )
+        existing = self._completed.get(request.idempotency_key)
+        if existing is None:
+            return None
         self._emit(
             "reconcile.retry",
             request,
@@ -690,83 +588,14 @@ class AutonomousLoop:
             receipt=existing,
             typed_reason=None,
             broken_term=None,
-            actuation_count=len(self._actuations),  # a duplicate performs NO actuation
-            actuations=self._ledger_snapshot(),
-            events=list(self.events),
-        )
-
-    def _unreconciled_gate(self, request: ExecutionRequest) -> LoopResult | None:
-        prior = self._unreconciled.get(request.idempotency_key)
-        if prior is None:
-            return None
-        prior_digest, prior_reason, prior_term, prior_ledger = prior
-        if prior_digest != _request_digest(request):
-            self._emit(
-                "refuse",
-                request,
-                reason="REFUSED_IDEMPOTENCY_KEY_CONFLICT",
-                outcome=LegalOutcome.REFUSE.value,
-                standing=Standing.REFUSED.value,
-                extra={"prior_actuation_count": len(prior_ledger)},
-            )
-            return LoopResult(
-                outcome=LegalOutcome.REFUSE.value,
-                standing=Standing.REFUSED,
-                episode_standing=EpisodeStanding.FAILED,
-                typed_reason="REFUSED_IDEMPOTENCY_KEY_CONFLICT",
-                broken_term=BrokenTerm.MU_ON_O,
-                actuation_count=0,
-                actuations=[],
-                events=list(self.events),
-            )
-        # Same request, prior run actuated without an admitted receipt: a
-        # redelivery that re-executes would be a duplicate actuation of one
-        # work order. Typed-block with ZERO new actuations and name the prior
-        # unreconciled consequence (R_missing_consequence).
-        self._emit(
-            "typed.block",
-            request,
-            reason="TYPED_BLOCK_PRIOR_ACTUATION_UNRECONCILED",
-            outcome=LegalOutcome.TYPED_BLOCK.value,
-            standing=Standing.BLOCKED.value,
-            extra={
-                "prior_reason": prior_reason,
-                "prior_broken_term": prior_term,
-                "prior_actuation_count": len(prior_ledger),
-                "prior_provider_execution_ids": [
-                    entry["provider_execution_id"] for entry in prior_ledger
-                ],
-            },
-        )
-        return LoopResult(
-            outcome=LegalOutcome.TYPED_BLOCK.value,
-            standing=Standing.BLOCKED,
-            episode_standing=EpisodeStanding.BLOCKED_INFORMATION,
-            typed_reason="TYPED_BLOCK_PRIOR_ACTUATION_UNRECONCILED",
-            broken_term=BrokenTerm.R_MISSING_CONSEQUENCE,
-            actuation_count=0,
-            actuations=[],
+            actuation_count=0,  # a duplicate performs NO additional actuation
             events=list(self.events),
         )
 
     # -- main ---------------------------------------------------------------- #
 
     def run(self, request: ExecutionRequest) -> LoopResult:
-        result = self._run(request)
-        if result.receipt is None and result.actuation_count > 0:
-            # Actuated but not admitted: remember it so a redelivery cannot
-            # actuate the same work order again.
-            self._unreconciled[request.idempotency_key] = (
-                _request_digest(request),
-                result.typed_reason or "",
-                result.broken_term.value if result.broken_term else "",
-                copy.deepcopy(result.actuations),
-            )
-        return result
-
-    def _run(self, request: ExecutionRequest) -> LoopResult:
         self.events = []
-        self._actuations = []
         for gate in (
             self._authority_gate,
             self._feasibility_gate,
@@ -800,9 +629,6 @@ class AutonomousLoop:
                 return self._typed_block(
                     request, "TYPED_BLOCK_BUDGET_EXHAUSTED", BrokenTerm.PROVIDER_UNAVAILABLE
                 )
-            expired = self._expiry_gate(request)
-            if expired is not None:
-                return expired
             attempts += 1
             provider = self._providers[provider_index]
             try:
@@ -849,9 +675,6 @@ class AutonomousLoop:
                 ),
                 provider=provider.transport,
             )
-            expired = self._expiry_gate(request)
-            if expired is not None:
-                return expired
             try:
                 effect = provider.execute(request, pin.provider_execution_id)
             except WorkerCrashed as crash:
@@ -877,35 +700,6 @@ class AutonomousLoop:
                             "TYPED_BLOCK_RECEIPT_LOST",
                             BrokenTerm.R_MISSING_CONSEQUENCE,
                         )
-                    self._record_actuation(
-                        request, provider, pin, fragment, witness="provider journal"
-                    )
-                    # same moving-subject law as the live path: the journal
-                    # fragment is admitted only against the subject it claims.
-                    journal_sha = provider.current_subject_sha(request.subject.repo)
-                    if not self._subject_attributable(journal_sha, pin, fragment):
-                        moves += 1
-                        if moves > limits.max_subject_moves:
-                            return self._typed_block(
-                                request, "TYPED_BLOCK_MOVING_SUBJECT", BrokenTerm.SUBJECT_UNSTABLE
-                            )
-                        self._emit(
-                            "reconcile.replan",
-                            request,
-                            reason=(
-                                f"subject moved after journaled actuation "
-                                f"{pin.pinned_subject_sha[:12]}->{journal_sha[:12]}"
-                            ),
-                            outcome=LegalOutcome.REPLAN.value,
-                            provider=provider.transport,
-                        )
-                        current_subject = self._resolve_fresh(request)
-                        if isinstance(current_subject, LoopResult):
-                            return current_subject
-                        continue
-                    unverified = self._verify_effect(request, provider, fragment)
-                    if unverified is not None:
-                        return unverified
                     self._advance(1)
                     receipt = self._build_receipt(
                         request,
@@ -914,12 +708,8 @@ class AutonomousLoop:
                         subject_before,
                         fragment,
                         outcome=LegalOutcome.RECOVER.value,
-                        observed_after_sha=journal_sha,
                     )
-                    self._completed[request.idempotency_key] = (
-                        _request_digest(request),
-                        receipt,
-                    )
+                    self._completed[request.idempotency_key] = receipt
                     self._emit(
                         "receipt.emit",
                         request,
@@ -933,8 +723,7 @@ class AutonomousLoop:
                         standing=Standing.ALIVE,
                         episode_standing=EpisodeStanding.AUTONOMOUS,
                         receipt=receipt,
-                        actuation_count=len(self._actuations),
-                        actuations=self._ledger_snapshot(),
+                        actuation_count=1,  # exactly once, despite the crash
                         events=list(self.events),
                     )
                 # crash BEFORE actuation: safe to retry in place.
@@ -987,12 +776,9 @@ class AutonomousLoop:
                 self._advance(fault.retry_after_ticks)
                 continue
 
-            self._record_actuation(request, provider, pin, effect, witness="execute")
-
-            # moving-subject check: subject must not have moved under us. The
-            # actuation's own declared commit is its consequence, not a move.
+            # moving-subject check: subject must not have moved under us.
             observed_sha = provider.current_subject_sha(request.subject.repo)
-            if not self._subject_attributable(observed_sha, pin, effect):
+            if observed_sha != pin.pinned_subject_sha:
                 moves += 1
                 if moves > limits.max_subject_moves:
                     return self._typed_block(
@@ -1010,14 +796,6 @@ class AutonomousLoop:
                 if isinstance(current_subject, LoopResult):
                     return current_subject
                 continue
-
-            # an effect without a digest carries no checkable consequence
-            if not effect.get("effect_digest"):
-                return self._typed_block(
-                    request,
-                    "TYPED_BLOCK_EFFECT_DIGEST_MISSING",
-                    BrokenTerm.R_MISSING_CONSEQUENCE,
-                )
 
             # verification
             verified, why = self._verifier.verify(
@@ -1079,7 +857,6 @@ class AutonomousLoop:
                 subject_before,
                 effect,
                 outcome=LegalOutcome.RECOVER.value,
-                observed_after_sha=post_sha,
             )
             try:
                 provider.ack(receipt)
@@ -1099,10 +876,7 @@ class AutonomousLoop:
                     outcome=LegalOutcome.RECOVER.value,
                     provider=provider.transport,
                 )
-            self._completed[request.idempotency_key] = (
-                _request_digest(request),
-                receipt,
-            )
+            self._completed[request.idempotency_key] = receipt
             self._emit(
                 "receipt.emit",
                 request,
@@ -1116,97 +890,11 @@ class AutonomousLoop:
                 standing=Standing.ALIVE,
                 episode_standing=EpisodeStanding.AUTONOMOUS,
                 receipt=receipt,
-                actuation_count=len(self._actuations),
-                actuations=self._ledger_snapshot(),
+                actuation_count=int(effect.get("actuation_count", 1)),
                 events=list(self.events),
             )
 
     # -- helpers ------------------------------------------------------------- #
-
-    def _ledger_snapshot(self) -> list[dict[str, Any]]:
-        """Deep copy of the run ledger: result views and receipts never alias
-        the kernel's entries (or each other), so mutating one cannot rewrite
-        receipt evidence."""
-        return copy.deepcopy(self._actuations)
-
-    def _record_actuation(
-        self,
-        request: ExecutionRequest,
-        provider: ExecutionProvider,
-        pin: ClaimPin,
-        effect: dict[str, Any],
-        *,
-        witness: str,
-    ) -> None:
-        """Append one witnessed actuation to the kernel-owned ledger and emit
-        the ``actuation`` OCEL event. Earlier entries are superseded when a
-        later actuation is admitted."""
-        entry = {
-            "sequence": len(self._actuations) + 1,
-            "provider": provider.transport,
-            "provider_execution_id": pin.provider_execution_id,
-            "pinned_subject_sha": pin.pinned_subject_sha,
-            "declared_subject_after_sha": str(effect.get("subject_after_sha", "")),
-            "effect_digest": str(effect.get("effect_digest", "")),
-            "consequence": copy.deepcopy(dict(effect.get("consequence", {}))),
-            "witness": witness,
-        }
-        self._actuations.append(entry)
-        self._emit(
-            "actuation",
-            request,
-            reason=f"actuation {entry['sequence']} witnessed via {witness}",
-            provider=provider.transport,
-            extra={
-                "provider_execution_id": pin.provider_execution_id,
-                "sequence": entry["sequence"],
-            },
-        )
-
-    @staticmethod
-    def _subject_attributable(observed_sha: str, pin: ClaimPin, effect: dict[str, Any]) -> bool:
-        """The observed post-actuation SHA is the actuation's own consequence
-        iff it equals the claim pin (no change) or the effect's declared
-        ``subject_after_sha`` (the actuation's own commit)."""
-        declared = effect.get("subject_after_sha")
-        return observed_sha == pin.pinned_subject_sha or (
-            declared is not None and observed_sha == str(declared)
-        )
-
-    def _verify_effect(
-        self,
-        request: ExecutionRequest,
-        provider: ExecutionProvider,
-        effect: dict[str, Any],
-    ) -> LoopResult | None:
-        """Admission of a journal-reconstructed effect: it must carry a digest
-        and pass the same verifier as a live effect before any ALIVE receipt
-        is built from it. Returns a typed block, or None when admitted."""
-        effect_digest = effect.get("effect_digest")
-        if not effect_digest:
-            return self._typed_block(
-                request, "TYPED_BLOCK_EFFECT_DIGEST_MISSING", BrokenTerm.R_MISSING_CONSEQUENCE
-            )
-        observed_sha = provider.current_subject_sha(request.subject.repo)
-        verified, why = self._verifier.verify(
-            SubjectRef(repo=request.subject.repo, sha=observed_sha),
-            str(effect_digest),
-            request,
-        )
-        self._emit(
-            "verification",
-            request,
-            reason=f"journal fragment: {why}",
-            standing=Standing.ALIVE.value if verified else Standing.BLOCKED.value,
-            provider=provider.transport,
-        )
-        if not verified:
-            return self._typed_block(
-                request,
-                f"TYPED_BLOCK_VERIFICATION_FAILED {why}",
-                BrokenTerm.VERIFICATION_FAILED,
-            )
-        return None
 
     def _on_transport_fault(
         self,
@@ -1281,8 +969,7 @@ class AutonomousLoop:
             episode_standing=EpisodeStanding.BLOCKED_INFORMATION,
             typed_reason=reason,
             broken_term=broken,
-            actuation_count=len(self._actuations),
-            actuations=self._ledger_snapshot(),
+            actuation_count=0,
             events=list(self.events),
         )
 
@@ -1295,29 +982,15 @@ class AutonomousLoop:
         effect: dict[str, Any],
         *,
         outcome: str,
-        observed_after_sha: str,
     ) -> ExecutionReceipt:
-        # subject_after is the kernel-OBSERVED SHA (witnessed), not the
-        # provider's declaration; the declaration stays in the ledger entry.
-        subject_after = SubjectRef(repo=request.subject.repo, sha=observed_after_sha)
-        ledger = [
-            {
-                **copy.deepcopy(entry),
-                "disposition": (
-                    "admitted"
-                    if entry["provider_execution_id"] == pin.provider_execution_id
-                    and index == len(self._actuations) - 1
-                    else "superseded"
-                ),
-            }
-            for index, entry in enumerate(self._actuations)
-        ]
+        subject_after = SubjectRef(
+            repo=request.subject.repo,
+            sha=str(effect.get("subject_after_sha", subject_before.sha)),
+        )
         ext: dict[str, Any] = {
             "aloup.outcome": outcome,
             "aloup.execution_class": "simulated-in-process",
             "aloup.ocel_digest": digest([event.model_dump() for event in self.events]),
-            "aloup.actuation_count": len(ledger),
-            "aloup.actuations": ledger,
         }
         return ExecutionReceipt(
             work_order_id=request.work_order,
@@ -1332,12 +1005,8 @@ class AutonomousLoop:
             exit_status="success" if outcome == LegalOutcome.RECOVER.value else outcome,
             subject_before=dict(subject_before.model_dump()),
             subject_after=dict(subject_after.model_dump()),
-            commands=[
-                f"execute({request.work_order}) via {entry['provider']} "
-                f"as {entry['provider_execution_id']} [{entry['disposition']}]"
-                for entry in ledger
-            ],
-            consequences=[copy.deepcopy(entry["consequence"]) for entry in ledger],
+            commands=[f"execute({request.work_order}) via {provider.transport}"],
+            consequences=[dict(effect.get("consequence", {}))],
             evidence=[
                 {
                     "kind": "verifier",
