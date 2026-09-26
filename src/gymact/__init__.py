@@ -178,6 +178,19 @@ from gymact.oracle import (
     differential_verify,
     observe_oracle,
 )
+from gymact.policy_ecology import (
+    DEFAULT_TEMPERAMENT_AXES,
+    ConditionAxis,
+    PolicyPhenotype,
+    PolicyPopulation,
+    PopulationDiversity,
+    PopulationKind,
+    ReactionNorm,
+    StrategicCondition,
+    WeightedPhenotype,
+    condition_population,
+    population_diversity,
+)
 from gymact.physical import (
     ControllerMode,
     EdgeControllerArtifact,
@@ -232,6 +245,17 @@ from gymact.transport import (
 from gymact.verification import DictSubsetVerifier, PostconditionVerifier
 
 __all__ = [
+    "DEFAULT_TEMPERAMENT_AXES",
+    "ConditionAxis",
+    "PolicyPhenotype",
+    "PolicyPopulation",
+    "PopulationDiversity",
+    "PopulationKind",
+    "ReactionNorm",
+    "StrategicCondition",
+    "WeightedPhenotype",
+    "condition_population",
+    "population_diversity",
     "ActionDefinition",
     "ActionProjection",
     "ActuationIntent",
