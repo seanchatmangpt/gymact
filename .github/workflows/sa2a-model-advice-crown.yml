@@ -1,0 +1,76 @@
+name: SA2A model-advice crown
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/gymact/model_advice.py"
+      - "tests/test_model_advice.py"
+      - "docs/model-advice.md"
+      - ".github/workflows/sa2a-model-advice-crown.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sa2a-model-advice-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_LINK_MODE: copy
+  GYMACT_UV_VERSION: "0.11.32"
+
+jobs:
+  crown:
+    name: Exact-head powerless model-advice court
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact subject
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Assert exact subject identity
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          printf 'model_advice_exact_head=%s\n' "$EXPECTED_SHA"
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Set up admitted uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.GYMACT_UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+
+      - name: Resolve focused court
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uv --version | awk '{print $2}')" = "$GYMACT_UV_VERSION"
+          uv sync --group dev
+
+      - name: Reject interaction-verifying seams
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -nE 'unittest\.mock|Mock\(|MagicMock|patch\(|monkeypatch' tests/test_model_advice.py
+
+      - name: Execute real DCM model-advice court
+        run: uv run pytest -vv tests/test_model_advice.py
+
+      - name: Static and formatting court
+        run: |
+          uv run ruff check src/gymact/model_advice.py tests/test_model_advice.py
+          uv run ruff format --check src/gymact/model_advice.py tests/test_model_advice.py
