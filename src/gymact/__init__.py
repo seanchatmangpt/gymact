@@ -257,6 +257,14 @@ from gymact.runtime import BoundaryBlocked, GymAct, ProductionGymAct
 from gymact.scoring import BinaryVerificationScorer, Scorer, score_verification
 from gymact.semantic import ProfileAuthority, SemanticValidation
 from gymact.sqlite_ledger import SQLiteReceiptLedger
+from gymact.temperament_ontology import (
+    TEMPERAMENT_ENGINEERING_SOURCE,
+    TEMPERAMENT_SCHEME,
+    TemperamentAxisSpec,
+    assert_public_temperament_vocabulary,
+    load_temperament_axis_specs,
+    temperament_ontology_graph,
+)
 from gymact.temperament_engineering import (
     AxisFit,
     AxisRelevance,
@@ -273,6 +281,15 @@ from gymact.temperament_engineering import (
     design_axes,
     evaluate_design,
     manufacture_population,
+)
+from gymact.temperament_search import (
+    AxisDesignOption,
+    AxisDesignSpace,
+    DesignObjectiveVector,
+    TemperamentDesignCandidate,
+    TemperamentDesignPortfolio,
+    manufacture_design_portfolio,
+    pareto_designs,
 )
 from gymact.transport import (
     CandidateIntentEnvelope,
@@ -324,6 +341,19 @@ __all__ = [
     "SQLitePolicyEcologyStore",
     "population_record",
     "transition_digest",
+    "TEMPERAMENT_ENGINEERING_SOURCE",
+    "TEMPERAMENT_SCHEME",
+    "TemperamentAxisSpec",
+    "assert_public_temperament_vocabulary",
+    "load_temperament_axis_specs",
+    "temperament_ontology_graph",
+    "AxisDesignOption",
+    "AxisDesignSpace",
+    "DesignObjectiveVector",
+    "TemperamentDesignCandidate",
+    "TemperamentDesignPortfolio",
+    "manufacture_design_portfolio",
+    "pareto_designs",
     "ActionDefinition",
     "ActionProjection",
     "ActuationIntent",
