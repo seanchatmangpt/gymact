@@ -1,0 +1,114 @@
+name: Survival campaign closure exact head
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/gymact/survival_campaign.py"
+      - "src/gymact/survival_campaign_observation.py"
+      - "src/gymact/survival_artifacts.py"
+      - "src/gymact/survival_cli.py"
+      - "src/gymact/survival_suite.py"
+      - "src/gymact/dcm.py"
+      - "pyproject.toml"
+      - "tests/test_survival_campaign.py"
+      - "tests/test_survival_campaign_observation.py"
+      - "tests/test_survival_artifacts.py"
+      - "tests/test_survival_cli.py"
+      - "tests/test_survival_suite.py"
+      - "tests/test_survival_dcm_closure.py"
+      - ".github/workflows/survival-campaign-closure.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  survival-campaign-closure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Admit exact subject
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="${{ github.event.pull_request.head.sha || github.sha }}"
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$expected"
+          printf "survival_campaign_exact_head=%s\n" "$actual"
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.11.32"
+
+      - name: Resolve admitted dependency closure
+        run: uv sync --group dev
+
+      - name: Compile campaign surface
+        run: >-
+          uv run python -m compileall -q
+          src/gymact/survival_campaign.py
+          src/gymact/survival_campaign_observation.py
+          src/gymact/survival_artifacts.py
+          src/gymact/survival_cli.py
+          src/gymact/survival_suite.py
+          src/gymact/dcm.py
+          tests/test_survival_campaign.py
+          tests/test_survival_campaign_observation.py
+          tests/test_survival_artifacts.py
+          tests/test_survival_cli.py
+          tests/test_survival_suite.py
+          tests/test_survival_dcm_closure.py
+
+      - name: Execute campaign courts
+        run: >-
+          uv run pytest -q
+          tests/test_survival_campaign.py
+          tests/test_survival_campaign_observation.py
+          tests/test_survival_artifacts.py
+          tests/test_survival_cli.py
+          tests/test_survival_suite.py
+          tests/test_survival_dcm_closure.py
+
+      - name: Static contract
+        run: >-
+          uv run ruff check
+          src/gymact/survival_campaign.py
+          src/gymact/survival_campaign_observation.py
+          src/gymact/survival_artifacts.py
+          src/gymact/survival_cli.py
+          src/gymact/survival_suite.py
+          src/gymact/dcm.py
+          tests/test_survival_campaign.py
+          tests/test_survival_campaign_observation.py
+          tests/test_survival_artifacts.py
+          tests/test_survival_cli.py
+          tests/test_survival_suite.py
+          tests/test_survival_dcm_closure.py
+
+      - name: Format contract
+        run: >-
+          uv run ruff format --check
+          src/gymact/survival_campaign.py
+          src/gymact/survival_campaign_observation.py
+          src/gymact/survival_artifacts.py
+          src/gymact/survival_cli.py
+          src/gymact/survival_suite.py
+          src/gymact/dcm.py
+          tests/test_survival_campaign.py
+          tests/test_survival_campaign_observation.py
+          tests/test_survival_artifacts.py
+          tests/test_survival_cli.py
+          tests/test_survival_suite.py
+          tests/test_survival_dcm_closure.py
+
+      - name: No consequential actuation imports
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -REn 'requests\.(post|put|patch|delete)|subprocess\.|os\.system|boto3|azure\.|google\.cloud'             src/gymact/survival_campaign.py             src/gymact/survival_campaign_observation.py             src/gymact/survival_artifacts.py             src/gymact/survival_cli.py             src/gymact/survival_suite.py
