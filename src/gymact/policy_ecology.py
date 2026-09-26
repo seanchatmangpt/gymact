@@ -21,46 +21,86 @@ from gymact.models import FrozenModel
 
 TEMPERAMENT_ENGINEERING_PROVENANCE = ("https://arxiv.org/abs/2609.29423",)
 
-_FORBIDDEN_AUTHORITY_AXES = frozenset(
-    {
-        "authority",
-        "permission",
-        "execution_grant",
-        "execution_authority",
-        "do",
-    }
+# The authority boundary is structural: no code path in GymAct reads a
+# condition value as authority, and no model here has an authority field. The
+# axis-name fence below is defense-in-depth on top of that, and it is built to
+# fail closed rather than to enumerate spellings:
+#
+# * axis ids must be ASCII after NFKC folding and removal of invisible format
+#   characters (Unicode category Cf), so homoglyph spellings ("authority"
+#   spelled with a Cyrillic small a, U+0430) are refused instead of being read
+#   as unrelated words;
+# * camelCase and acronym boundaries split into words before case folding, so
+#   "ExecutionGrant" and "authorityLevel" read as "execution_grant" and
+#   "authority_level";
+# * a word is refused when it *starts with* an authority stem, so plurals and
+#   derived forms (permissions, authorities, authorization, privileged) are
+#   refused, and the separator-free form is scanned for the same stems, so
+#   "executiongrant" and "permissionset" are refused too.
+_FORBIDDEN_AUTHORITY_WORDS = frozenset({"do", "auth", "sudo"})
+_FORBIDDEN_AUTHORITY_STEMS = (
+    "authori",
+    "authz",
+    "permission",
+    "permit",
+    "privilege",
+    "entitle",
+    "grant",
+    "capabilit",
+    "execut",
 )
-
-
-# Tokens that encode authority wherever they appear as a whole word of a
-# normalized axis id ("authority_level", "execution.grant", "Permission-Set").
-_FORBIDDEN_AUTHORITY_TOKENS = frozenset({"authority", "permission"})
-_FORBIDDEN_AUTHORITY_PHRASES = ("execution_grant", "execution_authority")
+_FORBIDDEN_AUTHORITY_SUBSTRINGS = (
+    "authori",
+    "permission",
+    "privilege",
+    "entitlement",
+    "executiongrant",
+    "executionauthority",
+)
 _AXIS_SEPARATORS = re.compile(r"[^0-9a-z]+")
+_CAMEL_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
+
+
+def _visible_nfkc(axis_id: str) -> str:
+    folded = unicodedata.normalize("NFKC", axis_id)
+    return "".join(char for char in folded if unicodedata.category(char) != "Cf")
 
 
 @lru_cache(maxsize=4096)
 def _normalized_axis_id(axis_id: str) -> str:
     """Canonical comparison key for an axis id.
 
-    NFKC folds compatibility forms (full-width letters), casefold removes case,
-    and every run of non-alphanumeric characters (space, hyphen, dot, ...)
-    collapses to one underscore, so separator spelling cannot smuggle a
-    forbidden axis past the fence.
+    NFKC folds compatibility forms (full-width letters), invisible format
+    characters (zero-width space/joiner, ...) are removed, camelCase boundaries
+    become word boundaries, casefold removes case, and every run of
+    non-alphanumeric characters collapses to one underscore. "selfModel",
+    "Self-Model" and "self_model" therefore name the same axis.
     """
-    folded = unicodedata.normalize("NFKC", axis_id).casefold()
-    return _AXIS_SEPARATORS.sub("_", folded).strip("_")
+    split = _CAMEL_BOUNDARY.sub("_", _visible_nfkc(axis_id))
+    return _AXIS_SEPARATORS.sub("_", split.casefold()).strip("_")
+
+
+@lru_cache(maxsize=4096)
+def _axis_is_non_ascii(axis_id: str) -> bool:
+    return not _visible_nfkc(axis_id).isascii()
 
 
 @lru_cache(maxsize=4096)
 def _encodes_authority(axis_id: str) -> bool:
+    if _axis_is_non_ascii(axis_id):
+        # Fail closed: a non-ASCII letter that survives NFKC may be a homoglyph
+        # of an authority word, and this fence cannot read it.
+        return True
     normalized = _normalized_axis_id(axis_id)
-    if normalized in _FORBIDDEN_AUTHORITY_AXES:
+    words = normalized.split("_")
+    collapsed = normalized.replace("_", "")
+    if collapsed in _FORBIDDEN_AUTHORITY_WORDS:
         return True
-    padded = f"_{normalized}_"
-    if any(f"_{phrase}_" in padded for phrase in _FORBIDDEN_AUTHORITY_PHRASES):
+    if any(word in _FORBIDDEN_AUTHORITY_WORDS for word in words):
         return True
-    return bool(_FORBIDDEN_AUTHORITY_TOKENS & set(normalized.split("_")))
+    if any(word.startswith(_FORBIDDEN_AUTHORITY_STEMS) for word in words):
+        return True
+    return any(fragment in collapsed for fragment in _FORBIDDEN_AUTHORITY_SUBSTRINGS)
 
 
 def _require_finite(value: float, refusal: str) -> float:
@@ -69,17 +109,28 @@ def _require_finite(value: float, refusal: str) -> float:
     return value
 
 
-def _refuse_axis_pairs(pairs: tuple[tuple[str, float], ...], duplicate: str) -> None:
-    normalized = [_normalized_axis_id(key) for key, _ in pairs]
-    if any(not key for key in normalized):
+def _admit_axis_id(axis_id: str) -> None:
+    """Shared axis-id admission for every surface that names an axis."""
+    if _axis_is_non_ascii(axis_id):
+        raise ValueError(f"REFUSED:TEMPERAMENT_CANNOT_ENCODE_AUTHORITY:NON_ASCII_AXIS:{axis_id!r}")
+    if not _normalized_axis_id(axis_id):
         raise ValueError("REFUSED:EMPTY_CONDITION_AXIS")
+    if _encodes_authority(axis_id):
+        raise ValueError(f"REFUSED:TEMPERAMENT_CANNOT_ENCODE_AUTHORITY:{axis_id}")
+
+
+def _refuse_axis_pairs(
+    pairs: tuple[tuple[str, float], ...],
+    duplicate: str,
+    non_finite: str = "NON_FINITE_CONDITION_VALUE",
+) -> None:
+    for key, _ in sorted(pairs):
+        _admit_axis_id(key)
+    normalized = [_normalized_axis_id(key) for key, _ in pairs]
     if len(normalized) != len(set(normalized)):
         raise ValueError(f"REFUSED:{duplicate}")
-    forbidden = [key for key, _ in pairs if _encodes_authority(key)]
-    if forbidden:
-        raise ValueError(f"REFUSED:TEMPERAMENT_CANNOT_ENCODE_AUTHORITY:{sorted(forbidden)[0]}")
     for key, value in pairs:
-        _require_finite(value, f"NON_FINITE_CONDITION_VALUE:{key}")
+        _require_finite(value, f"{non_finite}:{key}")
 
 
 class PopulationKind(StrEnum):
@@ -97,10 +148,7 @@ class ConditionAxis(FrozenModel):
 
     @model_validator(mode="after")
     def valid_axis(self) -> Self:
-        if not _normalized_axis_id(self.axis_id):
-            raise ValueError("REFUSED:EMPTY_CONDITION_AXIS")
-        if _encodes_authority(self.axis_id):
-            raise ValueError(f"REFUSED:TEMPERAMENT_CANNOT_ENCODE_AUTHORITY:{self.axis_id}")
+        _admit_axis_id(self.axis_id)
         _require_finite(self.lower, "NON_FINITE_CONDITION_AXIS_BOUND")
         _require_finite(self.upper, "NON_FINITE_CONDITION_AXIS_BOUND")
         if self.lower >= self.upper:
@@ -111,9 +159,11 @@ class ConditionAxis(FrozenModel):
 class StrategicCondition(FrozenModel):
     """A point on a behavioral conditioning manifold.
 
-    Values intentionally contain no authority field. The validator also
-    refuses common authority-like axis names so callers cannot disguise a
-    grant as a behavioral parameter.
+    Values intentionally contain no authority field, and no code path reads a
+    condition value as authority. As defense-in-depth the validator also
+    refuses axis names that spell authority, permission, privilege, grants,
+    execution or DO in any case, separator, camelCase, plural or derived form,
+    and refuses non-ASCII axis ids (homoglyphs) outright.
     """
 
     values: tuple[tuple[str, float], ...] = ()
@@ -165,25 +215,33 @@ class ReactionNorm(FrozenModel):
         axes: tuple[ConditionAxis, ...],
     ) -> StrategicCondition:
         _require_finite(cue, "NON_FINITE_CUE")
+        # Every lookup is keyed by the normalized axis id, the same identity
+        # every admission path uses, so a case- or separator-variant spelling
+        # cannot skip the range check or register a second range.
         ranges: dict[str, ConditionAxis] = {}
         for axis in axes:
-            if axis.axis_id in ranges:
+            key = _normalized_axis_id(axis.axis_id)
+            if key in ranges:
                 raise ValueError(f"REFUSED:DUPLICATE_CONDITION_AXIS:{axis.axis_id}")
-            ranges[axis.axis_id] = axis
+            ranges[key] = axis
         values = baseline.as_dict()
+        spelled = {_normalized_axis_id(axis_id): axis_id for axis_id in values}
         for axis_id, value in values.items():
-            axis = ranges.get(axis_id)
+            axis = ranges.get(_normalized_axis_id(axis_id))
             if axis is not None and not axis.lower <= value <= axis.upper:
                 raise ValueError(f"REFUSED:CONDITION_OUTSIDE_AXIS_RANGE:{axis_id}")
         delta = cue - self.reference_cue
         for axis_id, slope in self.slopes:
-            if axis_id not in ranges:
+            key = _normalized_axis_id(axis_id)
+            axis = ranges.get(key)
+            if axis is None:
                 raise ValueError(f"REFUSED:UNKNOWN_CONDITION_AXIS:{axis_id}")
-            axis = ranges[axis_id]
-            value = values.get(axis_id, axis.lower) + slope * delta
+            target = spelled.get(key, axis_id)
+            value = values.get(target, axis.lower) + slope * delta
             if not isfinite(value):
                 raise ValueError(f"REFUSED:NON_FINITE_CONDITION_VALUE:{axis_id}")
-            values[axis_id] = min(axis.upper, max(axis.lower, value))
+            values[target] = min(axis.upper, max(axis.lower, value))
+            spelled[key] = target
         return StrategicCondition(values=tuple(sorted(values.items())))
 
 

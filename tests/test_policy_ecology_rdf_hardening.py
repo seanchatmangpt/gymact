@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 from rdflib import Graph, Literal, URIRef
-from rdflib.namespace import DCTERMS, RDF
+from rdflib.namespace import DCTERMS, RDF, XSD
 
 from gymact.policy_ecology import (
     PolicyPhenotype,
@@ -86,9 +86,10 @@ def test_member_level_value_tamper_is_refused() -> None:
 
 def test_member_level_extent_tamper_is_refused() -> None:
     graph = policy_population_to_rdf(population())
-    subject, value = next(iter(graph.subject_objects(DCTERMS.extent)))
-    graph.remove((subject, DCTERMS.extent, value))
-    graph.add((subject, DCTERMS.extent, Literal(0.123456)))
+    cell = next(iter(graph.subjects(DCTERMS.isPartOf, None)))
+    (value,) = tuple(graph.objects(cell, RDF.value))
+    graph.remove((cell, RDF.value, value))
+    graph.add((cell, RDF.value, Literal("0.123456", datatype=XSD.decimal)))
     assert "REFUSED:POLICY_ECOLOGY_RDF_PROJECTION_MISMATCH" in _refused(graph)
 
 

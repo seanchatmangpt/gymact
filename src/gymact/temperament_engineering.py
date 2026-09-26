@@ -15,7 +15,7 @@ execution authority.
 from __future__ import annotations
 
 from enum import StrEnum
-from math import isfinite, sqrt
+from math import sqrt
 from typing import Self
 
 from pydantic import Field, model_validator
@@ -30,10 +30,10 @@ from gymact.policy_ecology import (
     ReactionNorm,
     StrategicCondition,
     WeightedPhenotype,
-    _encodes_authority,
     _normalized_axis_id,
     population_diversity,
 )
+from gymact.policy_ecology import _refuse_axis_pairs as _policy_refuse_axis_pairs
 
 
 def _refuse_axis_pairs(
@@ -42,14 +42,9 @@ def _refuse_axis_pairs(
     duplicate: str,
     non_finite: str,
 ) -> None:
-    normalized = [_normalized_axis_id(axis) for axis, _ in pairs]
-    if len(normalized) != len(set(normalized)):
-        raise ValueError(f"REFUSED:{duplicate}")
-    for axis, value in pairs:
-        if _encodes_authority(axis):
-            raise ValueError(f"REFUSED:TEMPERAMENT_CANNOT_ENCODE_AUTHORITY:{axis}")
-        if not isfinite(value):
-            raise ValueError(f"REFUSED:{non_finite}:{axis}")
+    # One admission path for every axis-naming surface: empty, non-ASCII and
+    # authority-encoding axis ids are refused exactly as ConditionAxis does.
+    _policy_refuse_axis_pairs(pairs, duplicate, non_finite)
 
 
 class ControlTopology(StrEnum):
@@ -99,6 +94,10 @@ class AxisTarget(FrozenModel):
     def target_contract(self) -> Self:
         if self.shape is DistributionShape.POINT and self.spread != 0.0:
             raise ValueError("REFUSED:POINT_DISTRIBUTION_REQUIRES_ZERO_SPREAD")
+        if self.mean - self.spread < 0.0 or self.mean + self.spread > 1.0:
+            # A clamped interval silently moves the realized mean off target;
+            # refuse the design instead of manufacturing a biased population.
+            raise ValueError(f"REFUSED:TARGET_INTERVAL_OUTSIDE_UNIT_RANGE:{self.axis_id}")
         return self
 
 
@@ -140,6 +139,17 @@ class TemperamentDesignPlan(FrozenModel):
             raise ValueError("REFUSED:DECENTRALIZED_SWARM_REQUIRES_ANTICIPATORY_DESIGN")
         for target in self.targets:
             ConditionAxis(axis_id=target.axis_id)
+        # Phase 1 -> Phase 2 binding: every manufactured axis must be one the
+        # mission criteria declare relevant (positive weight in some criterion).
+        relevant = {
+            _normalized_axis_id(axis)
+            for criterion in self.criteria
+            for axis, weight in criterion.axis_weights
+            if weight > 0.0
+        }
+        for target in self.targets:
+            if _normalized_axis_id(target.axis_id) not in relevant:
+                raise ValueError(f"REFUSED:TARGET_AXIS_WITHOUT_MISSION_RELEVANCE:{target.axis_id}")
         target_set = set(target_ids)
         unknown_reaction_axes = {
             axis
@@ -195,7 +205,8 @@ def axis_relevance(criteria: tuple[MissionCriterion, ...]) -> tuple[AxisRelevanc
 
 
 def _bounded_interval(target: AxisTarget) -> tuple[float, float]:
-    return max(0.0, target.mean - target.spread), min(1.0, target.mean + target.spread)
+    # AxisTarget refuses intervals outside [0, 1], so no clamping is needed.
+    return target.mean - target.spread, target.mean + target.spread
 
 
 def _axis_samples(target: AxisTarget, member_count: int) -> tuple[float, ...]:
@@ -208,8 +219,13 @@ def _axis_samples(target: AxisTarget, member_count: int) -> tuple[float, ...]:
     if target.shape is DistributionShape.BIMODAL:
         if member_count == 1:
             return (target.mean,)
+        # Symmetric split: n//2 members at each mode; an odd member count puts
+        # the middle member at the target mean so the realized mean is exact.
         split = member_count // 2
-        return tuple(low if index < split else high for index in range(member_count))
+        return tuple(
+            low if index < split else high if index >= member_count - split else target.mean
+            for index in range(member_count)
+        )
 
     if member_count == 1:
         return (target.mean,)
@@ -320,6 +336,25 @@ def _weighted_axis_values(
     )
 
 
+def _target_spread(target: AxisTarget, member_count: int) -> float:
+    """Population standard deviation of the exact n-member design.
+
+    The target is the discrete distribution manufacture_population realizes,
+    not its continuous limit, so a perfect manufacture has zero spread error:
+    UNIFORM is an evenly spaced n-point grid, std = w * sqrt((n+1)/(12(n-1)));
+    BIMODAL puts n//2 members at each mode (odd n: one at the mean),
+    std = (w/2) * sqrt(2*(n//2)/n). Both tend to the continuous values
+    w/sqrt(12) and w/2 as n grows.
+    """
+    low, high = _bounded_interval(target)
+    width = high - low
+    if target.shape is DistributionShape.POINT or member_count < 2 or width == 0.0:
+        return 0.0
+    if target.shape is DistributionShape.BIMODAL:
+        return (width / 2.0) * sqrt(2 * (member_count // 2) / member_count)
+    return width * sqrt((member_count + 1) / (12.0 * (member_count - 1)))
+
+
 def evaluate_design(
     plan: TemperamentDesignPlan,
     population: PolicyPopulation,
@@ -334,13 +369,7 @@ def evaluate_design(
         spread = sqrt(variance)
         mean_error = abs(mean - target.mean)
 
-        low, high = _bounded_interval(target)
-        if target.shape is DistributionShape.POINT:
-            target_spread = 0.0
-        elif target.shape is DistributionShape.BIMODAL:
-            target_spread = (high - low) / 2.0
-        else:
-            target_spread = (high - low) / sqrt(12.0)
+        target_spread = _target_spread(target, len(population.members))
 
         spread_error = abs(spread - target_spread)
         errors.extend((mean_error, spread_error))

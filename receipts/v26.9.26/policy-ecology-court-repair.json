@@ -1,0 +1,85 @@
+{
+  "after": {
+    "result_digest": "126696f45c8428b2bbb18c3c7de2d9b2d9314ae2433fdccf5150513e0815e103",
+    "rows": [
+      {
+        "complexity": 11.642273338992,
+        "condition_us_per_member": 25.252564228139818,
+        "disparity": 1.24290123903,
+        "diversity_ns_per_pair": 488.8919647783041,
+        "members": 16,
+        "pairs": 120,
+        "rdf_project_us_per_member": 486.4193106186576,
+        "rdf_reconstruct_us_per_member": 627.9505687416531,
+        "rdf_triples": 551
+      },
+      {
+        "complexity": 49.409944212393,
+        "condition_us_per_member": 17.397125702700578,
+        "disparity": 1.226034518854,
+        "diversity_ns_per_pair": 163.17409019739856,
+        "members": 64,
+        "pairs": 2016,
+        "rdf_project_us_per_member": 480.1054692507023,
+        "rdf_reconstruct_us_per_member": 626.0449226829223,
+        "rdf_triples": 2135
+      },
+      {
+        "complexity": 195.938040476909,
+        "condition_us_per_member": 18.21988644223893,
+        "disparity": 1.215150641207,
+        "diversity_ns_per_pair": 131.64191092501449,
+        "members": 256,
+        "pairs": 32640,
+        "rdf_project_us_per_member": 463.08903120007017,
+        "rdf_reconstruct_us_per_member": 711.9422184587165,
+        "rdf_triples": 8471
+      },
+      {
+        "complexity": 390.445199223401,
+        "condition_us_per_member": 17.64388071023859,
+        "disparity": 1.191383914061,
+        "diversity_ns_per_pair": 130.44371517453027,
+        "members": 512,
+        "pairs": 130816,
+        "rdf_project_us_per_member": 468.18627924949396,
+        "rdf_reconstruct_us_per_member": 954.5098457692802,
+        "rdf_triples": 16919
+      }
+    ]
+  },
+  "authority": "NONE; ceiling CONSTRUCT; no DO",
+  "command": "PYTHONPATH=src python scripts/bench_policy_ecology.py --sizes 16,64,256,512 --repeat 5",
+  "consequence": [
+    "result_digest unchanged vs policy-ecology-bench.json after (conditioning/diversity semantics unchanged for admitted axes)",
+    "rdf_triples per member 6+2k -> 6+3k (k axes): one cell per (member, axis)",
+    "RDF projection ~0.3 -> ~0.5 ms/member and reconstruction ~0.4 -> ~0.6-1.0 ms/member (Decimal lexical forms + value-keyed comparison); both far below the 5/15 ms ceilings"
+  ],
+  "defects_repaired": [
+    "MAJOR turtle-precision: whole-graph binding refused Turtle round trips (rdflib writes xsd:double as %e, ~7 digits). Extents now xsd:decimal with the float's shortest repr digits, binding compares numeric literals by (datatype, exact value).",
+    "MAJOR authority-fence bypass: plural/camelCase/concatenated/zero-width/homoglyph spellings admitted. Fence now fails closed: non-ASCII axis ids refused, Cf chars stripped, camelCase split, word-stem and collapsed-substring match.",
+    "MINOR axis/value pairing: one cell per (member, axis) with dcterms:isPartOf/dcterms:subject/rdf:value.",
+    "MINOR ReactionNorm.apply keyed by normalized axis id.",
+    "MINOR temperament _refuse_axis_pairs delegates to the shared admission (EMPTY_CONDITION_AXIS).",
+    "MINOR discrete target spread (UNIFORM grid, symmetric BIMODAL with odd-n middle at mean); intervals outside [0,1] refused; targets require positive mission relevance."
+  ],
+  "environment": {
+    "machine": "arm64",
+    "python": "3.13.9"
+  },
+  "falsifiers": {
+    "revert_mutation": "restoring each badc725 source file alone fails the new tests: policy_ecology 53 failed, policy_ecology_rdf 6 failed, temperament_engineering 19 failed",
+    "tests": "tests/test_policy_ecology_court_repairs.py"
+  },
+  "identity": {
+    "after_subject": "the commit that adds this file",
+    "court_receipt": "court-gymact-145-badc7250.json (operator receipts dir)",
+    "parent_subject": "badc7250dd75959f954019b3cfa1adf1a2727727",
+    "pr": 145,
+    "repo": "seanchatmangpt/gymact"
+  },
+  "receipt": "policy-ecology-court-repair",
+  "release": "v26.9.26",
+  "replay": "rerun the command on the after subject; result_digest must equal after.result_digest (timings vary)",
+  "standing": "PARTIAL_ALIVE (local arm64 CPython 3.13.9; CI matrix 3.11/3.12 not locally measured)"
+}

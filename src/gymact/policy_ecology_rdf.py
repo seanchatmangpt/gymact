@@ -9,12 +9,13 @@ from __future__ import annotations
 
 import json
 import re
+from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 from typing import Any
 
 from pyshacl import validate
 from rdflib import Graph, Literal, Namespace, URIRef
-from rdflib.namespace import DCTERMS, RDF, SH, SKOS
+from rdflib.namespace import DCTERMS, RDF, SH, SKOS, XSD
 
 from gymact.evidence import canonical_bytes, digest
 from gymact.models import FrozenModel
@@ -66,6 +67,50 @@ def _axis_concept(axis_id: str) -> URIRef:
     return URIRef(f"urn:gymact:temperament-axis:{digest({'axis_id': axis_id})}")
 
 
+def _condition_cell(member: URIRef, axis_id: str) -> URIRef:
+    return URIRef(f"{member}:axis:{digest({'axis_id': axis_id})}")
+
+
+def _exact_decimal(value: float) -> Literal:
+    """xsd:decimal literal carrying the float's shortest round-trip digits.
+
+    xsd:double is avoided on purpose: rdflib's Turtle serializer rewrites
+    doubles as "%e" (about 7 significant digits), which loses information.
+    A positional xsd:decimal lexical form is written verbatim by every
+    rdflib serializer, and float(Decimal(lexical)) == value exactly.
+    """
+    text = format(Decimal(repr(value)), "f")
+    if "." not in text:
+        text = f"{text}.0"
+    return Literal(text, datatype=XSD.decimal, normalize=False)
+
+
+_NUMERIC_DATATYPES = frozenset({XSD.decimal, XSD.double, XSD.float, XSD.integer, XSD.int, XSD.long})
+
+
+def _term_key(term: Any) -> Any:
+    """Compare numeric literals by datatype and exact value, other terms by identity.
+
+    Parsers may re-lexicalize a numeric literal (e.g. 0.0000001 -> 1E-7), so
+    the whole-graph binding compares numbers by their exact decimal value
+    instead of their lexical form. Any change of value or datatype is still a
+    mismatch.
+    """
+    if isinstance(term, Literal) and term.datatype in _NUMERIC_DATATYPES:
+        try:
+            return ("number", str(term.datatype), Decimal(str(term)).normalize())
+        except InvalidOperation:
+            return term
+    return term
+
+
+def _graph_key(graph: Graph) -> frozenset[tuple[Any, Any, Any]]:
+    return frozenset(
+        (_term_key(subject), _term_key(predicate), _term_key(obj))
+        for subject, predicate, obj in graph
+    )
+
+
 def policy_population_to_rdf(population: PolicyPopulation) -> Graph:
     """Project one population to RDF without changing its standing or authority."""
     graph = Graph()
@@ -106,12 +151,17 @@ def policy_population_to_rdf(population: PolicyPopulation) -> Graph:
         for evidence_ref in member.phenotype.evidence_refs:
             graph.add((resource, PROV.wasDerivedFrom, _iri(evidence_ref, "evidence_ref")))
 
+        # One cell per (member, axis): the cell names its axis and carries its
+        # value, so the axis-to-value pairing is readable from the triples
+        # alone and two axes with equal values stay distinct.
         for axis_id, value in member.phenotype.condition.values:
             concept = _axis_concept(axis_id)
+            cell = _condition_cell(resource, axis_id)
             graph.add((concept, RDF.type, SKOS.Concept))
             graph.add((concept, SKOS.notation, Literal(axis_id)))
-            graph.add((resource, DCTERMS.subject, concept))
-            graph.add((resource, DCTERMS.extent, Literal(value)))
+            graph.add((cell, DCTERMS.isPartOf, resource))
+            graph.add((cell, DCTERMS.subject, concept))
+            graph.add((cell, RDF.value, _exact_decimal(value)))
 
     return graph
 
@@ -182,7 +232,7 @@ def rdf_to_policy_population(graph: Graph) -> PolicyPopulation:
     # triple too: the admitted graph must be exactly the projection of the
     # population it reconstructs, so tampering, dropping, or injecting a
     # member-level triple is refused rather than silently ignored.
-    if set(graph) != set(policy_population_to_rdf(population)):
+    if _graph_key(graph) != _graph_key(policy_population_to_rdf(population)):
         raise ValueError("REFUSED:POLICY_ECOLOGY_RDF_PROJECTION_MISMATCH")
     return population
 

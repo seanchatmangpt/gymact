@@ -70,8 +70,9 @@ def test_bench_is_deterministic_and_within_regression_bound() -> None:
         assert row["condition_us_per_member"] < CONDITION_US_PER_MEMBER_CEILING, row
         assert row["rdf_project_us_per_member"] < RDF_PROJECT_US_PER_MEMBER_CEILING, row
         assert row["rdf_reconstruct_us_per_member"] < RDF_RECONSTRUCT_US_PER_MEMBER_CEILING, row
-        # root 5 + per member (6 + subject/extent per axis) + 2 per axis concept
-        assert row["rdf_triples"] == 5 + row["members"] * (6 + 2 * 9) + 2 * 9
+        # root 5 + per member (6 + one isPartOf/subject/value cell per axis)
+        # + 2 per axis concept; cells keep equal values on distinct axes apart
+        assert row["rdf_triples"] == 5 + row["members"] * (6 + 3 * 9) + 2 * 9
         # inverse-Simpson complexity is bounded by the member count
         assert 1.0 <= row["complexity"] <= row["members"]
         # nine unit axes: every pairwise distance is at most sqrt(9) = 3
