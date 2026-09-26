@@ -8,11 +8,14 @@ permission, authority standing, or the BRCE DO gate.
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from enum import StrEnum
-from math import sqrt
+from functools import lru_cache
+from math import dist, isfinite
 from typing import Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from gymact.models import FrozenModel
 
@@ -29,8 +32,54 @@ _FORBIDDEN_AUTHORITY_AXES = frozenset(
 )
 
 
+# Tokens that encode authority wherever they appear as a whole word of a
+# normalized axis id ("authority_level", "execution.grant", "Permission-Set").
+_FORBIDDEN_AUTHORITY_TOKENS = frozenset({"authority", "permission"})
+_FORBIDDEN_AUTHORITY_PHRASES = ("execution_grant", "execution_authority")
+_AXIS_SEPARATORS = re.compile(r"[^0-9a-z]+")
+
+
+@lru_cache(maxsize=4096)
 def _normalized_axis_id(axis_id: str) -> str:
-    return axis_id.strip().lower()
+    """Canonical comparison key for an axis id.
+
+    NFKC folds compatibility forms (full-width letters), casefold removes case,
+    and every run of non-alphanumeric characters (space, hyphen, dot, ...)
+    collapses to one underscore, so separator spelling cannot smuggle a
+    forbidden axis past the fence.
+    """
+    folded = unicodedata.normalize("NFKC", axis_id).casefold()
+    return _AXIS_SEPARATORS.sub("_", folded).strip("_")
+
+
+@lru_cache(maxsize=4096)
+def _encodes_authority(axis_id: str) -> bool:
+    normalized = _normalized_axis_id(axis_id)
+    if normalized in _FORBIDDEN_AUTHORITY_AXES:
+        return True
+    padded = f"_{normalized}_"
+    if any(f"_{phrase}_" in padded for phrase in _FORBIDDEN_AUTHORITY_PHRASES):
+        return True
+    return bool(_FORBIDDEN_AUTHORITY_TOKENS & set(normalized.split("_")))
+
+
+def _require_finite(value: float, refusal: str) -> float:
+    if not isfinite(value):
+        raise ValueError(f"REFUSED:{refusal}")
+    return value
+
+
+def _refuse_axis_pairs(pairs: tuple[tuple[str, float], ...], duplicate: str) -> None:
+    normalized = [_normalized_axis_id(key) for key, _ in pairs]
+    if any(not key for key in normalized):
+        raise ValueError("REFUSED:EMPTY_CONDITION_AXIS")
+    if len(normalized) != len(set(normalized)):
+        raise ValueError(f"REFUSED:{duplicate}")
+    forbidden = [key for key, _ in pairs if _encodes_authority(key)]
+    if forbidden:
+        raise ValueError(f"REFUSED:TEMPERAMENT_CANNOT_ENCODE_AUTHORITY:{sorted(forbidden)[0]}")
+    for key, value in pairs:
+        _require_finite(value, f"NON_FINITE_CONDITION_VALUE:{key}")
 
 
 class PopulationKind(StrEnum):
@@ -48,8 +97,12 @@ class ConditionAxis(FrozenModel):
 
     @model_validator(mode="after")
     def valid_axis(self) -> Self:
-        if _normalized_axis_id(self.axis_id) in _FORBIDDEN_AUTHORITY_AXES:
+        if not _normalized_axis_id(self.axis_id):
+            raise ValueError("REFUSED:EMPTY_CONDITION_AXIS")
+        if _encodes_authority(self.axis_id):
             raise ValueError(f"REFUSED:TEMPERAMENT_CANNOT_ENCODE_AUTHORITY:{self.axis_id}")
+        _require_finite(self.lower, "NON_FINITE_CONDITION_AXIS_BOUND")
+        _require_finite(self.upper, "NON_FINITE_CONDITION_AXIS_BOUND")
         if self.lower >= self.upper:
             raise ValueError("REFUSED:CONDITION_AXIS_REQUIRES_NONEMPTY_RANGE")
         return self
@@ -65,18 +118,17 @@ class StrategicCondition(FrozenModel):
 
     values: tuple[tuple[str, float], ...] = ()
 
+    @field_validator("values")
+    @classmethod
+    def canonical_order(
+        cls, values: tuple[tuple[str, float], ...]
+    ) -> tuple[tuple[str, float], ...]:
+        # Canonical identity: the same condition written in any order is equal.
+        return tuple(sorted(values))
+
     @model_validator(mode="after")
     def unique_non_authority_axes(self) -> Self:
-        keys = [key for key, _ in self.values]
-        if len(keys) != len(set(keys)):
-            raise ValueError("REFUSED:DUPLICATE_CONDITION_AXIS")
-        forbidden = [
-            key for key in keys if _normalized_axis_id(key) in _FORBIDDEN_AUTHORITY_AXES
-        ]
-        if forbidden:
-            raise ValueError(
-                f"REFUSED:TEMPERAMENT_CANNOT_ENCODE_AUTHORITY:{sorted(forbidden)[0]}"
-            )
+        _refuse_axis_pairs(self.values, "DUPLICATE_CONDITION_AXIS")
         return self
 
     def as_dict(self) -> dict[str, float]:
@@ -93,18 +145,17 @@ class ReactionNorm(FrozenModel):
     slopes: tuple[tuple[str, float], ...] = ()
     reference_cue: float = 0.0
 
+    @field_validator("slopes")
+    @classmethod
+    def canonical_order(
+        cls, slopes: tuple[tuple[str, float], ...]
+    ) -> tuple[tuple[str, float], ...]:
+        return tuple(sorted(slopes))
+
     @model_validator(mode="after")
     def unique_non_authority_axes(self) -> Self:
-        keys = [key for key, _ in self.slopes]
-        if len(keys) != len(set(keys)):
-            raise ValueError("REFUSED:DUPLICATE_REACTION_NORM_AXIS")
-        forbidden = [
-            key for key in keys if _normalized_axis_id(key) in _FORBIDDEN_AUTHORITY_AXES
-        ]
-        if forbidden:
-            raise ValueError(
-                f"REFUSED:TEMPERAMENT_CANNOT_ENCODE_AUTHORITY:{sorted(forbidden)[0]}"
-            )
+        _refuse_axis_pairs(self.slopes, "DUPLICATE_REACTION_NORM_AXIS")
+        _require_finite(self.reference_cue, "NON_FINITE_REFERENCE_CUE")
         return self
 
     def apply(
@@ -113,14 +164,25 @@ class ReactionNorm(FrozenModel):
         cue: float,
         axes: tuple[ConditionAxis, ...],
     ) -> StrategicCondition:
-        ranges = {axis.axis_id: axis for axis in axes}
+        _require_finite(cue, "NON_FINITE_CUE")
+        ranges: dict[str, ConditionAxis] = {}
+        for axis in axes:
+            if axis.axis_id in ranges:
+                raise ValueError(f"REFUSED:DUPLICATE_CONDITION_AXIS:{axis.axis_id}")
+            ranges[axis.axis_id] = axis
         values = baseline.as_dict()
+        for axis_id, value in values.items():
+            axis = ranges.get(axis_id)
+            if axis is not None and not axis.lower <= value <= axis.upper:
+                raise ValueError(f"REFUSED:CONDITION_OUTSIDE_AXIS_RANGE:{axis_id}")
         delta = cue - self.reference_cue
         for axis_id, slope in self.slopes:
             if axis_id not in ranges:
                 raise ValueError(f"REFUSED:UNKNOWN_CONDITION_AXIS:{axis_id}")
             axis = ranges[axis_id]
             value = values.get(axis_id, axis.lower) + slope * delta
+            if not isfinite(value):
+                raise ValueError(f"REFUSED:NON_FINITE_CONDITION_VALUE:{axis_id}")
             values[axis_id] = min(axis.upper, max(axis.lower, value))
         return StrategicCondition(values=tuple(sorted(values.items())))
 
@@ -135,7 +197,7 @@ class PolicyPhenotype(FrozenModel):
 
 class WeightedPhenotype(FrozenModel):
     phenotype: PolicyPhenotype
-    weight: float = Field(gt=0.0)
+    weight: float = Field(gt=0.0, allow_inf_nan=False)
 
 
 class PolicyPopulation(FrozenModel):
@@ -149,10 +211,13 @@ class PolicyPopulation(FrozenModel):
             raise ValueError("REFUSED:HOMOGENEOUS_POPULATION_REQUIRES_ONE_PHENOTYPE")
         if self.kind is PopulationKind.ADAPTIVE and self.reaction_norm is None:
             raise ValueError("REFUSED:ADAPTIVE_POPULATION_REQUIRES_REACTION_NORM")
+        self.normalized_weights()
         return self
 
     def normalized_weights(self) -> tuple[float, ...]:
         total = sum(member.weight for member in self.members)
+        if not isfinite(total) or total <= 0.0:
+            raise ValueError("REFUSED:POPULATION_WEIGHT_NOT_NORMALIZABLE")
         return tuple(member.weight / total for member in self.members)
 
 
@@ -189,7 +254,8 @@ def condition_population(
     """Apply an adaptive reaction norm without changing policy identity or weight."""
     if population.kind is not PopulationKind.ADAPTIVE:
         return population
-    assert population.reaction_norm is not None
+    if population.reaction_norm is None:  # unreachable: population_contract refuses it
+        raise ValueError("REFUSED:ADAPTIVE_POPULATION_REQUIRES_REACTION_NORM")
     return PolicyPopulation(
         kind=population.kind,
         reaction_norm=population.reaction_norm,
@@ -221,24 +287,28 @@ def population_diversity(population: PolicyPopulation) -> PopulationDiversity:
     """
     weights = population.normalized_weights()
     conditions = [member.phenotype.condition.as_dict() for member in population.members]
+    # One canonical (sorted) axis order for every member: an axis absent from a
+    # member reads as 0.0, identical to the per-pair union, but the vectors are
+    # built once (O(n*k)) instead of per pair, and the summation order no
+    # longer depends on set iteration order. math.dist is scaled internally,
+    # so large-but-finite coordinates do not overflow through squaring.
+    axis_order = sorted({key for condition in conditions for key in condition})
+    vectors = [tuple(condition.get(key, 0.0) for key in axis_order) for condition in conditions]
 
     disparity = 0.0
     pair_weight = 0.0
-    for left in range(len(conditions)):
-        for right in range(left + 1, len(conditions)):
-            keys = set(conditions[left]) | set(conditions[right])
-            distance = sqrt(
-                sum(
-                    (conditions[left].get(key, 0.0) - conditions[right].get(key, 0.0)) ** 2
-                    for key in keys
-                )
-            )
-            weight = weights[left] * weights[right]
-            disparity += weight * distance
+    for left in range(len(vectors)):
+        left_vector = vectors[left]
+        left_weight = weights[left]
+        for right in range(left + 1, len(vectors)):
+            weight = left_weight * weights[right]
+            disparity += weight * dist(left_vector, vectors[right])
             pair_weight += weight
 
     if pair_weight:
         disparity /= pair_weight
 
     complexity = 1.0 / sum(weight * weight for weight in weights)
+    if not (isfinite(disparity) and isfinite(complexity)):
+        raise ValueError("REFUSED:POPULATION_DIVERSITY_NOT_FINITE")
     return PopulationDiversity(disparity=disparity, complexity=complexity)
