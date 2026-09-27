@@ -95,6 +95,27 @@ from gymact.skill_court import (
     SkillCourtQualification,
 )
 from gymact.structural_scan import StructuralSignature, structural_scan
+from gymact.survival_artifacts import (
+    SurvivalArtifactReceipt,
+    artifact_receipt,
+    render_survival_campaign_jsonl,
+    render_survival_manifest,
+    write_survival_campaign_jsonl,
+    write_survival_manifest,
+)
+from gymact.survival_campaign import (
+    SurvivalCampaign,
+    SurvivalCampaignCase,
+    SurvivalCampaignReplay,
+    SurvivalCampaignSpec,
+    SurvivalTraceTemplate,
+    manufacture_survival_campaign,
+    replay_survival_campaign,
+)
+from gymact.survival_campaign_observation import (
+    SurvivalCampaignObservationClosure,
+    qualify_campaign_observation_closure,
+)
 from gymact.survival_experiment import (
     InformationTopology,
     Machinery,
@@ -126,6 +147,16 @@ from gymact.survival_manifest import (
 )
 from gymact.survival_manifest import (
     experiment_digest as survival_experiment_digest,
+)
+from gymact.survival_observation import (
+    SurvivalObservationClosure,
+    qualify_observation_closure,
+)
+from gymact.survival_suite import (
+    canonical_fault_kinds,
+    canonical_fault_suite,
+    canonical_policy_suite,
+    canonical_trace_template,
 )
 
 __all__ = [
@@ -184,6 +215,12 @@ __all__ = [
     "SkillCourtProbe",
     "SkillCourtQualification",
     "StructuralSignature",
+    "SurvivalArtifactReceipt",
+    "SurvivalCampaign",
+    "SurvivalCampaignCase",
+    "SurvivalCampaignObservationClosure",
+    "SurvivalCampaignReplay",
+    "SurvivalCampaignSpec",
     "SurvivalCell",
     "SurvivalEpisode",
     "SurvivalExperiment",
@@ -196,6 +233,7 @@ __all__ = [
     "SurvivalFaultPlan",
     "SurvivalManifestCase",
     "SurvivalManifestReplay",
+    "SurvivalObservationClosure",
     "SurvivalPairedCase",
     "SurvivalPairedDesign",
     "SurvivalPairedResult",
@@ -204,11 +242,17 @@ __all__ = [
     "SurvivalRunCase",
     "SurvivalScenario",
     "SurvivalStep",
+    "SurvivalTraceTemplate",
     "ToolPolicy",
     "action_possibility_fragment",
     "admit_graph_recipe",
     "apply_survival_fault_plan",
+    "artifact_receipt",
     "build_survival_manifest",
+    "canonical_fault_kinds",
+    "canonical_fault_suite",
+    "canonical_policy_suite",
+    "canonical_trace_template",
     "compile_graph_recipe",
     "compose_paths",
     "empirical_pareto",
@@ -219,15 +263,23 @@ __all__ = [
     "manufacture_combination_space",
     "manufacture_ecology",
     "manufacture_single_fault_plans",
+    "manufacture_survival_campaign",
     "pareto_paths",
     "possibility_shapes",
+    "qualify_campaign_observation_closure",
+    "qualify_observation_closure",
     "query_do_frontier",
     "rdf_to_graph",
+    "render_survival_campaign_jsonl",
+    "render_survival_manifest",
+    "replay_survival_campaign",
     "replay_survival_manifest",
     "select_irreversible_cut",
     "structural_scan",
     "survival_experiment_digest",
     "task_request_digest",
     "validate_possibility_rdf",
+    "write_survival_campaign_jsonl",
+    "write_survival_manifest",
     "zero_objectives",
 ]
