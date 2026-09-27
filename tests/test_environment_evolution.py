@@ -79,22 +79,26 @@ def candidate(
     events: tuple[EvolutionEvent, ...] | None = None,
 ) -> EvolutionCandidate:
     actual_points = points if points is not None else tuple(point(i) for i in range(3))
-    actual_events = events if events is not None else (
-        EvolutionEvent(
-            event_id="event-0",
-            sequence=0,
-            operation=EvolutionEventOperation.MODIFY,
-            target_ref="budget/approval.json",
-            consequence_digest=E,
-        ),
-        EvolutionEvent(
-            event_id="event-1",
-            sequence=1,
-            operation=EvolutionEventOperation.CREATE,
-            target_ref="budget/revision.json",
-            consequence_digest=F,
-            depends_on_event_ids=("event-0",),
-        ),
+    actual_events = (
+        events
+        if events is not None
+        else (
+            EvolutionEvent(
+                event_id="event-0",
+                sequence=0,
+                operation=EvolutionEventOperation.MODIFY,
+                target_ref="budget/approval.json",
+                consequence_digest=E,
+            ),
+            EvolutionEvent(
+                event_id="event-1",
+                sequence=1,
+                operation=EvolutionEventOperation.CREATE,
+                target_ref="budget/revision.json",
+                consequence_digest=F,
+                depends_on_event_ids=("event-0",),
+            ),
+        )
     )
     return EvolutionCandidate(
         candidate_id="variant:budget:1",

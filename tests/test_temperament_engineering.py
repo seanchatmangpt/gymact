@@ -92,19 +92,18 @@ def test_manufacture_population_realizes_distribution_without_authority() -> Non
     population = manufacture_population(plan(), policy_ref="planner:Astar", member_count=5)
     assert len(population.members) == 5
     assert population.kind.value == "engineered"
-    assert [member.phenotype.condition.as_dict()["exploration"] for member in population.members] == [
+    assert [
+        member.phenotype.condition.as_dict()["exploration"] for member in population.members
+    ] == [
         0.0,
         0.25,
         0.5,
         0.75,
         1.0,
     ]
-    assert {
-        member.phenotype.policy_ref for member in population.members
-    } == {"planner:Astar"}
+    assert {member.phenotype.policy_ref for member in population.members} == {"planner:Astar"}
     assert all(
-        "authority" not in member.phenotype.condition.as_dict()
-        for member in population.members
+        "authority" not in member.phenotype.condition.as_dict() for member in population.members
     )
 
 
@@ -133,14 +132,8 @@ def test_platform_heterogeneity_is_declared_coupling_not_hidden_randomness() -> 
     base = manufacture_population(design, policy_ref="planner:Astar", member_count=3)
     conditioned = apply_platform_heterogeneity(base, design)
 
-    before = [
-        member.phenotype.condition.as_dict()["exploration"]
-        for member in base.members
-    ]
-    after = [
-        member.phenotype.condition.as_dict()["exploration"]
-        for member in conditioned.members
-    ]
+    before = [member.phenotype.condition.as_dict()["exploration"] for member in base.members]
+    after = [member.phenotype.condition.as_dict()["exploration"] for member in conditioned.members]
     assert before == [0.0, 0.5, 1.0]
     assert after == [0.0, 0.375, 0.875]
     assert all(

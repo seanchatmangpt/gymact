@@ -79,6 +79,12 @@ from gymact.possibility_index import (
     EmpiricalPossibilityIndex,
     empirical_pareto,
 )
+from gymact.racap_survival import (
+    SurvivalPairedCase,
+    SurvivalPairedDesign,
+    SurvivalPairedResult,
+    SurvivalPairedRunner,
+)
 from gymact.skill_court import (
     CollectiveSkillCourtBundle,
     CollectiveSkillCourtEvaluator,
@@ -137,8 +143,10 @@ from gymact.survival_manifest import (
     SurvivalManifestCase,
     SurvivalManifestReplay,
     build_survival_manifest,
-    experiment_digest as survival_experiment_digest,
     replay_survival_manifest,
+)
+from gymact.survival_manifest import (
+    experiment_digest as survival_experiment_digest,
 )
 from gymact.survival_observation import (
     SurvivalObservationClosure,
@@ -226,6 +234,10 @@ __all__ = [
     "SurvivalManifestCase",
     "SurvivalManifestReplay",
     "SurvivalObservationClosure",
+    "SurvivalPairedCase",
+    "SurvivalPairedDesign",
+    "SurvivalPairedResult",
+    "SurvivalPairedRunner",
     "SurvivalPolicy",
     "SurvivalRunCase",
     "SurvivalScenario",
@@ -233,14 +245,14 @@ __all__ = [
     "SurvivalTraceTemplate",
     "ToolPolicy",
     "action_possibility_fragment",
-    "artifact_receipt",
+    "admit_graph_recipe",
     "apply_survival_fault_plan",
+    "artifact_receipt",
     "build_survival_manifest",
     "canonical_fault_kinds",
     "canonical_fault_suite",
     "canonical_policy_suite",
     "canonical_trace_template",
-    "admit_graph_recipe",
     "compile_graph_recipe",
     "compose_paths",
     "empirical_pareto",
@@ -250,8 +262,8 @@ __all__ = [
     "manufacture_broker_request",
     "manufacture_combination_space",
     "manufacture_ecology",
-    "manufacture_survival_campaign",
     "manufacture_single_fault_plans",
+    "manufacture_survival_campaign",
     "pareto_paths",
     "possibility_shapes",
     "qualify_campaign_observation_closure",
@@ -263,8 +275,8 @@ __all__ = [
     "replay_survival_campaign",
     "replay_survival_manifest",
     "select_irreversible_cut",
-    "survival_experiment_digest",
     "structural_scan",
+    "survival_experiment_digest",
     "task_request_digest",
     "validate_possibility_rdf",
     "write_survival_campaign_jsonl",

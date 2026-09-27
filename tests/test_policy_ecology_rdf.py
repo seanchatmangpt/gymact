@@ -63,7 +63,10 @@ def test_rdf_projection_explicitly_carries_members_and_policy_identity() -> None
     assert len(roots) == 1
     members = list(graph.objects(roots[0], DCTERMS.hasPart))
     assert len(members) == 2
-    assert all((member, RDF.type, URIRef("http://www.w3.org/ns/prov#Entity")) in graph for member in members)
+    assert all(
+        (member, RDF.type, URIRef("http://www.w3.org/ns/prov#Entity")) in graph
+        for member in members
+    )
 
 
 def test_rdf_digest_tamper_is_refused_even_when_shape_still_conforms() -> None:

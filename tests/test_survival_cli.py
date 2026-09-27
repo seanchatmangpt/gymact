@@ -73,7 +73,7 @@ def test_cli_refuses_silent_overwrite_and_allows_explicit_force(tmp_path: Path) 
     first_receipt = (output / "receipts.json").read_bytes()
     assert main(args) == 2
     assert (output / "receipts.json").read_bytes() == first_receipt
-    assert main(args + ["--force"]) == 0
+    assert main([*args, "--force"]) == 0
 
 
 def test_cli_refuses_campaign_when_bound_is_below_manufactured_width(tmp_path: Path) -> None:

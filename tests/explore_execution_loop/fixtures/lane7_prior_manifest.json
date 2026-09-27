@@ -1,0 +1,46 @@
+{
+  "lane": 7,
+  "episode_id": "ALOOP-ZCODE-DOGFOOD-001",
+  "work_order": "fault-scenario corpus for the autonomous execution loop: attack it; legal outcomes Recover|Replan|Substitute|Refuse|TypedBlock; illegal outcome WaitForHumanToNotice must be asserted impossible",
+  "repos": {
+    "gymact": {
+      "status": "PRESENT",
+      "canonical_checkout": "/Users/sac/gymact",
+      "remote": "https://github.com/seanchatmangpt/gymact.git",
+      "base_branch": "main",
+      "base_sha": "eeb0c2b97cfa55210f26bb7365989a739b3cb113",
+      "branch": "feat/aloup-dogfood-lane7-fault-corpus",
+      "role": "short/high-intensity perturbation worlds (gymact-native scenario home)"
+    },
+    "lifegym": {
+      "status": "BLOCKED_INFORMATION",
+      "broken_term": "R_missing_identity",
+      "detail": "no standalone lifegym checkout found at ~/lifegym, ~/dev/lifegym, or anywhere under ~ (only vendor copies inside OTHER lanes' repos: ~/gym-ecosystem/vendor/lifegym, ~/ggen-marketplace/packs/lifegym-world-pack; both outside lane-7 write authority and not canonical lifegym checkouts)",
+      "consequence": "long-horizon multi-stage episode scenarios (silent external state mutation family) run only as simulated-in-process fakes inside the gymact harness; lifegym-native real-world versions remain unmanufactured",
+      "searched": ["~/lifegym", "~/dev/lifegym", "mdfind -name lifegym", "find ~ -maxdepth 3 -iname '*lifegym*'"]
+    }
+  },
+  "execution_class": "simulated-in-process",
+  "authority": {
+    "ceiling": "DO-local-commits-draft-PR",
+    "grant": "operator-dispatch ALOOP-ZCODE-DOGFOOD-001 lane-7",
+    "actor": "lane-7",
+    "prohibited": ["production actuation", "other lanes' repos", "force push", "history rewrite", "git worktrees", "shadow clones"]
+  },
+  "contract": {
+    "ExecutionRequest": ["work_order", "capability_requirements", "subject", "authority", "evidence_requirements", "resource_constraints"],
+    "ExecutionProvider": ["capabilities", "transport", "availability", "cost", "concurrency", "authority_ceiling", "receipt_protocol"],
+    "ExecutionReceipt": ["work_order_id", "origin_authority", "provider", "provider_execution_id", "subject_before", "subject_after", "commands", "consequences", "evidence", "exit_status", "timestamps", "replay_binding"],
+    "ext_namespaces": ["aloup.outcome", "aloup.fault", "aloup.ocel_digest", "aloup.seed", "aloup.execution_class"],
+    "ocel_event_types": ["execution.start", "execution.claim", "actuation", "execution.crash", "failure.detect", "reconcile.retry", "reconcile.replan", "provider.replace", "verification", "receipt.emit", "refuse", "typed.block"],
+    "ocel_object_types": ["subject", "originAuthority", "provider", "worker", "receipt"],
+    "standings": ["AUTONOMOUS", "ASSISTED", "BLOCKED_AUTHORITY", "BLOCKED_INFORMATION", "FAILED", "ALIVE", "PARTIAL_ALIVE", "BLOCKED", "REFUSED", "UNSUPPORTED", "UNKNOWN"],
+    "illegal_transitions": ["ASSISTED -> AUTONOMOUS"]
+  },
+  "deliverables": {
+    "kernel": "src/gymact/execution_loop.py",
+    "court": "tests/explore_execution_loop/",
+    "manifest": "tests/explore_execution_loop/scenario_manifest.json",
+    "dogfood_fixtures": "tests/explore_execution_loop/fixtures/"
+  }
+}

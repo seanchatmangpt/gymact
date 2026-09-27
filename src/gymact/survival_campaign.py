@@ -36,7 +36,7 @@ class SurvivalTraceTemplate(FrozenModel):
     steps: tuple[SurvivalStep, ...]
 
     @model_validator(mode="after")
-    def validate_steps(self) -> "SurvivalTraceTemplate":
+    def validate_steps(self) -> SurvivalTraceTemplate:
         numbers = [step.step for step in self.steps]
         if not numbers:
             raise ValueError("SURVIVAL_TEMPLATE_EMPTY")
@@ -63,7 +63,7 @@ class SurvivalCampaignSpec(FrozenModel):
     actuation_performed: Literal[False] = False
 
     @model_validator(mode="after")
-    def validate_horizon_and_width(self) -> "SurvivalCampaignSpec":
+    def validate_horizon_and_width(self) -> SurvivalCampaignSpec:
         max_step = max(step.step for step in self.template.steps)
         too_short = [
             scenario.scenario_id
@@ -210,8 +210,6 @@ def manufacture_survival_campaign(spec: SurvivalCampaignSpec) -> SurvivalCampaig
     )
 
 
-
-
 class SurvivalCampaignReplay(FrozenModel):
     expected_campaign_digest: str = Field(min_length=64, max_length=64)
     replay_campaign_digest: str = Field(min_length=64, max_length=64)
@@ -263,8 +261,8 @@ def replay_survival_campaign(
 __all__ = [
     "SurvivalCampaign",
     "SurvivalCampaignCase",
-    "SurvivalCampaignSpec",
     "SurvivalCampaignReplay",
+    "SurvivalCampaignSpec",
     "SurvivalTraceTemplate",
     "manufacture_survival_campaign",
     "replay_survival_campaign",

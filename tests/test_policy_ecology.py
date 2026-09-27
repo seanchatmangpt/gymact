@@ -113,9 +113,7 @@ def test_adaptive_population_requires_reaction_norm() -> None:
 
 
 def test_default_temperament_axes_are_bound_to_source_provenance() -> None:
-    assert TEMPERAMENT_ENGINEERING_PROVENANCE == (
-        "https://arxiv.org/abs/2609.29423",
-    )
+    assert TEMPERAMENT_ENGINEERING_PROVENANCE == ("https://arxiv.org/abs/2609.29423",)
     assert all(
         axis.provenance_refs == TEMPERAMENT_ENGINEERING_PROVENANCE
         for axis in DEFAULT_TEMPERAMENT_AXES
