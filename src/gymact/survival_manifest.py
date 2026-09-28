@@ -27,7 +27,7 @@ class SurvivalManifestCase(FrozenModel):
     factor_digest: str = Field(min_length=64, max_length=64)
 
     @classmethod
-    def from_case(cls, case: SurvivalRunCase) -> "SurvivalManifestCase":
+    def from_case(cls, case: SurvivalRunCase) -> SurvivalManifestCase:
         return cls(
             case_id=case.case_id,
             analysis_policy_id=case.analysis_policy_id,
@@ -94,9 +94,7 @@ def replay_survival_manifest(
     if manifest.experiment_digest != current_experiment_digest:
         mismatches.append("EXPERIMENT_DIGEST_MISMATCH")
 
-    current_cases = tuple(
-        SurvivalManifestCase.from_case(case) for case in experiment.cases()
-    )
+    current_cases = tuple(SurvivalManifestCase.from_case(case) for case in experiment.cases())
     if len(current_cases) != len(manifest.cases):
         mismatches.append("CASE_COUNT_MISMATCH")
 

@@ -181,9 +181,7 @@ class SQLitePolicyEcologyStore:
             cue=cue,
             axes=axes,
         )
-        axes_json = canonical_bytes(
-            [axis.model_dump(mode="json") for axis in axes]
-        ).decode("utf-8")
+        axes_json = canonical_bytes([axis.model_dump(mode="json") for axis in axes]).decode("utf-8")
 
         existing = self._connection.execute(
             """
@@ -215,7 +213,7 @@ class SQLitePolicyEcologyStore:
             )
             VALUES (?, ?, ?, ?, ?)
             """,
-            expected[:0] + (transition_id,) + expected,
+            (*expected[:0], transition_id, *expected),
         )
         self._connection.commit()
         return record
@@ -232,10 +230,7 @@ class SQLitePolicyEcologyStore:
         if row is None:
             return None
         parent_digest, child_digest, cue, axes_json = row
-        axes = tuple(
-            ConditionAxis.model_validate(item)
-            for item in json.loads(axes_json)
-        )
+        axes = tuple(ConditionAxis.model_validate(item) for item in json.loads(axes_json))
         return PopulationTransitionRecord(
             transition_digest=transition_digest_value,
             parent_digest=parent_digest,
@@ -300,7 +295,10 @@ class SQLitePolicyEcologyStore:
                 return False
             if population_digest(population) != digest_value:
                 return False
-            if canonical_bytes(population.model_dump(mode="json")).decode("utf-8") != canonical_json:
+            if (
+                canonical_bytes(population.model_dump(mode="json")).decode("utf-8")
+                != canonical_json
+            ):
                 return False
 
         transitions = self._connection.execute(

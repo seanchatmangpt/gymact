@@ -35,7 +35,7 @@ class SurvivalFault(FrozenModel):
     magnitude: int = Field(ge=0, default=0)
 
     @model_validator(mode="after")
-    def validate_magnitude(self) -> "SurvivalFault":
+    def validate_magnitude(self) -> SurvivalFault:
         if self.kind is SurvivalFaultKind.LLM_TOKEN_BURST and self.magnitude < 1:
             raise ValueError("SURVIVAL_LLM_BURST_MAGNITUDE_REQUIRED")
         if self.kind is not SurvivalFaultKind.LLM_TOKEN_BURST and self.magnitude != 0:
@@ -50,7 +50,7 @@ class SurvivalFaultPlan(FrozenModel):
     actuation_performed: Literal[False] = False
 
     @model_validator(mode="after")
-    def validate_unique_targets(self) -> "SurvivalFaultPlan":
+    def validate_unique_targets(self) -> SurvivalFaultPlan:
         keys = [(fault.target_step, fault.kind) for fault in self.faults]
         if len(keys) != len(set(keys)):
             raise ValueError("SURVIVAL_FAULT_DUPLICATE")
@@ -72,9 +72,7 @@ class SurvivalFaultApplication(FrozenModel):
 
 def _require_do(step: SurvivalStep, fault: SurvivalFault) -> None:
     if step.phase != "DO":
-        raise ValueError(
-            f"SURVIVAL_FAULT_REQUIRES_DO:{fault.kind.value}:step={fault.target_step}"
-        )
+        raise ValueError(f"SURVIVAL_FAULT_REQUIRES_DO:{fault.kind.value}:step={fault.target_step}")
 
 
 def _mutate(step: SurvivalStep, fault: SurvivalFault) -> SurvivalStep:

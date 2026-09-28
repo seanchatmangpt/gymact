@@ -58,9 +58,7 @@ def test_condition_transition_is_replayable_and_preserves_parent(tmp_path: Path)
         child = store.get(transition.child_digest)
 
         assert child is not None
-        assert child.members[0].phenotype.condition.as_dict()["exploration"] == pytest.approx(
-            0.75
-        )
+        assert child.members[0].phenotype.condition.as_dict()["exploration"] == pytest.approx(0.75)
         assert store.get(parent.population_digest) == population
         assert store.replay(transition.transition_digest)
         assert store.transitions_from(parent.population_digest) == (transition,)
@@ -68,12 +66,14 @@ def test_condition_transition_is_replayable_and_preserves_parent(tmp_path: Path)
 
 
 def test_missing_parent_is_typed_refusal(tmp_path: Path) -> None:
-    with SQLitePolicyEcologyStore(tmp_path / "ecology.sqlite") as store:
-        with pytest.raises(
+    with (
+        SQLitePolicyEcologyStore(tmp_path / "ecology.sqlite") as store,
+        pytest.raises(
             ValueError,
             match="REFUSED:POLICY_POPULATION_PARENT_NOT_FOUND",
-        ):
-            store.condition("missing", cue=1.0)
+        ),
+    ):
+        store.condition("missing", cue=1.0)
 
 
 def test_tampered_population_payload_breaks_store_verification(tmp_path: Path) -> None:

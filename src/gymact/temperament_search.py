@@ -41,7 +41,7 @@ class AxisDesignOption(FrozenModel):
     evidence_refs: tuple[str, ...] = ()
 
     @model_validator(mode="after")
-    def valid_target(self) -> "AxisDesignOption":
+    def valid_target(self) -> AxisDesignOption:
         AxisTarget(
             axis_id="validation",
             mean=self.mean,
@@ -58,7 +58,7 @@ class AxisDesignSpace(FrozenModel):
     options: tuple[AxisDesignOption, ...] = Field(min_length=1)
 
     @model_validator(mode="after")
-    def unique_options(self) -> "AxisDesignSpace":
+    def unique_options(self) -> AxisDesignSpace:
         ids = [option.option_id for option in self.options]
         if len(ids) != len(set(ids)):
             raise ValueError(f"REFUSED:DUPLICATE_AXIS_DESIGN_OPTION:{self.axis_id}")
@@ -72,7 +72,7 @@ class DesignObjectiveVector(FrozenModel):
     engineering_cost: float = Field(ge=0.0)
     implementation_complexity: int = Field(ge=0)
 
-    def dominates(self, other: "DesignObjectiveVector") -> bool:
+    def dominates(self, other: DesignObjectiveVector) -> bool:
         no_worse = (
             self.relevant_spread >= other.relevant_spread
             and self.adaptive_capacity >= other.adaptive_capacity
@@ -106,7 +106,7 @@ class TemperamentDesignPortfolio(FrozenModel):
     explored_cardinality: int = Field(ge=0)
 
     @model_validator(mode="after")
-    def portfolio_cardinality(self) -> "TemperamentDesignPortfolio":
+    def portfolio_cardinality(self) -> TemperamentDesignPortfolio:
         if self.explored_cardinality != len(self.candidates):
             raise ValueError("REFUSED:DESIGN_PORTFOLIO_CARDINALITY_MISMATCH")
         if self.explored_cardinality > self.total_cardinality:
@@ -129,16 +129,12 @@ def _validate_search_axes(
         raise ValueError("REFUSED:DUPLICATE_AXIS_DESIGN_SPACE")
 
     relevant = {
-        axis
-        for criterion in criteria
-        for axis, weight in criterion.axis_weights
-        if weight > 0.0
+        axis for criterion in criteria for axis, weight in criterion.axis_weights if weight > 0.0
     }
     missing = relevant.difference(ids)
     if missing:
         raise ValueError(
-            "REFUSED:MISSION_AXIS_MISSING_FROM_DESIGN_SPACE:"
-            + ",".join(sorted(missing))
+            "REFUSED:MISSION_AXIS_MISSING_FROM_DESIGN_SPACE:" + ",".join(sorted(missing))
         )
 
 
@@ -159,9 +155,7 @@ def manufacture_design_portfolio(
     _validate_search_axes(criteria, spaces)
 
     option_index = {
-        (space.axis_id, option.option_id): option
-        for space in spaces
-        for option in space.options
+        (space.axis_id, option.option_id): option for space in spaces for option in space.options
     }
     combination_space = manufacture_combination_space(
         tuple(
@@ -196,9 +190,7 @@ def manufacture_design_portfolio(
             for axis_id, option in selected
         )
         slopes = tuple(
-            (axis_id, option.cue_slope)
-            for axis_id, option in selected
-            if option.cue_slope != 0.0
+            (axis_id, option.cue_slope) for axis_id, option in selected if option.cue_slope != 0.0
         )
         reaction_norm = ReactionNorm(slopes=slopes) if slopes else None
         plan = TemperamentDesignPlan(
@@ -213,12 +205,10 @@ def manufacture_design_portfolio(
         )
         objectives = DesignObjectiveVector(
             relevant_spread=fsum(
-                relevance.get(axis_id, 0.0) * option.spread
-                for axis_id, option in selected
+                relevance.get(axis_id, 0.0) * option.spread for axis_id, option in selected
             ),
             adaptive_capacity=fsum(
-                relevance.get(axis_id, 0.0) * abs(option.cue_slope)
-                for axis_id, option in selected
+                relevance.get(axis_id, 0.0) * abs(option.cue_slope) for axis_id, option in selected
             ),
             engineering_cost=fsum(option.engineering_cost for _, option in selected),
             implementation_complexity=sum(
@@ -228,10 +218,7 @@ def manufacture_design_portfolio(
                 for _, option in selected
             ),
         )
-        option_ids = tuple(
-            (axis_id, option.option_id)
-            for axis_id, option in selected
-        )
+        option_ids = tuple((axis_id, option.option_id) for axis_id, option in selected)
         candidate_id = "urn:gymact:temperament-design:" + digest(
             {
                 "plan": plan.model_dump(mode="json"),

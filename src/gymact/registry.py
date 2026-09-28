@@ -15,7 +15,8 @@ that ontology property's rdfs:comment for the opt-in contract.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from gymact.gyms.chatman_state_gym import CHATMAN_STATE_CAPABILITIES, ChatmanStateProvider
 from gymact.gyms.cloud_topology_gym import CLOUD_TOPOLOGY_CAPABILITIES, CloudTopologyProvider
@@ -71,7 +72,6 @@ from gymact.local_providers import (
 from gymact.network_providers import HTTP_JSON_CAPABILITIES, HTTPJSONProvider
 from gymact.providers import MEMORY_CAPABILITIES, MemoryProvider
 
-
 # NOT registered here (deliberately, not an oversight):
 #   - gymact.gyms.browsergym.BrowserGymProvider: top-level `import browsergym.core` / `import gymnasium`, both gated behind the optional "gyms" extra -- importing this module with only the base install raises ImportError, so registering it would break a clean `import gymact.registry`.
 #   - gymact.gyms.cube_container_counter.CubeContainerCounterProvider: top-level `from cube.infra_local import LocalInfraConfig` wrapped in try/except that re-raises ImportError, gated behind the optional "cube" extra with Docker.
@@ -118,8 +118,7 @@ _BUILTINS = {
 
 # Opt-in structured outcome predicates -- only providers with a real rg:outcomePredicateModule
 # / rg:outcomePredicateExpr pair appear here. Empty for most providers by design.
-_OUTCOME_PREDICATES: dict[str, Callable[[str, dict], bool]] = {
-}
+_OUTCOME_PREDICATES: dict[str, Callable[[str, dict], bool]] = {}
 
 
 def builtin_provider_names() -> tuple[str, ...]:

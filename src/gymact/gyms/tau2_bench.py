@@ -91,7 +91,7 @@ def _to_jsonable(value: Any) -> Any:
     return value
 
 
-def _tool_capabilities(env: "Tau2Environment") -> tuple[Capability, ...]:
+def _tool_capabilities(env: Tau2Environment) -> tuple[Capability, ...]:
     """Build one real GymAct `Capability` per real tau2 assistant tool.
     `DO`/`READ` is read from the tool's own `mutates_state` classification
     (`ToolKitBase.tool_mutates_state`) -- tau2's own authority-relevant fact
@@ -124,8 +124,8 @@ class Tau2BenchEnvironment:
         self,
         *,
         domain: str,
-        task: "Task",
-        env: "Tau2Environment",
+        task: Task,
+        env: Tau2Environment,
         requires_authority: bool = True,
     ) -> None:
         self.environment_id = f"urn:gymact:tau2-bench:environment:{uuid4().hex}"
@@ -172,9 +172,7 @@ class Tau2BenchEnvironment:
             # tau2 tool call that raises (invalid order id, policy
             # violation, etc.) never silently becomes a successful mutation
             # -- record and re-raise the real tau2 exception.
-            self._trajectory.append(
-                {"tool": tool_name, "arguments": payload, "error": str(exc)}
-            )
+            self._trajectory.append({"tool": tool_name, "arguments": payload, "error": str(exc)})
             raise
         after_hash = self._env.get_db_hash()
         jsonable_result = _to_jsonable(result)
@@ -206,9 +204,7 @@ class Tau2BenchEnvironment:
         _apply_initial_state(fresh_env, self._task)
         for action in criteria.actions:
             requestor = "user" if action.requestor == "user" else "assistant"
-            fresh_env.make_tool_call(
-                action.name, requestor=requestor, **(action.arguments or {})
-            )
+            fresh_env.make_tool_call(action.name, requestor=requestor, **(action.arguments or {}))
         return fresh_env.get_db_hash()
 
     async def verify(self, expected: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
@@ -284,7 +280,7 @@ class Tau2BenchEnvironment:
         self._closed = True
 
 
-def _apply_initial_state(env: "Tau2Environment", task: "Task") -> None:
+def _apply_initial_state(env: Tau2Environment, task: Task) -> None:
     """Apply a real tau2 `Task.initial_state` to a real, freshly-constructed
     `Environment` -- tau2's own initialization data/actions, not a
     re-derived substitute."""
@@ -341,9 +337,7 @@ class Tau2BenchProvider:
         if not isinstance(domain, str):
             raise TypeError("config.domain must be a str")
         if domain not in _SUPPORTED_DOMAINS:
-            raise ValueError(
-                f"unsupported tau2 domain {domain!r}; supported: {_SUPPORTED_DOMAINS}"
-            )
+            raise ValueError(f"unsupported tau2 domain {domain!r}; supported: {_SUPPORTED_DOMAINS}")
         task_id = config.get("task_id")
         if task_id is not None and not isinstance(task_id, str):
             raise TypeError("config.task_id must be a str or None")

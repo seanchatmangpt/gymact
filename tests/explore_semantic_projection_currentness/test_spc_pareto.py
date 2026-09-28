@@ -1,10 +1,9 @@
 import unittest
 from fractions import Fraction
 
-from tests.explore_semantic_projection_currentness._fixtures import fixtures
-
 from gymact.explore_semantic_projection_currentness.pareto import frontier
 from gymact.explore_semantic_projection_currentness.selectors import Score
+from tests.explore_semantic_projection_currentness._fixtures import fixtures
 
 
 class Court(unittest.TestCase):

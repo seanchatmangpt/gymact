@@ -1,8 +1,6 @@
 import unittest
 from dataclasses import replace
 
-from tests.explore_semantic_projection_currentness._fixtures import SHA
-
 from gymact.explore_semantic_projection_currentness.receipt import (
     ProjectionReceipt,
     require_do,
@@ -12,6 +10,7 @@ from gymact.explore_semantic_projection_currentness.storage import (
     select_storage,
 )
 from gymact.explore_semantic_projection_currentness.subject import Refusal, Subject
+from tests.explore_semantic_projection_currentness._fixtures import SHA
 
 
 class Court(unittest.TestCase):
