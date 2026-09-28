@@ -238,18 +238,14 @@ class RetirementPortfolio(FrozenModel):
     @property
     def historical_model_tokens_observed(self) -> int:
         """Tokens actually observed in the source histories; not a future-savings claim."""
-        return sum(
-            evaluation.compilation_candidate.model_tokens
-            for evaluation in self.evaluations
-        )
+        return sum(evaluation.compilation_candidate.model_tokens for evaluation in self.evaluations)
 
     @property
     def retired_history_model_tokens_observed(self) -> int:
         return sum(
             evaluation.compilation_candidate.model_tokens
             for evaluation in self.evaluations
-            if evaluation.decision.disposition
-            is RetirementDisposition.RETIRE_GENERAL_LLM
+            if evaluation.decision.disposition is RetirementDisposition.RETIRE_GENERAL_LLM
         )
 
 
@@ -340,9 +336,7 @@ def retirement_portfolio(
             "model_tokens": evaluation.compilation_candidate.model_tokens,
             "decision": evaluation.decision.model_dump(mode="json"),
             "receipt_digest": (
-                evaluation.receipt.receipt_digest
-                if evaluation.receipt is not None
-                else None
+                evaluation.receipt.receipt_digest if evaluation.receipt is not None else None
             ),
         }
         for evaluation in evaluations

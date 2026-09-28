@@ -150,9 +150,7 @@ class EvolutionCandidate(FrozenModel):
             if not (feedback_digest.startswith("sha256:") or feedback_digest.startswith("blake3:")):
                 raise ValueError("EVOLUTION_FAILURE_FEEDBACK_DIGEST_INVALID")
             payload = feedback_digest.split(":", 1)[1]
-            if len(payload) != 64 or any(
-                ch not in "0123456789abcdef" for ch in payload.lower()
-            ):
+            if len(payload) != 64 or any(ch not in "0123456789abcdef" for ch in payload.lower()):
                 raise ValueError("EVOLUTION_FAILURE_FEEDBACK_DIGEST_INVALID")
         if len(self.failure_feedback_digests) != len(set(self.failure_feedback_digests)):
             raise ValueError("EVOLUTION_FAILURE_FEEDBACK_DUPLICATE")

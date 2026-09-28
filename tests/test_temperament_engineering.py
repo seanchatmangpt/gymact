@@ -220,9 +220,6 @@ def test_odd_bimodal_population_preserves_target_mean() -> None:
         policy_ref="planner:Astar",
         member_count=5,
     )
-    values = [
-        member.phenotype.condition.as_dict()["initiative"]
-        for member in population.members
-    ]
+    values = [member.phenotype.condition.as_dict()["initiative"] for member in population.members]
     assert values == [0.25, 0.25, 0.5, 0.75, 0.75]
     assert sum(values) / len(values) == pytest.approx(0.5)

@@ -160,9 +160,7 @@ def detect_project_kind(root: Path) -> ProjectKind:
 
 def _python_files(worktree: Path) -> list[str]:
     return sorted(
-        str(p.relative_to(worktree))
-        for p in worktree.rglob("*.py")
-        if ".git" not in p.parts
+        str(p.relative_to(worktree)) for p in worktree.rglob("*.py") if ".git" not in p.parts
     )
 
 
@@ -368,8 +366,10 @@ def clone_at_ref(
                 f"strategy='worktree' requires a local git repository source; {source!r} is not one"
             )
 
-    dest = Path(destination) if destination is not None else Path(
-        tempfile.mkdtemp(prefix="gymact-codebase-clone-")
+    dest = (
+        Path(destination)
+        if destination is not None
+        else Path(tempfile.mkdtemp(prefix="gymact-codebase-clone-"))
     )
     if dest.exists():
         if any(dest.iterdir()) and not force:

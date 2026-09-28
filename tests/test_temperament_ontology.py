@@ -22,9 +22,7 @@ def test_ontology_is_source_for_exact_nine_axis_runtime_projection() -> None:
         "initiative",
         "expressiveness",
     }
-    assert {axis.axis_id for axis in DEFAULT_TEMPERAMENT_AXES} == {
-        spec.axis_id for spec in specs
-    }
+    assert {axis.axis_id for axis in DEFAULT_TEMPERAMENT_AXES} == {spec.axis_id for spec in specs}
 
 
 def test_five_animal_and_four_robot_native_axes_are_preserved() -> None:

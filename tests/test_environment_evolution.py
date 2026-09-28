@@ -254,7 +254,6 @@ def test_candidate_cannot_claim_do_authority() -> None:
         EvolutionCandidate(**kwargs)
 
 
-
 def test_evolution_replay_receipt_is_deterministic() -> None:
     court = EnvironmentEvolutionCourt()
     current = seed()

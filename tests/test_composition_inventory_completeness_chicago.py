@@ -226,7 +226,6 @@ _INTENTIONALLY_UNCATALOGED: dict[str, str] = {
         "degrades to a named standing skip and is pending its first "
         "real-qualification pass before full CapabilityEvidence cataloging."
     ),
-
     "PlatformConsoleOntologyDrivenProvider": (
         "gymact.gyms.platform_console_ontology_provider.PlatformConsoleOntologyDrivenProvider "
         "is a configured ontology-driven planning-state specialization constructed "

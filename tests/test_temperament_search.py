@@ -124,9 +124,7 @@ def test_candidate_objectives_keep_benefit_and_cost_axes_separate() -> None:
         spaces=spaces(),
     )
     by_options = {candidate.option_ids: candidate for candidate in portfolio.candidates}
-    heterogeneous = by_options[
-        (("exploration", "uniform"), ("initiative", "bimodal"))
-    ]
+    heterogeneous = by_options[(("exploration", "uniform"), ("initiative", "bimodal"))]
     assert heterogeneous.objectives.relevant_spread == pytest.approx(0.4375)
     assert heterogeneous.objectives.adaptive_capacity == pytest.approx(0.0)
     assert heterogeneous.objectives.engineering_cost == pytest.approx(0.3)

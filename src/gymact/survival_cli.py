@@ -63,12 +63,15 @@ def manufacture_canonical_artifacts(
 
 
 def _write_summary(path: Path, value: dict) -> None:
-    payload = json.dumps(
-        value,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-    ) + "\n"
+    payload = (
+        json.dumps(
+            value,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        )
+        + "\n"
+    )
     path.write_text(payload, encoding="utf-8")
 
 
