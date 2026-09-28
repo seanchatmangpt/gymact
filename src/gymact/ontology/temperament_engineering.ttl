@@ -1,0 +1,88 @@
+# Temperament Engineering vocabulary profile.
+#
+# Public-vocabulary rule: local gymact URNs below are SKOS concept/scheme
+# instances only. No local RDF/OWL predicates or classes are defined.
+#
+# Source: Hunt, "Temperament Engineering: Designing Strategic Behavioural
+# Diversity in Robot Swarms", arXiv:2609.29423 (2026).
+
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+<urn:gymact:temperament-scheme>
+    a skos:ConceptScheme ;
+    dct:title "Temperament Engineering behavioral axes" ;
+    dct:source <https://arxiv.org/abs/2609.29423> .
+
+<urn:gymact:temperament-axis:boldness>
+    a skos:Concept ;
+    skos:inScheme <urn:gymact:temperament-scheme> ;
+    skos:notation "boldness" ;
+    skos:prefLabel "Shyness–boldness"@en ;
+    dct:type "animal-temperament-axis" ;
+    dct:source <https://arxiv.org/abs/2609.29423> .
+
+<urn:gymact:temperament-axis:exploration>
+    a skos:Concept ;
+    skos:inScheme <urn:gymact:temperament-scheme> ;
+    skos:notation "exploration" ;
+    skos:prefLabel "Exploration–avoidance"@en ;
+    dct:type "animal-temperament-axis" ;
+    dct:source <https://arxiv.org/abs/2609.29423> .
+
+<urn:gymact:temperament-axis:activity>
+    a skos:Concept ;
+    skos:inScheme <urn:gymact:temperament-scheme> ;
+    skos:notation "activity" ;
+    skos:prefLabel "Activity"@en ;
+    dct:type "animal-temperament-axis" ;
+    dct:source <https://arxiv.org/abs/2609.29423> .
+
+<urn:gymact:temperament-axis:aggressiveness>
+    a skos:Concept ;
+    skos:inScheme <urn:gymact:temperament-scheme> ;
+    skos:notation "aggressiveness" ;
+    skos:prefLabel "Aggressiveness"@en ;
+    dct:type "animal-temperament-axis" ;
+    dct:source <https://arxiv.org/abs/2609.29423> .
+
+<urn:gymact:temperament-axis:sociability>
+    a skos:Concept ;
+    skos:inScheme <urn:gymact:temperament-scheme> ;
+    skos:notation "sociability" ;
+    skos:prefLabel "Sociability"@en ;
+    dct:type "animal-temperament-axis" ;
+    dct:source <https://arxiv.org/abs/2609.29423> .
+
+<urn:gymact:temperament-axis:self-model-plasticity>
+    a skos:Concept ;
+    skos:inScheme <urn:gymact:temperament-scheme> ;
+    skos:notation "self_model_plasticity" ;
+    skos:prefLabel "Self-model plasticity"@en ;
+    dct:type "robot-native-axis" ;
+    dct:source <https://arxiv.org/abs/2609.29423> .
+
+<urn:gymact:temperament-axis:forcefulness>
+    a skos:Concept ;
+    skos:inScheme <urn:gymact:temperament-scheme> ;
+    skos:notation "forcefulness" ;
+    skos:prefLabel "Forcefulness"@en ;
+    dct:type "robot-native-axis" ;
+    dct:source <https://arxiv.org/abs/2609.29423> .
+
+<urn:gymact:temperament-axis:initiative>
+    a skos:Concept ;
+    skos:inScheme <urn:gymact:temperament-scheme> ;
+    skos:notation "initiative" ;
+    skos:prefLabel "Initiative"@en ;
+    dct:type "robot-native-axis" ;
+    dct:source <https://arxiv.org/abs/2609.29423> .
+
+<urn:gymact:temperament-axis:expressiveness>
+    a skos:Concept ;
+    skos:inScheme <urn:gymact:temperament-scheme> ;
+    skos:notation "expressiveness" ;
+    skos:prefLabel "Expressiveness"@en ;
+    dct:type "robot-native-axis" ;
+    dct:source <https://arxiv.org/abs/2609.29423> .
