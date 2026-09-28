@@ -1,8 +1,9 @@
 import unittest
 from fractions import Fraction
 
-from gymact.explore_semantic_projection_currentness.admission import admit_candidates
 from tests.explore_semantic_projection_currentness._fixtures import fixtures
+
+from gymact.explore_semantic_projection_currentness.admission import admit_candidates
 
 
 class Court(unittest.TestCase):

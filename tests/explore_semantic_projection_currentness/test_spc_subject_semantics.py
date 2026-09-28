@@ -1,8 +1,9 @@
 import unittest
 
+from tests.explore_semantic_projection_currentness._fixtures import DIGEST, SHA
+
 from gymact.explore_semantic_projection_currentness.semantic_type import SemanticType, TermKind
 from gymact.explore_semantic_projection_currentness.subject import Refusal, Subject
-from tests.explore_semantic_projection_currentness._fixtures import DIGEST, SHA
 
 
 class Court(unittest.TestCase):
