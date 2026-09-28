@@ -1,0 +1,43 @@
+@prefix ce: <https://w3id.org/chatman-equilibrium#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix odrl: <http://www.w3.org/ns/odrl/2/> .
+
+ce:Planner a prov:Entity .
+ce:Policy a prov:Entity .
+ce:Role a prov:Role .
+ce:Agent a prov:Agent .
+ce:Authority a prov:Entity .
+ce:Selection a prov:Entity .
+ce:DO a prov:Activity .
+ce:Standing a prov:Entity .
+
+ce:hddl-local a ce:Planner ;
+  ce:provider <urn:gymact:provider:hddl-local> ;
+  ce:family "HDDL" ;
+  ce:capability <urn:gymact:capability:hierarchical-plan> ;
+  ce:authorityCeiling <urn:gymact:authority:plan-only> ;
+  ce:maxSteps 128 ;
+  ce:priority 30 .
+
+ce:fond-local a ce:Planner ;
+  ce:provider <urn:gymact:provider:fond-local> ;
+  ce:family "FOND" ;
+  ce:capability <urn:gymact:capability:nondeterministic-plan> ;
+  ce:authorityCeiling <urn:gymact:authority:plan-only> ;
+  ce:maxSteps 128 ;
+  ce:priority 20 .
+
+ce:powl-local a ce:Planner ;
+  ce:provider <urn:gymact:provider:powl-local> ;
+  ce:family "POWL" ;
+  ce:capability <urn:gymact:capability:process-plan> ;
+  ce:authorityCeiling <urn:gymact:authority:plan-only> ;
+  ce:maxSteps 256 ;
+  ce:priority 10 .
+
+ce:selectionPolicy a ce:Policy, odrl:Policy ;
+  ce:forbidsAuthorityIncrease true ;
+  ce:forbidsSelectAsDO true ;
+  ce:requiresExactSubject true ;
+  ce:requiresFreshEpoch true ;
+  ce:requiresReceipt true .
