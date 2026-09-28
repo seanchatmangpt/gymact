@@ -92,17 +92,23 @@ def detect_compilation_candidate(
         first.environment_identity,
         first.authority_class,
     )
-    equivalent = tuple(
-        episode
-        for episode in episodes
+    equivalent_by_receipt: dict[str, CognitionEpisode] = {}
+    for episode in episodes:
         if (
-            episode.problem_identity,
-            episode.environment_identity,
-            episode.authority_class,
-        )
-        == key
-        and episode.verified
-    )
+            (
+                episode.problem_identity,
+                episode.environment_identity,
+                episode.authority_class,
+            )
+            == key
+            and episode.verified
+        ):
+            # One durable receipt is one observation, regardless of how many
+            # times a caller repeats it in the input sequence. Duplicate
+            # evidence must never manufacture recurrence.
+            equivalent_by_receipt.setdefault(episode.receipt_ref, episode)
+
+    equivalent = tuple(equivalent_by_receipt.values())
     tokens = sum(episode.model_tokens for episode in equivalent)
     candidate = len(equivalent) >= minimum_repetitions and tokens > 0
     return CompilationCandidate(
