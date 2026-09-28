@@ -12,7 +12,11 @@ Every scenario in scenario_manifest.json is executed against the real kernel
 5. runs are deterministic: same seed twice -> identical outcome and identical
    event digest;
 6. scenario-specific post-conditions (exactly-once, substitution target,
-   backoff clock) must hold.
+   backoff clock) must hold;
+7. actuation conservation: every result's ``actuation_count`` equals the
+   number of ``actuation`` OCEL events it carries, and across a scenario the
+   kernel-counted actuations equal the providers' durable journal entries
+   (no actuation is performed without being counted, receipted and logged).
 """
 
 from __future__ import annotations
@@ -123,3 +127,27 @@ def test_required_families_covered(manifest):
     families = {s["family"] for s in manifest["scenarios"]}
     missing = required - families
     assert not missing, f"required fault families absent from corpus: {missing}"
+
+
+def test_actuation_conservation(manifest, scenario, seed, court):
+    builder = court.BUILDERS[scenario["id"]]
+    built = builder(seed, inject=True)
+    results = _run_built(built)
+    for result in results:
+        logged = [event for event in result.events if event.event_type == "actuation"]
+        assert result.actuation_count == len(logged) == len(result.actuations), (
+            f"{scenario['id']}: actuation_count={result.actuation_count} "
+            f"events={len(logged)} ledger={len(result.actuations)}"
+        )
+        if result.receipt is not None and result.actuation_count:
+            assert len(result.receipt.consequences) == result.actuation_count
+            assert len(result.receipt.commands) == result.actuation_count
+            assert result.receipt.ext["aloup.actuation_count"] == result.actuation_count
+    journaling = [p for p in built.providers if not getattr(p, "journal_lost", False)]
+    if len(journaling) == len(built.providers):
+        journaled = sum(len(p.journal) for p in built.providers)
+        counted = sum(result.actuation_count for result in results)
+        assert counted == journaled, (
+            f"{scenario['id']}: kernel counted {counted} actuations, providers "
+            f"journaled {journaled}"
+        )
