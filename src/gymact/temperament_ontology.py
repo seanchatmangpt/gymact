@@ -84,7 +84,7 @@ def assert_public_temperament_vocabulary() -> None:
         str(DCTERMS),
         str(SKOS),
     )
-    for subject, predicate, obj in graph:
+    for _subject, predicate, obj in graph:
         if str(predicate).startswith("urn:gymact:"):
             raise ValueError(f"REFUSED:TEMPERAMENT_CUSTOM_PREDICATE:{predicate}")
         if predicate == RDF.type and isinstance(obj, URIRef) and str(obj).startswith("urn:gymact:"):

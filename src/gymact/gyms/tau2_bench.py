@@ -41,8 +41,13 @@ from uuid import uuid4
 from gymact.models import Capability, Consequence
 
 try:
-    from tau2 import registry as tau2_registry
-    from tau2.data_model.tasks import Action, EnvFunctionCall, RewardType, Task
+    from tau2 import registry as tau2_registry  # noqa: F401 - availability probe
+    from tau2.data_model.tasks import (  # noqa: F401 - availability probe
+        Action,
+        EnvFunctionCall,
+        RewardType,
+        Task,
+    )
     from tau2.environment.environment import Environment as Tau2Environment
 
     TAU2_AVAILABLE = True
