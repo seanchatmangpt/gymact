@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased - 2026-09-25
+## 26.9.28 - 2026-09-28
+
+### Changed
+- Version bump 26.9.24 -> 26.9.28 in `pyproject.toml` and `gymact.__version__`. Integrates environment evolution + RACaP recovery (PR #152), execution-loop court repairs (PR #151), SA2A model-advice boundary, survival campaign closure, planner-portfolio control, BEAM surface, and other cleanly-mergeable feature branches. 41 conflicting branches were deliberately not merged.
 
 ### Added
 - `gymact.execution_loop` module (`42f8191`): ExecutionRequest/ExecutionProvider/ExecutionReceipt autonomous loop kernel, exactly-five `LegalOutcome` with `WaitForHumanToNotice` provably unreachable as `IllegalOutcome`, and the OCEL 2.0 loop event vocabulary; lane-7 fault-scenario corpus (31 scenarios) under `tests/explore_execution_loop/` with anti-vacuity and illegal-outcome courts (`1b92cce`).
