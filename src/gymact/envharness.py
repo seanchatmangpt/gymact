@@ -392,7 +392,7 @@ class HarnessSession:
                 )
             return HarnessResetResult(
                 accepted=False,
-                standing=admission.standing if cleanup_ok else cleanup.standing,
+                standing=admission.standing,
                 materialization=materialization,
                 admission=admission,
                 cleanup_receipt=cleanup,
