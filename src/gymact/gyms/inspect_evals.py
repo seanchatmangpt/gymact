@@ -96,6 +96,7 @@ def _run_inspect_eval(
     replaced.
     """
     from inspect_ai._eval.task import run as inspect_task_run
+    from inspect_ai._util import _async as inspect_async
     from inspect_ai.hooks import _hooks as inspect_hooks
 
     original_start = inspect_hooks.start_sample_event_emitter
@@ -103,6 +104,18 @@ def _run_inspect_eval(
     runner_start = getattr(inspect_task_run, "start_sample_event_emitter", None)
     runner_drain = getattr(inspect_task_run, "drain_sample_events", None)
     owned_receives: list[Any] = []
+    # Inspect's `init_nest_asyncio()` calls `nest_asyncio2.apply()` with the
+    # default `run_close_loop=False`, permanently patching `asyncio.run` for
+    # the WHOLE process: afterwards every sync `asyncio.run()` creates a loop,
+    # installs it as the thread's current loop, and never closes it. Those
+    # loops (and their AF_UNIX self-pipes) are finalized by the GC during
+    # unrelated later work. This adapter runs `eval()` from a worker thread
+    # with no running loop, so re-entrancy is never needed here; Inspect's own
+    # once-only flag is held True for the duration so its process-global patch
+    # is not installed by this call, and restored afterwards. The lazy sample
+    # read is likewise forced inside this thread (see below).
+    nest_flag_present = hasattr(inspect_async, "_initialised_nest_asyncio")
+    original_nest_flag = getattr(inspect_async, "_initialised_nest_asyncio", None)
 
     def start_sample_event_emitter_tracking_receive() -> None:
         original_start()
@@ -129,8 +142,10 @@ def _run_inspect_eval(
             )
         if runner_drain is original_drain:
             inspect_task_run.drain_sample_events = drain_sample_events_closing_receive
+        if nest_flag_present:
+            inspect_async._initialised_nest_asyncio = True
         try:
-            return inspect_eval(
+            logs = inspect_eval(
                 task,
                 model=model,
                 model_args=model_args,
@@ -138,7 +153,18 @@ def _run_inspect_eval(
                 display="none",
                 ctl_server=False,
             )
+            # `eval()` returns logs whose `samples` is a `LazyList` that reads
+            # the .eval file on first access. Touching it from the caller's
+            # running event loop makes Inspect re-enter that loop through
+            # `nest_asyncio2` (the same process-global patch guarded above).
+            # Realize it here, in this loop-free worker thread, so the read
+            # runs on Inspect's own closed-on-exit loop instead.
+            for log in logs:
+                _ = bool(log.samples)
+            return logs
         finally:
+            if nest_flag_present:
+                inspect_async._initialised_nest_asyncio = original_nest_flag
             inspect_hooks.start_sample_event_emitter = original_start
             inspect_hooks.drain_sample_events = original_drain
             if runner_start is original_start:

@@ -20,6 +20,9 @@ opts in via `GYMACT_ALLOW_DEGRADED_STANDINGS=LOCAL_GYM:inspect-evals` (or
 from __future__ import annotations
 
 import importlib.util
+import subprocess
+import sys
+from pathlib import Path
 
 from gymact.standing import named_standing_skip
 
@@ -333,3 +336,36 @@ async def test_inspect_evals_episode_replays_conformant_and_produces_a_valid_oce
 
     teardown_receipt = receipts[-1]
     assert teardown_receipt.standing == Standing.ALIVE
+
+
+def test_real_solve_does_not_install_the_process_global_nest_asyncio_patch(tmp_path) -> None:
+    """Inspect's `init_nest_asyncio()` permanently patches `asyncio.run` for the
+    whole process with a variant that never closes the loop it creates; those
+    loops (and their AF_UNIX self-pipes) are then finalized by the GC during
+    unrelated later tests, failing them under warnings-as-errors. A real solve
+    through this adapter must leave the process's asyncio unpatched.
+
+    Runs in a fresh interpreter: the patch is one-way and process-global, so an
+    in-process check would be order-dependent on whichever earlier test first
+    tripped it."""
+    script = (
+        "import asyncio, sys\n"
+        "sys.path.insert(0, sys.argv[2])\n"
+        "from test_inspect_evals import _run_real_inspect_episode\n"
+        "assert not hasattr(asyncio, '_nest_patched')\n"
+        "receipts = asyncio.run(_run_real_inspect_episode(\n"
+        "    custom_outputs=['4'], log_dir=sys.argv[1]))\n"
+        "print('RECEIPTS', len(receipts))\n"
+        "print('NEST_PATCHED', hasattr(asyncio, '_nest_patched'))\n"
+    )
+    done = subprocess.run(
+        [sys.executable, "-c", script, str(tmp_path / "inspect_logs"), str(Path(__file__).parent)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        check=False,
+    )
+
+    assert done.returncode == 0, done.stderr
+    assert "RECEIPTS 3" in done.stdout
+    assert "NEST_PATCHED False" in done.stdout
