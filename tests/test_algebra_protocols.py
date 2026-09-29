@@ -40,6 +40,21 @@ def _kubernetes_cluster_reachable() -> bool:
     return result.returncode == 0
 
 
+def _declared_protocol_methods(protocol: type[object]) -> set[str]:
+    """Return public callable members declared directly on a Protocol.
+
+    ``typing.Protocol.__protocol_attrs__`` is a private CPython implementation
+    detail and is not portable across the supported Python matrix.  Inspecting
+    the Protocol class namespace proves the same source-level contract without
+    depending on a private runtime attribute.
+    """
+    return {
+        name
+        for name, value in vars(protocol).items()
+        if not name.startswith("_") and callable(value)
+    }
+
+
 @pytest.mark.asyncio
 async def test_memory_environment_satisfies_environment_protocol() -> None:
     provider = MemoryProvider()

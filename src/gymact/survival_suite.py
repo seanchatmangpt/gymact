@@ -74,8 +74,6 @@ def canonical_fault_suite() -> tuple[SurvivalFactor, ...]:
     )
 
 
-
-
 def canonical_fault_kinds() -> tuple[SurvivalFaultKind, ...]:
     """Every typed observational fault currently supported by the survival court."""
 

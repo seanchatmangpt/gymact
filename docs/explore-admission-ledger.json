@@ -1,0 +1,1086 @@
+{
+  "description": "Explore admission ledger. Facts are recomputed by tests/test_explore_admission_ledger_chicago.py from an AST import scan. UNADMITTED = no production importer; PRODUCTION_REACHED = a production (non-explore_*) module imports it, a named boundary violation and not a promotion. Nothing here is ADMITTED: admission needs falsification, a stable semantic profile and an agreeing Rust projection, which this ledger cannot establish.",
+  "summary": {
+    "packages": 59,
+    "total_loc": 22850,
+    "production_reached": 0,
+    "with_tests": 58
+  },
+  "packages": [
+    {
+      "package": "explore_ack_admission",
+      "kind": "module",
+      "loc": 55,
+      "has_tests": true,
+      "test_files": [
+        "test_explore_ack_admission.py",
+        "test_explore_ack_idempotency.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [
+        "explore_ack_engine"
+      ],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_ack_authority",
+      "kind": "module",
+      "loc": 23,
+      "has_tests": true,
+      "test_files": [
+        "test_explore_ack_e2e.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [
+        "explore_ack_engine"
+      ],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_ack_comparator",
+      "kind": "module",
+      "loc": 59,
+      "has_tests": true,
+      "test_files": [
+        "test_explore_ack_comparator.py",
+        "test_explore_ack_receipt.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [
+        "explore_ack_engine",
+        "explore_ack_receipt"
+      ],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_ack_engine",
+      "kind": "module",
+      "loc": 43,
+      "has_tests": true,
+      "test_files": [
+        "test_explore_ack_e2e.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_ack_epoch",
+      "kind": "package",
+      "loc": 254,
+      "has_tests": true,
+      "test_files": [
+        "explore_ack_epoch/test_admission_causal.py",
+        "explore_ack_epoch/test_admission_stale.py",
+        "explore_ack_epoch/test_authority.py",
+        "explore_ack_epoch/test_census.py",
+        "explore_ack_epoch/test_compare.py",
+        "explore_ack_epoch/test_epoch.py",
+        "explore_ack_epoch/test_failure.py",
+        "explore_ack_epoch/test_frontier.py",
+        "explore_ack_epoch/test_receipt.py",
+        "explore_ack_epoch/test_storage.py",
+        "explore_ack_epoch/test_strategies.py",
+        "explore_ack_epoch/test_subject.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_ack_identity",
+      "kind": "module",
+      "loc": 23,
+      "has_tests": true,
+      "test_files": [
+        "test_explore_ack_admission.py",
+        "test_explore_ack_e2e.py",
+        "test_explore_ack_idempotency.py",
+        "test_explore_ack_identity.py",
+        "test_explore_ack_invalidation.py",
+        "test_explore_ack_simulator.py",
+        "test_explore_ack_topology.py",
+        "test_explore_ack_witness.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [
+        "explore_ack_admission",
+        "explore_ack_engine",
+        "explore_ack_invalidation",
+        "explore_ack_simulator",
+        "explore_ack_topology",
+        "explore_ack_witness"
+      ],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_ack_invalidation",
+      "kind": "module",
+      "loc": 25,
+      "has_tests": true,
+      "test_files": [
+        "test_explore_ack_admission.py",
+        "test_explore_ack_e2e.py",
+        "test_explore_ack_idempotency.py",
+        "test_explore_ack_invalidation.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [
+        "explore_ack_admission",
+        "explore_ack_engine"
+      ],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_ack_protocols",
+      "kind": "module",
+      "loc": 34,
+      "has_tests": true,
+      "test_files": [
+        "test_explore_ack_comparator.py",
+        "test_explore_ack_protocols.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [
+        "explore_ack_comparator",
+        "explore_ack_engine"
+      ],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_ack_receipt",
+      "kind": "module",
+      "loc": 38,
+      "has_tests": true,
+      "test_files": [
+        "test_explore_ack_receipt.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [
+        "explore_ack_engine"
+      ],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_ack_simulator",
+      "kind": "module",
+      "loc": 49,
+      "has_tests": true,
+      "test_files": [
+        "test_explore_ack_simulator.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_ack_storage",
+      "kind": "module",
+      "loc": 38,
+      "has_tests": true,
+      "test_files": [
+        "test_explore_ack_storage.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_ack_topology",
+      "kind": "module",
+      "loc": 54,
+      "has_tests": true,
+      "test_files": [
+        "test_explore_ack_topology.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_ack_witness",
+      "kind": "module",
+      "loc": 27,
+      "has_tests": true,
+      "test_files": [
+        "test_explore_ack_admission.py",
+        "test_explore_ack_comparator.py",
+        "test_explore_ack_e2e.py",
+        "test_explore_ack_idempotency.py",
+        "test_explore_ack_witness.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [
+        "explore_ack_admission",
+        "explore_ack_comparator",
+        "explore_ack_engine",
+        "explore_ack_simulator"
+      ],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_calibration_regime",
+      "kind": "package",
+      "loc": 380,
+      "has_tests": true,
+      "test_files": [
+        "explore_calibration_regime/test_cusum.py",
+        "explore_calibration_regime/test_drift.py",
+        "explore_calibration_regime/test_e2e.py",
+        "explore_calibration_regime/test_failure.py",
+        "explore_calibration_regime/test_model.py",
+        "explore_calibration_regime/test_receipt_authority.py",
+        "explore_calibration_regime/test_regime_frontier.py",
+        "explore_calibration_regime/test_storage_standing.py",
+        "explore_calibration_regime/test_strategies.py",
+        "explore_calibration_regime/test_subject.py",
+        "explore_calibration_regime/test_trials.py",
+        "explore_calibration_regime/test_window.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_causal_sensitivity",
+      "kind": "package",
+      "loc": 467,
+      "has_tests": true,
+      "test_files": [
+        "explore_causal_sensitivity/test_chicago.py",
+        "explore_causal_sensitivity/test_frontier_and_replay.py",
+        "explore_causal_sensitivity/test_identity_and_refusal.py",
+        "explore_causal_sensitivity/test_intervals_and_estimators.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_certificate_federation",
+      "kind": "package",
+      "loc": 523,
+      "has_tests": true,
+      "test_files": [
+        "explore_certificate_federation/test_current_runtime.py",
+        "explore_certificate_federation/test_independence_authority.py",
+        "explore_certificate_federation/test_methodology_projections.py",
+        "explore_certificate_federation/test_receipt_pipeline.py",
+        "explore_certificate_federation/test_subject_certificate.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_closure_convergence_control",
+      "kind": "package",
+      "loc": 375,
+      "has_tests": false,
+      "test_files": [],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_composition_selector_calibration",
+      "kind": "package",
+      "loc": 448,
+      "has_tests": true,
+      "test_files": [
+        "explore_composition_selector_calibration/test_authority_replay.py",
+        "explore_composition_selector_calibration/test_chicago.py",
+        "explore_composition_selector_calibration/test_composition_calibration.py",
+        "explore_composition_selector_calibration/test_identity_interval.py",
+        "explore_composition_selector_calibration/test_methodology_standing.py",
+        "explore_composition_selector_calibration/test_provenance_currentness.py",
+        "explore_composition_selector_calibration/test_selectors_pareto.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_consumer_binding",
+      "kind": "package",
+      "loc": 223,
+      "has_tests": true,
+      "test_files": [
+        "test_explore_consumer_binding_admission.py",
+        "test_explore_consumer_binding_candidates.py",
+        "test_explore_consumer_binding_claim.py",
+        "test_explore_consumer_binding_dependency.py",
+        "test_explore_consumer_binding_drift.py",
+        "test_explore_consumer_binding_e2e.py",
+        "test_explore_consumer_binding_evidence.py",
+        "test_explore_consumer_binding_frontier.py",
+        "test_explore_consumer_binding_lease.py",
+        "test_explore_consumer_binding_receipt.py",
+        "test_explore_consumer_binding_scope.py",
+        "test_explore_consumer_binding_subject.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_counterfactual_acquisition",
+      "kind": "package",
+      "loc": 670,
+      "has_tests": true,
+      "test_files": [
+        "explore_counterfactual_acquisition/test_chicago.py",
+        "explore_counterfactual_acquisition/test_diagnostics_pareto_failure.py",
+        "explore_counterfactual_acquisition/test_estimators.py",
+        "explore_counterfactual_acquisition/test_identity_logged.py",
+        "explore_counterfactual_acquisition/test_storage_receipt_authority.py",
+        "explore_counterfactual_acquisition/test_support_weights.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_cut_strategy",
+      "kind": "package",
+      "loc": 409,
+      "has_tests": true,
+      "test_files": [
+        "explore_cut_strategy/test_admission.py",
+        "explore_cut_strategy/test_authority.py",
+        "explore_cut_strategy/test_comparison.py",
+        "explore_cut_strategy/test_cut.py",
+        "explore_cut_strategy/test_dependency.py",
+        "explore_cut_strategy/test_e2e.py",
+        "explore_cut_strategy/test_epoch.py",
+        "explore_cut_strategy/test_failure.py",
+        "explore_cut_strategy/test_receipt.py",
+        "explore_cut_strategy/test_storage.py",
+        "explore_cut_strategy/test_strategies.py",
+        "explore_cut_strategy/test_subject.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_decision_realization",
+      "kind": "package",
+      "loc": 769,
+      "has_tests": true,
+      "test_files": [
+        "explore_decision_realization/test_chicago.py",
+        "explore_decision_realization/test_drift_replay.py",
+        "explore_decision_realization/test_identity_admission.py",
+        "explore_decision_realization/test_realization_decision.py",
+        "explore_decision_realization/test_selective_risk.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_decision_transport",
+      "kind": "package",
+      "loc": 409,
+      "has_tests": true,
+      "test_files": [
+        "explore_decision_transport/test_chicago.py",
+        "explore_decision_transport/test_transport_math.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_distributional_robustness",
+      "kind": "package",
+      "loc": 462,
+      "has_tests": true,
+      "test_files": [
+        "explore_distributional_robustness/test_adversary.py",
+        "explore_distributional_robustness/test_ambiguity.py",
+        "explore_distributional_robustness/test_authority_receipt.py",
+        "explore_distributional_robustness/test_calibration.py",
+        "explore_distributional_robustness/test_chicago.py",
+        "explore_distributional_robustness/test_divergence.py",
+        "explore_distributional_robustness/test_selectors_pareto.py",
+        "explore_distributional_robustness/test_subject_distribution.py",
+        "explore_distributional_robustness/test_wasserstein_expectation.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_dual_chain",
+      "kind": "package",
+      "loc": 400,
+      "has_tests": true,
+      "test_files": [
+        "explore_dual_chain/test_exact_chain.py",
+        "explore_dual_chain/test_independence_quorum.py",
+        "explore_dual_chain/test_refusals.py",
+        "explore_dual_chain/test_replay_runtime.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_epoch",
+      "kind": "package",
+      "loc": 456,
+      "has_tests": true,
+      "test_files": [
+        "test_explore_epoch_admission.py",
+        "test_explore_epoch_causal.py",
+        "test_explore_epoch_epoch.py",
+        "test_explore_epoch_identity.py",
+        "test_explore_epoch_strategies.py",
+        "test_explore_epoch_topology.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_evidence_calibration",
+      "kind": "package",
+      "loc": 574,
+      "has_tests": true,
+      "test_files": [
+        "explore_evidence_calibration/test_evidence_calibration_admission.py",
+        "explore_evidence_calibration/test_evidence_calibration_compare.py",
+        "explore_evidence_calibration/test_evidence_calibration_contracts.py",
+        "explore_evidence_calibration/test_evidence_calibration_e2e.py",
+        "explore_evidence_calibration/test_evidence_calibration_estimate.py",
+        "explore_evidence_calibration/test_evidence_calibration_failure.py",
+        "explore_evidence_calibration/test_evidence_calibration_likelihood.py",
+        "explore_evidence_calibration/test_evidence_calibration_receipt.py",
+        "explore_evidence_calibration/test_evidence_calibration_sequential.py",
+        "explore_evidence_calibration/test_evidence_calibration_storage.py",
+        "explore_evidence_calibration/test_evidence_calibration_strategies.py",
+        "explore_evidence_calibration/test_evidence_calibration_trials.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_evidence_composition",
+      "kind": "package",
+      "loc": 545,
+      "has_tests": true,
+      "test_files": [
+        "explore_evidence_composition/test_authority_receipt.py",
+        "explore_evidence_composition/test_chicago.py",
+        "explore_evidence_composition/test_graph_currentness.py",
+        "explore_evidence_composition/test_independence_dependency.py",
+        "explore_evidence_composition/test_interval_semiring.py",
+        "explore_evidence_composition/test_selectors.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_evidence_fusion",
+      "kind": "package",
+      "loc": 415,
+      "has_tests": true,
+      "test_files": [
+        "explore_evidence_fusion/test_admission.py",
+        "explore_evidence_fusion/test_diversity.py",
+        "explore_evidence_fusion/test_engine_correlation.py",
+        "explore_evidence_fusion/test_engine_e2e.py",
+        "explore_evidence_fusion/test_failure_storage.py",
+        "explore_evidence_fusion/test_observation.py",
+        "explore_evidence_fusion/test_pareto.py",
+        "explore_evidence_fusion/test_provenance.py",
+        "explore_evidence_fusion/test_receipt.py",
+        "explore_evidence_fusion/test_relation_clusters.py",
+        "explore_evidence_fusion/test_strategies.py",
+        "explore_evidence_fusion/test_subject_source.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_federation",
+      "kind": "package",
+      "loc": 349,
+      "has_tests": true,
+      "test_files": [
+        "test_explore_federation.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_independence_decision",
+      "kind": "package",
+      "loc": 605,
+      "has_tests": true,
+      "test_files": [
+        "explore_independence_decision/test_chicago.py",
+        "explore_independence_decision/test_decision_value.py",
+        "explore_independence_decision/test_dependence_drift.py",
+        "explore_independence_decision/test_identity_currentness.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_intent_frontier",
+      "kind": "package",
+      "loc": 510,
+      "has_tests": true,
+      "test_files": [
+        "explore_intent_frontier/test_compatibility.py",
+        "explore_intent_frontier/test_context.py",
+        "explore_intent_frontier/test_dependency.py",
+        "explore_intent_frontier/test_drift.py",
+        "explore_intent_frontier/test_e2e.py",
+        "explore_intent_frontier/test_failure_comparison.py",
+        "explore_intent_frontier/test_frontier.py",
+        "explore_intent_frontier/test_intent.py",
+        "explore_intent_frontier/test_receipt.py",
+        "explore_intent_frontier/test_storage.py",
+        "explore_intent_frontier/test_strategies.py",
+        "explore_intent_frontier/test_subject.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_invalidation",
+      "kind": "package",
+      "loc": 344,
+      "has_tests": true,
+      "test_files": [
+        "test_explore_invalidation_binding.py",
+        "test_explore_invalidation_candidates.py",
+        "test_explore_invalidation_cascade.py",
+        "test_explore_invalidation_cycle.py",
+        "test_explore_invalidation_e2e.py",
+        "test_explore_invalidation_event.py",
+        "test_explore_invalidation_impact.py",
+        "test_explore_invalidation_orphan.py",
+        "test_explore_invalidation_receipt.py",
+        "test_explore_invalidation_renewal.py",
+        "test_explore_invalidation_standing.py",
+        "test_explore_invalidation_subject.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_kantorovich_ambiguity",
+      "kind": "package",
+      "loc": 713,
+      "has_tests": true,
+      "test_files": [
+        "explore_kantorovich_ambiguity/test_ambiguity_membership.py",
+        "explore_kantorovich_ambiguity/test_authority_receipt.py",
+        "explore_kantorovich_ambiguity/test_ground_metric.py",
+        "explore_kantorovich_ambiguity/test_identity_measure.py",
+        "explore_kantorovich_ambiguity/test_kantorovich_flow.py",
+        "explore_kantorovich_ambiguity/test_oracle_differential.py",
+        "explore_kantorovich_ambiguity/test_qualification_chicago.py",
+        "explore_kantorovich_ambiguity/test_robust_lattice.py",
+        "explore_kantorovich_ambiguity/test_selectors_pareto.py",
+        "explore_solver_correspondence/test_direct_adapters.py",
+        "explore_solver_correspondence/test_permutation_metamorphic.py",
+        "explore_solver_correspondence/test_pipeline_receipt.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [
+        "explore_solver_correspondence"
+      ],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_kantorovich_duality",
+      "kind": "package",
+      "loc": 410,
+      "has_tests": true,
+      "test_files": [
+        "explore_kantorovich_duality/test_authority.py",
+        "explore_kantorovich_duality/test_complementarity.py",
+        "explore_kantorovich_duality/test_dual_feasibility.py",
+        "explore_kantorovich_duality/test_gauge.py",
+        "explore_kantorovich_duality/test_metric_plan.py",
+        "explore_kantorovich_duality/test_receipt_replay.py",
+        "explore_kantorovich_duality/test_strong_duality.py",
+        "explore_kantorovich_duality/test_subject_measure.py",
+        "explore_kantorovich_independent/test_adversarial_refusals.py",
+        "explore_kantorovich_independent/test_chicago.py",
+        "explore_kantorovich_independent/test_oracle_differential.py",
+        "explore_kantorovich_independent/test_primal_to_dual.py",
+        "explore_kantorovich_independent/test_raw_verifier.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [
+        "explore_kantorovich_independent"
+      ],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_kantorovich_independent",
+      "kind": "package",
+      "loc": 572,
+      "has_tests": true,
+      "test_files": [
+        "explore_kantorovich_independent/test_adversarial_refusals.py",
+        "explore_kantorovich_independent/test_authority_receipt.py",
+        "explore_kantorovich_independent/test_chicago.py",
+        "explore_kantorovich_independent/test_oracle_differential.py",
+        "explore_kantorovich_independent/test_primal_to_dual.py",
+        "explore_kantorovich_independent/test_raw_verifier.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_methodology_correspondence",
+      "kind": "package",
+      "loc": 338,
+      "has_tests": true,
+      "test_files": [
+        "explore_methodology_correspondence/test_identity_graph.py",
+        "explore_methodology_correspondence/test_optimization_authority.py",
+        "explore_methodology_correspondence/test_process_methods.py",
+        "explore_methodology_correspondence/test_receipt_qualification.py",
+        "explore_methodology_correspondence/test_semantic_modes.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_process_convergence_correspondence",
+      "kind": "package",
+      "loc": 518,
+      "has_tests": true,
+      "test_files": [
+        "explore_process_convergence_correspondence/test_chicago_residual_failure.py",
+        "explore_process_convergence_correspondence/test_convergence_alternatives.py",
+        "explore_process_convergence_correspondence/test_dependency_authority.py",
+        "explore_process_convergence_correspondence/test_trajectory_invariants.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_process_trace_correspondence",
+      "kind": "package",
+      "loc": 441,
+      "has_tests": true,
+      "test_files": [
+        "explore_process_trace_correspondence/test_authority_receipt.py",
+        "explore_process_trace_correspondence/test_bisimulation.py",
+        "explore_process_trace_correspondence/test_chicago_trace_correspondence.py",
+        "explore_process_trace_correspondence/test_conformance.py",
+        "explore_process_trace_correspondence/test_equivalence.py",
+        "explore_process_trace_correspondence/test_oracle_frontier.py",
+        "explore_process_trace_correspondence/test_subject_trace.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_process_transition_correspondence",
+      "kind": "package",
+      "loc": 427,
+      "has_tests": true,
+      "test_files": [
+        "explore_process_transition_correspondence/test_dependency_standing.py",
+        "explore_process_transition_correspondence/test_evidence_frontier.py",
+        "explore_process_transition_correspondence/test_identity_epoch.py",
+        "explore_process_transition_correspondence/test_receipt_qualification.py",
+        "explore_process_transition_correspondence/test_runtime_receipt.py",
+        "explore_process_transition_correspondence/test_transition_lifecycle.py",
+        "explore_process_transition_correspondence/test_workflow_freshness.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_projection_sensor_fusion",
+      "kind": "package",
+      "loc": 563,
+      "has_tests": true,
+      "test_files": [
+        "explore_projection_sensor_fusion/test_chicago.py",
+        "explore_projection_sensor_fusion/test_fault_storage_audit.py",
+        "explore_projection_sensor_fusion/test_fusion_differential.py",
+        "explore_projection_sensor_fusion/test_identity_calibration.py",
+        "explore_projection_sensor_fusion/test_replay_authority.py",
+        "explore_projection_sensor_fusion/test_selector_pareto.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_rail_consensus",
+      "kind": "package",
+      "loc": 521,
+      "has_tests": true,
+      "test_files": [
+        "explore_rail_consensus/test_vcons_attribution.py",
+        "explore_rail_consensus/test_vcons_calibration.py",
+        "explore_rail_consensus/test_vcons_clusters.py",
+        "explore_rail_consensus/test_vcons_consensus.py",
+        "explore_rail_consensus/test_vcons_e2e.py",
+        "explore_rail_consensus/test_vcons_failure_storage.py",
+        "explore_rail_consensus/test_vcons_metrics_pareto.py",
+        "explore_rail_consensus/test_vcons_rail_observation.py",
+        "explore_rail_consensus/test_vcons_receipt_authority.py",
+        "explore_rail_consensus/test_vcons_relation.py",
+        "explore_rail_consensus/test_vcons_signature.py",
+        "explore_rail_consensus/test_vcons_subject.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_real_certificate_chain",
+      "kind": "package",
+      "loc": 367,
+      "has_tests": true,
+      "test_files": [
+        "explore_real_certificate_chain/test_authority_replay.py",
+        "explore_real_certificate_chain/test_runtime_methodology.py",
+        "explore_real_certificate_chain/test_three_way.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_realized_acquisition_feedback",
+      "kind": "package",
+      "loc": 261,
+      "has_tests": true,
+      "test_files": [
+        "explore_realized_acquisition_feedback/test_attribution.py",
+        "explore_realized_acquisition_feedback/test_calibration.py",
+        "explore_realized_acquisition_feedback/test_chicago.py",
+        "explore_realized_acquisition_feedback/test_drift.py",
+        "explore_realized_acquisition_feedback/test_failure_world.py",
+        "explore_realized_acquisition_feedback/test_frontier.py",
+        "explore_realized_acquisition_feedback/test_policies.py",
+        "explore_realized_acquisition_feedback/test_realization.py",
+        "explore_realized_acquisition_feedback/test_receipt_authority.py",
+        "explore_realized_acquisition_feedback/test_regret.py",
+        "explore_realized_acquisition_feedback/test_storage.py",
+        "explore_realized_acquisition_feedback/test_subject.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_reconciliation",
+      "kind": "package",
+      "loc": 577,
+      "has_tests": true,
+      "test_files": [
+        "test_explore_reconciliation.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_recovery_proof",
+      "kind": "package",
+      "loc": 569,
+      "has_tests": true,
+      "test_files": [
+        "explore_recovery_proof/test_admission.py",
+        "explore_recovery_proof/test_drift_attempt.py",
+        "explore_recovery_proof/test_e2e.py",
+        "explore_recovery_proof/test_frontier.py",
+        "explore_recovery_proof/test_identity_context.py",
+        "explore_recovery_proof/test_receipt_authority.py",
+        "explore_recovery_proof/test_recovery_race.py",
+        "explore_recovery_proof/test_schedule_comparison.py",
+        "explore_recovery_proof/test_storage_topology.py",
+        "explore_recovery_proof/test_witness_strategies.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_relation_selection_calibration",
+      "kind": "package",
+      "loc": 487,
+      "has_tests": true,
+      "test_files": [
+        "explore_relation_selection_calibration/test_authority_receipt.py",
+        "explore_relation_selection_calibration/test_calibration_admission.py",
+        "explore_relation_selection_calibration/test_chicago.py",
+        "explore_relation_selection_calibration/test_frontier_oracle.py",
+        "explore_relation_selection_calibration/test_relation_lattice.py",
+        "explore_relation_selection_calibration/test_selector_differential.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_replicated_projection_quorum",
+      "kind": "package",
+      "loc": 735,
+      "has_tests": true,
+      "test_files": [
+        "explore_replicated_projection_quorum/test_rpq_admission.py",
+        "explore_replicated_projection_quorum/test_rpq_causality.py",
+        "explore_replicated_projection_quorum/test_rpq_chicago.py",
+        "explore_replicated_projection_quorum/test_rpq_clock.py",
+        "explore_replicated_projection_quorum/test_rpq_failure.py",
+        "explore_replicated_projection_quorum/test_rpq_pareto.py",
+        "explore_replicated_projection_quorum/test_rpq_quorum.py",
+        "explore_replicated_projection_quorum/test_rpq_receipt_authority.py",
+        "explore_replicated_projection_quorum/test_rpq_selectors.py",
+        "explore_replicated_projection_quorum/test_rpq_storage.py",
+        "explore_replicated_projection_quorum/test_rpq_subject_replica.py",
+        "explore_replicated_projection_quorum/world.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_robustness_bound_calibration",
+      "kind": "package",
+      "loc": 421,
+      "has_tests": true,
+      "test_files": [
+        "explore_robustness_bound_calibration/test_admission.py",
+        "explore_robustness_bound_calibration/test_bound.py",
+        "explore_robustness_bound_calibration/test_calibration.py",
+        "explore_robustness_bound_calibration/test_chicago.py",
+        "explore_robustness_bound_calibration/test_frontier.py",
+        "explore_robustness_bound_calibration/test_geometry.py",
+        "explore_robustness_bound_calibration/test_independence.py",
+        "explore_robustness_bound_calibration/test_monotonicity.py",
+        "explore_robustness_bound_calibration/test_pareto.py",
+        "explore_robustness_bound_calibration/test_receipt.py",
+        "explore_robustness_bound_calibration/test_subject.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_semantic_projection_currentness",
+      "kind": "package",
+      "loc": 670,
+      "has_tests": true,
+      "test_files": [
+        "explore_semantic_projection_currentness/_fixtures.py",
+        "explore_semantic_projection_currentness/test_spc_aba.py",
+        "explore_semantic_projection_currentness/test_spc_admission.py",
+        "explore_semantic_projection_currentness/test_spc_currentness.py",
+        "explore_semantic_projection_currentness/test_spc_engine_e2e.py",
+        "explore_semantic_projection_currentness/test_spc_failure.py",
+        "explore_semantic_projection_currentness/test_spc_pareto.py",
+        "explore_semantic_projection_currentness/test_spc_representation.py",
+        "explore_semantic_projection_currentness/test_spc_roundtrip.py",
+        "explore_semantic_projection_currentness/test_spc_selectors.py",
+        "explore_semantic_projection_currentness/test_spc_storage_receipt.py",
+        "explore_semantic_projection_currentness/test_spc_subject_semantics.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_sequential_acquisition",
+      "kind": "package",
+      "loc": 686,
+      "has_tests": true,
+      "test_files": [
+        "explore_sequential_acquisition/test_belief_update.py",
+        "explore_sequential_acquisition/test_cmca.py",
+        "explore_sequential_acquisition/test_engine_chicago.py",
+        "explore_sequential_acquisition/test_independence_failure.py",
+        "explore_sequential_acquisition/test_receipt_authority.py",
+        "explore_sequential_acquisition/test_stopping_storage.py",
+        "explore_sequential_acquisition/test_strategy_frontier.py",
+        "explore_sequential_acquisition/test_subject_budget.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_solver_correspondence",
+      "kind": "package",
+      "loc": 504,
+      "has_tests": true,
+      "test_files": [
+        "explore_solver_correspondence/test_direct_adapters.py",
+        "explore_solver_correspondence/test_evidence_authority.py",
+        "explore_solver_correspondence/test_large_support_corpus.py",
+        "explore_solver_correspondence/test_permutation_metamorphic.py",
+        "explore_solver_correspondence/test_pipeline_receipt.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_supersession",
+      "kind": "package",
+      "loc": 415,
+      "has_tests": true,
+      "test_files": [
+        "test_explore_supersession_admission.py",
+        "test_explore_supersession_candidates.py",
+        "test_explore_supersession_differential.py",
+        "test_explore_supersession_discovery.py",
+        "test_explore_supersession_e2e.py",
+        "test_explore_supersession_epoch.py",
+        "test_explore_supersession_frontier.py",
+        "test_explore_supersession_receipt.py",
+        "test_explore_supersession_selection.py",
+        "test_explore_supersession_subject.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_train",
+      "kind": "package",
+      "loc": 451,
+      "has_tests": true,
+      "test_files": [
+        "test_dmedi_explore_train.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_transport_invariance",
+      "kind": "package",
+      "loc": 425,
+      "has_tests": true,
+      "test_files": [
+        "explore_transport_invariance/test_authority_receipt.py",
+        "explore_transport_invariance/test_calibration_currentness.py",
+        "explore_transport_invariance/test_chicago_qualification.py",
+        "explore_transport_invariance/test_pareto_frontier.py",
+        "explore_transport_invariance/test_perturbation_stress.py",
+        "explore_transport_invariance/test_selector_plurality.py",
+        "explore_transport_invariance/test_subject_population.py",
+        "explore_transport_invariance/test_support_divergence.py",
+        "explore_transport_invariance/test_weights_risk.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_validation_independence",
+      "kind": "package",
+      "loc": 540,
+      "has_tests": true,
+      "test_files": [
+        "explore_validation_independence/test_chicago.py",
+        "explore_validation_independence/test_identity_provenance.py",
+        "explore_validation_independence/test_overlap_calibration.py",
+        "explore_validation_independence/test_selector_authority_replay.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_verification",
+      "kind": "package",
+      "loc": 173,
+      "has_tests": true,
+      "test_files": [
+        "test_explore_verification_authority.py",
+        "test_explore_verification_candidates.py",
+        "test_explore_verification_collection.py",
+        "test_explore_verification_compatibility.py",
+        "test_explore_verification_dependency.py",
+        "test_explore_verification_engine.py",
+        "test_explore_verification_evidence.py",
+        "test_explore_verification_receipt.py",
+        "test_explore_verification_selection.py",
+        "test_explore_verification_standing.py",
+        "test_explore_verification_subject.py",
+        "test_explore_verification_vector.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_verification_acquisition",
+      "kind": "package",
+      "loc": 585,
+      "has_tests": true,
+      "test_files": [
+        "explore_verification_acquisition/test_vacq_budget_dependence.py",
+        "explore_verification_acquisition/test_vacq_compatibility_storage.py",
+        "explore_verification_acquisition/test_vacq_coverage_pareto.py",
+        "explore_verification_acquisition/test_vacq_e2e.py",
+        "explore_verification_acquisition/test_vacq_engine.py",
+        "explore_verification_acquisition/test_vacq_failure.py",
+        "explore_verification_acquisition/test_vacq_history_calibration.py",
+        "explore_verification_acquisition/test_vacq_information.py",
+        "explore_verification_acquisition/test_vacq_knapsack.py",
+        "explore_verification_acquisition/test_vacq_receipt.py",
+        "explore_verification_acquisition/test_vacq_strategies.py",
+        "explore_verification_acquisition/test_vacq_subject_capability.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    },
+    {
+      "package": "explore_verification_topology",
+      "kind": "package",
+      "loc": 426,
+      "has_tests": true,
+      "test_files": [
+        "explore_verification_topology/test_vtop_collision.py",
+        "explore_verification_topology/test_vtop_e2e.py",
+        "explore_verification_topology/test_vtop_failure.py",
+        "explore_verification_topology/test_vtop_importlib_policy.py",
+        "explore_verification_topology/test_vtop_metrics.py",
+        "explore_verification_topology/test_vtop_module_identity.py",
+        "explore_verification_topology/test_vtop_package_namespace.py",
+        "explore_verification_topology/test_vtop_pareto.py",
+        "explore_verification_topology/test_vtop_receipt_authority.py",
+        "explore_verification_topology/test_vtop_storage_frontier.py",
+        "explore_verification_topology/test_vtop_subject.py",
+        "explore_verification_topology/test_vtop_unique_basename.py"
+      ],
+      "imported_by_production": [],
+      "imported_by_other_explore": [],
+      "status": "UNADMITTED"
+    }
+  ]
+}

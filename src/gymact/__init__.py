@@ -261,6 +261,23 @@ from gymact.temperament_engineering import (
     evaluate_design,
     manufacture_population,
 )
+from gymact.temperament_ontology import (
+    TEMPERAMENT_ENGINEERING_SOURCE,
+    TEMPERAMENT_SCHEME,
+    TemperamentAxisSpec,
+    assert_public_temperament_vocabulary,
+    load_temperament_axis_specs,
+    temperament_ontology_graph,
+)
+from gymact.temperament_search import (
+    AxisDesignOption,
+    AxisDesignSpace,
+    DesignObjectiveVector,
+    TemperamentDesignCandidate,
+    TemperamentDesignPortfolio,
+    manufacture_design_portfolio,
+    pareto_designs,
+)
 from gymact.transport import (
     CandidateIntentEnvelope,
     TransportKind,
@@ -272,6 +289,8 @@ from gymact.verification import DictSubsetVerifier, PostconditionVerifier
 __all__ = [
     "DEFAULT_TEMPERAMENT_AXES",
     "TEMPERAMENT_ENGINEERING_PROVENANCE",
+    "TEMPERAMENT_ENGINEERING_SOURCE",
+    "TEMPERAMENT_SCHEME",
     "ActionDefinition",
     "ActionProjection",
     "ActuationIntent",
@@ -287,6 +306,8 @@ __all__ = [
     "AuthorityRequest",
     "AuthorityRequirement",
     "AuthorityResolver",
+    "AxisDesignOption",
+    "AxisDesignSpace",
     "AxisFit",
     "AxisRelevance",
     "AxisTarget",
@@ -326,6 +347,7 @@ __all__ = [
     "DenyAuthorityResolver",
     "DesignEvaluation",
     "DesignMode",
+    "DesignObjectiveVector",
     "DictSubsetVerifier",
     "DifferentialVerdict",
     "DifferentialVerification",
@@ -445,7 +467,10 @@ __all__ = [
     "StrategicCondition",
     "SubjectCapsuleReceipt",
     "SubjectRef",
+    "TemperamentAxisSpec",
+    "TemperamentDesignCandidate",
     "TemperamentDesignPlan",
+    "TemperamentDesignPortfolio",
     "TransitionEconomics",
     "TransitionMetrics",
     "TransportKind",
@@ -463,6 +488,7 @@ __all__ = [
     "admit_retry",
     "anti_agent_benchmark",
     "apply_platform_heterogeneity",
+    "assert_public_temperament_vocabulary",
     "axis_relevance",
     "bind_plan",
     "build_contract",
@@ -495,13 +521,16 @@ __all__ = [
     "load_crown_requirements",
     "load_errc",
     "load_provider_plugin",
+    "load_temperament_axis_specs",
     "manufacture_broker_request",
     "manufacture_combination_space",
+    "manufacture_design_portfolio",
     "manufacture_ecology",
     "manufacture_population",
     "manufacture_self_play",
     "normalize_candidate",
     "observe_oracle",
+    "pareto_designs",
     "pareto_frontier",
     "pareto_paths",
     "policy_population_to_rdf",
@@ -519,8 +548,9 @@ __all__ = [
     "run_self_play",
     "score_verification",
     "select_irreversible_cut",
+    "temperament_ontology_graph",
     "validate_policy_ecology_rdf",
     "validate_possibility_rdf",
 ]
 
-__version__ = "26.9.24"
+__version__ = "26.9.28"

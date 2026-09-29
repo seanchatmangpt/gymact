@@ -155,9 +155,7 @@ def test_fault_manufacturer_preserves_only_lawful_single_fault_locations() -> No
     authority_plans = [
         plan for plan in plans if plan.faults[0].kind is SurvivalFaultKind.AUTHORITY_DROP
     ]
-    tool_plans = [
-        plan for plan in plans if plan.faults[0].kind is SurvivalFaultKind.TOOL_BLACKOUT
-    ]
+    tool_plans = [plan for plan in plans if plan.faults[0].kind is SurvivalFaultKind.TOOL_BLACKOUT]
     burst_plans = [
         plan for plan in plans if plan.faults[0].kind is SurvivalFaultKind.LLM_TOKEN_BURST
     ]

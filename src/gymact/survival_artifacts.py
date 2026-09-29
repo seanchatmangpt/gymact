@@ -37,10 +37,7 @@ def render_survival_manifest(manifest: SurvivalExperimentManifest) -> bytes:
 
 
 def render_survival_campaign_jsonl(campaign: SurvivalCampaign) -> bytes:
-    lines = [
-        _canonical_json(case.to_autofde_document())
-        for case in campaign.cases
-    ]
+    lines = [_canonical_json(case.to_autofde_document()) for case in campaign.cases]
     return (("\n".join(lines) + "\n") if lines else "").encode("utf-8")
 
 

@@ -8,7 +8,7 @@ Presence is structural evidence only; it is not semantic success.
 from __future__ import annotations
 
 from collections import Counter
-from typing import Mapping, Sequence
+from collections.abc import Mapping, Sequence
 
 from pydantic import Field
 
@@ -37,10 +37,7 @@ def qualify_observation_closure(
 ) -> SurvivalObservationClosure:
     """Require every manifested case exactly once with exact bounded identity."""
 
-    expected_by_id = {
-        case.case_id: case
-        for case in manifest.cases
-    }
+    expected_by_id = {case.case_id: case for case in manifest.cases}
     observed_ids: list[str] = []
     drift: list[str] = []
 
@@ -74,9 +71,7 @@ def qualify_observation_closure(
     expected = set(expected_by_id)
     missing = tuple(sorted(expected - observed))
     unknown = tuple(sorted(observed - expected))
-    duplicates = tuple(
-        sorted(case_id for case_id, count in counts.items() if count > 1)
-    )
+    duplicates = tuple(sorted(case_id for case_id, count in counts.items() if count > 1))
     drift_ids = tuple(sorted(set(drift)))
     complete = not (missing or unknown or duplicates or drift_ids)
 

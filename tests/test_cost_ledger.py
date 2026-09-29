@@ -129,3 +129,22 @@ def test_capability_costs_echo_into_accepted_act_receipt_via_real_kernel() -> No
     # assertion here is that the field exists, defaults honestly to empty,
     # and the kernel path that would echo it does not raise.
     assert receipt.costs == ()
+
+
+def test_sum_costs_by_unit_accepts_numeric_strings_and_skips_malformed_values() -> None:
+    """OCEL 2.0 attribute values are strings; malformed costs are absence, never zero."""
+
+    def event(value: object) -> dict:
+        return {"attributes": [{"name": "cost:usd", "value": value}]}
+
+    events = [
+        event("1.5"),  # numeric string (what receipts_to_ocel emits)
+        event(2),  # raw number from a log produced elsewhere
+        event("not-a-number"),
+        event(True),
+        event("nan"),
+        event("inf"),
+        event(None),
+    ]
+    assert sum_costs_by_unit(events) == {"usd": 3.5}
+    assert sum_costs_by_unit([event("oops"), event(False)]) == {}

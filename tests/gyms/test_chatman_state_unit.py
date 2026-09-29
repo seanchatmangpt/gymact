@@ -11,16 +11,24 @@ now deleted).
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import pytest
 
 from gymact import GymAct, MaterializationIntent
 from gymact.gyms.chatman_state_gym import ChatmanStateProvider
+from gymact.standing import require_standing
 
 
 @pytest.mark.asyncio
 async def test_chatman_state_materialize_read_teardown() -> None:
+    require_standing(
+        "LOCAL_GYM:chatman-state",
+        available=shutil.which("gh") is not None,
+        reason="the real `gh` CLI (authenticated) is required; this gym shells out to it",
+        skip_module_level=False,
+    )
     gym = GymAct()
     gym.register_provider(ChatmanStateProvider())
 

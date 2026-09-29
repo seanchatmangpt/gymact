@@ -94,9 +94,7 @@ def test_campaign_documents_preserve_fault_identity_without_changing_policy_iden
         fault_kinds=(SurvivalFaultKind.AUTHORITY_DROP,),
     )
     campaign = manufacture_survival_campaign(spec)
-    llm_cases = [
-        case for case in campaign.cases if case.run_case.cell.policy.policy_id == "llm"
-    ]
+    llm_cases = [case for case in campaign.cases if case.run_case.cell.policy.policy_id == "llm"]
 
     baseline = next(case for case in llm_cases if case.fault_plan is None)
     faulted = next(case for case in llm_cases if case.fault_plan is not None)

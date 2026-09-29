@@ -18,8 +18,12 @@ from typing import Self
 from pydantic import Field, field_validator, model_validator
 
 from gymact.models import FrozenModel
+from gymact.temperament_ontology import (
+    TEMPERAMENT_ENGINEERING_SOURCE,
+    load_temperament_axis_specs,
+)
 
-TEMPERAMENT_ENGINEERING_PROVENANCE = ("https://arxiv.org/abs/2609.29423",)
+TEMPERAMENT_ENGINEERING_PROVENANCE = (TEMPERAMENT_ENGINEERING_SOURCE,)
 
 # The authority boundary is structural: no code path in GymAct reads a
 # condition value as authority, and no model here has an authority field. The
@@ -286,20 +290,10 @@ class PopulationDiversity(FrozenModel):
 
 DEFAULT_TEMPERAMENT_AXES: tuple[ConditionAxis, ...] = tuple(
     ConditionAxis(
-        axis_id=axis_id,
-        provenance_refs=TEMPERAMENT_ENGINEERING_PROVENANCE,
+        axis_id=spec.axis_id,
+        provenance_refs=(spec.source_ref,),
     )
-    for axis_id in (
-        "boldness",
-        "exploration",
-        "activity",
-        "aggressiveness",
-        "sociability",
-        "self_model_plasticity",
-        "forcefulness",
-        "initiative",
-        "expressiveness",
-    )
+    for spec in load_temperament_axis_specs()
 )
 
 

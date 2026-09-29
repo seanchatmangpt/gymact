@@ -54,17 +54,14 @@ def qualify_campaign_observation_closure(
         if expected is None:
             continue
 
-        expected_fault_id = (
-            expected.fault_plan.plan_id if expected.fault_plan is not None else None
-        )
+        expected_fault_id = expected.fault_plan.plan_id if expected.fault_plan is not None else None
         if (
             str(gymact.get("campaign_id", "")) != campaign.campaign_id
             or str(gymact.get("campaign_spec_digest", "")) != campaign.spec_digest
             or str(gymact.get("run_case_id", "")) != expected.run_case.case_id
             or gymact.get("fault_plan_id") != expected_fault_id
             or bool(gymact.get("synthetic")) is not True
-            or str(document.get("policy_id", ""))
-            != expected.run_case.analysis_policy_id
+            or str(document.get("policy_id", "")) != expected.run_case.analysis_policy_id
         ):
             drift.append(episode_id)
 
@@ -73,9 +70,7 @@ def qualify_campaign_observation_closure(
     expected_ids = set(expected_by_id)
     missing = tuple(sorted(expected_ids - observed))
     unknown = tuple(sorted(observed - expected_ids))
-    duplicates = tuple(
-        sorted(case_id for case_id, count in counts.items() if count > 1)
-    )
+    duplicates = tuple(sorted(case_id for case_id, count in counts.items() if count > 1))
     drift_ids = tuple(sorted(set(drift)))
     complete = not (missing or unknown or duplicates or drift_ids)
 
