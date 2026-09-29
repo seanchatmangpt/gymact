@@ -14,9 +14,31 @@ that would silently manufacture an exchange rate nobody asserted.
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 _COST_PREFIX = "cost:"
+
+
+def _cost_quantity(value: Any) -> float | None:
+    """A cost attribute's finite numeric value, else None (never coerced to 0.0).
+
+    Official OCEL 2.0 event attribute values are strings, so `receipts_to_ocel`
+    emits `cost:<unit>` quantities as numeric strings; raw numbers are still
+    accepted for logs produced elsewhere. Booleans, non-numeric text and
+    non-finite values are skipped: a malformed cost is absence, not zero.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, str):
+        try:
+            value = float(value)
+        except ValueError:
+            return None
+    if not isinstance(value, int | float):
+        return None
+    number = float(value)
+    return number if math.isfinite(number) else None
 
 
 def sum_costs_by_unit(events: list[dict[str, Any]]) -> dict[str, float]:
@@ -34,10 +56,10 @@ def sum_costs_by_unit(events: list[dict[str, Any]]) -> dict[str, float]:
             if not name.startswith(_COST_PREFIX):
                 continue
             unit = name[len(_COST_PREFIX) :]
-            value = attribute.get("value")
-            if not isinstance(value, int | float) or isinstance(value, bool):
+            quantity = _cost_quantity(attribute.get("value"))
+            if quantity is None:
                 continue
-            totals[unit] = totals.get(unit, 0.0) + float(value)
+            totals[unit] = totals.get(unit, 0.0) + quantity
     return totals
 
 

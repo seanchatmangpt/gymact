@@ -84,7 +84,10 @@ def receipts_to_ocel(receipts: list[Receipt]) -> dict[str, Any]:
                 attributes.append({"name": name, "value": value})
 
         for cost in receipt.costs:
-            attributes.append({"name": f"cost:{cost.unit}", "value": cost.quantity})
+            # Official OCEL 2.0 event attribute values are strings; a raw float
+            # here made every costed receipt fail `validate_ocel_log`.
+            # `gymact.cost_ledger` parses it back with `float(value)`.
+            attributes.append({"name": f"cost:{cost.unit}", "value": str(cost.quantity)})
             attributes.append({"name": f"cost_kind:{cost.unit}", "value": cost.kind})
             attributes.append({"name": f"cost_source:{cost.unit}", "value": cost.source})
 
