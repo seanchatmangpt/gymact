@@ -1,5 +1,5 @@
-from pydantic import ValidationError
 import pytest
+from pydantic import ValidationError
 
 from gymact.sa2a_envelope import (
     SA2A_REPLAN_CONTRACT_DIGEST,
@@ -62,9 +62,7 @@ def test_rejects_contract_drift_authority_escalation_and_unknown_fields():
         admit_envelope(envelope(contract_digest="sha256:" + "0" * 64))
 
     with pytest.raises(ValidationError):
-        admit_envelope(
-            envelope(decision={"kind": "replan", "reason": "failed", "authority": "do"})
-        )
+        admit_envelope(envelope(decision={"kind": "replan", "reason": "failed", "authority": "do"}))
 
     with pytest.raises(ValidationError):
         admit_envelope(envelope(unmodeled_authority="do"))

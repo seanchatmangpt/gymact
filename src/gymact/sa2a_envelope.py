@@ -57,7 +57,7 @@ class SA2AReplanEnvelope(FrozenModel):
     source_replay_key: str | None = None
 
     @model_validator(mode="after")
-    def exact_subject_matches_portable_schema(self) -> "SA2AReplanEnvelope":
+    def exact_subject_matches_portable_schema(self) -> SA2AReplanEnvelope:
         """The producer schema admits every JSON value except null."""
         if self.exact_subject is None:
             raise ValueError("SA2A_EXACT_SUBJECT_REQUIRED")
