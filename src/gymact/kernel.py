@@ -93,6 +93,11 @@ class GymAct:
         self._providers: dict[str, EnvironmentProvider] = {}
         self._episodes: dict[str, _EpisodeState] = {}
         self._actuation_idempotency: dict[tuple[str, str], _ActuationRecord] = {}
+        # The evidence ledger enforces idempotency-key uniqueness GLOBALLY, keyed by the
+        # (episode, capability) that first used a key; the per-episode cache above cannot
+        # see a key reused from another episode. Track the owner here so `act()` can refuse
+        # BEFORE actuating instead of letting the ledger raise after the world changed.
+        self._idempotency_owner: dict[str, tuple[str, str | None]] = {}
         self._materialization_idempotency: dict[str, _MaterializationRecord] = {}
         self._materialization_lock = anyio.Lock()
         self._teardown_receipts: dict[str, Receipt] = {}
@@ -143,6 +148,10 @@ class GymAct:
 
     def _record(self, receipt: Receipt) -> Receipt:
         self.ledger.append(receipt)
+        if receipt.idempotency_key is not None:
+            self._idempotency_owner.setdefault(
+                receipt.idempotency_key, (receipt.episode_id, receipt.capability_ref)
+            )
         self._receipts.setdefault(receipt.episode_id, []).append(receipt)
         return receipt
 
@@ -594,6 +603,35 @@ class GymAct:
                             capability_ref=intent.capability,
                             authority_ref=intent.authority_ref,
                             idempotency_key=intent.idempotency_key,
+                            principal=intent.principal,
+                            pre_state_digest=before.state_digest,
+                            post_state_digest=before.state_digest,
+                            reason="IDEMPOTENCY_KEY_CONFLICT",
+                        ),
+                    ),
+                )
+
+            owner = self._idempotency_owner.get(intent.idempotency_key)
+            if owner is not None and owner != (intent.episode_id, intent.capability):
+                # Key first used by a different episode/capability (possibly a
+                # materialization): a refusal, not a replay. The refusal receipt must not
+                # carry the conflicting key or the ledger would reject the refusal itself.
+                before = await self._observe_unlocked(state)
+                return self._actuation_result(
+                    intent_digest=intent_digest,
+                    key=key,
+                    cache=False,
+                    result=ActuationResult(
+                        accepted=False,
+                        standing=Standing.REFUSED,
+                        observation=before,
+                        receipt=Receipt(
+                            episode_id=intent.episode_id,
+                            operation=Operation.ACT,
+                            standing=Standing.REFUSED,
+                            subject_ref=state.environment.environment_id,
+                            capability_ref=intent.capability,
+                            authority_ref=intent.authority_ref,
                             principal=intent.principal,
                             pre_state_digest=before.state_digest,
                             post_state_digest=before.state_digest,
