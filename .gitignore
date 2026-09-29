@@ -1,7 +1,10 @@
 # Coverage.py
 .coverage
 htmlcov/
-reports/
+reports/*
+# OCEL episode logs are the evidence behind every standing claim (CONTRIBUTING.md,
+# .claude/rules/ocel-standing.md): they must be committable without `git add -f`.
+!reports/ocel/
 
 # Copier
 *.rej
