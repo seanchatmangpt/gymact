@@ -10,7 +10,7 @@ from __future__ import annotations
 import math
 from typing import Literal
 
-from pydantic import Field, JsonValue, model_validator
+from pydantic import ConfigDict, Field, JsonValue, model_validator
 
 from gymact.models import FrozenModel
 
@@ -37,7 +37,15 @@ class SA2ADecision(FrozenModel):
 
 
 class SA2AReplanEnvelope(FrozenModel):
-    schema: Literal["sa2a/replan-envelope/v1"] = SA2A_REPLAN_SCHEMA
+    # The portable wire key is "schema", but that name shadows pydantic's deprecated
+    # `BaseModel.schema` and pydantic warns at class creation (an error under this repo's
+    # filterwarnings=error, aborting collection). Keep the wire key via alias and serialize by
+    # alias so `model_dump()` (hashed in `sa2a_evolution`) still emits "schema", not "schema_id".
+    model_config = ConfigDict(serialize_by_alias=True)
+
+    schema_id: Literal["sa2a/replan-envelope/v1"] = Field(
+        default=SA2A_REPLAN_SCHEMA, alias="schema"
+    )
     contract_digest: Literal[
         "sha256:ff7643034ed101930e9c80df716df863b6ee6d14f3b29aff764209ad11dab80e"
     ] = SA2A_REPLAN_CONTRACT_DIGEST
