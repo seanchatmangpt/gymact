@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, JsonValue
 
 from gymact.consequence_binding import ConsequenceBinding
 from gymact.evidence import digest
@@ -16,7 +16,7 @@ _CONTENT_DIGEST = r"^blake3:[0-9a-f]{64}$"
 
 
 class SA2AEvolutionFeedback(FrozenModel):
-    exact_subject: Any
+    exact_subject: JsonValue
     receipt_id: str = Field(min_length=1)
     envelope_digest: str = Field(pattern=_CONTENT_DIGEST)
     decision_kind: Literal["stop", "replan"]

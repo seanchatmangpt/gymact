@@ -43,6 +43,9 @@ def test_rejects_null_or_non_json_exact_subject():
     with pytest.raises(ValidationError):
         admit_envelope(envelope(exact_subject=object()))
 
+    with pytest.raises(ValidationError):
+        admit_envelope(envelope(exact_subject=("tuple", 1)))
+
 
 def test_rejects_contract_drift_authority_escalation_and_unknown_fields():
     with pytest.raises(ValidationError):

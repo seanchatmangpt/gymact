@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, JsonValue
 
 from gymact.models import FrozenModel
 from gymact.sa2a_envelope import SA2AReplanEnvelope, admit_envelope
 
 
 class SA2AReplayBinding(FrozenModel):
-    exact_subject: Any
+    exact_subject: JsonValue
     receipt_id: str = Field(min_length=1)
     source_replay_key: str = Field(min_length=1)
     authority: Literal["none"] = "none"
