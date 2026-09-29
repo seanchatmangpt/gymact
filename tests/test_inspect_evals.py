@@ -369,3 +369,105 @@ def test_real_solve_does_not_install_the_process_global_nest_asyncio_patch(tmp_p
     assert done.returncode == 0, done.stderr
     assert "RECEIPTS 3" in done.stdout
     assert "NEST_PATCHED False" in done.stdout
+
+
+# --- Contract tests for the private Inspect symbol `_run_inspect_eval` relies on ---
+#
+# `_run_inspect_eval` holds `inspect_ai._util._async._initialised_nest_asyncio`
+# True (guarded by `hasattr`) so `init_nest_asyncio()` short-circuits instead of
+# installing `nest_asyncio2`'s one-way, process-global `asyncio.run` patch. That
+# flag is private: if Inspect renames it, the `hasattr` guard silently turns the
+# flag half of the fix into a no-op. These tests fail loudly on that drift.
+# Verified against inspect_ai 0.3.272, where `init_nest_asyncio()` is
+#   `if not _initialised_nest_asyncio: nest_asyncio.apply(); flag = True`.
+# Each behavioral probe runs in a fresh interpreter because the patch is one-way.
+
+
+def _run_fresh_python(script: str, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, "-c", script, *args],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        check=False,
+    )
+
+
+def test_inspect_private_nest_flag_exists_and_is_bool() -> None:
+    from inspect_ai._util import _async as inspect_async
+
+    assert hasattr(inspect_async, "_initialised_nest_asyncio"), (
+        "inspect_ai renamed/removed _initialised_nest_asyncio: the flag half of "
+        "_run_inspect_eval's nest_asyncio guard is now a silent no-op"
+    )
+    assert isinstance(inspect_async._initialised_nest_asyncio, bool)
+    assert callable(inspect_async.init_nest_asyncio)
+
+
+def test_inspect_init_nest_asyncio_consults_the_flag() -> None:
+    script = (
+        "import asyncio\n"
+        "from inspect_ai._util import _async as m\n"
+        "assert not hasattr(asyncio, '_nest_patched')\n"
+        "m._initialised_nest_asyncio = True\n"
+        "m.init_nest_asyncio()\n"
+        "print('AFTER_FLAG_TRUE', hasattr(asyncio, '_nest_patched'))\n"
+    )
+    control = (
+        "import asyncio\n"
+        "from inspect_ai._util import _async as m\n"
+        "m._initialised_nest_asyncio = False\n"
+        "m.init_nest_asyncio()\n"
+        "print('AFTER_FLAG_FALSE', hasattr(asyncio, '_nest_patched'))\n"
+        "print('FLAG_NOW', m._initialised_nest_asyncio)\n"
+    )
+    held = _run_fresh_python(script)
+    assert held.returncode == 0, held.stderr
+    assert "AFTER_FLAG_TRUE False" in held.stdout
+
+    # Control: proves the probe can see the patch, so the line above is not vacuous.
+    released = _run_fresh_python(control)
+    assert released.returncode == 0, released.stderr
+    assert "AFTER_FLAG_FALSE True" in released.stdout
+    assert "FLAG_NOW True" in released.stdout
+
+
+def test_run_inspect_eval_flag_blocks_reentrant_patch_from_inside_eval(tmp_path) -> None:
+    """Independent need for the flag half: user code running inside `eval()`'s
+    own event loop that calls a sync Inspect API (here `read_eval_log`, which goes
+    through `run_coroutine` -> `init_nest_asyncio`) would install the process-global
+    patch. With the flag held, the patch is not installed (the re-entrant call
+    fails loudly instead). Inspect's own default eval path never does this, so
+    this only covers caller-supplied solver/scorer/hook code."""
+    script = (
+        "import asyncio, glob, sys\n"
+        "from inspect_ai import Task, eval as inspect_eval\n"
+        "from inspect_ai.dataset import Sample\n"
+        "from inspect_ai.log import read_eval_log\n"
+        "from inspect_ai.model import ModelOutput\n"
+        "from inspect_ai.scorer import match\n"
+        "from inspect_ai.solver import generate, solver\n"
+        "from gymact.gyms.inspect_evals import _run_inspect_eval\n"
+        "log_dir = sys.argv[1]\n"
+        "out = ModelOutput.from_content('mockllm/model', '4')\n"
+        "args = dict(model='mockllm/model', model_args={'custom_outputs': [out]})\n"
+        "inspect_eval(Task(dataset=[Sample(input='q', target='4')], solver=[generate()],\n"
+        "                  scorer=match()), log_dir=log_dir, display='none', **args)\n"
+        "assert not hasattr(asyncio, '_nest_patched')\n"
+        "path = glob.glob(log_dir + '/*.eval')[0]\n"
+        "@solver\n"
+        "def reads_log_synchronously():\n"
+        "    async def run(state, generate):\n"
+        "        read_eval_log(path, header_only=True)\n"
+        "        return state\n"
+        "    return run\n"
+        "task = Task(dataset=[Sample(input='q', target='4')],\n"
+        "            solver=[reads_log_synchronously(), generate()], scorer=match())\n"
+        "logs = _run_inspect_eval(task=task, log_dir=log_dir, **args)\n"
+        "print('STATUS', logs[0].status)\n"
+        "print('NEST_PATCHED', hasattr(asyncio, '_nest_patched'))\n"
+    )
+    done = _run_fresh_python(script, str(tmp_path / "inspect_logs"))
+
+    assert done.returncode == 0, done.stderr
+    assert "NEST_PATCHED False" in done.stdout
