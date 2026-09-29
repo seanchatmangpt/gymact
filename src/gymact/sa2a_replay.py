@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import Field
 
@@ -11,7 +11,7 @@ from gymact.sa2a_envelope import SA2AReplanEnvelope, admit_envelope
 
 
 class SA2AReplayBinding(FrozenModel):
-    exact_subject: str = Field(min_length=1)
+    exact_subject: Any
     receipt_id: str = Field(min_length=1)
     source_replay_key: str = Field(min_length=1)
     authority: Literal["none"] = "none"

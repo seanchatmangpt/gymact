@@ -30,7 +30,21 @@ def test_admits_exact_canonical_contract():
     assert admitted.exact_subject == "urn:subject:1"
 
 
-def test_rejects_contract_drift_and_authority_escalation():
+def test_admits_structured_exact_subject_allowed_by_producer_schema():
+    subject = {"kind": "drive", "serial": 42, "path": ["head", 7]}
+    admitted = admit_envelope(envelope(exact_subject=subject))
+    assert admitted.exact_subject == subject
+
+
+def test_rejects_null_or_non_json_exact_subject():
+    with pytest.raises(ValidationError):
+        admit_envelope(envelope(exact_subject=None))
+
+    with pytest.raises(ValidationError):
+        admit_envelope(envelope(exact_subject=object()))
+
+
+def test_rejects_contract_drift_authority_escalation_and_unknown_fields():
     with pytest.raises(ValidationError):
         admit_envelope(envelope(contract_digest="sha256:" + "0" * 64))
 
@@ -38,3 +52,6 @@ def test_rejects_contract_drift_and_authority_escalation():
         admit_envelope(
             envelope(decision={"kind": "replan", "reason": "failed", "authority": "do"})
         )
+
+    with pytest.raises(ValidationError):
+        admit_envelope(envelope(unmodeled_authority="do"))

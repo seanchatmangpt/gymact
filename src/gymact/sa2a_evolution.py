@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import Field
 
@@ -16,7 +16,7 @@ _CONTENT_DIGEST = r"^blake3:[0-9a-f]{64}$"
 
 
 class SA2AEvolutionFeedback(FrozenModel):
-    exact_subject: str = Field(min_length=1)
+    exact_subject: Any
     receipt_id: str = Field(min_length=1)
     envelope_digest: str = Field(pattern=_CONTENT_DIGEST)
     decision_kind: Literal["stop", "replan"]

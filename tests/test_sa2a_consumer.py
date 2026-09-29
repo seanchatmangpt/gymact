@@ -40,6 +40,14 @@ def test_consumer_preserves_upstream_recovery_decision_without_do():
     assert directive.authority == "none"
 
 
+def test_consumer_preserves_structured_subject_without_manufacturing_identity():
+    value = envelope()
+    value["exact_subject"] = {"kind": "drive", "serial": 42}
+    directive = consume_sa2a_replan(value)
+    assert directive.exact_subject == {"kind": "drive", "serial": 42}
+    assert directive.authority == "none"
+
+
 def test_consumer_refuses_subject_drift():
     with pytest.raises(ValueError, match="SA2A_EXACT_SUBJECT_MISMATCH"):
         consume_sa2a_replan(envelope(), binding=binding("urn:subject:other"))
