@@ -20,16 +20,17 @@ not the ontology authority for the wider Chatman Ecosystem loop — per
 | Capability | File | Standing |
 |---|---|---|
 | Fail-closed authority + capability-scope gate | `src/gymact/kernel.py` (`_authority_decision`), `src/gymact/authority.py` | `ALIVE` |
-| Actuate + independent postcondition verify (never trusts actuator's own report) | `src/gymact/kernel.py` (`act`/`verify`), `src/gymact/verification.py` | `ALIVE` |
+| Actuate + independent postcondition verify (never trusts actuator's own report) | `src/gymact/kernel.py` (`act`/`verify`), `src/gymact/verification.py` | `PARTIAL_ALIVE` -- independent `PostconditionVerifier` is unit-tested; real `solved=True` act evidence exists for 7 OCEL subjects (see `docs/standing-census.md`) and is absent for 3 (`crown-p1-allowed`, `crown-p1-denied`, `opaque-procedure`: strict xfail `KERNEL_GAP:ACT_RECEIPT_NEVER_CARRIES_REASON` in `tests/test_ocel_standing.py`) |
 | Receipt + OCEL projection (`verified`/`world_changed`) | `src/gymact/ocel.py` | `ALIVE` |
-| EARL evidence graph | `src/gymact/evidence.py` (`evidence_graph`, lines 183-220) | `ALIVE` |
-| Composition-admission gate (reuse-before-create) | `src/gymact/composition.py`, `composition_inventory.py` | `ALIVE` |
-| BPMN-compiled-program replay → `kernel.act()` | `src/gymact/gdmcp_bpmn_bridge.py` | `ALIVE` |
-| POWL-admitted-graph replay → `kernel.act()` | `src/gymact/powl_bridge.py` | `ALIVE` |
-| Deterministic MCP-call dispatch/gating | `src/gymact/mcp_process_control.py` | `ALIVE` |
-| Multicloud simulation gym: 26 capabilities across AWS/Azure/GCP × IAM/Storage/Compute/Network-Security | `src/gymact/gyms/multicloud.py`, `ggen/multicloud-gym-pack/ontology.ttl` | `ALIVE` (confirmed by direct count this session: 26 `Capability(...)` entries, 4 `service-domain` SKOS concepts) — simulated, not real-cloud-grounded, by explicit design |
-| `ActuationIntent` external wire contract (JSON Schema) | `src/gymact/contract.py` (`build_contract`), exposed via `gymact contract` CLI | `ALIVE` |
-| Real, OCEL-evidenced infra automation (k8s, terraform) | `src/gymact/gyms/kubernetes_reconciliation.py`, `terraform_docker_apply.py` | `ALIVE` per real `reports/ocel/<subject>/episode.ocel.json` logs |
+| EARL evidence graph | `src/gymact/evidence.py` (`evidence_graph`, lines 183-220) | `TESTED` (unit/Chicago; no OCEL episode of its own) |
+| Composition-admission gate (reuse-before-create) | `src/gymact/composition.py`, `composition_inventory.py` | `TESTED` (unit/Chicago; no OCEL episode of its own) |
+| BPMN-compiled-program replay → `kernel.act()` | `src/gymact/gdmcp_bpmn_bridge.py` | `TESTED` (unit/Chicago; no `reports/ocel` log for BPMN replay) |
+| POWL-admitted-graph replay → `kernel.act()` | `src/gymact/powl_bridge.py` | `TESTED` (unit/Chicago; no `reports/ocel` log for POWL replay) |
+| Deterministic MCP-call dispatch/gating | `src/gymact/mcp_process_control.py` | `TESTED` (unit/Chicago; the `mcp-client-session` OCEL log covers a different module) |
+| Multicloud simulation gym: 26 capabilities across AWS/Azure/GCP × IAM/Storage/Compute/Network-Security | `src/gymact/gyms/multicloud.py`, `ggen/multicloud-gym-pack/ontology.ttl` | `SIM_ALIVE` (an in-memory simulation with no OCEL log; 26 `Capability(...)` call sites re-counted by AST on 2026-09-29, 4 `service-domain` SKOS concepts) — simulated, not real-cloud-grounded, by explicit design |
+| `ActuationIntent` external wire contract (JSON Schema) | `src/gymact/contract.py` (`build_contract`), exposed via `gymact contract` CLI | `TESTED` (unit/Chicago; no OCEL episode of its own) |
+| Real, OCEL-evidenced infra automation (k8s, terraform) | `src/gymact/gyms/terraform_docker_apply.py` | `ALIVE` per `reports/ocel/terraform-docker-apply/episode.ocel.json` (re-derived by `tests/test_ocel_standing.py`) |
+| `src/gymact/gyms/kubernetes_reconciliation.py` | `NOT_RUN` -- no `reports/ocel/kubernetes-reconciliation` log exists (provider unit tests and the CI kind cluster cover it, which is `request accepted`, not `objective verified`) |
 
 ## Gaps relevant to the FDE thesis (each tagged with real status)
 
@@ -37,7 +38,7 @@ not the ontology authority for the wider Chatman Ecosystem loop — per
 |---|---|---|
 | Real (non-simulated) cloud-provider operation grounding | `OUT_OF_SCOPE(gymact)` — gymact's multicloud gym is deliberately a simulation surface; real API-grounded operation catalogs are `fdegym`'s job (AWS grounded via botocore there; Azure/GCP confirmed `ASPIRATIONAL` per the ARD) | `fdegym` |
 | Security-control gym (real subprocess-backed firewall/security-group mutation, e.g. real `iptables`/`aws ec2`) | `PLANNED`, not built — scoped in this session's prior TPS-roadmap plan ("Phase 2") as a direct copy of `kubernetes_reconciliation.py`'s pattern | gymact (future work) |
-| Drift-detection + jidoka stop-and-escalate router | `PLANNED`, not built — prior TPS-roadmap "Phase 3"; composes already-`ALIVE` `verify()` + `bpmn_runtime` + `mcp_process_control` | gymact (future work) |
+| Drift-detection + jidoka stop-and-escalate router | `PLANNED`, not built — prior TPS-roadmap "Phase 3"; composes the already-tested `verify()` + `bpmn_runtime` + `mcp_process_control` | gymact (future work) |
 | Time-boxed/escalating authority delegation | `PLANNED`, not built — prior TPS-roadmap "Phase 4"; new `AuthorityResolver` implementation, no kernel changes needed | gymact (future work) |
 | Standing/continuous-episode OCEL (non-terminal FSM state) | `PLANNED`, largest/least-composable — prior TPS-roadmap "Phase 5"; needs a design spike against `process.py`/`ocel.py` before any estimate | gymact (future work) |
 | Ontology-driven `gdmcp` *compiler* (generate new deterministic programs from a capability graph, not just replay a compiled one) | `PARTIAL_ALIVE` — real on an unmerged branch (`agent/gdmcp-sregym-deterministic-solutions`), not on `main` | gymact (merge/port decision, not yet made) |
