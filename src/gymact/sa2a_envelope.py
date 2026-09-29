@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Literal
 
+import rfc8785
 from pydantic import Field, JsonValue, model_validator
 
 from gymact.models import FrozenModel
@@ -47,9 +48,13 @@ class SA2AReplanEnvelope(FrozenModel):
 
     @model_validator(mode="after")
     def exact_subject_matches_portable_schema(self) -> "SA2AReplanEnvelope":
-        """The producer schema admits every JSON value except null."""
+        """The producer schema admits every canonical JSON value except null."""
         if self.exact_subject is None:
             raise ValueError("SA2A_EXACT_SUBJECT_REQUIRED")
+        try:
+            rfc8785.dumps(self.exact_subject)
+        except (rfc8785.CanonicalizationError, TypeError, ValueError) as exc:
+            raise ValueError("SA2A_EXACT_SUBJECT_NOT_CANONICAL_JSON") from exc
         return self
 
 

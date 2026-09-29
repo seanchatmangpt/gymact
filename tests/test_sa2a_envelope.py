@@ -36,7 +36,7 @@ def test_admits_structured_exact_subject_allowed_by_producer_schema():
     assert admitted.exact_subject == subject
 
 
-def test_rejects_null_or_non_json_exact_subject():
+def test_rejects_null_non_json_or_noncanonical_exact_subject():
     with pytest.raises(ValidationError):
         admit_envelope(envelope(exact_subject=None))
 
@@ -45,6 +45,9 @@ def test_rejects_null_or_non_json_exact_subject():
 
     with pytest.raises(ValidationError):
         admit_envelope(envelope(exact_subject=("tuple", 1)))
+
+    with pytest.raises(ValidationError):
+        admit_envelope(envelope(exact_subject=float("nan")))
 
 
 def test_rejects_contract_drift_authority_escalation_and_unknown_fields():
