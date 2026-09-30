@@ -62,6 +62,22 @@ work around it silently.
   admitted output" (the FM-WRITE-008 duplicate-admission guard). Verify:
   `tests/test_ggen_togaf_gym_pack.py:226`
   (`test_ggen_templates_are_projection_only`).
+- **2026-09-30** — `tests/conftest.py` runs tracemalloc for every test, which
+  multiplies pure-Python compute-heavy tests by roughly 10-40x versus a bare
+  script run (the FDE sim court went 126s -> 8s only after memoizing its pure
+  orderings). Time a new compute-heavy test under pytest, not just as a script.
+  Verify: `tests/conftest.py:27` (`import tracemalloc`).
+- **2026-09-30** — CI's "Refuse interaction-verifying test seams" step rejects
+  `monkeypatch.setattr`/`delattr`, `mocker` and `unittest.mock` anywhere under
+  `tests/`; prove "no network / no stdin" with an AST import-allowlist and a
+  stdin-closed subprocess instead. Verify: `.github/workflows/ci.yml`, that step;
+  `tests/test_fde_factory_sim.py`.
+- **2026-09-30** — `main` at `d3eb5e8` is red on Python 3.11/3.12/3.13: pytest
+  stops at collection with 4 errors from `src/gymact/sa2a_envelope.py:40`
+  (`schema` field shadows a pydantic attribute; `filterwarnings = error`). A red
+  check on a branch that does not touch sa2a is this, not the branch. Fixing it
+  by renaming to `schema_` changes the digest at `sa2a_evolution.py:39` unless
+  the dump uses `by_alias=True`. Verify: CI run 36625907458, job 3.11.
 
 ## How to use this file
 
