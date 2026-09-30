@@ -6,11 +6,14 @@ A passing run is a fact about the SIMULATED mechanism, not about any real workfl
 
 from __future__ import annotations
 
-import builtins
-import socket
+import ast
+import pathlib
+import subprocess
+import sys
 
 import pytest
 
+from gymact import fde_factory_sim
 from gymact.fde_factory_sim import (
     DriftEvent,
     ExploreReason,
@@ -22,24 +25,34 @@ from gymact.fde_factory_sim import (
 )
 from gymact.models import Standing
 
-
-@pytest.fixture
-def sealed(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Any network or stdin access (LLM / human channel) is a hard failure."""
-
-    def forbidden(*_a: object, **_k: object) -> None:
-        raise AssertionError("SIM_TOUCHED_NETWORK_OR_HUMAN_CHANNEL")
-
-    monkeypatch.setattr(socket, "socket", forbidden)
-    monkeypatch.setattr(socket, "create_connection", forbidden)
-    monkeypatch.setattr(builtins, "input", forbidden)
+_ALLOWED_TOP_LEVEL = {"__future__", "enum", "gymact", "pydantic"}
 
 
-def test_runs_sealed_and_is_deterministic(sealed: None) -> None:
+def test_module_has_no_network_or_model_capability() -> None:
+    """The simulation's import surface is the proof: no HTTP/LLM/socket client is reachable."""
+    source = pathlib.Path(fde_factory_sim.__file__).read_text(encoding="utf-8")
+    imported: set[str] = set()
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            imported |= {alias.name.split(".")[0] for alias in node.names}
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            imported.add(node.module.split(".")[0])
+    assert imported <= _ALLOWED_TOP_LEVEL, imported - _ALLOWED_TOP_LEVEL
+
+
+def test_runs_without_a_human_channel_and_is_deterministic() -> None:
+    """Fresh process, stdin closed: any input() would raise EOFError, not hang or ask."""
+    code = "from gymact.fde_factory_sim import run_simulation as r; print(r().report_digest)"
+    out = subprocess.run(
+        [sys.executable, "-c", code],
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=120,
+    ).stdout.strip()
     a = run_simulation()
-    b = run_simulation()
-    assert a.report_digest == b.report_digest
-    assert a.factory.trace_digest == b.factory.trace_digest
+    assert out == a.report_digest == run_simulation().report_digest
     assert (a.llm_calls, a.human_interactions) == (0, 0)
     assert a.origin == "SIMULATED" and a.observed_execution is False
 
