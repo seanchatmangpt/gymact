@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - name: Build exact base wheel
@@ -33,7 +33,7 @@ jobs:
           print(wheel)
           PY
           sha256sum dist/gymact-26.8.7-*.whl > dist/gymact-26.8.7.sha256
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: gymact-26.8.7-c839-wheel
           path: |
