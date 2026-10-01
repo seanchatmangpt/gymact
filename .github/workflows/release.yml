@@ -70,7 +70,7 @@ jobs:
       - name: Deploy Pages
         id: deploy
         continue-on-error: true
-        uses: actions/deploy-pages@v5.0.0
+        uses: actions/deploy-pages@v5.0.1
 
       - name: Emit Pages receipt
         if: ${{ always() }}
