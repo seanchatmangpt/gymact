@@ -1,0 +1,109 @@
+# AIRo risk description for the gymact AI-testing system.
+# Vocabulary: AIRO 1.0 (https://w3id.org/airo#), fetched from
+# https://raw.githubusercontent.com/DelaramGlp/airo/main/airo.ttl
+# All cited repo files verified to exist on this checkout at authoring time.
+@prefix airo: <https://w3id.org/airo#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@base <https://gymact.example/airo/> .
+
+<#gymact-system> a airo:AISystem ;
+    rdfs:label "gymact AI-testing system"@en ;
+    dcterms:description "Agentic AI testing/qualification system: environments, reward surfaces, and standing discipline used to qualify AI behaviour before admission."@en ;
+    airo:hasRisk <#risk-nondeterminism> ,
+                 <#risk-reward-hacking> ,
+                 <#risk-evaluator-gaming> .
+
+<#operator> a airo:AIDeployer ;
+    rdfs:label "gymact operator (Sean Chatman / personal fleet)"@en .
+
+<#gymact-system> airo:isDeployedBy <#operator> .
+
+# ------------------------------------------------------------------
+# Risk sources (real, grounded in the repo)
+# ------------------------------------------------------------------
+
+<#rs-environment-nondeterminism> a airo:RiskSource ;
+    airo:isRiskSourceFor <#risk-nondeterminism> ;
+    rdfs:label "Environment nondeterminism"@en ;
+    dcterms:description "Gym environments (gymnasium-backed) can produce nondeterministic step/reset behaviour; the suite asserts on real reward emission across step and reset boundaries (tests/test_gymnasium_env.py)."@en .
+
+<#rs-reward-hacking> a airo:RiskSource ;
+    airo:isRiskSourceFor <#risk-reward-hacking> ;
+    rdfs:label "Reward hacking"@en ;
+    dcterms:description "A tested hazard: the suite exercises real reward emission and gating (tests/test_gymnasium_env.py, tests/test_two_gym_gate.py), so a policy can game the reward signal rather than the intended objective."@en .
+
+<#rs-evaluator-gaming> a airo:RiskSource ;
+    airo:isRiskSourceFor <#risk-evaluator-gaming> ;
+    rdfs:label "Evaluator gaming"@en ;
+    dcterms:description "The qualification layer itself is gameable: standing skip discipline (tests/test_standing_enforcement.py — 'standing is a hard failure, not a quiet skip') exists because agents can otherwise game evaluators via quiet skips or degraded standings."@en .
+
+# ------------------------------------------------------------------
+# Risks
+# ------------------------------------------------------------------
+
+<#risk-nondeterminism> a airo:Risk ;
+    rdfs:label "Flaky qualification from environment nondeterminism"@en ;
+    airo:hasConsequence <#cons-flaky-qualification> ;
+    airo:hasRiskControl <#rc-production-surfaces> ;
+    airo:hasLikelihood <#lik-medium> ;
+    airo:hasSeverity <#sev-medium> .
+
+<#risk-reward-hacking> a airo:Risk ;
+    rdfs:label "Reward hacking of the gym signal"@en ;
+    airo:hasConsequence <#cons-invalid-admission> ;
+    airo:hasRiskControl <#rc-production-surfaces> ;
+    airo:hasLikelihood <#lik-medium> ;
+    airo:hasSeverity <#sev-high> .
+
+<#risk-evaluator-gaming> a airo:Risk ;
+    rdfs:label "Gaming of the evaluator/standing layer"@en ;
+    airo:hasConsequence <#cons-silent-degradation> ;
+    airo:hasRiskControl <#rc-standing-discipline> ;
+    airo:hasLikelihood <#lik-high> ;
+    airo:hasSeverity <#sev-high> .
+
+# ------------------------------------------------------------------
+# Consequences / impacts / likelihoods / severities (qualitative,
+# disclosed as structured estimates, not measurements)
+# ------------------------------------------------------------------
+
+<#cons-flaky-qualification> a airo:Consequence ;
+    dcterms:description "Flaky or non-reproducible qualification verdicts."@en ;
+    airo:hasImpact <#impact-process> .
+
+<#cons-invalid-admission> a airo:Consequence ;
+    dcterms:description "Unqualified behaviour admitted as qualified."@en ;
+    airo:hasImpact <#impact-process> .
+
+<#cons-silent-degradation> a airo:Consequence ;
+    dcterms:description "Standing/skip discipline bypassed, degrading the fleet silently."@en ;
+    airo:hasImpact <#impact-process> .
+
+<#impact-process> a airo:Impact ;
+    rdfs:label "Impact on qualification-process integrity"@en .
+
+<#lik-medium> a airo:Likelihood ;
+    rdfs:label "medium (qualitative, structured estimate — not a measurement)"@en .
+
+<#lik-high> a airo:Likelihood ;
+    rdfs:label "high (qualitative, structured estimate — not a measurement)"@en .
+
+<#sev-medium> a airo:Severity ;
+    rdfs:label "medium (qualitative, structured estimate — not a measurement)"@en .
+
+<#sev-high> a airo:Severity ;
+    rdfs:label "high (qualitative, structured estimate — not a measurement)"@en .
+
+# ------------------------------------------------------------------
+# Risk controls (real test surfaces)
+# ------------------------------------------------------------------
+
+<#rc-production-surfaces> a airo:RiskControl ;
+    rdfs:label "Production-surface test gate"@en ;
+    dcterms:description "tests/test_production_surfaces.py exercises the real production surfaces end to end."@en .
+
+<#rc-standing-discipline> a airo:RiskControl ;
+    rdfs:label "Standing skip discipline"@en ;
+    dcterms:description "tests/test_standing_enforcement.py enforces skip discipline: degraded standings are a hard failure unless explicitly allowed."@en .
