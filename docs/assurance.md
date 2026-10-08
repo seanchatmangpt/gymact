@@ -1,6 +1,6 @@
 # Assurance model
 
-GymAct v26.8.7 separates semantic authority, execution, evidence and standing so that an integration cannot become `ALIVE` merely because it imports or returns a successful command status.
+GymAct 26.10.8 separates semantic authority, execution, evidence and standing so that an integration cannot become `ALIVE` merely because it imports or returns a successful command status.
 
 ## Consequence pipeline
 

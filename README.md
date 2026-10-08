@@ -2,7 +2,7 @@
 
 GymAct is the lawful executable-world layer for AutoFDE: a public-semantic runtime for turning admitted computational intent into independently verified consequence.
 
-The v26.8.7 production architecture is **Design for Combinatorial Maximum (DCM)**. GymAct does not choose a planner/provider/tool first and then guard that choice. It preserves the maximum bounded set of lawful reversible possibilities before any irreversible selection:
+The GymAct 26.10.8 production architecture is **Design for Combinatorial Maximum (DCM)**. GymAct does not choose a planner/provider/tool first and then guard that choice. It preserves the maximum bounded set of lawful reversible possibilities before any irreversible selection:
 
 ```text
 public RDF possibility graph
@@ -300,7 +300,7 @@ derives actuation standing purely from the resulting on-disk OCEL log (schema va
 
 ## Release admission
 
-A v26.8.7 artifact has release standing only when exact-head validation proves:
+A GymAct artifact has release standing only when exact-head validation proves:
 
 - public profile and extension ABoxes parse and SHACL-conform;
 - zero custom GymAct TBox terms;

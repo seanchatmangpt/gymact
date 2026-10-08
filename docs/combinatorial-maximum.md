@@ -1,6 +1,6 @@
 # Design for Combinatorial Maximum
 
-Status: architectural law for GymAct v26.8.7+
+Status: architectural law for GymAct 26.10.8+
 
 GymAct does not optimize by choosing early. It optimizes by preserving the largest
 bounded set of lawful reversible possibilities until consequence forces a cut.

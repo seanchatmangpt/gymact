@@ -7,6 +7,9 @@
 - `gymact.retirement` module (`20baed1`): evidence-bounded intelligence retirement controller (not yet re-exported via `gymact.dcm.__all__`).
 - SA2A portable replan envelope modules (`dac3629`): `SA2AReplanEnvelope`/`SA2ARecoveryDirective` carry `exact_subject` + `receipt_id`, consumed non-actuatingly (`src/gymact/sa2a_envelope.py`, `sa2a_consumer.py`, `sa2a_evolution.py`, `sa2a_replay.py`).
 
+### Fixed
+- Surfaces version drift (3c865b25): the FastAPI `/health` endpoint and OpenAPI version are now derived from package metadata instead of the hardcoded `26.8.7`, so docs/API surfaces report the released version.
+
 ## 26.9.28 - 2026-09-28
 
 ### Changed

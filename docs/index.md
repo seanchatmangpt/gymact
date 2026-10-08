@@ -1,6 +1,6 @@
 # GymAct
 
-GymAct v26.8.7 is a public-semantic execution profile and Python reference runtime for bounded benchmark worlds.
+GymAct 26.10.8 is a public-semantic execution profile and Python reference runtime for bounded benchmark worlds.
 
 - [Architecture](architecture.md)
 - [Assurance](assurance.md)

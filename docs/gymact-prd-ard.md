@@ -1,6 +1,6 @@
 # GymAct PRD / ARD — Crown execution substrate
 
-Version: 26.8.7  
+Version: 26.10.8  
 Status: architectural constitution  
 Canonical decision architecture: **Design for Combinatorial Maximum (DCM)**
 
