@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError, version as _package_version
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Response
@@ -28,19 +29,27 @@ def _boundary_error(exc: BoundaryBlocked) -> HTTPException:
     return HTTPException(status_code=503, detail={"standing": "BLOCKED", "reason": exc.code})
 
 
+def _app_version() -> str:
+    try:
+        return _package_version("gymact")
+    except PackageNotFoundError:
+        from gymact import __version__
+        return __version__
+
+
 def create_app(runtime: GymAct | None = None) -> FastAPI:
     """Create HTTP/OpenAPI projection with DCM as the canonical production DO path."""
     service = _runtime(runtime)
     compatibility_broker = BRCEBroker(service)
     court = DCMDecisionCourt()
     contract = build_contract()
-    app = FastAPI(title="GymAct", version="26.8.7")
+    app = FastAPI(title="GymAct", version=_app_version())
 
     @app.get("/health")
     async def health() -> dict[str, str]:
         return {
             "status": "ALIVE",
-            "version": "26.8.7",
+            "version": _app_version(),
             "contract_digest": contract.contract_digest,
         }
 

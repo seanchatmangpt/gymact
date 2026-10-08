@@ -211,3 +211,32 @@ contain a visible character; zero-width and format characters do not count.
 ::: gymact.execution_loop.WorkerCrashed
 
 ::: gymact.execution_loop.loop_log
+
+## SA2A replan envelope
+
+Portable SA2A replanning envelope consumed by GymAct
+(`src/gymact/sa2a_envelope.py`): the consequence/recovery decision is
+manufactured upstream by ash_a2a; GymAct validates that contract and carries it
+as data, deliberately containing no outcome->recovery mapping. The envelope is
+pinned to `sa2a/replan-envelope/v1` and its contract digest; `SA2AReplanEnvelope`
+and `SA2ARecoveryDirective` both carry `exact_subject` (any JSON value) and
+`receipt_id`, and every consumer holds authority `"none"` — the envelope is
+consumed non-actuatingly.
+
+`exact_subject` admits every JSON value except null; numbers (recursively,
+through lists and objects) must be finite. Violations refuse as
+`SA2A_EXACT_SUBJECT_REQUIRED` (null) and `SA2A_EXACT_SUBJECT_NONFINITE_NUMBER`
+(NaN/Infinity, renamed from `SA2A_EXACT_SUBJECT_NOT_CANONICAL_JSON` in `2e6dca0`,
+2026-09-29). Consumers live in `src/gymact/sa2a_consumer.py` (powerless GymAct
+consumer; refuses a subject mismatch with `SA2A_EXACT_SUBJECT_MISMATCH`),
+`src/gymact/sa2a_evolution.py` (powerless feedback projection for environment
+evolution), and `src/gymact/sa2a_replay.py` (replay identity imported from the
+envelope).
+
+::: gymact.sa2a_envelope.SA2ADecision
+
+::: gymact.sa2a_envelope.SA2AReplanEnvelope
+
+::: gymact.sa2a_envelope.SA2ARecoveryDirective
+
+::: gymact.sa2a_envelope.admit_envelope

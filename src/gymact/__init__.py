@@ -553,4 +553,4 @@ __all__ = [
     "validate_possibility_rdf",
 ]
 
-__version__ = "26.9.28"
+__version__ = "26.10.8"
