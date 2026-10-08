@@ -24,7 +24,7 @@ defmodule Mix.Tasks.Gymact.Paas.Generate do
     end
 
     path = Path.expand(relative, File.cwd!())
-    root = Path.expand(File.cwd!()) <> Path.sep()
+    root = Path.expand(File.cwd!()) <> "/"
 
     unless String.starts_with?(path, root) do
       Mix.raise("REFUSED_GENERATOR_PATH_ESCAPE: #{relative}")
