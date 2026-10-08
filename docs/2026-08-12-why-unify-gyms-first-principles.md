@@ -47,7 +47,7 @@ This is the real value proposition, stated precisely: **GymAct does not
 unify "how do I call a tool" — MCP already does that, natively, per-gym, for
 free.** GymAct unifies a *cross-cutting safety and evidence concern* that no
 individual gym's own interface provides, and that would otherwise be
-reimplemented per-gym, inconsistently, or not at all. `docs/assurance.md`'s
+reimplemented per-gym, inconsistently, or not at all. `docs/explanation/assurance.md`'s
 real consequence pipeline (semantic profile → materialization intent →
 provider admission + SHACL validation → authority decision → bounded
 actuation → independent post-observation → BLAKE3 evidence chain →
@@ -208,7 +208,7 @@ findings, not a settled architecture.
 - `2026-08-12-gymact-certification-and-ggen-from-sregym.md` — the narrower,
   "given GymAct as the unification point, what should certification mean"
   companion this document generalizes past.
-- `docs/assurance.md` — the real, implemented consequence pipeline this
+- `docs/explanation/assurance.md` — the real, implemented consequence pipeline this
   whole unification argument is actually about.
 - `src/gymact/contract.py` — `RuntimeContract`/`build_contract()`, the real,
   underused primitive Alternative C is built on.

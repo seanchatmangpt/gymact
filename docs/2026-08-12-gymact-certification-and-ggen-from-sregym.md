@@ -70,7 +70,7 @@ Two honest options follow from this, not one:
 1. GymAct exposes the real, checkable facts (contract digest, capability
    schemas, per-provider `requires_authority`/behavioral metadata, a
    `build_contract()`-style self-digest — several of these already exist per
-   `docs/assurance.md`'s "Cross-runtime contract" section) — and certification
+   `docs/explanation/assurance.md`'s "Cross-runtime contract" section) — and certification
    itself is computed and owned by a consumer, outside this package. This is
    what autofde-lab's existing `gymact_certification_checker.py` already is,
    correctly scoped.
@@ -186,7 +186,7 @@ and see how much of this sketch survives contact with it.
   import-graph argument here and the "log/model must be independently
   produced" argument there land on the same structural requirement from two
   separate directions.
-- `~/gymact/docs/assurance.md` — the real, already-implemented consequence
+- `~/gymact/docs/explanation/assurance.md` — the real, already-implemented consequence
   pipeline and evidence chain this proposal builds on top of, never
   duplicates.
 - `~/gymact/docs/gymact-thesis.md` §4.4 — "Independent verification, and the

@@ -42,7 +42,7 @@ Every DO edge must carry powerless identity for the exact action, subject, capab
 
 Consequential receipts preserve the same decision identity, so replay can detect changed graph topology, changed closure computation or a changed irreversible choice even if the final external API call looks identical.
 
-See [`docs/combinatorial-maximum.md`](docs/combinatorial-maximum.md) and the machine law inventory at `src/gymact/schemas/dcm-v26.8.7.json`.
+See [`docs/explanation/combinatorial-maximum.md`](docs/explanation/combinatorial-maximum.md) and the machine law inventory at `src/gymact/schemas/dcm-v26.8.7.json`.
 
 ## Public semantic authority
 
