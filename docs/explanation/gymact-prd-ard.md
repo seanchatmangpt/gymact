@@ -28,7 +28,7 @@ O -> O* -> public possibility graph
   -> replay/reuse
 ```
 
-The detailed DCM law is canonical in `docs/combinatorial-maximum.md` and
+The detailed DCM law is canonical in `docs/explanation/combinatorial-maximum.md` and
 `src/gymact/schemas/dcm-v26.8.7.json`.
 
 ## 1. Product objective
