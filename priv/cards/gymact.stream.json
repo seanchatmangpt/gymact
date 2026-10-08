@@ -1,0 +1,76 @@
+{
+  "capabilities": {
+    "pushNotifications": false,
+    "streaming": false
+  },
+  "defaultInputModes": [
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "application/json"
+  ],
+  "description": "Broker-neutral FastStream command dispatch over the same runtime. Authority law: GymAct's kernel gate GymAct._authority_decision (src/gymact/kernel.py) is the sole authority boundary for every consequential operation (act/restore/teardown/materialize); a transport never grants authority by itself, and required authority is fail-closed unless the injected AuthorityResolver admits the exact operation. SA2A envelope admission (gymact.sa2a_envelope.admit_envelope) additionally refuses any envelope whose exact_subject or pinned contract_digest mismatches, surfacing a typed refusal (e.g. SA2A_EXACT_SUBJECT_MISMATCH) as an A2A task.failed terminal state.",
+  "id": "gymact.stream",
+  "name": "GymAct Stream Surface",
+  "protocolVersion": "1.0",
+  "provider": {
+    "organization": "gymact",
+    "url": "urn:gymact"
+  },
+  "skills": [
+    {
+      "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
+      "name": "act"
+    },
+    {
+      "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
+      "name": "capabilities"
+    },
+    {
+      "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
+      "name": "checkpoint"
+    },
+    {
+      "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
+      "name": "create_episode"
+    },
+    {
+      "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
+      "name": "discover"
+    },
+    {
+      "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
+      "name": "execute_admitted"
+    },
+    {
+      "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
+      "name": "execute_selected"
+    },
+    {
+      "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
+      "name": "explore_possibilities"
+    },
+    {
+      "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
+      "name": "observe"
+    },
+    {
+      "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
+      "name": "prepare_candidate"
+    },
+    {
+      "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
+      "name": "restore"
+    },
+    {
+      "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
+      "name": "teardown"
+    },
+    {
+      "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
+      "name": "verify"
+    }
+  ],
+  "url": "urn:gymact:surface:gymact.stream",
+  "version": "26.10.8"
+}

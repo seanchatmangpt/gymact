@@ -1,0 +1,32 @@
+{
+  "capabilities": {
+    "pushNotifications": false,
+    "streaming": false
+  },
+  "defaultInputModes": [
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "application/json"
+  ],
+  "description": "A2A v1 task transport adapter composed over SA2A portable envelope admission; refusals are typed terminal states. Authority law: GymAct's kernel gate GymAct._authority_decision (src/gymact/kernel.py) is the sole authority boundary for every consequential operation (act/restore/teardown/materialize); a transport never grants authority by itself, and required authority is fail-closed unless the injected AuthorityResolver admits the exact operation. SA2A envelope admission (gymact.sa2a_envelope.admit_envelope) additionally refuses any envelope whose exact_subject or pinned contract_digest mismatches, surfacing a typed refusal (e.g. SA2A_EXACT_SUBJECT_MISMATCH) as an A2A task.failed terminal state.",
+  "id": "gymact.sa2a-transport",
+  "name": "GymAct SA2A Transport Adapter",
+  "protocolVersion": "1.0",
+  "provider": {
+    "organization": "gymact",
+    "url": "urn:gymact"
+  },
+  "skills": [
+    {
+      "description": "Admit the SA2A replan envelope carried by an A2A v1 task payload. Admission is through admit_envelope with the producer's contract_digest carried verbatim; any refusal (subject mismatch, digest mismatch, malformed task framing) is a typed A2A task.failed terminal state, never a silent no-op. Refusal codes: SA2A_EXACT_SUBJECT_REQUIRED, SA2A_EXACT_SUBJECT_NONFINITE_NUMBER, SA2A_EXACT_SUBJECT_MISMATCH, SA2A_ENVELOPE_INVALID, A2A_CONTEXT_ID_REQUIRED, A2A_TASK_ID_REQUIRED, A2A_MESSAGE_REQUIRED, A2A_MESSAGE_PARTS_REQUIRED, A2A_ENVELOPE_PART_NOT_FOUND.",
+      "name": "a2a_task_to_envelope"
+    },
+    {
+      "description": "Re-admit and project an admitted SA2A envelope as an A2A artifact carrying SA2AEvolutionFeedback.",
+      "name": "envelope_to_artifact"
+    }
+  ],
+  "url": "urn:gymact:surface:gymact.sa2a-transport",
+  "version": "26.10.8"
+}

@@ -1,0 +1,64 @@
+{
+  "capabilities": {
+    "pushNotifications": false,
+    "streaming": false
+  },
+  "defaultInputModes": [
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "application/json"
+  ],
+  "description": "FastMCP tool surface over GymAct's semantic runtime; MCP is transport, never a reasoner. Default production surface is the ontology-admitted ten-tool bridge. Authority law: GymAct's kernel gate GymAct._authority_decision (src/gymact/kernel.py) is the sole authority boundary for every consequential operation (act/restore/teardown/materialize); a transport never grants authority by itself, and required authority is fail-closed unless the injected AuthorityResolver admits the exact operation. SA2A envelope admission (gymact.sa2a_envelope.admit_envelope) additionally refuses any envelope whose exact_subject or pinned contract_digest mismatches, surfacing a typed refusal (e.g. SA2A_EXACT_SUBJECT_MISMATCH) as an A2A task.failed terminal state.",
+  "id": "gymact.mcp",
+  "name": "GymAct MCP Surface",
+  "protocolVersion": "1.0",
+  "provider": {
+    "organization": "gymact",
+    "url": "urn:gymact"
+  },
+  "skills": [
+    {
+      "description": "MCP tool on the GymAct MCP surface.",
+      "name": "act"
+    },
+    {
+      "description": "MCP tool on the GymAct MCP surface.",
+      "name": "capabilities"
+    },
+    {
+      "description": "MCP tool on the GymAct MCP surface.",
+      "name": "checkpoint"
+    },
+    {
+      "description": "MCP tool on the GymAct MCP surface.",
+      "name": "create_episode"
+    },
+    {
+      "description": "MCP tool on the GymAct MCP surface.",
+      "name": "discover"
+    },
+    {
+      "description": "MCP tool on the GymAct MCP surface.",
+      "name": "observe"
+    },
+    {
+      "description": "MCP tool on the GymAct MCP surface.",
+      "name": "probe_repo"
+    },
+    {
+      "description": "MCP tool on the GymAct MCP surface.",
+      "name": "restore"
+    },
+    {
+      "description": "MCP tool on the GymAct MCP surface.",
+      "name": "teardown"
+    },
+    {
+      "description": "MCP tool on the GymAct MCP surface.",
+      "name": "verify"
+    }
+  ],
+  "url": "urn:gymact:surface:gymact.mcp",
+  "version": "26.10.8"
+}
