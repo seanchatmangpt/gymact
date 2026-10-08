@@ -23,6 +23,8 @@ Why the system is shaped as it is.
 ## 2. Reference (Information-Oriented)
 
 - [API reference](reference/reference.md) — public modules and functions.
+- [Generated reference (doc-hdit)](reference/generated/reference.md) — doc-hdit-scaffolded
+  skeletons over the full code surface (1848 modules); regenerable, do not hand-edit tables.
 - [Global hub](reference/global-hub.md) — external documentation hub.
 
 ## 3. Tutorials / How-To
