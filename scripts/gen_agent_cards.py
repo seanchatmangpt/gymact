@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import ast
 import inspect
+import re
 import json
 import sys
 from pathlib import Path
@@ -129,6 +130,8 @@ def extract_sa2a_transport_skills() -> list[dict[str, str]]:
     return [
         {
             "name": "a2a_task_to_envelope",
+            "id": "gymact.sa2a-transport.a2a-task-to-envelope",
+            "tags": ["sa2a", "admission"],
             "description": (
                 "Admit the SA2A replan envelope carried by an A2A v1 task "
                 "payload. Admission is through admit_envelope with the "
@@ -142,6 +145,8 @@ def extract_sa2a_transport_skills() -> list[dict[str, str]]:
         },
         {
             "name": "envelope_to_artifact",
+            "id": "gymact.sa2a-transport.envelope-to-artifact",
+            "tags": ["sa2a", "projection"],
             "description": (
                 "Re-admit and project an admitted SA2A envelope as an A2A "
                 "artifact carrying SA2AEvolutionFeedback."
@@ -150,14 +155,23 @@ def extract_sa2a_transport_skills() -> list[dict[str, str]]:
     ]
 
 
+def _slug(text: str) -> str:
+    """Deterministic id-safe slug: lowercase, non-allowed chars -> '-'."""
+    out = re.sub(r"[^A-Za-z0-9_-]+", "-", text).strip("-")
+    return out.lower() or "op"
+
+
 def build_card(card_id: str, name: str, description: str, skills: list[dict[str, Any]]) -> dict[str, Any]:
+    binding = card_id.removeprefix("gymact.")
     return {
         "protocolVersion": "1.0",
         "name": name,
         "id": card_id,
         "description": f"{description} {AUTHORITY_LAW}",
-        "url": f"urn:gymact:surface:{card_id}",
         "version": gymact.__version__,
+        "supportedInterfaces": [
+            {"protocolVersion": "1.0", "protocolBinding": binding}
+        ],
         "capabilities": {"streaming": False, "pushNotifications": False},
         "defaultInputModes": ["application/json"],
         "defaultOutputModes": ["application/json"],
@@ -174,7 +188,12 @@ def build_cards() -> list[dict[str, Any]]:
     http_skills = [
         {
             "name": f"{route['method']} {route['path']}",
-            "id": f"{route['method']}:{route['path']}",
+            "id": f"gymact.http.{_slug(route['method'])}-{_slug(route['path'])}",
+            "tags": (
+                ["http", "consequence"]
+                if route["method"] in {"POST", "DELETE", "PUT", "PATCH"}
+                else ["http", "read"]
+            ),
             "description": (
                 f"{route['method']} endpoint on the GymAct HTTP surface."
                 + (
@@ -191,13 +210,20 @@ def build_cards() -> list[dict[str, Any]]:
     ]
 
     mcp_skill_list = [
-        {"name": tool, "description": f"MCP tool on the GymAct MCP surface."}
+        {
+            "name": tool,
+            "id": f"gymact.mcp.{_slug(tool)}",
+            "tags": ["mcp"],
+            "description": f"MCP tool on the GymAct MCP surface.",
+        }
         for tool in mcp_tools
     ]
 
     stream_skill_list = [
         {
             "name": op,
+            "id": f"gymact.stream.{_slug(op)}",
+            "tags": ["stream"],
             "description": (
                 "Broker-neutral stream operation on the GymAct FastStream "
                 "surface; DO-class operations require a DCM selected cut."
