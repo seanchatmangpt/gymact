@@ -129,9 +129,12 @@ gymact dcm-status
 gymact dcm-requirements
 gymact explore <court-request.json>
 gymact execute <request.json> --authority-file <operator-authority.json>
+gymact-survival --subject <subject> --workload-id <workload-id> --output-dir <dir>
 ```
 
 `gymact execute` is DCM-first. The hidden `execute-admitted` command is compatibility only.
+
+`gymact-survival` manufactures canonical survival qualification artifacts — `--subject`, `--workload-id`, and `--output-dir` are required (other flags default: `--scenario-id canonical`, `--horizon 10`, `--repetitions 1`) — writing `manifest.json`, `campaign.jsonl`, and `receipts.json` into the output directory; `--force` replaces existing artifacts, and a refusal (existing output without `--force`) prints `survival-campaign-refused:` to stderr and exits 2.
 
 Because `execute` always materializes a fresh environment inside the same invocation, its environment id (a random `uuid4()`) cannot be known when the request file is written. The request sentinel `subject.provider_ref` (and `grant.subject.provider_ref`) may therefore be the literal `$SELF_MATERIALIZED_ENVIRONMENT_ID`: it is substituted with the environment id this invocation just materialized, before the identity check. A request naming any real, pre-known `provider_ref` is unaffected — it is still identity-checked and still refused with `SUBJECT_PROVIDER_IDENTITY_MISMATCH` on a genuine mismatch.
 

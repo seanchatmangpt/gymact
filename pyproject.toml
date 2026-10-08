@@ -158,7 +158,14 @@ show_missing = true
 addopts = "-q -rs --strict-config --strict-markers --import-mode=importlib"
 testpaths = ["tests"]
 asyncio_mode = "auto"
-filterwarnings = ["error", "ignore::DeprecationWarning"]
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning",
+    # SA2AReplanEnvelope deliberately reuses the wire field name `schema`
+    # (Literal["sa2a/replan-envelope/v1"]), which shadows pydantic's deprecated
+    # .schema() method; the shadowing is intentional wire compatibility.
+    'ignore:Field name "schema" in:UserWarning',
+]
 
 [tool.ruff]
 line-length = 100

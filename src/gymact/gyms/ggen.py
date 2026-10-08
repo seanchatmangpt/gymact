@@ -46,7 +46,7 @@ GGEN_CAPABILITIES = (
     ),
 )
 
-_IGNORED_PARTS = {".git", "__pycache__", ".pytest_cache", "target"}
+_IGNORED_PARTS = {".git", "__pycache__", ".pytest_cache", "target", ".clap-noun-verb"}
 _MAX_FILES_DEFAULT = 512
 _MAX_BYTES_DEFAULT = 8 * 1024 * 1024
 

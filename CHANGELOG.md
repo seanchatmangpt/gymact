@@ -1,5 +1,12 @@
 # Changelog
 
+## 26.10.8 - 2026-10-08
+
+### Added
+- `gymact-survival` CLI (`src/gymact/survival_cli.py`, `f5835d3`/`042e318`/`1c691fb`): manufactures canonical survival qualification artifacts — `--subject`, `--workload-id`, `--output-dir` required; writes `manifest.json`/`campaign.jsonl`/`receipts.json`; `--force` replaces existing artifacts; refusal prints `survival-campaign-refused:` to stderr and exits 2.
+- `gymact.retirement` module (`20baed1`): evidence-bounded intelligence retirement controller (not yet re-exported via `gymact.dcm.__all__`).
+- SA2A portable replan envelope modules (`dac3629`): `SA2AReplanEnvelope`/`SA2ARecoveryDirective` carry `exact_subject` + `receipt_id`, consumed non-actuatingly (`src/gymact/sa2a_envelope.py`, `sa2a_consumer.py`, `sa2a_evolution.py`, `sa2a_replay.py`).
+
 ## 26.9.28 - 2026-09-28
 
 ### Changed
