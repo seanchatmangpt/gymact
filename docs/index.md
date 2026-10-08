@@ -16,6 +16,9 @@ Why the system is shaped as it is.
 - [GymAct PRD/ARD](explanation/gymact-prd-ard.md) — product and architecture requirements.
 - [Actuation layer PRD](explanation/prd-gymact-actuation-layer.md) — product requirements for the
   actuation layer.
+- [SJ-008 triage baseline](explanation/sj-008-triage-baseline.md) — why the SJ-008 manifest's 10
+  recorded failures at 26.10.8 are all environment-bound (zero regressions), and how to
+  reproduce with `GYMACT_ALLOW_DEGRADED_STANDINGS`.
 
 ## 2. Reference (Information-Oriented)
 
