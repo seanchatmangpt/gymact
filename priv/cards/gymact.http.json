@@ -20,95 +20,172 @@
   "skills": [
     {
       "description": "POST endpoint on the GymAct HTTP surface. Consequential operations cross the kernel authority gate.",
-      "id": "POST:/candidates",
-      "name": "POST /candidates"
+      "id": "gymact.http.post-candidates",
+      "name": "POST /candidates",
+      "tags": [
+        "http",
+        "consequence"
+      ]
     },
     {
       "description": "GET endpoint on the GymAct HTTP surface. Read-only observation; no authority required.",
-      "id": "GET:/contract",
-      "name": "GET /contract"
+      "id": "gymact.http.get-contract",
+      "name": "GET /contract",
+      "tags": [
+        "http",
+        "read"
+      ]
     },
     {
       "description": "POST endpoint on the GymAct HTTP surface. Consequential operations cross the kernel authority gate.",
-      "id": "POST:/episodes",
-      "name": "POST /episodes"
+      "id": "gymact.http.post-episodes",
+      "name": "POST /episodes",
+      "tags": [
+        "http",
+        "consequence"
+      ]
     },
     {
       "description": "DELETE endpoint on the GymAct HTTP surface. Consequential operations cross the kernel authority gate.",
-      "id": "DELETE:/episodes/{episode_id}",
-      "name": "DELETE /episodes/{episode_id}"
+      "id": "gymact.http.delete-episodes-episode_id",
+      "name": "DELETE /episodes/{episode_id}",
+      "tags": [
+        "http",
+        "consequence"
+      ]
     },
     {
       "description": "POST endpoint on the GymAct HTTP surface. Consequential operations cross the kernel authority gate.",
-      "id": "POST:/episodes/{episode_id}/actions",
-      "name": "POST /episodes/{episode_id}/actions"
+      "id": "gymact.http.post-episodes-episode_id-actions",
+      "name": "POST /episodes/{episode_id}/actions",
+      "tags": [
+        "http",
+        "consequence"
+      ]
     },
     {
       "description": "POST endpoint on the GymAct HTTP surface. Consequential operations cross the kernel authority gate.",
-      "id": "POST:/episodes/{episode_id}/actions/admitted",
-      "name": "POST /episodes/{episode_id}/actions/admitted"
+      "id": "gymact.http.post-episodes-episode_id-actions-admitted",
+      "name": "POST /episodes/{episode_id}/actions/admitted",
+      "tags": [
+        "http",
+        "consequence"
+      ]
     },
     {
       "description": "POST endpoint on the GymAct HTTP surface. Consequential operations cross the kernel authority gate.",
-      "id": "POST:/episodes/{episode_id}/actions/selected",
-      "name": "POST /episodes/{episode_id}/actions/selected"
+      "id": "gymact.http.post-episodes-episode_id-actions-selected",
+      "name": "POST /episodes/{episode_id}/actions/selected",
+      "tags": [
+        "http",
+        "consequence"
+      ]
     },
     {
       "description": "GET endpoint on the GymAct HTTP surface. Read-only observation; no authority required.",
-      "id": "GET:/episodes/{episode_id}/capabilities",
-      "name": "GET /episodes/{episode_id}/capabilities"
+      "id": "gymact.http.get-episodes-episode_id-capabilities",
+      "name": "GET /episodes/{episode_id}/capabilities",
+      "tags": [
+        "http",
+        "read"
+      ]
     },
     {
       "description": "GET endpoint on the GymAct HTTP surface. Read-only observation; no authority required.",
-      "id": "GET:/episodes/{episode_id}/checkpoint",
-      "name": "GET /episodes/{episode_id}/checkpoint"
+      "id": "gymact.http.get-episodes-episode_id-checkpoint",
+      "name": "GET /episodes/{episode_id}/checkpoint",
+      "tags": [
+        "http",
+        "read"
+      ]
     },
     {
       "description": "GET endpoint on the GymAct HTTP surface. Read-only observation; no authority required.",
-      "id": "GET:/episodes/{episode_id}/observations/latest",
-      "name": "GET /episodes/{episode_id}/observations/latest"
+      "id": "gymact.http.get-episodes-episode_id-observations-latest",
+      "name": "GET /episodes/{episode_id}/observations/latest",
+      "tags": [
+        "http",
+        "read"
+      ]
     },
     {
       "description": "POST endpoint on the GymAct HTTP surface. Consequential operations cross the kernel authority gate.",
-      "id": "POST:/episodes/{episode_id}/restore",
-      "name": "POST /episodes/{episode_id}/restore"
+      "id": "gymact.http.post-episodes-episode_id-restore",
+      "name": "POST /episodes/{episode_id}/restore",
+      "tags": [
+        "http",
+        "consequence"
+      ]
     },
     {
       "description": "POST endpoint on the GymAct HTTP surface. Consequential operations cross the kernel authority gate.",
-      "id": "POST:/episodes/{episode_id}/verify",
-      "name": "POST /episodes/{episode_id}/verify"
+      "id": "gymact.http.post-episodes-episode_id-verify",
+      "name": "POST /episodes/{episode_id}/verify",
+      "tags": [
+        "http",
+        "consequence"
+      ]
     },
     {
       "description": "GET endpoint on the GymAct HTTP surface. Read-only observation; no authority required.",
-      "id": "GET:/evidence",
-      "name": "GET /evidence"
+      "id": "gymact.http.get-evidence",
+      "name": "GET /evidence",
+      "tags": [
+        "http",
+        "read"
+      ]
     },
     {
       "description": "GET endpoint on the GymAct HTTP surface. Read-only observation; no authority required.",
-      "id": "GET:/evidence/prov",
-      "name": "GET /evidence/prov"
+      "id": "gymact.http.get-evidence-prov",
+      "name": "GET /evidence/prov",
+      "tags": [
+        "http",
+        "read"
+      ]
     },
     {
       "description": "GET endpoint on the GymAct HTTP surface. Read-only observation; no authority required.",
-      "id": "GET:/health",
-      "name": "GET /health"
+      "id": "gymact.http.get-health",
+      "name": "GET /health",
+      "tags": [
+        "http",
+        "read"
+      ]
     },
     {
       "description": "POST endpoint on the GymAct HTTP surface. Consequential operations cross the kernel authority gate.",
-      "id": "POST:/possibilities/explore",
-      "name": "POST /possibilities/explore"
+      "id": "gymact.http.post-possibilities-explore",
+      "name": "POST /possibilities/explore",
+      "tags": [
+        "http",
+        "consequence"
+      ]
     },
     {
       "description": "GET endpoint on the GymAct HTTP surface. Read-only observation; no authority required.",
-      "id": "GET:/profile",
-      "name": "GET /profile"
+      "id": "gymact.http.get-profile",
+      "name": "GET /profile",
+      "tags": [
+        "http",
+        "read"
+      ]
     },
     {
       "description": "GET endpoint on the GymAct HTTP surface. Read-only observation; no authority required.",
-      "id": "GET:/providers",
-      "name": "GET /providers"
+      "id": "gymact.http.get-providers",
+      "name": "GET /providers",
+      "tags": [
+        "http",
+        "read"
+      ]
     }
   ],
-  "url": "urn:gymact:surface:gymact.http",
+  "supportedInterfaces": [
+    {
+      "protocolBinding": "http",
+      "protocolVersion": "1.0"
+    }
+  ],
   "version": "26.10.8"
 }

@@ -20,57 +20,114 @@
   "skills": [
     {
       "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
-      "name": "act"
+      "id": "gymact.stream.act",
+      "name": "act",
+      "tags": [
+        "stream"
+      ]
     },
     {
       "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
-      "name": "capabilities"
+      "id": "gymact.stream.capabilities",
+      "name": "capabilities",
+      "tags": [
+        "stream"
+      ]
     },
     {
       "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
-      "name": "checkpoint"
+      "id": "gymact.stream.checkpoint",
+      "name": "checkpoint",
+      "tags": [
+        "stream"
+      ]
     },
     {
       "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
-      "name": "create_episode"
+      "id": "gymact.stream.create_episode",
+      "name": "create_episode",
+      "tags": [
+        "stream"
+      ]
     },
     {
       "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
-      "name": "discover"
+      "id": "gymact.stream.discover",
+      "name": "discover",
+      "tags": [
+        "stream"
+      ]
     },
     {
       "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
-      "name": "execute_admitted"
+      "id": "gymact.stream.execute_admitted",
+      "name": "execute_admitted",
+      "tags": [
+        "stream"
+      ]
     },
     {
       "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
-      "name": "execute_selected"
+      "id": "gymact.stream.execute_selected",
+      "name": "execute_selected",
+      "tags": [
+        "stream"
+      ]
     },
     {
       "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
-      "name": "explore_possibilities"
+      "id": "gymact.stream.explore_possibilities",
+      "name": "explore_possibilities",
+      "tags": [
+        "stream"
+      ]
     },
     {
       "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
-      "name": "observe"
+      "id": "gymact.stream.observe",
+      "name": "observe",
+      "tags": [
+        "stream"
+      ]
     },
     {
       "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
-      "name": "prepare_candidate"
+      "id": "gymact.stream.prepare_candidate",
+      "name": "prepare_candidate",
+      "tags": [
+        "stream"
+      ]
     },
     {
       "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
-      "name": "restore"
+      "id": "gymact.stream.restore",
+      "name": "restore",
+      "tags": [
+        "stream"
+      ]
     },
     {
       "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
-      "name": "teardown"
+      "id": "gymact.stream.teardown",
+      "name": "teardown",
+      "tags": [
+        "stream"
+      ]
     },
     {
       "description": "Broker-neutral stream operation on the GymAct FastStream surface; DO-class operations require a DCM selected cut.",
-      "name": "verify"
+      "id": "gymact.stream.verify",
+      "name": "verify",
+      "tags": [
+        "stream"
+      ]
     }
   ],
-  "url": "urn:gymact:surface:gymact.stream",
+  "supportedInterfaces": [
+    {
+      "protocolBinding": "stream",
+      "protocolVersion": "1.0"
+    }
+  ],
   "version": "26.10.8"
 }

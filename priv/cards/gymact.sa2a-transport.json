@@ -20,13 +20,28 @@
   "skills": [
     {
       "description": "Admit the SA2A replan envelope carried by an A2A v1 task payload. Admission is through admit_envelope with the producer's contract_digest carried verbatim; any refusal (subject mismatch, digest mismatch, malformed task framing) is a typed A2A task.failed terminal state, never a silent no-op. Refusal codes: SA2A_EXACT_SUBJECT_REQUIRED, SA2A_EXACT_SUBJECT_NONFINITE_NUMBER, SA2A_EXACT_SUBJECT_MISMATCH, SA2A_ENVELOPE_INVALID, A2A_CONTEXT_ID_REQUIRED, A2A_TASK_ID_REQUIRED, A2A_MESSAGE_REQUIRED, A2A_MESSAGE_PARTS_REQUIRED, A2A_ENVELOPE_PART_NOT_FOUND.",
-      "name": "a2a_task_to_envelope"
+      "id": "gymact.sa2a-transport.a2a-task-to-envelope",
+      "name": "a2a_task_to_envelope",
+      "tags": [
+        "sa2a",
+        "admission"
+      ]
     },
     {
       "description": "Re-admit and project an admitted SA2A envelope as an A2A artifact carrying SA2AEvolutionFeedback.",
-      "name": "envelope_to_artifact"
+      "id": "gymact.sa2a-transport.envelope-to-artifact",
+      "name": "envelope_to_artifact",
+      "tags": [
+        "sa2a",
+        "projection"
+      ]
     }
   ],
-  "url": "urn:gymact:surface:gymact.sa2a-transport",
+  "supportedInterfaces": [
+    {
+      "protocolBinding": "sa2a-transport",
+      "protocolVersion": "1.0"
+    }
+  ],
   "version": "26.10.8"
 }

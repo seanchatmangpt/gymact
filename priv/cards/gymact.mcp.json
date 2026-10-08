@@ -20,45 +20,90 @@
   "skills": [
     {
       "description": "MCP tool on the GymAct MCP surface.",
-      "name": "act"
+      "id": "gymact.mcp.act",
+      "name": "act",
+      "tags": [
+        "mcp"
+      ]
     },
     {
       "description": "MCP tool on the GymAct MCP surface.",
-      "name": "capabilities"
+      "id": "gymact.mcp.capabilities",
+      "name": "capabilities",
+      "tags": [
+        "mcp"
+      ]
     },
     {
       "description": "MCP tool on the GymAct MCP surface.",
-      "name": "checkpoint"
+      "id": "gymact.mcp.checkpoint",
+      "name": "checkpoint",
+      "tags": [
+        "mcp"
+      ]
     },
     {
       "description": "MCP tool on the GymAct MCP surface.",
-      "name": "create_episode"
+      "id": "gymact.mcp.create_episode",
+      "name": "create_episode",
+      "tags": [
+        "mcp"
+      ]
     },
     {
       "description": "MCP tool on the GymAct MCP surface.",
-      "name": "discover"
+      "id": "gymact.mcp.discover",
+      "name": "discover",
+      "tags": [
+        "mcp"
+      ]
     },
     {
       "description": "MCP tool on the GymAct MCP surface.",
-      "name": "observe"
+      "id": "gymact.mcp.observe",
+      "name": "observe",
+      "tags": [
+        "mcp"
+      ]
     },
     {
       "description": "MCP tool on the GymAct MCP surface.",
-      "name": "probe_repo"
+      "id": "gymact.mcp.probe_repo",
+      "name": "probe_repo",
+      "tags": [
+        "mcp"
+      ]
     },
     {
       "description": "MCP tool on the GymAct MCP surface.",
-      "name": "restore"
+      "id": "gymact.mcp.restore",
+      "name": "restore",
+      "tags": [
+        "mcp"
+      ]
     },
     {
       "description": "MCP tool on the GymAct MCP surface.",
-      "name": "teardown"
+      "id": "gymact.mcp.teardown",
+      "name": "teardown",
+      "tags": [
+        "mcp"
+      ]
     },
     {
       "description": "MCP tool on the GymAct MCP surface.",
-      "name": "verify"
+      "id": "gymact.mcp.verify",
+      "name": "verify",
+      "tags": [
+        "mcp"
+      ]
     }
   ],
-  "url": "urn:gymact:surface:gymact.mcp",
+  "supportedInterfaces": [
+    {
+      "protocolBinding": "mcp",
+      "protocolVersion": "1.0"
+    }
+  ],
   "version": "26.10.8"
 }
