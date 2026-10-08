@@ -100,7 +100,7 @@ engineering work on its own technical merits, independent of that claim.
 
 - `docs/actuation-layer-scope.md` — gymact's own scope statement, which
   this ARD formalizes at the ecosystem level
-- `docs/prd-gymact-actuation-layer.md` — gymact's product requirements,
+- `docs/explanation/prd-gymact-actuation-layer.md` — gymact's product requirements,
   scoped by this ARD's decision
 - `.claude/rules/explore-exploit.md`, `.claude/rules/ggen-boundary.md`,
   `.claude/rules/ontology.md`

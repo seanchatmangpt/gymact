@@ -10,9 +10,9 @@ strict = true
 watch = ["src"]
 nav = [
   { Home = "index.md" },
-  { Architecture = "architecture.md" },
-  { Assurance = "assurance.md" },
-  { Reference = "reference.md" },
+  { Architecture = "explanation/architecture.md" },
+  { Assurance = "explanation/assurance.md" },
+  { Reference = "reference/reference.md" },
 ]
 
 [[project.theme.palette]]
