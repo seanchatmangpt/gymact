@@ -204,9 +204,17 @@ def build_cards() -> list[dict[str, Any]]:
             ),
         }
         for route in http_routes
-        # FastAPI's self-generated documentation routes are framework
-        # machinery, not GymAct skills.
-        if route["path"] not in {"/openapi.json", "/docs", "/redoc", "/docs/oauth2-redirect"}
+        # FastAPI's self-generated documentation routes and the A2A
+        # well-known agent-card route are framework/protocol machinery,
+        # not GymAct skills.
+        if route["path"]
+        not in {
+            "/openapi.json",
+            "/docs",
+            "/redoc",
+            "/docs/oauth2-redirect",
+            "/.well-known/agent-card.json",
+        }
     ]
 
     mcp_skill_list = [

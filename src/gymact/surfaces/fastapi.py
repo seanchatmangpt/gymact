@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from importlib.metadata import PackageNotFoundError, version as _package_version
+import hashlib
+import os
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _package_version
+from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 
 from gymact.brce import BRCEBroker, BrokerRequest
 from gymact.contract import build_contract
@@ -15,6 +19,32 @@ from gymact.models import ActuationIntent, MaterializationIntent, RestoreRequest
 from gymact.providers import MemoryProvider
 from gymact.runtime import BoundaryBlocked, GymAct, ProductionGymAct
 from gymact.transport import TransportKind, normalize_candidate
+
+DEFAULT_AGENT_CARD_ID = "gymact.http"
+_CARDS_DIR = Path(__file__).resolve().parents[3] / "priv" / "cards"
+_WELL_KNOWN_CARD_PATH = "/.well-known/agent-card.json"
+
+
+class AgentCardNotConfigured(ValueError):
+    """Typed refusal: the configured agent card id has no published card file."""
+
+
+def published_agent_card_bytes(card_id: str) -> bytes:
+    """Load the exact published card bytes for ``card_id`` from ``priv/cards/``.
+
+    The committed card files are the court-verified artifact (determinism
+    court in ``tests/test_agent_cards.py``), so the route serves their bytes
+    verbatim. ``GYMACT_CARDS_DIR`` overrides the directory for deployments
+    that publish cards outside the repo checkout.
+    """
+    cards_dir = Path(os.environ.get("GYMACT_CARDS_DIR", _CARDS_DIR))
+    path = cards_dir / f"{card_id}.json"
+    if not path.is_file():
+        raise AgentCardNotConfigured(
+            f"AGENT_CARD_NOT_CONFIGURED: no published agent card "
+            f"'{card_id}' at {path} (expected priv/cards/{card_id}.json)"
+        )
+    return path.read_bytes()
 
 
 def _runtime(runtime: GymAct | None) -> GymAct:
@@ -34,16 +64,43 @@ def _app_version() -> str:
         return _package_version("gymact")
     except PackageNotFoundError:
         from gymact import __version__
+
         return __version__
 
 
-def create_app(runtime: GymAct | None = None) -> FastAPI:
-    """Create HTTP/OpenAPI projection with DCM as the canonical production DO path."""
+def create_app(
+    runtime: GymAct | None = None,
+    card_id: str | None = None,
+) -> FastAPI:
+    """Create HTTP/OpenAPI projection with DCM as the canonical production DO path.
+
+    ``card_id`` selects the published agent card served at
+    ``/.well-known/agent-card.json`` (default ``gymact.http``; the
+    ``GYMACT_AGENT_CARD`` environment variable overrides per instance).
+    A missing card file is a typed ``AgentCardNotConfigured`` refusal raised
+    at app creation, never a silent 404 at request time.
+    """
     service = _runtime(runtime)
     compatibility_broker = BRCEBroker(service)
     court = DCMDecisionCourt()
     contract = build_contract()
     app = FastAPI(title="GymAct", version=_app_version())
+
+    resolved_card_id = os.environ.get("GYMACT_AGENT_CARD", "") or card_id or DEFAULT_AGENT_CARD_ID
+    card_bytes = published_agent_card_bytes(resolved_card_id)
+    card_etag = f'"{hashlib.sha256(card_bytes).hexdigest()[:32]}"'
+
+    @app.get(_WELL_KNOWN_CARD_PATH)
+    async def agent_card(request: Request) -> Response:
+        """Serve the published agent card bytes with ETag/304 revalidation."""
+        if_none_match = request.headers.get("if-none-match")
+        if if_none_match and if_none_match.strip() == card_etag:
+            return Response(status_code=304, headers={"ETag": card_etag})
+        return Response(
+            content=card_bytes,
+            media_type="application/json",
+            headers={"ETag": card_etag},
+        )
 
     @app.get("/health")
     async def health() -> dict[str, str]:

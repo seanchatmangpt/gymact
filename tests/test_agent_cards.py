@@ -20,14 +20,20 @@ import sys  # noqa: E402
 if sys_path_prepended not in sys.path:
     sys.path.insert(0, sys_path_prepended)
 
+
 from gymact.surfaces.fastapi import create_app  # noqa: E402
 from gymact.surfaces.fastmcp import create_mcp  # noqa: E402
 from gymact.surfaces.faststream import dispatch_stream_command  # noqa: E402
-from scripts.gen_agent_cards import build_cards  # noqa: E402
 
 CARDS_DIR = _REPO_ROOT / "priv" / "cards"
 
-_DOCS_ROUTES = {"/openapi.json", "/docs", "/redoc", "/docs/oauth2-redirect"}
+_DOCS_ROUTES = {
+    "/openapi.json",
+    "/docs",
+    "/redoc",
+    "/docs/oauth2-redirect",
+    "/.well-known/agent-card.json",
+}
 
 
 def _card(card_id: str) -> dict:
@@ -104,6 +110,37 @@ def test_all_cards_carry_authority_law_and_v10_protocol() -> None:
         assert "_authority_decision" in card["description"]
         assert "admit_envelope" in card["description"]
         assert card["skills"], card_id
+
+
+def test_well_known_route_serves_published_card_bytes() -> None:
+    """GET /.well-known/agent-card.json -> 200 with the exact published bytes."""
+    from fastapi.testclient import TestClient
+
+    from gymact.surfaces.fastapi import AgentCardNotConfigured
+
+    committed = (CARDS_DIR / "gymact.http.json").read_bytes()
+    app = create_app()
+    client = TestClient(app)
+
+    response = client.get("/.well-known/agent-card.json")
+    assert response.status_code == 200
+    assert response.content == committed
+    served = response.json()
+    assert "supportedInterfaces" in served
+    assert served["id"] == "gymact.http"
+    assert "etag" in {k.lower() for k in response.headers}
+
+    # Conditional revalidation against the ETag really 304s.
+    revalidate = client.get(
+        "/.well-known/agent-card.json",
+        headers={"if-none-match": response.headers["etag"]},
+    )
+    assert revalidate.status_code == 304
+
+    # Card selection is per instance; a configured-but-missing card is a
+    # typed refusal at app creation, never a silent 404 at request time.
+    with pytest.raises(AgentCardNotConfigured, match="AGENT_CARD_NOT_CONFIGURED"):
+        create_app(card_id="gymact.does-not-exist")
 
 
 def test_regeneration_is_byte_identical_to_committed_cards(tmp_path: Path) -> None:
