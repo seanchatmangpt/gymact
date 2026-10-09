@@ -4,7 +4,7 @@
 |---|---|
 | Branch | `main` |
 | HEAD | `ea87c1913ae722930a60f0d00da17d951b6ddd2b` (concurrent fleet lanes were landing during receipt write; HEAD re-read at write time) |
-| Base tag | `v26.10.8` (`1df8e838621a0cdab0fd98089667ba7818e19e32`) |
+| Base tag | `v26.10.8` (`da1558f8f46b74ca39c96540c9e52ae3ceb97c66`) |
 | In-sync with origin | in sync at receipt time |
 
 ## Campaign commits since `v26.10.8`

@@ -17,8 +17,9 @@ _REPO_ROOT = Path(__file__).parent.parent
 sys_path_prepended = str(_REPO_ROOT / "src")
 import sys  # noqa: E402
 
-if sys_path_prepended not in sys.path:
-    sys.path.insert(0, sys_path_prepended)
+for _path in (str(_REPO_ROOT / "src"), str(_REPO_ROOT)):
+    if _path not in sys.path:
+        sys.path.insert(0, _path)
 
 
 from gymact.surfaces.fastapi import create_app  # noqa: E402
