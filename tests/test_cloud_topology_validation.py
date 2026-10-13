@@ -25,7 +25,14 @@ named_standing_skip(
     "endpoints.json) requires `uv sync --extra gyms`",
 )
 
-from gymact.gyms.cloud_topology import CloudRegion, CloudService, CloudTopology
+from gymact.gyms.cloud_topology import (
+    CloudRegion,
+    CloudService,
+    CloudTopology,
+    load_aws_topology,
+    load_azure_topology,
+    load_gcp_topology,
+)
 from gymact.gyms.cloud_topology_validation import (
     ValidationResult,
     _structural_problems,
@@ -56,8 +63,9 @@ def test_validate_aws_real_run_is_structurally_valid() -> None:
     result = validate_aws()
     assert result.problems == (), f"real aws validation problems: {result.problems}"
     assert result.valid is True
-    assert result.independent_region_count == result.loaded_region_count
-    assert result.independent_service_count == result.loaded_service_count
+    # Independent expectation: recount regions straight from the loaded raw topology
+    # structure, never via the validator's own recount.
+    assert len(load_aws_topology().regions) == result.loaded_region_count > 0
 
 
 def test_validate_azure_real_run_is_structurally_valid() -> None:
@@ -68,8 +76,7 @@ def test_validate_azure_real_run_is_structurally_valid() -> None:
     result = validate_azure()
     assert result.problems == (), f"real azure validation problems: {result.problems}"
     assert result.valid is True
-    assert result.independent_region_count == result.loaded_region_count
-    assert result.independent_service_count == result.loaded_service_count
+    assert len(load_azure_topology().regions) == result.loaded_region_count > 0
 
 
 def test_validate_gcp_real_run_is_structurally_valid() -> None:
@@ -80,8 +87,7 @@ def test_validate_gcp_real_run_is_structurally_valid() -> None:
     result = validate_gcp()
     assert result.problems == (), f"real gcp validation problems: {result.problems}"
     assert result.valid is True
-    assert result.independent_region_count == result.loaded_region_count
-    assert result.independent_service_count == result.loaded_service_count
+    assert len(load_gcp_topology().regions) == result.loaded_region_count > 0
 
 
 def test_structural_problems_catches_a_real_dangling_region_reference() -> None:

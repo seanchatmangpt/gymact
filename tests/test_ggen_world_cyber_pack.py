@@ -62,10 +62,10 @@ def test_ggen_targets_are_static_cross_language_projections_only() -> None:
 
 # Same pinned toolchain capsule already used by the TOGAF ggen court.
 _GGEN_URL = (
-    "https://github.com/seanchatmangpt/ggen/releases/download/v26.8.8/"
+    "https://github.com/seanchatmangpt/ggen/releases/download/v26.8.11/"
     "ggen-x86_64-unknown-linux-gnu.tar.gz"
 )
-_GGEN_SHA256 = "c651d873c2aeb6bd71c3d5356634f0b3f4adafd2454ee354c817a7079c2ea802"
+_GGEN_SHA256 = "790f8eab8b038e746af45cf70adde47c0df65fbcc5514c2c6ac8e5f80b2fe792"
 
 
 def _temporary_consumer(tmp_path: Path) -> Path:
@@ -123,7 +123,7 @@ def test_installed_ggen_manufactures_static_world_cyber_projection(tmp_path: Pat
     assert receipt.is_file() and receipt.stat().st_size > 0
 
 
-def test_pinned_ggen_v26_8_8_manufactures_on_ci_313(tmp_path: Path) -> None:
+def test_pinned_ggen_v26_8_11_manufactures_on_ci_313(tmp_path: Path) -> None:
     import hashlib
     import os
     import stat
