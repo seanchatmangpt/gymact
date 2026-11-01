@@ -29,7 +29,7 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - name: Download exact verified bundle
-        uses: actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@v8.0.2
         with:
           name: ci-bundle-${{ github.event.workflow_run.id }}
           path: delivery
@@ -70,7 +70,7 @@ jobs:
       - name: Deploy Pages
         id: deploy
         continue-on-error: true
-        uses: actions/deploy-pages@v5.0.0
+        uses: actions/deploy-pages@v5.0.1
 
       - name: Emit Pages receipt
         if: ${{ always() }}
@@ -140,7 +140,7 @@ jobs:
       id-token: write
     steps:
       - name: Download exact verified bundle
-        uses: actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@v8.0.2
         with:
           name: ci-bundle-${{ github.event.workflow_run.id }}
           path: delivery
