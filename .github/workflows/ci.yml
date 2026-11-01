@@ -304,13 +304,13 @@ jobs:
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
 
       - name: Download cloud-simulation evidence
-        uses: actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@v8.0.2
         with:
           name: cloudsim-evidence
           path: artifacts/cloudsim-evidence
 
       - name: Download Python matrix evidence
-        uses: actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@v8.0.2
         with:
           pattern: test-evidence-*
           path: artifacts/test-evidence
